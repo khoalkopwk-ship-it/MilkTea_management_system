@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Đăng Nhập - MilkTea</title>
+</head>
+<body>
+    <div th:fragment="content" class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-5 col-lg-4">
+                <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="card-header bg-white text-center py-4 border-0">
+                        <div class="d-inline-block brand-badge fs-5 mb-2">
+                            <i class="bi bi-cup-hot-fill me-1"></i>MilkTea
+                        </div>
+                        <h4 class="brand-font mb-1">Đăng Nhập Hệ Thống</h4>
+                        <p class="text-muted small mb-0">Quản trị & Vận hành quán trà sữa</p>
+                    </div>
+
+                    <div class="card-body p-4">
+                        <div id="loginAlert" class="alert alert-danger d-none py-2 small" role="alert"></div>
+
+                        <form id="loginForm" onsubmit="handleLogin(event)">
+                            <div class="mb-3">
+                                <label for="email" class="form-label small fw-semibold">Email tài khoản</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+                                    <input type="email" class="form-control border-start-0" id="email" required placeholder="name@milktea.vn">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="password" class="form-label small fw-semibold">Mật khẩu</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
+                                    <input type="password" class="form-control border-start-0" id="password" required placeholder="••••••••">
+                                </div>
+                            </div>
+
+                            <button type="submit" id="loginBtn" class="btn btn-primary-custom w-100 py-2 rounded-3 mt-2">
+                                <span class="spinner-border spinner-border-sm me-2 d-none" id="loginSpinner"></span>
+                                Đăng Nhập
+                            </button>
+                        </form>
+
+                        <!-- Tài Khoản Mẫu Nhanh -->
+                        <div class="mt-4 pt-3 border-top">
+                            <p class="text-center text-muted small fw-semibold mb-2">Chọn nhanh tài khoản thử nghiệm:</p>
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger text-start py-2 px-3 rounded-3"
+                                        onclick="fillDemo('admin@milktea.vn', 'Password@123')">
+                                    <i class="bi bi-shield-lock-fill me-2"></i><strong>Quản Trị Viên (ADMIN)</strong>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary text-start py-2 px-3 rounded-3"
+                                        onclick="fillDemo('cashier@milktea.vn', 'Password@123')">
+                                    <i class="bi bi-calculator me-2"></i><strong>Thu Ngân (CASHIER)</strong>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success text-start py-2 px-3 rounded-3"
+                                        onclick="fillDemo('kitchen@milktea.vn', 'Password@123')">
+                                    <i class="bi bi-fire me-2"></i><strong>Bếp Trưởng (KITCHEN)</strong>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary text-start py-2 px-3 rounded-3"
+                                        onclick="fillDemo('customer@milktea.vn', 'Password@123')">
+                                    <i class="bi bi-person me-2"></i><strong>Khách Hàng (CUSTOMER)</strong>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script>
+            function fillDemo(email, pass) {
+                document.getElementById('email').value = email;
+                document.getElementById('password').value = pass;
+            }
+
+            async function handleLogin(e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+                const alertEl = document.getElementById('loginAlert');
+                const btn = document.getElementById('loginBtn');
+                const spinner = document.getElementById('loginSpinner');
+
+                alertEl.classList.add('d-none');
+                btn.disabled = true;
+                spinner.classList.remove('d-none');
+
+                try {
+                    const data = await MilkTeaApi.post('/api/v1/auth/login', { email, password });
+                    MilkTeaApi.showToast('Đăng nhập thành công!', 'success');
+
+                    // Điều hướng theo vai trò hoặc query param redirect
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const redirect = urlParams.get('redirect');
+
+                    setTimeout(() => {
+                        if (redirect && !redirect.includes('/login')) {
+                            window.location.href = redirect;
+                        } else if (data.role === 'ADMIN') {
+                            window.location.href = '/admin/catalog';
+                        } else if (data.role === 'CASHIER') {
+                            window.location.href = '/cashier';
+                        } else if (data.role === 'KITCHEN') {
+                            window.location.href = '/kitchen';
+                        } else {
+                            window.location.href = '/';
+                        }
+                    }, 500);
+
+                } catch (err) {
+                    alertEl.textContent = err.message || 'Email hoặc mật khẩu không chính xác';
+                    alertEl.classList.remove('d-none');
+                    btn.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            }
+        </script>
+    </th:block>
+</body>
+</html>

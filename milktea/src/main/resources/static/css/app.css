@@ -1,0 +1,324 @@
+:root {
+    --primary-color: #b86b35;
+    --primary-hover: #9e5524;
+    --primary-light: #fbeee4;
+    --secondary-color: #2d6a4f;
+    --secondary-hover: #1b4332;
+    --secondary-light: #e8f5ed;
+    --accent-color: #d97706;
+    --dark-color: #1e293b;
+    --light-bg: #f8fafc;
+    --card-bg: #ffffff;
+    --border-color: #e2e8f0;
+    --text-muted: #64748b;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--light-bg);
+    color: var(--dark-color);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+h1, h2, h3, h4, .brand-font {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+}
+
+/* Navbar */
+.navbar-milktea {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.brand-badge {
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
+    padding: 6px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.table-badge {
+    background: var(--secondary-light);
+    color: var(--secondary-color);
+    border: 1px solid rgba(45, 106, 79, 0.2);
+    padding: 6px 14px;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Product Cards */
+.product-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.25s ease;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(184, 107, 53, 0.4);
+}
+
+.product-img-wrapper {
+    position: relative;
+    width: 100%;
+    padding-top: 75%;
+    overflow: hidden;
+    background-color: #f1f5f9;
+}
+
+.product-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.product-card:hover .product-img {
+    transform: scale(1.05);
+}
+
+.product-price {
+    color: var(--primary-color);
+    font-weight: 700;
+    font-size: 1.15rem;
+}
+
+/* Status Badges */
+.badge-status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.badge-CHO_XAC_NHAN {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.badge-CHO_CHE_BIEN {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.badge-DANG_CHE_BIEN {
+    background-color: #ffedd5;
+    color: #9a3412;
+    border: 1px solid #fed7aa;
+    animation: pulse 1.8s infinite;
+}
+
+.badge-HOAN_THANH {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.badge-DA_HUY {
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Buttons */
+.btn-primary-custom {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 8px 18px;
+    transition: all 0.2s ease;
+}
+
+.btn-primary-custom:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+    color: white;
+}
+
+.btn-secondary-custom {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: white;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 8px 18px;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary-custom:hover {
+    background-color: var(--secondary-hover);
+    border-color: var(--secondary-hover);
+    color: white;
+}
+
+/* Category Filter Tabs */
+.category-chip {
+    padding: 8px 18px;
+    border-radius: 30px;
+    background: white;
+    border: 1px solid var(--border-color);
+    font-weight: 600;
+    color: var(--dark-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.category-chip:hover, .category-chip.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 6px rgba(184, 107, 53, 0.3);
+}
+
+/* Floating Cart Button for Mobile */
+.floating-cart-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1030;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    color: white;
+    border-radius: 50px;
+    padding: 12px 22px;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    text-decoration: none;
+}
+
+.floating-cart-btn:hover {
+    transform: scale(1.04);
+    color: white;
+}
+
+/* Tables Grid (Cashier) */
+.table-card {
+    border-radius: var(--radius-md);
+    padding: 16px;
+    text-align: center;
+    border: 2px solid var(--border-color);
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.table-card.TRONG {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.table-card.CO_KHACH {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+}
+
+.table-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* KDS Orders Grid */
+.kds-order-card {
+    background: white;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.kds-order-card.DANG_CHE_BIEN {
+    border-left: 6px solid #f97316;
+}
+
+.kds-order-card.CHO_CHE_BIEN {
+    border-left: 6px solid #3b82f6;
+}
+
+/* Admin Sidebar */
+.admin-sidebar {
+    background: white;
+    border-right: 1px solid var(--border-color);
+    min-height: calc(100vh - 60px);
+}
+
+.admin-nav-link {
+    padding: 12px 18px;
+    border-radius: var(--radius-sm);
+    color: var(--dark-color);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    margin-bottom: 4px;
+}
+
+.admin-nav-link:hover, .admin-nav-link.active {
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Loading & Empty States */
+.empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.spinner-custom {
+    color: var(--primary-color);
+}

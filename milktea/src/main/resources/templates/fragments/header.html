@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+    <div th:fragment="navbar">
+        <nav class="navbar navbar-expand-lg navbar-milktea sticky-top">
+            <div class="container-fluid px-lg-4">
+                <!-- Brand / Logo -->
+                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/}">
+                    <span class="brand-badge"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
+                    <span class="brand-font fs-5 d-none d-sm-inline" th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                </a>
+
+                <!-- Nhãn Bàn Cho Khách Hàng (Nếu có context bàn) -->
+                <div th:if="${currentTable != null}" class="d-flex align-items-center ms-2">
+                    <span class="table-badge">
+                        <i class="bi bi-geo-alt-fill"></i>
+                        <span th:text="${currentTable.name}">Bàn 01</span>
+                    </span>
+                </div>
+
+                <!-- Toggler for Mobile -->
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Navigation Content -->
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
+                        <li class="nav-item">
+                            <a class="nav-link fw-semibold" th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
+                                <i class="bi bi-grid me-1"></i> Menu
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link fw-semibold" th:href="@{/orders(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
+                                <i class="bi bi-receipt me-1"></i> Đơn Đã Đặt
+                            </a>
+                        </li>
+
+                        <!-- Menu Nhân Viên Theo Quyền -->
+                        <li class="nav-item" sec:authorize="hasAnyRole('CASHIER', 'ADMIN')">
+                            <a class="nav-link fw-bold text-primary" th:href="@{/cashier}">
+                                <i class="bi bi-calculator me-1"></i> Thu Ngân (POS)
+                            </a>
+                        </li>
+                        <li class="nav-item" sec:authorize="hasAnyRole('KITCHEN', 'ADMIN')">
+                            <a class="nav-link fw-bold text-success" th:href="@{/kitchen}">
+                                <i class="bi bi-fire me-1"></i> Màn Hình Bếp (KDS)
+                            </a>
+                        </li>
+                        <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                            <a class="nav-link fw-bold text-danger" th:href="@{/admin/catalog}">
+                                <i class="bi bi-speedometer2 me-1"></i> Quản Trị Hệ Thống
+                            </a>
+                        </li>
+                    </ul>
+
+                    <!-- Right Controls: Cart & Auth -->
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Nút Giỏ Hàng -->
+                        <a th:href="@{/cart(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="btn btn-outline-secondary position-relative rounded-pill px-3 py-1">
+                            <i class="bi bi-bag-heart-fill text-danger me-1"></i> Giỏ Hàng
+                            <span id="cartCountBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">
+                                0
+                            </span>
+                        </a>
+
+                        <!-- Khi Đã Đăng Nhập -->
+                        <div sec:authorize="isAuthenticated()" class="dropdown ms-2">
+                            <button class="btn btn-light rounded-pill dropdown-toggle d-flex align-items-center gap-2 px-3 py-1 border" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle fs-5 text-muted"></i>
+                                <span sec:authentication="name" class="fw-semibold small">Nhân viên</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                                <li><h6 class="dropdown-header">Tài khoản</h6></li>
+                                <li>
+                                    <button class="dropdown-item text-danger" onclick="logoutAccount()">
+                                        <i class="bi bi-box-arrow-right me-2"></i> Đăng xuất
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Khi Chưa Đăng Nhập -->
+                        <div sec:authorize="isAnonymous()">
+                            <a th:href="@{/login}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <script>
+            async function logoutAccount() {
+                try {
+                    await MilkTeaApi.post('/api/v1/auth/logout');
+                    window.location.href = '/login';
+                } catch (e) {
+                    window.location.href = '/login';
+                }
+            }
+        </script>
+    </div>
+</body>
+</html>

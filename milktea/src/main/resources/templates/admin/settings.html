@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Cài Đặt Quán & Khuyến Mãi - Admin</title>
+</head>
+<body>
+    <div th:fragment="content" class="container-fluid py-4 px-lg-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-3 col-xl-2 mb-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản Trị Quán</h6>
+                    <a th:href="@{/admin/catalog}" class="admin-nav-link">
+                        <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
+                    </a>
+                    <a th:href="@{/admin/tables}" class="admin-nav-link">
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
+                    </a>
+                    <a th:href="@{/admin/staff}" class="admin-nav-link">
+                        <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
+                    </a>
+                    <a th:href="@{/admin/inventory}" class="admin-nav-link">
+                        <i class="bi bi-boxes"></i> Kho & Chứng Từ
+                    </a>
+                    <a th:href="@{/admin/reports}" class="admin-nav-link">
+                        <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
+                    </a>
+                    <a th:href="@{/admin/settings}" class="admin-nav-link active">
+                        <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
+                    </a>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-9 col-xl-10">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                    <div>
+                        <h3 class="brand-font mb-1">Cài Đặt Quán & Khuyến Mãi</h3>
+                        <p class="text-muted small mb-0">Quản lý thương hiệu, ngân hàng nhận tiền chuyển khoản và tỷ lệ khuyến mãi toàn quán</p>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Form Cấu Hình -->
+                    <div class="col-12 col-lg-8">
+                        <div class="card border-0 shadow-sm rounded-4">
+                            <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                                <h5 class="fw-bold mb-0"><i class="bi bi-sliders text-primary me-2"></i>Cấu hình hệ thống</h5>
+                            </div>
+                            <div class="card-body p-4 pt-2">
+                                <form id="settingsForm" onsubmit="event.preventDefault(); submitSettings();">
+                                    <!-- Thông tin quán -->
+                                    <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Thông tin quán</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Tên quán trà sữa <span class="text-danger">*</span></label>
+                                        <input type="text" id="shopName" class="form-control form-control-lg" required
+                                               th:value="${settings?.shopName != null ? settings.shopName : 'MilkTea Quán 01'}"
+                                               placeholder="Ví dụ: MilkTea Quán 01" />
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold">Địa chỉ quán <span class="text-danger">*</span></label>
+                                        <input type="text" id="address" class="form-control" required
+                                               th:value="${settings?.address != null ? settings.address : 'Số 1 Võ Văn Ngân, TP. Thủ Đức'}"
+                                               placeholder="Địa chỉ quán hiển thị trên hóa đơn và trang chủ" />
+                                    </div>
+
+                                    <!-- Khuyến mãi toàn quán -->
+                                    <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Chương trình khuyến mãi</h6>
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold">Tỷ lệ giảm giá toàn quán (%) <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <input type="number" id="discountPercent" class="form-control" min="0" max="100" step="0.5" required
+                                                   th:value="${settings?.discountPercent != null ? settings.discountPercent : 0}" />
+                                            <span class="input-group-text bg-light fw-bold">%</span>
+                                        </div>
+                                        <small class="text-muted">Áp dụng trực tiếp vào tổng tiền khi khách đặt đơn hoặc thu ngân tạo đơn.</small>
+                                    </div>
+
+                                    <!-- Cấu hình nhận tiền chuyển khoản (VietQR) -->
+                                    <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Tài khoản ngân hàng (VietQR)</h6>
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label fw-semibold">Tên ngân hàng</label>
+                                            <input type="text" id="bankName" class="form-control"
+                                                   th:value="${settings?.bankName != null ? settings.bankName : 'MBBank'}"
+                                                   placeholder="VD: MBBank, VCB, TPB..." />
+                                        </div>
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label fw-semibold">Số tài khoản</label>
+                                            <input type="text" id="bankAccountNumber" class="form-control"
+                                                   th:value="${settings?.bankAccountNumber != null ? settings.bankAccountNumber : '0987654321'}"
+                                                   placeholder="Số tài khoản ngân hàng" />
+                                        </div>
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label fw-semibold">Tên chủ tài khoản</label>
+                                            <input type="text" id="bankAccountHolder" class="form-control"
+                                                   th:value="${settings?.bankAccountHolder != null ? settings.bankAccountHolder : 'CHU QUAN TRA SUA'}"
+                                                   placeholder="Tên in hoa không dấu" />
+                                        </div>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold rounded-pill">
+                                            <i class="bi bi-check2-circle me-1"></i>Lưu cấu hình
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Xem trước thẻ ngân hàng & Lưu ý -->
+                    <div class="col-12 col-lg-4">
+                        <div class="card border-0 shadow-sm rounded-4 text-white bg-dark mb-4 position-relative overflow-hidden"
+                             style="background: linear-gradient(135deg, #2b3a4a 0%, #1e2630 100%);">
+                            <div class="card-body p-4 position-relative z-1">
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <span class="badge bg-primary px-3 py-2 rounded-pill">VietQR Ready</span>
+                                    <i class="bi bi-credit-card-2-front fs-2 text-warning"></i>
+                                </div>
+                                <p class="text-secondary small text-uppercase mb-1">Tài khoản nhận tiền</p>
+                                <h4 class="fw-bold tracking-wider mb-3 text-light" id="previewBankNumber"
+                                    th:text="${settings?.bankAccountNumber != null ? settings.bankAccountNumber : '0987654321'}">0987654321</h4>
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <small class="text-secondary d-block">Chủ tài khoản</small>
+                                        <span class="fw-semibold small" id="previewHolder"
+                                              th:text="${settings?.bankAccountHolder != null ? settings.bankAccountHolder : 'CHU QUAN TRA SUA'}">CHU QUAN</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="text-secondary d-block">Ngân hàng</small>
+                                        <span class="fw-semibold small" id="previewBank"
+                                              th:text="${settings?.bankName != null ? settings.bankName : 'MBBank'}">MBBank</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card border-0 shadow-sm rounded-4">
+                            <div class="card-body p-4">
+                                <h6 class="fw-bold mb-3"><i class="bi bi-info-circle-fill text-primary me-2"></i>Lưu ý cấu hình</h6>
+                                <ul class="text-muted small ps-3 mb-0 d-flex flex-column gap-2">
+                                    <li>Thay đổi thông tin tài khoản sẽ cập nhật ngay mã VietQR tạo cho khách hàng và thu ngân.</li>
+                                    <li>Tỷ lệ giảm giá (%) áp dụng cho các đơn hàng tạo sau khi lưu cấu hình.</li>
+                                    <li>Đơn hàng cũ giữ nguyên snapshot giá và giảm giá tại thời điểm đặt đơn.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Scripts -->
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/admin/admin.js}"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                AdminApp.init();
+
+                // Realtime preview inputs
+                document.getElementById('bankAccountNumber').addEventListener('input', (e) => {
+                    document.getElementById('previewBankNumber').textContent = e.target.value || '0000000000';
+                });
+                document.getElementById('bankAccountHolder').addEventListener('input', (e) => {
+                    document.getElementById('previewHolder').textContent = e.target.value.toUpperCase() || 'TEN CHU TK';
+                });
+                document.getElementById('bankName').addEventListener('input', (e) => {
+                    document.getElementById('previewBank').textContent = e.target.value || 'NGAN HANG';
+                });
+            });
+
+            function submitSettings() {
+                const shopName = document.getElementById('shopName').value;
+                const address = document.getElementById('address').value;
+                const bankName = document.getElementById('bankName').value;
+                const bankAccountNumber = document.getElementById('bankAccountNumber').value;
+                const bankAccountHolder = document.getElementById('bankAccountHolder').value;
+                const discountPercent = document.getElementById('discountPercent').value;
+
+                AdminApp.updateSettings(shopName, address, bankName, bankAccountNumber, bankAccountHolder, discountPercent);
+            }
+        </script>
+    </th:block>
+</body>
+</html>

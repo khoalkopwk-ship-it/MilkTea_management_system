@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <footer th:fragment="footer" class="bg-white border-top py-4 mt-auto">
+        <div class="container text-center">
+            <div class="row align-items-center">
+                <div class="col-md-6 text-md-start mb-2 mb-md-0">
+                    <span class="brand-font fw-bold" th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea</span>
+                    <span class="text-muted small ms-2">© 2026 Hệ thống Quản trị & Bán Hàng Trà Sữa</span>
+                </div>
+                <div class="col-md-6 text-md-end text-muted small">
+                    <i class="bi bi-geo-alt me-1"></i><span th:text="${settings != null ? settings.address : 'Số 1 Võ Văn Ngân, TP. Thủ Đức'}">Địa chỉ quán</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

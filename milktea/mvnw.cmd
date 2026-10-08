@@ -27,6 +27,9 @@
 @REM   MVNW_VERBOSE - true: enable verbose log; others: silence the output
 @REM ----------------------------------------------------------------------------
 
+@if exist "%USERPROFILE%\.jdks\ms-21.0.8" (
+  set "JAVA_HOME=%USERPROFILE%\.jdks\ms-21.0.8"
+)
 @IF "%__MVNW_ARG0_NAME__%"=="" (SET __MVNW_ARG0_NAME__=%~nx0)
 @SET __MVNW_CMD__=
 @SET __MVNW_ERROR__=

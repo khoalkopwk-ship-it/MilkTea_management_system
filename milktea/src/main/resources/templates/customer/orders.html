@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Theo Dõi Đơn Hàng - MilkTea</title>
+</head>
+<body>
+    <div th:fragment="content" class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-9">
+
+                <!-- Header -->
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <a th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="btn btn-outline-secondary btn-sm rounded-circle p-2">
+                            <i class="bi bi-arrow-left"></i>
+                        </a>
+                        <h3 class="brand-font mb-0">Đơn Hàng Của Bạn</h3>
+                    </div>
+                    <div th:if="${currentTable != null}">
+                        <span class="table-badge"><i class="bi bi-geo-alt-fill"></i> <span th:text="${currentTable.name}">Bàn 01</span></span>
+                    </div>
+                </div>
+
+                <!-- Container danh sách đơn hàng -->
+                <div id="ordersContainer">
+                    <div id="ordersLoading" class="text-center py-5">
+                        <div class="spinner-border spinner-custom mb-2"></div>
+                        <p class="text-muted small">Đang nạp danh sách đơn hàng...</p>
+                    </div>
+
+                    <div id="ordersEmpty" class="empty-state d-none">
+                        <i class="bi bi-receipt text-muted"></i>
+                        <h5 class="fw-bold mb-1">Chưa có đơn hàng nào</h5>
+                        <p class="text-muted small mb-3">Bạn chưa đặt đơn hàng nào trong lượt dùng này.</p>
+                        <a th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="btn btn-primary-custom rounded-pill px-4">
+                            <i class="bi bi-cup-hot me-1"></i> Xem Thực Đơn & Đặt Ngay
+                        </a>
+                    </div>
+
+                    <div id="ordersList" class="d-grid gap-4 d-none">
+                        <!-- Render dynamic orders -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Modal Thanh Toán VietQR / Chuyển Khoản -->
+        <div class="modal fade" id="paymentModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font">Thanh Toán Đơn Hàng</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body p-4 text-center">
+                        <div class="mb-3">
+                            <span class="badge bg-light text-dark border px-3 py-1 fs-6" id="payOrderCode">Đơn #123</span>
+                        </div>
+
+                        <!-- Mã QR VietQR Chuyển Khoản -->
+                        <div class="p-3 bg-light rounded-4 d-inline-block mb-3 border">
+                            <img id="vietQrImg" src="" style="width: 220px; height: 220px; object-fit: contain;" alt="Mã VietQR">
+                        </div>
+
+                        <div class="text-start bg-light p-3 rounded-3 mb-3 small">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Ngân hàng:</span>
+                                <strong th:text="${settings != null ? settings.bankName : 'Vietcombank'}">Vietcombank</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Số tài khoản:</span>
+                                <strong class="text-primary font-monospace fs-6" th:text="${settings != null ? settings.bankAccountNumber : '999988887777'}">999988887777</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Chủ tài khoản:</span>
+                                <strong th:text="${settings != null ? settings.bankAccountHolder : 'QUAN TRA SUA MILKTEA'}">QUAN TRA SUA MILKTEA</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Số tiền:</span>
+                                <strong class="text-danger fs-6" id="payAmount">0 ₫</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Nội dung CK:</span>
+                                <strong class="font-monospace text-dark" id="payMemo">DH123</strong>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-success rounded-pill py-2 fw-bold" onclick="notifyPaidTransfer()">
+                                <i class="bi bi-check-circle me-1"></i> Tôi Đã Chuyển Khoản Xong
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary rounded-pill py-2" data-bs-dismiss="modal">
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Yêu Cầu Hủy Đơn -->
+        <div class="modal fade" id="cancelModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font text-danger"><i class="bi bi-x-circle me-1"></i> Yêu Cầu Hủy Đơn Hàng</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body p-4">
+                        <p class="text-muted small">Quý khách chỉ có thể yêu cầu hủy đơn khi Bếp chưa bắt đầu pha chế. Vui lòng cho biết lý do:</p>
+                        <div class="mb-3">
+                            <textarea id="cancelReasonInput" class="form-control rounded-3" rows="3" placeholder="Nhập lý do muốn hủy đơn..."></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-danger rounded-pill py-2 fw-bold" onclick="submitCancelRequest()">
+                                Gửi Yêu Cầu Hủy
+                            </button>
+                            <button type="button" class="btn btn-light rounded-pill py-2" data-bs-dismiss="modal">
+                                Quay Lại
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/customer/customer.js}"></script>
+        <script th:inline="javascript">
+            let currentPayOrderId = null;
+            let currentCancelOrderId = null;
+            const bankName = /*[[${settings != null ? settings.bankName : 'Vietcombank'}]]*/ 'Vietcombank';
+            const bankAcc = /*[[${settings != null ? settings.bankAccountNumber : '999988887777'}]]*/ '999988887777';
+            const bankHolder = /*[[${settings != null ? settings.bankAccountHolder : 'QUAN TRA SUA MILKTEA'}]]*/ 'QUAN TRA SUA MILKTEA';
+
+            document.addEventListener('DOMContentLoaded', async () => {
+                const qr = /*[[${tableQr}]]*/ null;
+                const tableId = /*[[${currentTable != null ? currentTable.id : null}]]*/ null;
+                await CustomerApp.initContext(qr, tableId);
+                loadOrdersList();
+            });
+
+            async function loadOrdersList() {
+                const loading = document.getElementById('ordersLoading');
+                const empty = document.getElementById('ordersEmpty');
+                const list = document.getElementById('ordersList');
+
+                try {
+                    const orders = await MilkTeaApi.get('/api/v1/customer/orders');
+                    if (loading) loading.classList.add('d-none');
+
+                    if (!orders || orders.length === 0) {
+                        if (empty) empty.classList.remove('d-none');
+                        if (list) list.classList.add('d-none');
+                        return;
+                    }
+
+                    if (empty) empty.classList.add('d-none');
+                    if (list) list.classList.remove('d-none');
+
+                    let html = '';
+                    orders.forEach(order => {
+                        const statusBadge = getStatusBadge(order.status);
+                        const isPaid = order.isPaid;
+                        const canCancel = order.status === 'CHO_XAC_NHAN' || order.status === 'CHO_CHE_BIEN';
+
+                        let itemsHtml = '';
+                        (order.items || []).forEach(it => {
+                            itemsHtml += `
+                                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                    <div>
+                                        <span class="fw-semibold">${it.productName}</span>
+                                        <span class="badge bg-light text-dark border ms-1 small">Size ${it.size}</span>
+                                        <span class="text-muted small ms-2">x${it.quantity}</span>
+                                        ${it.note ? `<div class="small text-muted fst-italic">${it.note}</div>` : ''}
+                                    </div>
+                                    <span class="fw-semibold text-end">${MilkTeaApi.formatVND(it.lineTotal)}</span>
+                                </div>
+                            `;
+                        });
+
+                        html += `
+                            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                                <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center border-bottom">
+                                    <div>
+                                        <span class="fw-bold fs-6 me-2">Đơn #${order.orderId}</span>
+                                        <span class="text-muted small">${new Date(order.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+                                    <div>
+                                        ${statusBadge}
+                                    </div>
+                                </div>
+
+                                <div class="card-body p-3">
+                                    ${itemsHtml}
+
+                                    <div class="d-flex justify-content-between align-items-center pt-3">
+                                        <div>
+                                            <span class="text-muted small">Tổng thanh toán:</span>
+                                            <span class="fs-5 fw-bold product-price ms-1">${MilkTeaApi.formatVND(order.totalAmount)}</span>
+                                        </div>
+
+                                        <div class="d-flex align-items-center gap-2">
+                                            ${isPaid 
+                                                ? `<span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle me-1"></i>Đã thanh toán</span>` 
+                                                : `<button type="button" class="btn btn-sm btn-primary-custom rounded-pill px-3" onclick="openPaymentModal(${order.orderId}, ${order.totalAmount})">
+                                                    <i class="bi bi-qr-code me-1"></i> Thanh Toán
+                                                   </button>`
+                                            }
+
+                                            ${canCancel ? `
+                                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="openCancelModal(${order.orderId})">
+                                                    Hủy đơn
+                                                </button>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    list.innerHTML = html;
+
+                } catch (e) {
+                    console.warn('Lỗi nạp danh sách đơn hàng:', e);
+                    if (loading) loading.classList.add('d-none');
+                    if (empty) empty.classList.remove('d-none');
+                }
+            }
+
+            function getStatusBadge(status) {
+                switch(status) {
+                    case 'CHO_XAC_NHAN':
+                        return `<span class="badge-status badge-CHO_XAC_NHAN"><i class="bi bi-hourglass-split"></i> Chờ Thu Ngân Xác Nhận</span>`;
+                    case 'CHO_CHE_BIEN':
+                        return `<span class="badge-status badge-CHO_CHE_BIEN"><i class="bi bi-clock"></i> Đã Xác Nhận - Chờ Bếp</span>`;
+                    case 'DANG_CHE_BIEN':
+                        return `<span class="badge-status badge-DANG_CHE_BIEN"><i class="bi bi-fire"></i> Bếp Đang Pha Chế</span>`;
+                    case 'HOAN_THANH':
+                        return `<span class="badge-status badge-HOAN_THANH"><i class="bi bi-check2-circle"></i> Đã Hoàn Thành</span>`;
+                    case 'DA_HUY':
+                        return `<span class="badge-status badge-DA_HUY"><i class="bi bi-x-circle"></i> Đã Hủy</span>`;
+                    default:
+                        return `<span class="badge bg-secondary">${status}</span>`;
+                }
+            }
+
+            function openPaymentModal(orderId, amount) {
+                currentPayOrderId = orderId;
+                document.getElementById('payOrderCode').textContent = `Đơn #${orderId}`;
+                document.getElementById('payAmount').textContent = MilkTeaApi.formatVND(amount);
+                const memo = `DH${orderId}`;
+                document.getElementById('payMemo').textContent = memo;
+
+                // VietQR API tạo ảnh QR động chuẩn ngân hàng Việt Nam
+                const qrUrl = `https://img.vietqr.io/image/vietcombank-${bankAcc}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(memo)}&accountName=${encodeURIComponent(bankHolder)}`;
+                document.getElementById('vietQrImg').src = qrUrl;
+
+                const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+                modal.show();
+            }
+
+            async function notifyPaidTransfer() {
+                if (!currentPayOrderId) return;
+                try {
+                    await MilkTeaApi.post(`/api/v1/orders/${currentPayOrderId}/payment-notices`, {
+                        method: 'CHUYEN_KHOAN',
+                        reference: `CK_DH_${currentPayOrderId}_${Date.now()}`
+                    });
+                    MilkTeaApi.showToast('Đã gửi thông báo thanh toán tới Thu ngân!', 'success');
+                    const modalEl = document.getElementById('paymentModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                } catch (e) {
+                    MilkTeaApi.showToast(e.message || 'Không thể gửi thông báo thanh toán', 'error');
+                }
+            }
+
+            function openCancelModal(orderId) {
+                currentCancelOrderId = orderId;
+                document.getElementById('cancelReasonInput').value = '';
+                const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+                modal.show();
+            }
+
+            async function submitCancelRequest() {
+                if (!currentCancelOrderId) return;
+                const reason = document.getElementById('cancelReasonInput').value.trim();
+                if (!reason) {
+                    MilkTeaApi.showToast('Vui lòng nhập lý do hủy đơn', 'warning');
+                    return;
+                }
+
+                try {
+                    await MilkTeaApi.post(`/api/v1/orders/${currentCancelOrderId}/cancellations`, { reason });
+                    MilkTeaApi.showToast('Đã gửi yêu cầu hủy đơn tới Thu ngân', 'success');
+                    const modalEl = document.getElementById('cancelModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    loadOrdersList();
+                } catch (e) {
+                    MilkTeaApi.showToast(e.message || 'Không thể yêu cầu hủy đơn', 'error');
+                }
+            }
+        </script>
+    </th:block>
+</body>
+</html>

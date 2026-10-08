@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Quản Lý Nhân Viên - Admin</title>
+</head>
+<body>
+    <div th:fragment="content" class="container-fluid py-4 px-lg-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-3 col-xl-2 mb-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản Trị Quán</h6>
+                    <a th:href="@{/admin/catalog}" class="admin-nav-link">
+                        <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
+                    </a>
+                    <a th:href="@{/admin/tables}" class="admin-nav-link">
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
+                    </a>
+                    <a th:href="@{/admin/staff}" class="admin-nav-link active">
+                        <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
+                    </a>
+                    <a th:href="@{/admin/inventory}" class="admin-nav-link">
+                        <i class="bi bi-boxes"></i> Kho & Chứng Từ
+                    </a>
+                    <a th:href="@{/admin/reports}" class="admin-nav-link">
+                        <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
+                    </a>
+                    <a th:href="@{/admin/settings}" class="admin-nav-link">
+                        <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
+                    </a>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-9 col-xl-10">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h3 class="brand-font mb-1">Tài Khoản Nhân Viên</h3>
+                        <p class="text-muted small mb-0">Quản lý nhân sự các vị trí Quản Trị, Thu Ngân, Bếp</p>
+                    </div>
+                    <button type="button" class="btn btn-primary-custom rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createStaffModal">
+                        <i class="bi bi-person-plus-fill me-1"></i> Thêm Nhân Viên Mới
+                    </button>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Họ Và Tên</th>
+                                    <th>Email Đăng Nhập</th>
+                                    <th>Số Điện Thoại</th>
+                                    <th>Vai Trò</th>
+                                    <th>Trạng Thái</th>
+                                    <th style="width: 140px;">Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staffTableBody">
+                                <!-- Dynamic Render from API -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Modal Thêm Nhân Viên -->
+        <div class="modal fade" id="createStaffModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font">Thêm Nhân Viên Mới</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Họ và tên:</label>
+                            <input type="text" id="staffFullName" class="form-control rounded-3" placeholder="Nguyễn Văn A" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Email:</label>
+                            <input type="email" id="staffEmail" class="form-control rounded-3" placeholder="nhanvien@milktea.vn" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Mật khẩu:</label>
+                            <input type="password" id="staffPassword" class="form-control rounded-3" placeholder="••••••••" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Số điện thoại:</label>
+                            <input type="text" id="staffPhone" class="form-control rounded-3" placeholder="0901234567">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Vai trò:</label>
+                            <select id="staffRole" class="form-select rounded-3">
+                                <option value="CASHIER">Thu Ngân (CASHIER)</option>
+                                <option value="KITCHEN">Bếp (KITCHEN)</option>
+                                <option value="ADMIN">Quản Trị Viên (ADMIN)</option>
+                            </select>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold" onclick="submitCreateStaff()">
+                                Tạo Tài Khoản
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/admin/admin.js}"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', async () => {
+                AdminApp.init();
+                loadStaffList();
+            });
+
+            async function loadStaffList() {
+                try {
+                    const staff = await MilkTeaApi.get('/api/v1/admin/accounts');
+                    const tbody = document.getElementById('staffTableBody');
+                    let html = '';
+                    (staff || []).forEach(s => {
+                        let roleBadge = 'bg-secondary';
+                        if (s.role === 'ADMIN') roleBadge = 'bg-danger';
+                        if (s.role === 'CASHIER') roleBadge = 'bg-primary';
+                        if (s.role === 'KITCHEN') roleBadge = 'bg-success';
+
+                        html += `
+                            <tr>
+                                <td class="fw-bold">${s.fullName}</td>
+                                <td>${s.email}</td>
+                                <td>${s.phone || '-'}</td>
+                                <td><span class="badge ${roleBadge}">${s.role}</span></td>
+                                <td>
+                                    ${s.active ? '<span class="badge bg-success">Hoạt động</span>' : '<span class="badge bg-secondary">Bị khóa</span>'}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm ${s.active ? 'btn-outline-danger' : 'btn-outline-success'} rounded-pill px-3"
+                                            onclick="AdminApp.toggleStaffStatus(${s.id}, ${!s.active})">
+                                        ${s.active ? 'Khóa' : 'Mở khóa'}
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                } catch (e) {
+                    console.warn(e);
+                }
+            }
+
+            function submitCreateStaff() {
+                const fn = document.getElementById('staffFullName').value;
+                const em = document.getElementById('staffEmail').value;
+                const pw = document.getElementById('staffPassword').value;
+                const ph = document.getElementById('staffPhone').value;
+                const ro = document.getElementById('staffRole').value;
+                AdminApp.createStaff(fn, em, pw, ph, ro);
+            }
+        </script>
+    </th:block>
+</body>
+</html>

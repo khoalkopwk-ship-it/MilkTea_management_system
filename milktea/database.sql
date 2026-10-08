@@ -1,5 +1,0 @@
-CREATE DATABASE MilkTea
-GO
-
-USE MilkTea
-GO

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Giỏ Hàng - MilkTea</title>
+</head>
+<body>
+    <div th:fragment="content" class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+
+                <!-- Header Giỏ Hàng -->
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <a th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="btn btn-outline-secondary btn-sm rounded-circle p-2">
+                            <i class="bi bi-arrow-left"></i>
+                        </a>
+                        <h3 class="brand-font mb-0">Giỏ Hàng Của Bạn</h3>
+                    </div>
+                    <div th:if="${currentTable != null}">
+                        <span class="table-badge"><i class="bi bi-geo-alt-fill"></i> <span th:text="${currentTable.name}">Bàn 01</span></span>
+                    </div>
+                </div>
+
+                <!-- Danh Sách Các Món Trong Giỏ -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-body p-4" id="cartContainer">
+                        <!-- Danh sách render động bằng JS -->
+                        <div id="cartLoading" class="text-center py-5">
+                            <div class="spinner-border spinner-custom mb-2"></div>
+                            <p class="text-muted small">Đang nạp giỏ hàng...</p>
+                        </div>
+
+                        <div id="cartEmpty" class="empty-state d-none">
+                            <i class="bi bi-bag-x text-muted"></i>
+                            <h5 class="fw-bold mb-1">Giỏ hàng đang trống</h5>
+                            <p class="text-muted small mb-3">Hãy chọn những món trà sữa thơm ngon để thêm vào giỏ nhé!</p>
+                            <a th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="btn btn-primary-custom rounded-pill px-4">
+                                <i class="bi bi-cup-hot me-1"></i> Xem Thực Đơn
+                            </a>
+                        </div>
+
+                        <div id="cartList" class="d-none">
+                            <!-- Items inserted by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tổng Kết Tiền & Nút Đặt Đơn -->
+                <div class="card border-0 shadow-sm rounded-4 p-4" id="cartSummary" style="display: none;">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Tạm tính:</span>
+                        <span class="fw-semibold" id="subtotalVal">0 ₫</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2" id="discountRow" style="display: none;">
+                        <span class="text-muted">Giảm giá (<span id="discountPercentVal">0%</span>):</span>
+                        <span class="text-danger fw-semibold" id="discountVal">-0 ₫</span>
+                    </div>
+                    <hr class="my-3">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <span class="fs-5 fw-bold">Tổng thanh toán:</span>
+                        <span class="fs-4 fw-bold product-price" id="totalVal">0 ₫</span>
+                    </div>
+
+                    <button type="button" id="checkoutBtn" class="btn btn-primary-custom w-100 py-3 rounded-pill fw-bold fs-6" onclick="CustomerApp.submitOrder()">
+                        <i class="bi bi-send-fill me-2"></i> Gửi Đơn Hàng
+                    </button>
+                    <p class="text-center text-muted small mt-2 mb-0">Đơn hàng sẽ được chuyển tới Bếp ngay sau khi Thu ngân xác nhận.</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/customer/customer.js}"></script>
+        <script th:inline="javascript">
+            const discountPercent = /*[[${settings != null && settings.discountPercent != null ? settings.discountPercent : 0}]]*/ 0;
+
+            document.addEventListener('DOMContentLoaded', async () => {
+                const qr = /*[[${tableQr}]]*/ null;
+                const tableId = /*[[${currentTable != null ? currentTable.id : null}]]*/ null;
+                await CustomerApp.initContext(qr, tableId);
+
+                // Render giỏ hàng ban đầu
+                const items = window.MilkTeaContext.sessionId ? CustomerApp.getServerCart() : CustomerApp.getLocalCart();
+                const total = items.reduce((acc, it) => acc + (it.price || it.unitPrice || 0) * it.quantity, 0);
+                renderCartItems(items, total);
+            });
+
+            function renderCartItems(items, subtotal) {
+                const loading = document.getElementById('cartLoading');
+                const empty = document.getElementById('cartEmpty');
+                const list = document.getElementById('cartList');
+                const summary = document.getElementById('cartSummary');
+
+                if (loading) loading.classList.add('d-none');
+
+                if (!items || items.length === 0) {
+                    if (empty) empty.classList.remove('d-none');
+                    if (list) list.classList.add('d-none');
+                    if (summary) summary.style.display = 'none';
+                    return;
+                }
+
+                if (empty) empty.classList.add('d-none');
+                if (list) list.classList.remove('d-none');
+                if (summary) summary.style.display = 'block';
+
+                let html = '';
+                items.forEach((it, idx) => {
+                    const price = it.price || it.unitPrice || 0;
+                    const lineTotal = price * it.quantity;
+                    html += `
+                        <div class="d-flex align-items-center justify-content-between py-3 ${idx > 0 ? 'border-top' : ''}">
+                            <div class="flex-grow-1 me-3">
+                                <h6 class="fw-bold mb-1">${it.productName}</h6>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="badge bg-light text-dark border small">Size ${it.size}</span>
+                                    <span class="text-muted small">${MilkTeaApi.formatVND(price)}</span>
+                                </div>
+                                ${it.note ? `<div class="small text-muted fst-italic"><i class="bi bi-chat-left-dots me-1"></i>${it.note}</div>` : ''}
+                            </div>
+
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="input-group input-group-sm" style="width: 100px;">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="CustomerApp.updateQuantity(${idx}, -1)">-</button>
+                                    <span class="input-group-text bg-white fw-bold px-2">${it.quantity}</span>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="CustomerApp.updateQuantity(${idx}, 1)">+</button>
+                                </div>
+                                <span class="fw-bold product-price ms-2" style="min-width: 80px; text-align: right;">${MilkTeaApi.formatVND(lineTotal)}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                list.innerHTML = html;
+
+                // Tính toán giảm giá và tổng tiền
+                const sub = parseFloat(subtotal) || 0;
+                let discountAmount = 0;
+                if (discountPercent > 0) {
+                    discountAmount = (sub * discountPercent) / 100;
+                    document.getElementById('discountRow').style.display = 'flex';
+                    document.getElementById('discountPercentVal').textContent = discountPercent + '%';
+                    document.getElementById('discountVal').textContent = '-' + MilkTeaApi.formatVND(discountAmount);
+                } else {
+                    document.getElementById('discountRow').style.display = 'none';
+                }
+
+                const total = Math.max(0, sub - discountAmount);
+                document.getElementById('subtotalVal').textContent = MilkTeaApi.formatVND(sub);
+                document.getElementById('totalVal').textContent = MilkTeaApi.formatVND(total);
+            }
+        </script>
+    </th:block>
+</body>
+</html>

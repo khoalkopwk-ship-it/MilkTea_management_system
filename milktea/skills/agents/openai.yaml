@@ -1,0 +1,14 @@
+interface:
+  display_name: Thiết kế hệ thống MilkTea
+  short_description: Thiết kế và triển khai MilkTea theo nghiệp vụ đã chốt
+  default_prompt: Dùng $design-milktea để thiết kế hoặc sửa chức năng của website
+    MilkTea theo đúng luồng nghiệp vụ và công nghệ đã thống nhất.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

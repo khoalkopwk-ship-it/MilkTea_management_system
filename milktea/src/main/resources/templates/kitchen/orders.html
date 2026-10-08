@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Màn Hình Bếp (KDS) - MilkTea</title>
+</head>
+<body>
+    <div th:fragment="content" class="container-fluid py-3 px-lg-4">
+
+        <!-- Top Header KDS -->
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-success fs-6 py-2 px-3 rounded-pill"><i class="bi bi-fire me-1"></i> Bếp Pha Chế (KDS)</span>
+                <span class="text-muted small">Hàng đợi đơn pha chế theo thời gian thực & tồn kho nguyên liệu Bếp</span>
+            </div>
+            <div>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="KitchenApp.init()">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-pills mb-3 gap-2" id="kitchenTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active rounded-pill px-4" data-bs-toggle="pill" data-bs-target="#tabKds">
+                    <i class="bi bi-cup-straw me-1"></i> Hàng Đợi Pha Chế
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link rounded-pill px-4" data-bs-toggle="pill" data-bs-target="#tabStock">
+                    <i class="bi bi-box-seam me-1"></i> Kho Bếp & Sơ Chế
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Tab 1: KDS Orders Pipeline -->
+            <div class="tab-pane fade show active" id="tabKds">
+                <div class="row g-3" id="kitchenOrdersGrid">
+                    <!-- Rendered by kitchen.js -->
+                </div>
+            </div>
+
+            <!-- Tab 2: Bếp Stock & Preparation -->
+            <div class="tab-pane fade" id="tabStock">
+                <div class="row g-4">
+                    <!-- Bảng Tồn Kho Bếp -->
+                    <div class="col-lg-8">
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-boxes me-2 text-primary"></i> Nguyên Liệu Tồn Tại Bếp</h5>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Nguyên Liệu</th>
+                                            <th>Loại</th>
+                                            <th>Tồn Bếp</th>
+                                            <th>Ngưỡng Tối Thiểu</th>
+                                            <th>Trạng Thái</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bepStockTableBody">
+                                        <!-- Rendered by kitchen.js -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Sơ Chế Mẻ Mới Tại Bếp -->
+                    <div class="col-lg-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-magic me-2 text-success"></i> Sơ Chế Mẻ Mới</h5>
+                            <p class="text-muted small">Bếp tự sơ chế thành phẩm từ nguyên liệu thô (ví dụ: Nấu Trân Châu). Hệ thống sẽ tự động trừ kho nguyên liệu thô và tăng tồn sơ chế.</p>
+
+                            <form onsubmit="event.preventDefault(); KitchenApp.submitPreparation();">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Chọn công thức sơ chế:</label>
+                                    <select class="form-select rounded-3" id="prepRecipeSelect" required></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Sản lượng thực thu:</label>
+                                    <input type="number" step="0.01" class="form-control rounded-3" id="prepActualQty" placeholder="Nhập số lượng thực thu" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Ghi chú / Chênh lệch (nếu có):</label>
+                                    <input type="text" class="form-control rounded-3" id="prepReason" placeholder="Lý do chênh lệch...">
+                                </div>
+                                <button type="submit" class="btn btn-success w-100 py-2 rounded-pill fw-bold">
+                                    <i class="bi bi-check2-circle me-1"></i> Xác Nhận Mẻ Sơ Chế
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Báo Sự Cố -->
+        <div class="modal fade" id="incidentModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font text-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i> Báo Sự Cố Đơn Hàng</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <p class="text-muted small">Ghi nhận sự cố xảy ra trong quá trình pha chế đơn hàng để lưu lịch sử kiểm toán.</p>
+                        <div class="mb-3">
+                            <textarea id="incidentReason" class="form-control rounded-3" rows="3" placeholder="Nhập mô tả sự cố (vd: đổ ly, hết đá, sự cố máy xay...)" required></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-warning rounded-pill py-2 fw-bold" onclick="KitchenApp.submitIncident()">
+                                Ghi Nhận Sự Cố
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Pha Bù (Remake) -->
+        <div class="modal fade" id="remakeModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font text-primary"><i class="bi bi-arrow-repeat me-1"></i> Tiêu Hao Pha Bù (Remake)</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <p class="text-muted small">Ghi nhận tiêu hao nguyên liệu bổ sung tại Bếp do pha bù đơn hỏng.</p>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Chọn nguyên liệu pha bù:</label>
+                            <select id="remakeMaterialSelect" class="form-select rounded-3"></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Số lượng tiêu hao thêm:</label>
+                            <input type="number" id="remakeQuantity" class="form-control rounded-3" value="1" step="0.01" min="0.01">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Lý do:</label>
+                            <input type="text" id="remakeReason" class="form-control rounded-3" placeholder="Pha lại do đổ vỡ...">
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold" onclick="KitchenApp.submitRemake()">
+                                Trừ Kho Bếp & Lưu Pha Bù
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/kitchen/kitchen.js}"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                KitchenApp.init();
+            });
+        </script>
+    </th:block>
+</body>
+</html>

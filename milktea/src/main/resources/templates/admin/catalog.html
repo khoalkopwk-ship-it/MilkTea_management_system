@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Quản Lý Thực Đơn - Admin</title>
+</head>
+<body>
+    <div th:fragment="content" class="container-fluid py-4 px-lg-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-3 col-xl-2 mb-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản Trị Quán</h6>
+                    <a th:href="@{/admin/catalog}" class="admin-nav-link active">
+                        <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
+                    </a>
+                    <a th:href="@{/admin/tables}" class="admin-nav-link">
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
+                    </a>
+                    <a th:href="@{/admin/staff}" class="admin-nav-link">
+                        <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
+                    </a>
+                    <a th:href="@{/admin/inventory}" class="admin-nav-link">
+                        <i class="bi bi-boxes"></i> Kho & Chứng Từ
+                    </a>
+                    <a th:href="@{/admin/reports}" class="admin-nav-link">
+                        <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
+                    </a>
+                    <a th:href="@{/admin/settings}" class="admin-nav-link">
+                        <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
+                    </a>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-9 col-xl-10">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h3 class="brand-font mb-1">Quản Lý Danh Mục & Món Uống</h3>
+                        <p class="text-muted small mb-0">Thêm mới món, upload ảnh Cloudinary, thiết lập công thức tiêu hao</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
+                            <i class="bi bi-folder-plus me-1"></i> Thêm Danh Mục
+                        </button>
+                        <button type="button" class="btn btn-primary-custom rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createProductModal">
+                            <i class="bi bi-plus-circle me-1"></i> Thêm Món Mới
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bảng Danh Sách Món -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 80px;">Ảnh</th>
+                                    <th>Tên Món</th>
+                                    <th>Danh Mục</th>
+                                    <th>Size</th>
+                                    <th>Giá Bán</th>
+                                    <th>Trạng Thái</th>
+                                    <th style="width: 200px;">Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="p : ${products}">
+                                    <td>
+                                        <div class="position-relative" style="width: 50px; height: 50px;">
+                                            <img th:id="'productImg_' + ${p.id}" 
+                                                 th:src="${p.imageUrl != null and !p.imageUrl.isEmpty() ? p.imageUrl : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=100&q=80'}" 
+                                                 class="rounded-3 w-100 h-100 object-fit-cover border" alt="Ảnh">
+                                            <div th:id="'uploadSpinner_' + ${p.id}" class="spinner-border spinner-border-sm text-primary position-absolute top-50 start-50 translate-middle d-none"></div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <strong class="d-block" th:text="${p.name}">Trà Sữa</strong>
+                                        <small class="text-muted" th:text="${p.description}">Mô tả</small>
+                                    </td>
+                                    <td><span class="badge bg-light text-dark border" th:text="${p.category.name}">Danh mục</span></td>
+                                    <td><span class="badge bg-secondary" th:text="${p.size}">M</span></td>
+                                    <td class="fw-bold product-price" th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA') + ' ₫'}">25.000 ₫</td>
+                                    <td>
+                                        <span th:if="${p.active}" class="badge bg-success">Đang bán</span>
+                                        <span th:unless="${p.active}" class="badge bg-secondary">Ngừng bán</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <!-- Nút Upload Cloudinary -->
+                                            <label class="btn btn-sm btn-outline-info rounded-pill px-2 mb-0" th:title="'Đổi ảnh Cloudinary'">
+                                                <i class="bi bi-cloud-arrow-up"></i>
+                                                <input type="file" class="d-none" accept="image/jpeg,image/png,image/webp"
+                                                       th:attr="onchange=|AdminApp.uploadProductImage(${p.id}, this)|">
+                                            </label>
+
+                                            <!-- Nút Cấu Hình Định Lượng Công Thức -->
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2"
+                                                    th:attr="onclick=|openRecipeModal(${p.id}, '${p.name}')|" title="Cấu hình công thức">
+                                                <i class="bi bi-sliders"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Modal Thêm Danh Mục -->
+        <div class="modal fade" id="createCategoryModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font">Thêm Danh Mục Mới</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Tên danh mục:</label>
+                            <input type="text" id="newCatName" class="form-control rounded-3" placeholder="Ví dụ: Trà Trái Cây...">
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold"
+                                    onclick="AdminApp.createCategory(document.getElementById('newCatName').value)">
+                                Tạo Danh Mục
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Thêm Món Mới -->
+        <div class="modal fade" id="createProductModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font">Thêm Món Uống Mới</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Danh mục:</label>
+                            <select id="newProdCategory" class="form-select rounded-3">
+                                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">Trà Sữa</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Tên món uống:</label>
+                            <input type="text" id="newProdName" class="form-control rounded-3" placeholder="Tên món...">
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Size:</label>
+                                <select id="newProdSize" class="form-select rounded-3">
+                                    <option value="M">Size M</option>
+                                    <option value="L">Size L</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Giá bán (VND):</label>
+                                <input type="number" id="newProdPrice" class="form-control rounded-3" placeholder="25000">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Mô tả món:</label>
+                            <textarea id="newProdDesc" class="form-control rounded-3" rows="2" placeholder="Mô tả hương vị..."></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold"
+                                    onclick="submitCreateProduct()">
+                                Thêm Món Vào Menu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Công Thức Tiêu Hao Món -->
+        <div class="modal fade" id="recipeModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font" id="recipeModalTitle">Công Thức Tiêu Hao</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <input type="hidden" id="recipeProductId">
+                        <p class="text-muted small">Cấu hình định lượng nguyên liệu tiêu hao tại Bếp khi hoàn thành một ly.</p>
+                        
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm align-middle" id="recipeItemsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Nguyên Liệu</th>
+                                        <th style="width: 140px;">Định Mức</th>
+                                        <th style="width: 80px;">Xóa</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recipeItemsBody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex gap-2 mb-3">
+                            <select id="addRecipeMaterialSelect" class="form-select form-select-sm rounded-3">
+                                <option th:each="m : ${materials}" th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}">Trà Đen</option>
+                            </select>
+                            <input type="number" step="0.001" id="addRecipeQty" class="form-control form-control-sm rounded-3" style="width: 120px;" placeholder="Định mức">
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 text-nowrap" onclick="addRecipeRow()">
+                                <i class="bi bi-plus"></i> Thêm
+                            </button>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold" onclick="saveRecipe()">
+                                Lưu Định Lượng Công Thức
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/admin/admin.js}"></script>
+        <script>
+            let currentRecipeRows = [];
+
+            document.addEventListener('DOMContentLoaded', () => {
+                AdminApp.init();
+            });
+
+            function submitCreateProduct() {
+                const cat = document.getElementById('newProdCategory').value;
+                const name = document.getElementById('newProdName').value;
+                const size = document.getElementById('newProdSize').value;
+                const price = document.getElementById('newProdPrice').value;
+                const desc = document.getElementById('newProdDesc').value;
+                AdminApp.createProduct(cat, name, size, price, desc);
+            }
+
+            async function openRecipeModal(productId, productName) {
+                document.getElementById('recipeProductId').value = productId;
+                document.getElementById('recipeModalTitle').textContent = `Công Thức: ${productName}`;
+                currentRecipeRows = [];
+
+                try {
+                    const data = await MilkTeaApi.get(`/api/v1/admin/products/${productId}/recipe`);
+                    currentRecipeRows = (data && data.ingredients) ? data.ingredients.map(i => ({
+                        materialId: i.materialId,
+                        materialName: i.materialName,
+                        quantity: i.quantity
+                    })) : [];
+                } catch (e) {
+                    console.warn(e);
+                }
+
+                renderRecipeRows();
+                const modal = new bootstrap.Modal(document.getElementById('recipeModal'));
+                modal.show();
+            }
+
+            function renderRecipeRows() {
+                const tbody = document.getElementById('recipeItemsBody');
+                let html = '';
+                currentRecipeRows.forEach((r, idx) => {
+                    html += `
+                        <tr>
+                            <td>${r.materialName || 'Nguyên liệu #' + r.materialId}</td>
+                            <td><input type="number" step="0.001" class="form-control form-control-sm" value="${r.quantity}" onchange="currentRecipeRows[${idx}].quantity = parseFloat(this.value)"></td>
+                            <td><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="currentRecipeRows.splice(${idx}, 1); renderRecipeRows();"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            }
+
+            function addRecipeRow() {
+                const select = document.getElementById('addRecipeMaterialSelect');
+                const matId = parseInt(select.value);
+                const matName = select.options[select.selectedIndex].text;
+                const qty = parseFloat(document.getElementById('addRecipeQty').value) || 0.01;
+
+                currentRecipeRows.push({ materialId: matId, materialName: matName, quantity: qty });
+                renderRecipeRows();
+                document.getElementById('addRecipeQty').value = '';
+            }
+
+            async function saveRecipe() {
+                const pId = document.getElementById('recipeProductId').value;
+                const items = currentRecipeRows.map(r => ({ materialId: r.materialId, quantity: r.quantity }));
+                await AdminApp.updateRecipe(pId, items);
+                const modalEl = document.getElementById('recipeModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+        </script>
+    </th:block>
+</body>
+</html>
