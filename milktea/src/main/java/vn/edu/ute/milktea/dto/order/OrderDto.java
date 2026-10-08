@@ -85,7 +85,7 @@ public class OrderDto {
         private BigDecimal totalAmount;
         private BigDecimal discountPercent;
         private InvoiceStatus invoiceStatus;
-        private boolean isPaid;
+        private boolean paid;
         private List<OrderItemResponse> items;
         private Instant createdAt;
         private String guestTableToken;   // Trả về khi đơn đầu tạo phiên

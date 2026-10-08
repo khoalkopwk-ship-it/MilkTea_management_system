@@ -151,7 +151,7 @@ const CashierApp = (() => {
         let html = '';
         currentOrders.forEach(o => {
             const isWaitingConfirm = o.status === 'CHO_XAC_NHAN';
-            const isPaid = o.isPaid;
+            const isPaid = o.paid === true;
             const tableLabel = o.tableName ? o.tableName : 'Tại Quầy / Mang Về';
 
             let itemsText = (o.items || []).map(i => `${i.productName} (x${i.quantity})`).join(', ');

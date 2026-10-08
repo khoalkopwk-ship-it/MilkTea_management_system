@@ -35,7 +35,7 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "TrangThai", nullable = false, length = 24)
-    private OrderStatus status; // CHO_XAC_NHAN, CHO_CHE_BIEN, DANG_CHE_BIEN, HOAN_THANH, DA_HUY
+    private OrderStatus status; // CHO_THANH_TOAN, CHO_XAC_NHAN, CHO_CHE_BIEN, DANG_CHE_BIEN, HOAN_THANH, DA_HUY
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ThayTheMaDH")

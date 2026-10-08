@@ -139,7 +139,7 @@ public class OrderService {
                 .session(session)
                 .account(customerAccount)
                 .source(OrderSource.TABLE)
-                .status(OrderStatus.CHO_XAC_NHAN)
+                .status(OrderStatus.CHO_THANH_TOAN)
                 .idempotencyKey(idempotencyKey)
                 .createdAt(Instant.now())
                 .version(0L)
@@ -180,7 +180,7 @@ public class OrderService {
                 .orderId(order.getId())
                 .accountId(customerAccount != null ? customerAccount.getId() : null)
                 .action("ORDER_CREATED")
-                .afterState("CHO_XAC_NHAN")
+                .afterState("CHO_THANH_TOAN")
                 .createdAt(Instant.now())
                 .build());
 
@@ -209,7 +209,7 @@ public class OrderService {
                 .session(null)
                 .account(creator)
                 .source(OrderSource.COUNTER)
-                .status(OrderStatus.CHO_XAC_NHAN)
+                .status(OrderStatus.CHO_THANH_TOAN)
                 .note(request.getNote())
                 .idempotencyKey(idempotencyKey)
                 .createdAt(Instant.now())
@@ -246,7 +246,7 @@ public class OrderService {
                 .orderId(order.getId())
                 .accountId(creator != null ? creator.getId() : null)
                 .action("COUNTER_ORDER_CREATED")
-                .afterState("CHO_XAC_NHAN")
+                .afterState("CHO_THANH_TOAN")
                 .createdAt(Instant.now())
                 .build());
 
@@ -301,6 +301,18 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.CHO_CHE_BIEN);
+        
+        Invoice invoice = invoiceRepository.findByOrderId(orderId)
+                .orElseThrow(() -> BusinessException.notFound(
+                        ErrorCode.ORDER_STATE_CONFLICT,
+                        "Không tìm thấy hóa đơn của đơn hàng"));
+
+        if (!paymentRepository.existsByInvoiceId(invoice.getId())) {
+            throw BusinessException.conflict(
+                    ErrorCode.ORDER_STATE_CONFLICT,
+                    "Đơn hàng chưa được thanh toán, không thể xác nhận");
+        }
+
         orderRepository.save(order);
 
         auditRepository.save(BusinessAudit.builder()
@@ -333,6 +345,18 @@ public class OrderService {
             throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT,
                     "Không thể bắt đầu chế biến đơn ở trạng thái: " + order.getStatus());
         }
+        
+        Invoice invoice = invoiceRepository.findByOrderId(orderId)
+                .orElseThrow(() -> BusinessException.notFound(
+                        ErrorCode.ORDER_STATE_CONFLICT,
+                        "Không tìm thấy hóa đơn của đơn hàng"));
+
+        if (!paymentRepository.existsByInvoiceId(invoice.getId())) {
+            throw BusinessException.conflict(
+                    ErrorCode.ORDER_STATE_CONFLICT,
+                    "Đơn hàng chưa được thanh toán, bếp không thể bắt đầu");
+        }
+
 
         // Kiểm tra không có yêu cầu hủy đang chờ xử lý
         var pendingCancel = cancellationRepository.findFirstByOrderIdAndStatus(orderId,
@@ -505,7 +529,7 @@ public class OrderService {
                 .discountPercent(invoice != null ? invoice.getSnapshotDiscountPercent() : BigDecimal.ZERO)
                 .invoiceId(invoice != null ? invoice.getId() : null)
                 .invoiceStatus(invoice != null ? invoice.getStatus() : null)
-                .isPaid(isPaid)
+                .paid(isPaid)
                 .items(itemResponses)
                 .createdAt(order.getCreatedAt())
                 .guestTableToken(tableToken)

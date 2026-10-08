@@ -167,7 +167,7 @@
                     let html = '';
                     orders.forEach(order => {
                         const statusBadge = getStatusBadge(order.status);
-                        const isPaid = order.isPaid;
+                        const isPaid = order.paid === true;
                         const canCancel = order.status === 'CHO_XAC_NHAN' || order.status === 'CHO_CHE_BIEN';
 
                         let itemsHtml = '';
@@ -271,7 +271,7 @@
                 if (!currentPayOrderId) return;
                 try {
                     await MilkTeaApi.post(`/api/v1/orders/${currentPayOrderId}/payment-notices`, {
-                        method: 'CHUYEN_KHOAN',
+                        method: 'BANK_TRANSFER',
                         reference: `CK_DH_${currentPayOrderId}_${Date.now()}`
                     });
                     MilkTeaApi.showToast('Đã gửi thông báo thanh toán tới Thu ngân!', 'success');
