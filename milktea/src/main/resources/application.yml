@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: milktea
+  datasource:
+    url: ${DB_URL:jdbc:sqlserver://localhost:57528;databaseName=milktea;encrypt=false;trustServerCertificate=true}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:Password123!}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: false
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  thymeleaf:
+    cache: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:framework}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  jwt:
+    issuer: milktea
+    audience: milktea-web
+    secret-base64: ${JWT_SECRET_BASE64:dGhpc0lzQVZlcnlTZWN1cmVCYXNlNjRTZWNyZXRLZXlGb3JNaWxrVGVhQXBwMjAyNg==}
+    ttl-minutes: 60
+    cookie-secure: ${JWT_COOKIE_SECURE:false}
+  websocket:
+    allowed-origin: ${WS_ALLOWED_ORIGIN:http://localhost:8080}
+  admin:
+    default-password: ${ADMIN_PASSWORD:Password@123}
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}

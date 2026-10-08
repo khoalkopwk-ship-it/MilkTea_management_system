@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Quản Lý Kho & Chứng Từ - Admin</title>
+</head>
+<body>
+    <div th:fragment="content" class="container-fluid py-4 px-lg-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-3 col-xl-2 mb-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản Trị Quán</h6>
+                    <a th:href="@{/admin/catalog}" class="admin-nav-link">
+                        <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
+                    </a>
+                    <a th:href="@{/admin/tables}" class="admin-nav-link">
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
+                    </a>
+                    <a th:href="@{/admin/staff}" class="admin-nav-link">
+                        <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
+                    </a>
+                    <a th:href="@{/admin/inventory}" class="admin-nav-link active">
+                        <i class="bi bi-boxes"></i> Kho & Chứng Từ
+                    </a>
+                    <a th:href="@{/admin/reports}" class="admin-nav-link">
+                        <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
+                    </a>
+                    <a th:href="@{/admin/settings}" class="admin-nav-link">
+                        <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
+                    </a>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-9 col-xl-10">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                    <div>
+                        <h3 class="brand-font mb-1">Quản Lý Kho 2 Vị Trí (KHO & BẾP)</h3>
+                        <p class="text-muted small mb-0">Theo dõi tồn kho, nhập hàng, xuất chuyển Kho → Bếp không cần duyệt, và hao hụt</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#importModal">
+                            <i class="bi bi-box-arrow-in-down me-1"></i> Nhập Kho
+                        </button>
+                        <button type="button" class="btn btn-outline-success rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#issueModal">
+                            <i class="bi bi-arrow-right-circle me-1"></i> Chuyển Kho → Bếp
+                        </button>
+                        <button type="button" class="btn btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#wasteModal">
+                            <i class="bi bi-trash3 me-1"></i> Báo Hao Hụt
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bảng Tồn Kho 2 Vị Trí -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0">Tồn Kho Hiện Tại (2 Vị Trí)</h5>
+                        <button class="btn btn-sm btn-light rounded-pill border" onclick="loadStockData()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nguyên Liệu</th>
+                                    <th>Loại</th>
+                                    <th class="text-primary fw-bold">Tồn KHO</th>
+                                    <th class="text-success fw-bold">Tồn BẾP</th>
+                                    <th>Tổng Tồn</th>
+                                    <th>Ngưỡng Tối Thiểu</th>
+                                    <th>Cảnh Báo</th>
+                                    <th style="width: 100px;">Sửa Ngưỡng</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryStockBody">
+                                <!-- Dynamic Render from stock API -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Modal Nhập Kho -->
+        <div class="modal fade" id="importModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font">Tạo Phiếu Nhập Kho (KHO)</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Nhà cung cấp:</label>
+                            <input type="text" id="importSupplier" class="form-control rounded-3" placeholder="Tên nhà cung cấp...">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Lý do nhập:</label>
+                            <input type="text" id="importReason" class="form-control rounded-3" placeholder="Nhập định kỳ...">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Nguyên liệu nhập:</label>
+                            <select id="importMaterialSelect" class="form-select rounded-3">
+                                <option th:each="m : ${materials}" th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}">Trà Đen</option>
+                            </select>
+                        </div>
+                        <div class="row g-2 mb-4">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Số lượng nhập:</label>
+                                <input type="number" step="0.01" id="importQuantity" class="form-control rounded-3" placeholder="10">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Đơn giá (VND):</label>
+                                <input type="number" id="importUnitPrice" class="form-control rounded-3" placeholder="50000">
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold" onclick="submitImportForm()">
+                                Xác Nhận Nhập Kho
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Chuyển Kho -> Bếp -->
+        <div class="modal fade" id="issueModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font text-success">Xuất Chuyển KHO → BẾP</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <p class="text-muted small">Xuất nguyên liệu từ KHO chuyển sang phục vụ pha chế tại BẾP (Không cần phê duyệt).</p>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Nguyên liệu chuyển:</label>
+                            <select id="issueMaterialSelect" class="form-select rounded-3">
+                                <option th:each="m : ${materials}" th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}">Trà Đen</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Số lượng chuyển:</label>
+                            <input type="number" step="0.01" id="issueQuantity" class="form-control rounded-3" placeholder="5">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-semibold">Lý do chuyển:</label>
+                            <input type="text" id="issueReason" class="form-control rounded-3" placeholder="Bổ sung nguyên liệu pha chế cho Bếp...">
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-success rounded-pill py-2 fw-bold" onclick="submitIssueForm()">
+                                Xác Nhận Chuyển Sang Bếp
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Báo Hao Hụt -->
+        <div class="modal fade" id="wasteModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font text-danger">Ghi Nhận Hao Hụt / Hỏng Hóc</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Vị trí xảy ra hao hụt:</label>
+                            <select id="wasteLocationSelect" class="form-select rounded-3">
+                                <option value="BEP">BẾP (Hư hỏng / đổ vỡ khi pha chế)</option>
+                                <option value="KHO">KHO (Hết hạn / ẩm mốc lưu kho)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Nguyên liệu hao hụt:</label>
+                            <select id="wasteMaterialSelect" class="form-select rounded-3">
+                                <option th:each="m : ${materials}" th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}">Trà Đen</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Số lượng hao hụt:</label>
+                            <input type="number" step="0.01" id="wasteQuantity" class="form-control rounded-3" placeholder="1">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-semibold">Lý do chi tiết:</label>
+                            <input type="text" id="wasteReason" class="form-control rounded-3" placeholder="Bể túi, ôi thiu..." required>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-danger rounded-pill py-2 fw-bold" onclick="submitWasteForm()">
+                                Ghi Nhận Trừ Kho
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/admin/admin.js}"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                AdminApp.init();
+                loadStockData();
+            });
+
+            async function loadStockData() {
+                try {
+                    const stock = await MilkTeaApi.get('/api/v1/inventory/stock');
+                    const tbody = document.getElementById('inventoryStockBody');
+                    let html = '';
+                    (stock || []).forEach(s => {
+                        html += `
+                            <tr class="${s.lowStockAlert ? 'table-warning' : ''}">
+                                <td class="fw-bold">${s.materialName}</td>
+                                <td><span class="badge ${s.materialType === 'THO' ? 'bg-secondary' : 'bg-primary'}">${s.materialType}</span></td>
+                                <td class="text-primary fw-bold">${s.stockKho} ${s.unit}</td>
+                                <td class="text-success fw-bold">${s.stockBep} ${s.unit}</td>
+                                <td class="fw-bold">${s.totalStock} ${s.unit}</td>
+                                <td class="text-muted">${s.minThreshold} ${s.unit}</td>
+                                <td>
+                                    ${s.lowStockAlert ? '<span class="badge bg-danger">Sắp hết hàng!</span>' : '<span class="badge bg-success">An toàn</span>'}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-link text-primary p-0" onclick="promptThreshold(${s.materialId}, '${s.materialName}', ${s.minThreshold})">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                } catch (e) {
+                    console.warn(e);
+                }
+            }
+
+            function promptThreshold(matId, name, cur) {
+                const val = prompt(`Nhập ngưỡng cảnh báo tồn tối thiểu mới cho [${name}]:`, cur);
+                if (val !== null && val.trim() !== '') {
+                    AdminApp.updateThreshold(matId, 'KHO', parseFloat(val));
+                    setTimeout(loadStockData, 500);
+                }
+            }
+
+            function submitImportForm() {
+                const sup = document.getElementById('importSupplier').value;
+                const reas = document.getElementById('importReason').value;
+                const matId = parseInt(document.getElementById('importMaterialSelect').value);
+                const qty = parseFloat(document.getElementById('importQuantity').value);
+                const price = parseFloat(document.getElementById('importUnitPrice').value) || 0;
+                AdminApp.submitImport(sup, reas, [{ materialId: matId, quantity: qty, unitPrice: price }]);
+            }
+
+            function submitIssueForm() {
+                const reas = document.getElementById('issueReason').value;
+                const matId = parseInt(document.getElementById('issueMaterialSelect').value);
+                const qty = parseFloat(document.getElementById('issueQuantity').value);
+                AdminApp.submitIssue(reas, [{ materialId: matId, quantity: qty }]);
+            }
+
+            function submitWasteForm() {
+                const loc = document.getElementById('wasteLocationSelect').value;
+                const reas = document.getElementById('wasteReason').value;
+                const matId = parseInt(document.getElementById('wasteMaterialSelect').value);
+                const qty = parseFloat(document.getElementById('wasteQuantity').value);
+                AdminApp.submitWaste(loc, reas, [{ materialId: matId, quantity: qty }]);
+            }
+        </script>
+    </th:block>
+</body>
+</html>

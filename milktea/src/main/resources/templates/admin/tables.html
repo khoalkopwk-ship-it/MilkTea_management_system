@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Quản Lý Bàn & QR - Admin</title>
+</head>
+<body>
+    <div th:fragment="content" class="container-fluid py-4 px-lg-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-3 col-xl-2 mb-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản Trị Quán</h6>
+                    <a th:href="@{/admin/catalog}" class="admin-nav-link">
+                        <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
+                    </a>
+                    <a th:href="@{/admin/tables}" class="admin-nav-link active">
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
+                    </a>
+                    <a th:href="@{/admin/staff}" class="admin-nav-link">
+                        <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
+                    </a>
+                    <a th:href="@{/admin/inventory}" class="admin-nav-link">
+                        <i class="bi bi-boxes"></i> Kho & Chứng Từ
+                    </a>
+                    <a th:href="@{/admin/reports}" class="admin-nav-link">
+                        <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
+                    </a>
+                    <a th:href="@{/admin/settings}" class="admin-nav-link">
+                        <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
+                    </a>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-9 col-xl-10">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h3 class="brand-font mb-1">Quản Lý Sơ Đồ Bàn & Mã QR</h3>
+                        <p class="text-muted small mb-0">Tạo bàn mới, tra cứu mã QR gắn bàn cho khách quét truy cập thực đơn</p>
+                    </div>
+                    <button type="button" class="btn btn-primary-custom rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createTableModal">
+                        <i class="bi bi-plus-circle me-1"></i> Thêm Bàn Mới
+                    </button>
+                </div>
+
+                <div class="row g-4">
+                    <div th:each="t : ${tables}" class="col-md-6 col-xl-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="fw-bold mb-1" th:text="${t.name}">Bàn 01</h5>
+                                    <span th:if="${t.status.name() == 'CO_KHACH'}" class="badge bg-danger rounded-pill">Có Khách (Phiên #<span th:text="${t.activeSessionId}"></span>)</span>
+                                    <span th:if="${t.status.name() == 'TRONG'}" class="badge bg-success rounded-pill">Trống</span>
+                                    <span th:if="${t.status.name() == 'BAO_TRI'}" class="badge bg-secondary rounded-pill">Bảo Trì</span>
+                                </div>
+                                <span class="badge bg-light text-dark border small" th:text="'ID: ' + ${t.id}">ID: 1</span>
+                            </div>
+
+                            <!-- QR Code Preview Image -->
+                            <div class="text-center p-3 bg-light rounded-4 mb-3 border">
+                                <img th:src="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + ${baseUrl != null ? baseUrl : 'http://localhost:8080'} + '/?qr=' + ${t.qrCode}"
+                                     class="img-fluid rounded-3" style="width: 140px; height: 140px;" alt="Mã QR Bàn">
+                                <div class="mt-2 text-truncate font-monospace small text-muted" th:text="${t.qrCode}">QR_CODE_XYZ</div>
+                            </div>
+
+                            <div class="d-flex gap-2 mt-auto">
+                                <a th:href="@{/(qr=${t.qrCode})}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill w-100">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i> Mở Menu Bàn Này
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Modal Thêm Bàn -->
+        <div class="modal fade" id="createTableModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font">Thêm Bàn Mới</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Tên bàn (ví dụ: Bàn 06):</label>
+                            <input type="text" id="newTableName" class="form-control rounded-3" placeholder="Nhập tên bàn..." required>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold"
+                                    onclick="AdminApp.createTable(document.getElementById('newTableName').value)">
+                                Tạo Bàn Mới
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/admin/admin.js}"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                AdminApp.init();
+            });
+        </script>
+    </th:block>
+</body>
+</html>

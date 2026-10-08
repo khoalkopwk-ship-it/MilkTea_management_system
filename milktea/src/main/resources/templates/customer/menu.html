@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Thực Đơn - MilkTea</title>
+</head>
+<body>
+    <div th:fragment="content" class="container py-4">
+
+        <!-- Banner Giảm Giá Toàn Quán Nếu Có -->
+        <div th:if="${settings != null and settings.discountPercent != null and settings.discountPercent > 0}" 
+             class="alert alert-warning border-0 shadow-sm rounded-4 d-flex align-items-center mb-4 py-3 px-4">
+            <i class="bi bi-tag-fill fs-3 text-danger me-3"></i>
+            <div>
+                <strong class="d-block text-dark">Ưu Đãi Đặc Biệt Hôm Nay!</strong>
+                <span class="text-muted small">
+                    Quán đang áp dụng giảm giá <span class="badge bg-danger rounded-pill fs-6" th:text="${#numbers.formatDecimal(settings.discountPercent, 0, 0) + '%'}">10%</span> trên mọi đơn hàng!
+                </span>
+            </div>
+        </div>
+
+        <!-- Tiêu đề & Danh mục filter -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div>
+                <h2 class="brand-font mb-1">Thực Đơn Trà Sữa</h2>
+                <p class="text-muted small mb-0">Hương vị trà sữa nguyên bản, pha chế thủ công thơm ngon mỗi ngày</p>
+            </div>
+
+            <!-- Chips Lọc Danh Mục -->
+            <div class="d-flex gap-2 overflow-auto pb-2" style="max-width: 100%;">
+                <button type="button" class="category-chip active" onclick="filterCategory('ALL', this)">
+                    Tất Cả
+                </button>
+                <button th:each="cat : ${categories}"
+                        type="button" 
+                        class="category-chip" 
+                        th:attr="onclick=|filterCategory('${cat.id}', this)|"
+                        th:text="${cat.name}">
+                    Danh mục
+                </button>
+            </div>
+        </div>
+
+        <!-- Danh sách món (Grid) -->
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="productsGrid">
+            <div th:each="p : ${products}" 
+                 class="col product-item" 
+                 th:attr="data-category=${p.category.id}, data-id=${p.id}, data-name=${p.name}, data-price=${p.price}, data-size=${p.size}, data-img=${p.imageUrl}">
+                <div class="product-card">
+                    <div class="product-img-wrapper">
+                        <img th:src="${p.imageUrl != null and !p.imageUrl.isEmpty() ? p.imageUrl : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80'}" 
+                             class="product-img" 
+                             alt="Ảnh món">
+                        <span class="position-absolute top-0 end-0 m-2 badge bg-dark bg-opacity-75 rounded-pill px-2 py-1 small" th:text="'Size ' + ${p.size}">
+                            Size M
+                        </span>
+                    </div>
+
+                    <div class="p-3 d-flex flex-column flex-grow-1">
+                        <h5 class="fw-bold mb-1 text-truncate" th:text="${p.name}">Trà Sữa Truyền Thống</h5>
+                        <p class="text-muted small flex-grow-1 mb-2 text-truncate-2" th:text="${p.description != null ? p.description : 'Đậm vị trà thơm ngậy sữa'}">
+                            Mô tả món
+                        </p>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
+                            <span class="product-price" th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA') + ' ₫'}">
+                                25.000 ₫
+                            </span>
+                            <button type="button" class="btn btn-sm btn-primary-custom rounded-pill px-3"
+                                    th:attr="onclick=|openCustomizeModal(${p.id}, '${p.name}', '${p.size}', ${p.price}, '${p.imageUrl}')|">
+                                <i class="bi bi-plus-lg me-1"></i> Chọn
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Cart Button (Mobile & Desktop) -->
+        <a th:href="@{/cart(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="floating-cart-btn">
+            <i class="bi bi-cart-fill fs-5"></i>
+            <span>Xem Giỏ Hàng</span>
+        </a>
+
+        <!-- Modal Tùy Chọn Món & Thêm Vào Giỏ -->
+        <div class="modal fade" id="customizeModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font" id="modalProductName">Tên Món</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body p-4">
+                        <div class="d-flex gap-3 mb-3">
+                            <img id="modalProductImg" src="" class="rounded-3" style="width: 80px; height: 80px; object-fit: cover;" alt="">
+                            <div>
+                                <span class="badge bg-light text-dark border mb-1" id="modalProductSize">Size M</span>
+                                <h4 class="product-price mb-0" id="modalProductPrice">25.000 ₫</h4>
+                            </div>
+                        </div>
+
+                        <!-- Ghi Chú Yêu Cầu -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Ghi chú pha chế</label>
+                            <input type="text" id="modalProductNote" class="form-control rounded-3" placeholder="Ví dụ: 50% đường, 70% đá, ít ngọt...">
+                        </div>
+
+                        <!-- Số Lượng -->
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <span class="small fw-semibold">Số lượng:</span>
+                            <div class="input-group" style="width: 130px;">
+                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="adjustModalQty(-1)">-</button>
+                                <input type="number" id="modalProductQty" class="form-control form-control-sm text-center fw-bold" value="1" min="1" readonly>
+                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="adjustModalQty(1)">+</button>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-primary-custom w-100 py-2 rounded-pill fw-bold" onclick="confirmAddToCart()">
+                            <i class="bi bi-bag-plus-fill me-1"></i> Thêm Vào Giỏ Hàng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/customer/customer.js}"></script>
+        <script th:inline="javascript">
+            let selectedProduct = null;
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const qr = /*[[${tableQr}]]*/ null;
+                const tableId = /*[[${currentTable != null ? currentTable.id : null}]]*/ null;
+                CustomerApp.initContext(qr, tableId);
+            });
+
+            function filterCategory(catId, btn) {
+                document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+
+                const items = document.querySelectorAll('.product-item');
+                items.forEach(it => {
+                    if (catId === 'ALL' || it.getAttribute('data-category') === catId) {
+                        it.style.display = '';
+                    } else {
+                        it.style.display = 'none';
+                    }
+                });
+            }
+
+            function openCustomizeModal(id, name, size, price, img) {
+                selectedProduct = { id, name, size, price, img };
+                document.getElementById('modalProductName').textContent = name;
+                document.getElementById('modalProductSize').textContent = 'Size ' + size;
+                document.getElementById('modalProductPrice').textContent = MilkTeaApi.formatVND(price);
+                document.getElementById('modalProductImg').src = img && img.length > 5 ? img : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80';
+                document.getElementById('modalProductNote').value = '';
+                document.getElementById('modalProductQty').value = 1;
+
+                const modal = new bootstrap.Modal(document.getElementById('customizeModal'));
+                modal.show();
+            }
+
+            function adjustModalQty(delta) {
+                const input = document.getElementById('modalProductQty');
+                let val = parseInt(input.value) + delta;
+                if (val < 1) val = 1;
+                input.value = val;
+            }
+
+            function confirmAddToCart() {
+                if (!selectedProduct) return;
+                const qty = parseInt(document.getElementById('modalProductQty').value);
+                const note = document.getElementById('modalProductNote').value.trim();
+
+                CustomerApp.addToCart(selectedProduct, qty, note);
+
+                const modalEl = document.getElementById('customizeModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+        </script>
+    </th:block>
+</body>
+</html>
