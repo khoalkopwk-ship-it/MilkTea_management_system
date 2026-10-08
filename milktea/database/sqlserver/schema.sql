@@ -469,3 +469,5 @@ CREATE INDEX IX_ThanhToan_ThuLuc ON dbo.ThanhToan(ThuLuc);
 CREATE INDEX IX_YeuCauHoan_TrangThai_HoanLuc ON dbo.YeuCauHoan(TrangThai, HoanLuc);
 CREATE INDEX IX_LichSuKho_NL_ViTri_TaoLuc ON dbo.LichSuKho(MaNL, ViTri, TaoLuc);
 CREATE INDEX IX_PhienBan_Ban_MoLuc ON dbo.PhienBan(MaBan, MoLuc);
+CREATE UNIQUE INDEX UX_ThanhToan_MaYeuCau ON dbo.ThanhToan(MaYeuCau) WHERE MaYeuCau IS NOT NULL;
+GO

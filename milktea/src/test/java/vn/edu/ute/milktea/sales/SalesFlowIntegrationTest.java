@@ -158,7 +158,7 @@ public class SalesFlowIntegrationTest {
         assertNotNull(orderRes);
         assertNotNull(orderRes.getOrderId());
         assertNotNull(orderRes.getGuestTableToken(), "Phải cấp TableSessionToken cho khách");
-        assertEquals(OrderStatus.CHO_XAC_NHAN, orderRes.getStatus());
+        assertEquals(OrderStatus.CHO_THANH_TOAN, orderRes.getStatus());
 
         // Kiểm tra bàn đã chuyển Có khách và có session
         DiningTable updatedTable = tableRepository.findById(testTable.getId()).orElseThrow();
@@ -210,8 +210,9 @@ public class SalesFlowIntegrationTest {
         assertNotNull(freshOrder.getSession(), "Đơn phải được liên kết với phiên của bàn 02");
         assertEquals(table2.getId(), freshOrder.getSession().getTable().getId());
         assertEquals(counterOrder.getOrderId(), freshOrder.getId(), "Mã đơn không thay đổi");
-        assertEquals(OrderStatus.CHO_XAC_NHAN, freshOrder.getStatus(), "Trạng thái đơn giữ nguyên");
-    }
+        assertEquals(OrderStatus.CHO_THANH_TOAN,freshOrder.getStatus(), "Gán bàn không làm thay đổi trạng thái thanh toán");
+
+}
 
     @Test
     @DisplayName("Luồng 5: Thu ngân xác nhận -> Bếp bắt đầu -> Bếp hoàn thành toàn đơn và tiêu hao kho")
@@ -228,10 +229,40 @@ public class SalesFlowIntegrationTest {
                 CurrentActor.guest(),
                 UUID.randomUUID().toString());
 
+        
         Long orderId = orderRes.getOrderId();
 
-        // 1. Thu ngân xác nhận
+        // Đơn mới phải chờ thanh toán
+        assertEquals(
+                OrderStatus.CHO_THANH_TOAN,
+                orderRepository.findById(orderId).orElseThrow().getStatus());
+
+        // Chưa thanh toán: không được xác nhận
+        assertThrows(BusinessException.class,
+                () -> orderService.confirm(orderId, cashier.getId()));
+
+        // Chưa thanh toán: bếp không được bắt đầu
+        assertThrows(BusinessException.class,
+                () -> orderService.start(orderId, kitchen.getId()));
+
+        // Ghi nhận chuyển khoản cho đơn tại bàn
+        paymentService.recordReceipt(
+                orderRes.getInvoiceId(),
+                PaymentDto.RecordPaymentRequest.builder()
+                        .method(PaymentMethod.BANK_TRANSFER)
+                        .reference("TEST-PAID-" + orderId)
+                        .build(),
+                cashier.getId(),
+                UUID.randomUUID().toString());
+
+        // Đã thanh toán -> CHO_XAC_NHAN
+        assertEquals(
+                OrderStatus.CHO_XAC_NHAN,
+                orderRepository.findById(orderId).orElseThrow().getStatus());
+
+        // Thu ngân xác nhận
         orderService.confirm(orderId, cashier.getId());
+
         assertEquals(OrderStatus.CHO_CHE_BIEN, orderRepository.findById(orderId).orElseThrow().getStatus());
 
         // Chống lặp xác nhận (idempotent)
@@ -277,7 +308,7 @@ public class SalesFlowIntegrationTest {
         String payIdempKey = "PAY_KEY_" + UUID.randomUUID();
 
         var payReq = PaymentDto.RecordPaymentRequest.builder()
-                .method(PaymentMethod.CASH)
+                .method(PaymentMethod.BANK_TRANSFER)
                 .reference("TIENMAT_RECEIPT_01")
                 .build();
 
@@ -353,30 +384,64 @@ public class SalesFlowIntegrationTest {
                 tableSessionService.closeByCashier(table1.getId(), cashier.getId()));
         assertEquals(ErrorCode.TABLE_CLOSE_NOT_ALLOWED, ex1.getErrorCode());
 
-        // Xử lý đơn cho xong: Xác nhận -> Bếp bắt đầu -> Bếp hoàn thành
+        
+        // Chưa thanh toán: thu ngân không được xác nhận
+        assertThrows(BusinessException.class, () ->
+                orderService.confirm(orderRes.getOrderId(), cashier.getId()));
+
+        // Chưa thanh toán: bếp không được bắt đầu
+        assertThrows(BusinessException.class, () ->
+                orderService.start(orderRes.getOrderId(), kitchen.getId()));
+
+        // Đơn tại bàn chỉ được chuyển khoản
+        paymentService.recordReceipt(
+                orderRes.getInvoiceId(),
+                PaymentDto.RecordPaymentRequest.builder()
+                        .method(PaymentMethod.BANK_TRANSFER)
+                        .reference("TEST-TABLE-" + orderRes.getOrderId())
+                        .build(),
+                cashier.getId(),
+                UUID.randomUUID().toString());
+
+        // Sau thanh toán, đơn chờ xác nhận
+        assertEquals(
+                OrderStatus.CHO_XAC_NHAN,
+                orderRepository.findById(orderRes.getOrderId())
+                        .orElseThrow().getStatus());
+
+        // Đã thanh toán nhưng đơn chưa hoàn thành:
+        // vẫn không được đóng phiên bàn
+        BusinessException ex2 = assertThrows(
+                BusinessException.class,
+                () -> tableSessionService.closeByCashier(
+                        table1.getId(), cashier.getId()));
+        assertEquals(ErrorCode.TABLE_CLOSE_NOT_ALLOWED,
+                ex2.getErrorCode());
+        
+        // Thu ngân xác nhận -> bếp bắt đầu -> hoàn thành
         orderService.confirm(orderRes.getOrderId(), cashier.getId());
         orderService.start(orderRes.getOrderId(), kitchen.getId());
         orderService.complete(orderRes.getOrderId(), kitchen.getId());
 
-        // Cố tình đóng bàn khi chưa thu tiền hóa đơn hiệu lực -> Bị chặn
-        BusinessException ex2 = assertThrows(BusinessException.class, () ->
-                tableSessionService.closeByCashier(table1.getId(), cashier.getId()));
-        assertEquals(ErrorCode.TABLE_CLOSE_NOT_ALLOWED, ex2.getErrorCode());
+        // Đóng phiên sau khi đơn đã hoàn thành và thanh toán
+        assertDoesNotThrow(() ->
+                tableSessionService.closeByCashier(
+                        table1.getId(), cashier.getId()));
 
-        // Thu tiền hóa đơn
-        paymentService.recordReceipt(orderRes.getInvoiceId(),
-                PaymentDto.RecordPaymentRequest.builder().method(PaymentMethod.CASH).build(),
-                cashier.getId(), UUID.randomUUID().toString());
+        // Kiểm tra bàn được giải phóng
+        DiningTable closedTable = tableRepository
+                .findById(table1.getId())
+                .orElseThrow();
 
-        // Đóng bàn thành công
-        assertDoesNotThrow(() -> tableSessionService.closeByCashier(table1.getId(), cashier.getId()));
-
-        // Kiểm tra bàn về TRONG và phiên CLOSED
-        DiningTable closedTable = tableRepository.findById(table1.getId()).orElseThrow();
         assertEquals(TableStatus.TRONG, closedTable.getStatus());
         assertNull(closedTable.getActiveSessionId());
 
-        TableSession closedSession = sessionRepository.findById(session.getId()).orElseThrow();
+        // Kiểm tra phiên đã đóng
+        TableSession closedSession = sessionRepository
+                .findById(session.getId())
+                .orElseThrow();
+
         assertEquals(TableSessionStatus.CLOSED, closedSession.getStatus());
+
     }
 }

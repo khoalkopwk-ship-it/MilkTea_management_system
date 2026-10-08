@@ -2,9 +2,9 @@ spring:
   application:
     name: milktea
   datasource:
-    url: ${DB_URL:jdbc:sqlserver://localhost:57528;databaseName=milktea;encrypt=false;trustServerCertificate=true}
+    url: ${DB_URL:jdbc:sqlserver://localhost:1434;databaseName=milktea;encrypt=false;trustServerCertificate=true}
     username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:Password123!}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
   jpa:
     open-in-view: false
@@ -16,6 +16,10 @@ spring:
       hibernate:
         format_sql: true
         show_sql: false
+        type:
+          preferred_instant_jdbc_type: TIMESTAMP
+        jdbc:
+          time_zone: UTC
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}

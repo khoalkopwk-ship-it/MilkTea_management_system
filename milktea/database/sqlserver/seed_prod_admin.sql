@@ -49,10 +49,10 @@ INSERT INTO dbo.CauHinhChung (
 VALUES (
         1,
         N'MilkTea Quán 01',
-        N 'Số 1 Võ Văn Ngân, TP. Thủ Đức, TP. Hồ Chí Minh',
+        N'Số 1 Võ Văn Ngân, TP. Thủ Đức, TP. Hồ Chí Minh',
         N'MBBank',
         '0987654321',
-        N 'CHU QUAN TRA SUA',
+        N'CHU QUAN TRA SUA',
         0.00,
         (
             SELECT TOP 1 MaTK
