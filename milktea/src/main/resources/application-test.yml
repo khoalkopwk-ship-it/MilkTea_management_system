@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:h2:mem:milkteatest;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MSSQLServer
     username: sa
-    password: ""
+    password: "123456aA@$"
     driver-class-name: org.h2.Driver
   jpa:
     hibernate:

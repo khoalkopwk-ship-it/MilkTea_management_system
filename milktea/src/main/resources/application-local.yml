@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:sqlserver://localhost:57528;databaseName=milktea;encrypt=false;trustServerCertificate=true}
+    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=milktea;encrypt=false;trustServerCertificate=true}
     username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:Password123!}
+    password: ${DB_PASSWORD:123456aA@$}
   jpa:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:none}

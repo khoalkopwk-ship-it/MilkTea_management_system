@@ -17,6 +17,32 @@ const CustomerApp = (() => {
     let localCart = []; // Giỏ RAM khi chưa có phiên bàn mở
     let serverCart = []; // Giỏ server khi đã có phiên bàn mở
 
+    function getLocalCartStorageKey() {
+        const ctx = window.MilkTeaContext || {};
+        if (ctx.qrCode) return `milktea.localCart.qr.${ctx.qrCode}`;
+        if (ctx.tableId) return `milktea.localCart.table.${ctx.tableId}`;
+        return 'milktea.localCart';
+    }
+
+    function loadLocalCart() {
+        try {
+            const raw = localStorage.getItem(getLocalCartStorageKey());
+            localCart = raw ? JSON.parse(raw) : [];
+            if (!Array.isArray(localCart)) localCart = [];
+        } catch (e) {
+            localCart = [];
+        }
+    }
+
+    function saveLocalCart() {
+        localStorage.setItem(getLocalCartStorageKey(), JSON.stringify(localCart));
+    }
+
+    function clearLocalCart() {
+        localCart = [];
+        localStorage.removeItem(getLocalCartStorageKey());
+    }
+
     // Khởi tạo ngữ cảnh bàn
     async function initContext(qrCodeParam, tableParam) {
         let qr = qrCodeParam;
@@ -53,6 +79,7 @@ const CustomerApp = (() => {
             }
         }
 
+        loadLocalCart();
         updateCartBadge();
         setupRealtimeListeners();
     }
@@ -103,6 +130,7 @@ const CustomerApp = (() => {
             } else {
                 localCart.push(item);
             }
+            saveLocalCart();
             updateCartBadge();
             MilkTeaApi.showToast(`Đã thêm ${item.productName} vào giỏ`, 'success');
         }
@@ -190,6 +218,8 @@ const CustomerApp = (() => {
                 MilkTeaApi.showToast('Không thể cập nhật giỏ hàng: ' + e.message, 'error');
                 await loadServerCart();
             }
+        } else {
+            saveLocalCart();
         }
 
         updateCartBadge();
@@ -230,13 +260,22 @@ const CustomerApp = (() => {
                 note: it.note
             }));
 
-            const payload = {
-                qrCode: window.MilkTeaContext.qrCode,
-                items: items,
-                remainingCartItems: []
-            };
+            const hasTableContext = !!window.MilkTeaContext.tableId;
+            const payload = hasTableContext
+                ? {
+                    tableId: window.MilkTeaContext.tableId,
+                    expectedSessionId: window.MilkTeaContext.sessionId,
+                    items: items,
+                    remainingCartItems: []
+                }
+                : {
+                    items: items
+                };
 
-            const order = await MilkTeaApi.post('/api/v1/orders/table', payload);
+            const order = await MilkTeaApi.post(
+                hasTableContext ? '/api/v1/orders/table' : '/api/v1/orders/counter',
+                payload
+            );
             MilkTeaApi.showToast('Đặt đơn thành công! Đang chuyển hướng...', 'success');
 
             // Cập nhật context phiên nếu là đơn đầu tiên mở phiên
@@ -246,9 +285,12 @@ const CustomerApp = (() => {
             if (order.guestTableToken) {
                 window.MilkTeaContext.tableToken = order.guestTableToken;
             }
+            if (order.guestCounterToken) {
+                window.MilkTeaContext.counterToken = order.guestCounterToken;
+            }
 
             // Xóa giỏ hàng
-            localCart = [];
+            clearLocalCart();
             serverCart = [];
             updateCartBadge();
 

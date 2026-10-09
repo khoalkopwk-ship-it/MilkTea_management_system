@@ -19,6 +19,8 @@ logging:
     org.springframework.security: WARN
 
 app:
+  admin:
+    default-password: Password@123
   jwt:
     secret-base64: dGhpc0lzQVZlcnlTZWN1cmVCYXNlNjRTZWNyZXRLZXlGb3JNaWxrVGVhQXBwMjAyNg==
     ttl-minutes: 120

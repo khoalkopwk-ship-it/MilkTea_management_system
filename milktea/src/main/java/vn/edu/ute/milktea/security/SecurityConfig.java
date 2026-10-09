@@ -40,6 +40,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable) // CSRF handled via token headers/check for API or CookieCsrfTokenRepository
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Staff pages require an authenticated staff JWT.
+                        .requestMatchers("/admin", "/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/cashier", "/cashier/**").hasAnyRole("ADMIN", "CASHIER")
+                        .requestMatchers("/kitchen", "/kitchen/**").hasAnyRole("ADMIN", "KITCHEN")
                         // 1. Static resources, pages & websocket
                         .requestMatchers(
                                 "/",
@@ -47,12 +51,6 @@ public class SecurityConfig {
                                 "/cart",
                                 "/orders",
                                 "/login",
-                                "/cashier",
-                                "/cashier/**",
-                                "/kitchen",
-                                "/kitchen/**",
-                                "/admin",
-                                "/admin/**",
                                 "/error",
                                 "/static/**",
                                 "/css/**",
