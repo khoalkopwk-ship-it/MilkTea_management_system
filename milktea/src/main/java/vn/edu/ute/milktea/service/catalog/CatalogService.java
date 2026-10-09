@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.ute.milktea.common.BusinessException;
 import vn.edu.ute.milktea.common.ErrorCode;
-import vn.edu.ute.milktea.dto.catalog.CatalogDto;
+import vn.edu.ute.milktea.dto.CatalogDto;
 import vn.edu.ute.milktea.entity.catalog.Product;
 import vn.edu.ute.milktea.repository.catalog.CategoryRepository;
 import vn.edu.ute.milktea.repository.catalog.ProductRepository;

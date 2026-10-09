@@ -154,10 +154,10 @@ public class TableSessionService {
         realtimeEventPublisher.publishAfterCommit("/topic/table-sessions/" + session.getId(), "TABLE_SESSION_CLOSED", session.getId().toString(), session.getId().toString(), "1", java.util.Map.of("tableId", table.getId(), "tableName", table.getName()));
     }
 
-    public vn.edu.ute.milktea.dto.table.TableDto.TableSessionResponse getSessionResponse(Long sessionId) {
+    public vn.edu.ute.milktea.dto.TableDto.TableSessionResponse getSessionResponse(Long sessionId) {
         TableSession s = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_SESSION_CLOSED, "Không tìm thấy phiên"));
-        return vn.edu.ute.milktea.dto.table.TableDto.TableSessionResponse.builder()
+        return vn.edu.ute.milktea.dto.TableDto.TableSessionResponse.builder()
                 .sessionId(s.getId())
                 .tableId(s.getTable().getId())
                 .tableName(s.getTable().getName())
@@ -168,7 +168,7 @@ public class TableSessionService {
     }
 
     @Transactional
-    public vn.edu.ute.milktea.dto.table.TableDto.TableSessionResponse closeBySessionId(Long sessionId, Long cashierId) {
+    public vn.edu.ute.milktea.dto.TableDto.TableSessionResponse closeBySessionId(Long sessionId, Long cashierId) {
         TableSession session = sessionRepository.findByIdWithLock(sessionId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_SESSION_CLOSED, "Không tìm thấy phiên"));
         closeByCashier(session.getTable().getId(), cashierId);

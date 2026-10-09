@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import vn.edu.ute.milktea.common.BusinessException;
 import vn.edu.ute.milktea.common.ErrorCode;
-import vn.edu.ute.milktea.dto.admin.AdminDto;
+import vn.edu.ute.milktea.dto.AdminDto;
 import vn.edu.ute.milktea.entity.catalog.Product;
 import vn.edu.ute.milktea.repository.catalog.ProductRepository;
 

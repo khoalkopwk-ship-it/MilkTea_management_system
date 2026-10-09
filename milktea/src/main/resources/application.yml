@@ -2,7 +2,7 @@ spring:
   application:
     name: milktea
   datasource:
-    url: ${DB_URL:jdbc:sqlserver://localhost:1434;databaseName=milktea;encrypt=false;trustServerCertificate=true}
+    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=milktea;encrypt=false;trustServerCertificate=true}
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
@@ -64,7 +64,7 @@ app:
   websocket:
     allowed-origin: ${WS_ALLOWED_ORIGIN:http://localhost:8080}
   admin:
-    default-password: ${ADMIN_PASSWORD:Password@123}
+    default-password: ${ADMIN_PASSWORD:123456}
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:}
     api-key: ${CLOUDINARY_API_KEY:}

@@ -87,11 +87,11 @@ public class RefundService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<vn.edu.ute.milktea.dto.cancellation.CancellationDto.RefundResponse> getRefunds(RefundStatus status) {
+    public java.util.List<vn.edu.ute.milktea.dto.CancellationDto.RefundResponse> getRefunds(RefundStatus status) {
         java.util.List<RefundRequest> list = status != null ?
                 refundRepository.findByStatus(status) :
                 refundRepository.findAll();
-        return list.stream().map(r -> vn.edu.ute.milktea.dto.cancellation.CancellationDto.RefundResponse.builder()
+        return list.stream().map(r -> vn.edu.ute.milktea.dto.CancellationDto.RefundResponse.builder()
                 .id(r.getId())
                 .orderId(r.getOrder().getId())
                 .paymentId(r.getPayment().getId())
