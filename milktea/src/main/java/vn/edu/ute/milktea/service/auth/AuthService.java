@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.ute.milktea.common.BusinessException;
 import vn.edu.ute.milktea.common.ErrorCode;
-import vn.edu.ute.milktea.dto.auth.AuthDto;
+import vn.edu.ute.milktea.dto.AuthDto;
 import vn.edu.ute.milktea.entity.account.Account;
 import vn.edu.ute.milktea.entity.account.PasswordResetToken;
 import vn.edu.ute.milktea.entity.account.Role;

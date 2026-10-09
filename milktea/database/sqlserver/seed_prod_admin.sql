@@ -1,5 +1,5 @@
-USE [milktea];
-GO IF NOT EXISTS (
+GO -- 1. Tạo tài khoản Quản Trị Viên mặc định (TaiKhoan)
+IF NOT EXISTS (
         SELECT 1
         FROM dbo.TaiKhoan
         WHERE Email = 'admin@milktea.vn'

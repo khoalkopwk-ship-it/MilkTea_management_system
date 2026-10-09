@@ -3,7 +3,8 @@ package vn.edu.ute.milktea.service.settings;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.edu.ute.milktea.dto.settings.SettingsDto;
+
+import vn.edu.ute.milktea.dto.SettingsDto;
 import vn.edu.ute.milktea.entity.account.Account;
 import vn.edu.ute.milktea.entity.settings.GlobalSettings;
 import vn.edu.ute.milktea.repository.account.AccountRepository;

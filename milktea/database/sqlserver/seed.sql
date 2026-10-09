@@ -42,7 +42,7 @@ INSERT INTO dbo.TaiKhoan (
 VALUES (
         'cashier@milktea.vn',
         '$2a$10$EO1GLna0hOQEmDKawB64XeAdZLIK.bDI/.U1fcVDM8CLmye557KBq',
-        N 'Thu Ngân Quỳnh',
+        N'Thu Ngân Quỳnh',
         '0901000002',
         'CASHIER',
         1,
@@ -119,10 +119,10 @@ INSERT INTO dbo.CauHinhChung (
 VALUES (
         1,
         N'MilkTea Quán 01',
-        N 'Số 1 Võ Văn Ngân, Linh Chiểu, TP. Thủ Đức',
+        N'Số 1 Võ Văn Ngân, Linh Chiểu, TP. Thủ Đức',
         N'Vietcombank',
         '999988887777',
-        N 'QUAN TRA SUA MILKTEA',
+        N'QUAN TRA SUA MILKTEA',
         10.00,
         1,
         SYSUTCDATETIME()
@@ -285,10 +285,10 @@ VALUES (N'Đường Cát', 'THO', 'kg', 1);
 IF NOT EXISTS (
     SELECT 1
     FROM dbo.NguyenLieu
-    WHERE TenNL = N 'Ly Nhựa'
+    WHERE TenNL = N'Ly Nhựa'
 )
 INSERT INTO dbo.NguyenLieu (TenNL, Loai, DonVi, HoatDong)
-VALUES (N 'Ly Nhựa', 'THO', 'cai', 1);
+VALUES (N'Ly Nhựa', 'THO', 'cai', 1);
 IF NOT EXISTS (
     SELECT 1
     FROM dbo.NguyenLieu
@@ -299,10 +299,10 @@ VALUES (N'Trân Châu Thô', 'THO', 'kg', 1);
 IF NOT EXISTS (
     SELECT 1
     FROM dbo.NguyenLieu
-    WHERE TenNL = N 'Trân Châu Nấu Chín'
+    WHERE TenNL = N'Trân Châu Nấu Chín'
 )
 INSERT INTO dbo.NguyenLieu (TenNL, Loai, DonVi, HoatDong)
-VALUES (N 'Trân Châu Nấu Chín', 'SOCHE', 'suat', 1);
+VALUES (N'Trân Châu Nấu Chín', 'SOCHE', 'suat', 1);
 -- 7. Tồn kho mẫu (KHO & BEP)
 DECLARE @nlTraDen BIGINT = (
         SELECT MaNL
@@ -322,7 +322,7 @@ DECLARE @nlDuongCat BIGINT = (
 DECLARE @nlLyNhua BIGINT = (
         SELECT MaNL
         FROM dbo.NguyenLieu
-        WHERE TenNL = N 'Ly Nhựa'
+        WHERE TenNL = N'Ly Nhựa'
     );
 DECLARE @nlTCSong BIGINT = (
         SELECT MaNL
@@ -332,7 +332,7 @@ DECLARE @nlTCSong BIGINT = (
 DECLARE @nlTCChin BIGINT = (
         SELECT MaNL
         FROM dbo.NguyenLieu
-        WHERE TenNL = N 'Trân Châu Nấu Chín'
+        WHERE TenNL = N'Trân Châu Nấu Chín'
     );
 -- KHO
 IF NOT EXISTS (
@@ -522,10 +522,10 @@ VALUES (@monToppingTC, @nlTCChin, 1.000);
 IF NOT EXISTS (
     SELECT 1
     FROM dbo.CongThucSoChe
-    WHERE TenCT = N 'Nấu Trân Châu Đen'
+    WHERE TenCT = N'Nấu Trân Châu Đen'
 ) BEGIN
 INSERT INTO dbo.CongThucSoChe (TenCT, MaNLDauRa, LuongDauRaChuan, HoatDong)
-VALUES (N 'Nấu Trân Châu Đen', @nlTCChin, 50.000, 1);
+VALUES (N'Nấu Trân Châu Đen', @nlTCChin, 50.000, 1);
 DECLARE @maCTSC BIGINT = SCOPE_IDENTITY();
 INSERT INTO dbo.ChiTietCTSoChe (MaCTSC, MaNL, LuongDauVaoChuan)
 VALUES (@maCTSC, @nlTCSong, 5.000);
