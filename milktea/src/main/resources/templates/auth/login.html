@@ -99,13 +99,14 @@
                     const redirect = urlParams.get('redirect');
 
                     setTimeout(() => {
+                        const role = data.role || (data.user && data.user.role);
                         if (redirect && !redirect.includes('/login')) {
                             window.location.href = redirect;
-                        } else if (data.role === 'ADMIN') {
+                        } else if (role === 'ADMIN') {
                             window.location.href = '/admin/catalog';
-                        } else if (data.role === 'CASHIER') {
+                        } else if (role === 'CASHIER') {
                             window.location.href = '/cashier';
-                        } else if (data.role === 'KITCHEN') {
+                        } else if (role === 'KITCHEN') {
                             window.location.href = '/kitchen';
                         } else {
                             window.location.href = '/';

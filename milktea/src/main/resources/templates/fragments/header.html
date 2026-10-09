@@ -97,9 +97,9 @@
             async function logoutAccount() {
                 try {
                     await MilkTeaApi.post('/api/v1/auth/logout');
-                    window.location.href = '/login';
+                    window.location.replace('/login');
                 } catch (e) {
-                    window.location.href = '/login';
+                    window.location.replace('/login');
                 }
             }
         </script>
