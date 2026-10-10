@@ -51,6 +51,7 @@ public class SecurityConfig {
                                 "/cart",
                                 "/orders",
                                 "/order-history",
+                                "/profile",
                                 "/login",
                                 "/error",
                                 "/static/**",

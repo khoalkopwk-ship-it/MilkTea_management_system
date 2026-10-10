@@ -310,11 +310,7 @@ public class OrderService {
                         ErrorCode.ORDER_STATE_CONFLICT,
                         "Không tìm thấy hóa đơn của đơn hàng"));
 
-        if (!paymentRepository.existsByInvoiceId(invoice.getId())) {
-            throw BusinessException.conflict(
-                    ErrorCode.ORDER_STATE_CONFLICT,
-                    "Đơn hàng chưa được thanh toán, không thể xác nhận");
-        }
+        // Không áp dụng paid gate: Hỗ trợ tiền mặt hoặc chuyển khoản trước/trong/sau pha chế theo GEMINI.md
 
         orderRepository.save(order);
 
@@ -354,11 +350,7 @@ public class OrderService {
                         ErrorCode.ORDER_STATE_CONFLICT,
                         "Không tìm thấy hóa đơn của đơn hàng"));
 
-        if (!paymentRepository.existsByInvoiceId(invoice.getId())) {
-            throw BusinessException.conflict(
-                    ErrorCode.ORDER_STATE_CONFLICT,
-                    "Đơn hàng chưa được thanh toán, bếp không thể bắt đầu");
-        }
+        // Không áp dụng paid gate: Bếp có thể chế biến theo lệnh điều phối của quán
 
 
         // Kiểm tra không có yêu cầu hủy đang chờ xử lý

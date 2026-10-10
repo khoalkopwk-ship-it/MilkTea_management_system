@@ -129,4 +129,17 @@ public class CustomerPageController {
 
         return "customer/order-history";
     }
+
+    @GetMapping("/profile")
+    public String profilePage(@AuthenticationPrincipal CurrentActor actor, Model model) {
+        if (actor == null || actor.getAccountId() == null) {
+            return "redirect:/login?redirect=/profile";
+        }
+
+        GlobalSettings settings = settingsRepository.findById(1).orElse(null);
+        model.addAttribute("settings", settings);
+        model.addAttribute("actor", actor);
+
+        return "profile";
+    }
 }
