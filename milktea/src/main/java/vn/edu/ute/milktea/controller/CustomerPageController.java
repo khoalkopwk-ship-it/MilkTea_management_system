@@ -1,6 +1,7 @@
 package vn.edu.ute.milktea.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import vn.edu.ute.milktea.repository.catalog.CategoryRepository;
 import vn.edu.ute.milktea.repository.catalog.ProductRepository;
 import vn.edu.ute.milktea.repository.settings.GlobalSettingsRepository;
 import vn.edu.ute.milktea.repository.table.DiningTableRepository;
+import vn.edu.ute.milktea.security.CurrentActor;
 
 import java.util.List;
 
@@ -109,5 +111,19 @@ public class CustomerPageController {
         model.addAttribute("tableQr", table != null ? table.getQrCode() : qrCode);
 
         return "customer/orders";
+    }
+
+    @GetMapping("/order-history")
+    public String orderHistoryPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
+        if (actor == null || actor.getAccountId() == null) {
+            return "redirect:/login";
+        }
+
+        GlobalSettings settings = settingsRepository.findById(1).orElse(null);
+        model.addAttribute("settings", settings);
+        model.addAttribute("currentTable", null);
+        model.addAttribute("tableQr", null);
+
+        return "customer/order-history";
     }
 }

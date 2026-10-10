@@ -49,10 +49,16 @@ public class CancellationService {
         Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
 
-        // Chỉ được yêu cầu hủy trước khi bắt đầu pha chế
-        if (order.getStatus() != OrderStatus.CHO_XAC_NHAN && order.getStatus() != OrderStatus.CHO_CHE_BIEN) {
+        if (!canActorAccessOrder(order, actor)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền hủy đơn hàng này");
+        }
+
+        // Chỉ được hủy trước khi bếp bắt đầu pha chế
+        if (order.getStatus() != OrderStatus.CHO_THANH_TOAN
+                && order.getStatus() != OrderStatus.CHO_XAC_NHAN
+                && order.getStatus() != OrderStatus.CHO_CHE_BIEN) {
             throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT,
-                    "Không thể yêu cầu hủy đơn đã hoặc đang được pha chế: " + order.getStatus());
+                    "Không thể hủy đơn đã hoặc đang được pha chế: " + order.getStatus());
         }
 
         // Kiểm tra không có yêu cầu hủy nào đang chờ duyệt
@@ -83,6 +89,19 @@ public class CancellationService {
                 .status(cancelReq.getStatus())
                 .createdAt(cancelReq.getCreatedAt())
                 .build();
+    }
+
+    private boolean canActorAccessOrder(Order order, CurrentActor actor) {
+        if (actor == null) {
+            return false;
+        }
+        if (actor.getAccountId() != null && order.getAccount() != null) {
+            return actor.getAccountId().equals(order.getAccount().getId());
+        }
+        if (actor.getSessionId() != null && order.getSession() != null) {
+            return actor.getSessionId().equals(order.getSession().getId());
+        }
+        return actor.getOrderId() != null && actor.getOrderId().equals(order.getId());
     }
 
     @Transactional

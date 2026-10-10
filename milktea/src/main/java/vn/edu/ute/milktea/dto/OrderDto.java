@@ -79,12 +79,17 @@ public class OrderDto {
         private String tableName;
         private OrderSource source;
         private OrderStatus status;
+        private String customerName;
+        private String customerEmail;
         private Long invoiceId;
         private BigDecimal subtotal;
         private BigDecimal discountAmount;
+        private BigDecimal surchargeAmount;
         private BigDecimal totalAmount;
         private BigDecimal discountPercent;
         private InvoiceStatus invoiceStatus;
+        private String paymentMethod;
+        private boolean cancellationPending;
         private boolean paid;
         private List<OrderItemResponse> items;
         private Instant createdAt;

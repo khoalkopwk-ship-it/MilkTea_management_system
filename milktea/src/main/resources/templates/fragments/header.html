@@ -37,6 +37,11 @@
                                 <i class="bi bi-receipt me-1"></i> Đơn Đã Đặt
                             </a>
                         </li>
+                        <li class="nav-item" sec:authorize="hasRole('CUSTOMER')">
+                            <a class="nav-link fw-semibold" th:href="@{/order-history}">
+                                <i class="bi bi-clock-history me-1"></i> Lịch Sử
+                            </a>
+                        </li>
 
                         <!-- Menu Nhân Viên Theo Quyền -->
                         <li class="nav-item" sec:authorize="hasAnyRole('CASHIER', 'ADMIN')">
@@ -70,7 +75,7 @@
                         <div sec:authorize="isAuthenticated()" class="dropdown ms-2">
                             <button class="btn btn-light rounded-pill dropdown-toggle d-flex align-items-center gap-2 px-3 py-1 border" type="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-person-circle fs-5 text-muted"></i>
-                                <span sec:authentication="name" class="fw-semibold small">Nhân viên</span>
+                                <span sec:authentication="principal.email" class="fw-semibold small">Tài khoản</span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
                                 <li><h6 class="dropdown-header">Tài khoản</h6></li>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Lịch Sử Đơn Hàng - MilkTea</title>
+</head>
+<body>
+    <div th:fragment="content" class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <a th:href="@{/}" class="btn btn-outline-secondary btn-sm rounded-circle p-2">
+                            <i class="bi bi-arrow-left"></i>
+                        </a>
+                        <h3 class="brand-font mb-0">Lịch Sử Đơn Hàng</h3>
+                    </div>
+                </div>
+
+                <div id="historySummary" class="row g-3 mb-4 d-none">
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                            <div class="text-muted small">Tổng số đơn</div>
+                            <div class="fs-3 fw-bold" id="summaryTotalOrders">0</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                            <div class="text-muted small">Đơn hoàn thành</div>
+                            <div class="fs-3 fw-bold text-success" id="summaryCompletedOrders">0</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                            <div class="text-muted small">Tổng đã đặt</div>
+                            <div class="fs-3 fw-bold product-price" id="summaryTotalAmount">0 ₫</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="historyLoading" class="text-center py-5">
+                    <div class="spinner-border spinner-custom mb-2"></div>
+                    <p class="text-muted small">Đang nạp lịch sử đơn hàng...</p>
+                </div>
+
+                <div id="historyEmpty" class="empty-state d-none">
+                    <i class="bi bi-clock-history text-muted"></i>
+                    <h5 class="fw-bold mb-1">Chưa có lịch sử đơn hàng</h5>
+                    <p class="text-muted small mb-3">Các đơn bạn đặt bằng tài khoản này sẽ hiển thị tại đây.</p>
+                    <a th:href="@{/}" class="btn btn-primary-custom rounded-pill px-4">
+                        <i class="bi bi-cup-hot me-1"></i> Đặt món ngay
+                    </a>
+                </div>
+
+                <div id="historyList" class="d-grid gap-3 d-none"></div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="historyDetailModal" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <div>
+                            <div class="text-muted small">Chi tiết lịch sử</div>
+                            <h5 class="modal-title brand-font mb-0" id="historyDetailTitle">Đơn #</h5>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4" id="historyDetailBody"></div>
+                    <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">
+                            Đóng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:inline="javascript">
+            document.addEventListener('DOMContentLoaded', loadOrderHistory);
+
+            async function loadOrderHistory() {
+                const loading = document.getElementById('historyLoading');
+                const empty = document.getElementById('historyEmpty');
+                const list = document.getElementById('historyList');
+                const summary = document.getElementById('historySummary');
+
+                try {
+                    const orders = await MilkTeaApi.get('/api/v1/customer/order-history');
+                    loading.classList.add('d-none');
+
+                    if (!orders || orders.length === 0) {
+                        empty.classList.remove('d-none');
+                        list.classList.add('d-none');
+                        summary.classList.add('d-none');
+                        return;
+                    }
+
+                    renderSummary(orders);
+                    list.innerHTML = orders.map(renderHistoryCard).join('');
+                    summary.classList.remove('d-none');
+                    list.classList.remove('d-none');
+                    empty.classList.add('d-none');
+                } catch (e) {
+                    loading.classList.add('d-none');
+                    empty.classList.remove('d-none');
+                    MilkTeaApi.showToast(e.message || 'Không thể nạp lịch sử đơn hàng', 'error');
+                }
+            }
+
+            function renderSummary(orders) {
+                const completed = orders.filter(o => o.status === 'HOAN_THANH').length;
+                const total = orders
+                    .filter(o => o.status !== 'DA_HUY')
+                    .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+                document.getElementById('summaryTotalOrders').textContent = orders.length;
+                document.getElementById('summaryCompletedOrders').textContent = completed;
+                document.getElementById('summaryTotalAmount').textContent = MilkTeaApi.formatVND(total);
+            }
+
+            function renderHistoryCard(order) {
+                const firstItems = (order.items || []).slice(0, 2).map(it => `
+                    <div class="small text-muted">
+                        ${escapeHtml(it.productName)} · Size ${escapeHtml(it.size)} · x${it.quantity}
+                    </div>
+                `).join('');
+                const moreCount = Math.max((order.items || []).length - 2, 0);
+                return `
+                    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                        <div class="card-body p-3 p-md-4">
+                            <div class="d-flex flex-wrap justify-content-between gap-3 mb-3">
+                                <div>
+                                    <div class="fw-bold fs-5">Đơn #${order.orderId}</div>
+                                    <div class="text-muted small">${formatDateTime(order.createdAt)}</div>
+                                </div>
+                                <div>${order.cancellationPending ? getProcessingBadge() : getStatusBadge(order.status)}</div>
+                            </div>
+                            <div class="mb-3">
+                                ${firstItems || '<div class="small text-muted">Không có món trong đơn.</div>'}
+                                ${moreCount > 0 ? `<div class="small text-muted">+${moreCount} món khác</div>` : ''}
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top pt-3">
+                                <div>
+                                    <span class="text-muted small">Tổng thanh toán:</span>
+                                    <span class="fs-5 fw-bold product-price ms-1">${MilkTeaApi.formatVND(order.totalAmount || 0)}</span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="openHistoryDetail(${order.orderId})">
+                                    <i class="bi bi-eye me-1"></i> Chi tiết
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            async function openHistoryDetail(orderId) {
+                document.getElementById('historyDetailTitle').textContent = `Đơn #${orderId}`;
+                document.getElementById('historyDetailBody').innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-custom mb-2"></div>
+                        <p class="text-muted small mb-0">Đang nạp chi tiết đơn hàng...</p>
+                    </div>
+                `;
+                const modal = new bootstrap.Modal(document.getElementById('historyDetailModal'));
+                modal.show();
+
+                try {
+                    const order = await MilkTeaApi.get(`/api/v1/customer/orders/${orderId}`);
+                    renderHistoryDetail(order);
+                } catch (e) {
+                    document.getElementById('historyDetailBody').innerHTML = `
+                        <div class="alert alert-danger rounded-3 mb-0">${escapeHtml(e.message || 'Không thể nạp chi tiết')}</div>
+                    `;
+                }
+            }
+
+            function renderHistoryDetail(order) {
+                const itemsHtml = (order.items || []).map(it => `
+                    <div class="row align-items-center py-2 border-bottom">
+                        <div class="col-5">
+                            <div class="fw-semibold">${escapeHtml(it.productName)}</div>
+                            <div class="small text-muted">Size ${escapeHtml(it.size)} · ${MilkTeaApi.formatVND(it.unitPrice)}</div>
+                        </div>
+                        <div class="col-3 text-center fw-semibold">${it.quantity}</div>
+                        <div class="col-4 text-end fw-bold">${MilkTeaApi.formatVND(it.lineTotal)}</div>
+                    </div>
+                `).join('');
+
+                document.getElementById('historyDetailBody').innerHTML = `
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+                        <div class="fw-bold fs-5">ORD${String(order.orderId).padStart(3, '0')}</div>
+                        <div>${order.cancellationPending ? getProcessingBadge() : getStatusBadge(order.status)}</div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <div class="small text-muted fw-semibold">Khách hàng</div>
+                            <div class="fw-semibold">${escapeHtml(order.customerName || order.customerEmail || 'Khách hàng')}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="small text-muted fw-semibold">Bàn</div>
+                            <div class="fw-semibold">${escapeHtml(order.tableName || 'Không có')}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="small text-muted fw-semibold">Thời gian</div>
+                            <div class="fw-semibold">${formatDateTime(order.createdAt)}</div>
+                        </div>
+                    </div>
+                    <div class="px-2 mb-3">
+                        <div class="row fw-bold text-muted border-bottom pb-2">
+                            <div class="col-5">Tên món</div>
+                            <div class="col-3 text-center">Số lượng</div>
+                            <div class="col-4 text-end">Thành tiền</div>
+                        </div>
+                        ${itemsHtml || '<div class="text-muted small py-3">Không có món trong đơn.</div>'}
+                    </div>
+                    <div class="p-3 bg-light rounded-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Tạm tính:</span>
+                            <strong>${MilkTeaApi.formatVND(order.subtotal || 0)}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Giảm giá:</span>
+                            <strong class="text-danger">-${MilkTeaApi.formatVND(order.discountAmount || 0)}</strong>
+                        </div>
+                        <div class="border-top pt-3 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">Tổng thanh toán:</span>
+                            <span class="fs-4 fw-bold product-price">${MilkTeaApi.formatVND(order.totalAmount || 0)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function getStatusBadge(status) {
+                switch(status) {
+                    case 'CHO_THANH_TOAN':
+                        return `<span class="badge-status badge-CHO_XAC_NHAN"><i class="bi bi-wallet2"></i> Chờ Thanh Toán</span>`;
+                    case 'CHO_XAC_NHAN':
+                        return `<span class="badge-status badge-CHO_XAC_NHAN"><i class="bi bi-hourglass-split"></i> Chờ Xác Nhận</span>`;
+                    case 'CHO_CHE_BIEN':
+                        return `<span class="badge-status badge-CHO_CHE_BIEN"><i class="bi bi-clock"></i> Chờ Bếp</span>`;
+                    case 'DANG_CHE_BIEN':
+                        return `<span class="badge-status badge-DANG_CHE_BIEN"><i class="bi bi-fire"></i> Đang Chế Biến</span>`;
+                    case 'HOAN_THANH':
+                        return `<span class="badge-status badge-HOAN_THANH"><i class="bi bi-check2-circle"></i> Hoàn Thành</span>`;
+                    case 'DA_HUY':
+                        return `<span class="badge-status badge-DA_HUY"><i class="bi bi-x-circle"></i> Đã Hủy</span>`;
+                    default:
+                        return `<span class="badge bg-secondary">${escapeHtml(status)}</span>`;
+                }
+            }
+
+            function getProcessingBadge() {
+                return `<span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="bi bi-arrow-repeat me-1"></i> Đang xử lý</span>`;
+            }
+
+            function formatDateTime(value) {
+                if (!value) return '--';
+                return new Date(value).toLocaleString('vi-VN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+            }
+
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replaceAll('&', '&amp;')
+                    .replaceAll('<', '&lt;')
+                    .replaceAll('>', '&gt;')
+                    .replaceAll('"', '&quot;')
+                    .replaceAll("'", '&#039;');
+            }
+        </script>
+    </th:block>
+</body>
+</html>
