@@ -50,6 +50,7 @@ public class SecurityConfig {
                                 "/menu",
                                 "/cart",
                                 "/orders",
+                                "/order-history",
                                 "/login",
                                 "/error",
                                 "/static/**",

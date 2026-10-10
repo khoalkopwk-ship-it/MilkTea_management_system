@@ -46,6 +46,35 @@
             </div>
         </div>
 
+        <!-- Modal Chi Tiết Đơn Hàng -->
+        <div class="modal fade" id="orderDetailModal" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <div>
+                            <div class="text-muted small">Chi tiết đơn hàng</div>
+                            <h5 class="modal-title brand-font mb-0" id="detailOrderTitle">Đơn #</h5>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4" id="orderDetailBody">
+                        <div class="text-center py-4">
+                            <div class="spinner-border spinner-custom mb-2"></div>
+                            <p class="text-muted small mb-0">Đang nạp chi tiết đơn hàng...</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">
+                            Quay lại
+                        </button>
+                        <button type="button" id="detailCancelBtn" class="btn btn-outline-danger rounded-pill px-4 d-none" onclick="openCancelModalFromDetail()">
+                            Hủy đơn hàng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal Thanh Toán VietQR / Chuyển Khoản -->
         <div class="modal fade" id="paymentModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
@@ -106,7 +135,9 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                     <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title brand-font text-danger"><i class="bi bi-x-circle me-1"></i> Yêu Cầu Hủy Đơn Hàng</h5>
+                        <h5 class="modal-title brand-font text-danger">
+                            <span id="cancelModalTitle">YÊU CẦU HỦY ĐƠN</span>
+                        </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
 
@@ -114,10 +145,11 @@
                         <p class="text-muted small">Quý khách chỉ có thể yêu cầu hủy đơn khi Bếp chưa bắt đầu pha chế. Vui lòng cho biết lý do:</p>
                         <div class="mb-3">
                             <textarea id="cancelReasonInput" class="form-control rounded-3" rows="3" placeholder="Nhập lý do muốn hủy đơn..."></textarea>
+                            <div id="cancelReasonError" class="invalid-feedback">Vui lòng nhập lý do hủy đơn.</div>
                         </div>
                         <div class="d-grid gap-2">
-                            <button type="button" class="btn btn-danger rounded-pill py-2 fw-bold" onclick="submitCancelRequest()">
-                                Gửi Yêu Cầu Hủy
+                            <button type="button" id="confirmCancelBtn" class="btn btn-danger rounded-pill py-2 fw-bold" onclick="submitCancelRequest()">
+                                Xác nhận hủy
                             </button>
                             <button type="button" class="btn btn-light rounded-pill py-2" data-bs-dismiss="modal">
                                 Quay Lại
@@ -135,6 +167,7 @@
         <script th:inline="javascript">
             let currentPayOrderId = null;
             let currentCancelOrderId = null;
+            let currentDetailOrder = null;
             const bankName = /*[[${settings != null ? settings.bankName : 'Vietcombank'}]]*/ 'Vietcombank';
             const bankAcc = /*[[${settings != null ? settings.bankAccountNumber : '999988887777'}]]*/ '999988887777';
             const bankHolder = /*[[${settings != null ? settings.bankAccountHolder : 'QUAN TRA SUA MILKTEA'}]]*/ 'QUAN TRA SUA MILKTEA';
@@ -168,17 +201,17 @@
                     orders.forEach(order => {
                         const statusBadge = getStatusBadge(order.status);
                         const isPaid = order.paid === true;
-                        const canCancel = order.status === 'CHO_XAC_NHAN' || order.status === 'CHO_CHE_BIEN';
+                        const orderTime = formatDateTime(order.createdAt);
 
                         let itemsHtml = '';
                         (order.items || []).forEach(it => {
                             itemsHtml += `
                                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                                     <div>
-                                        <span class="fw-semibold">${it.productName}</span>
-                                        <span class="badge bg-light text-dark border ms-1 small">Size ${it.size}</span>
+                                        <span class="fw-semibold">${escapeHtml(it.productName)}</span>
+                                        <span class="badge bg-light text-dark border ms-1 small">Size ${escapeHtml(it.size)}</span>
                                         <span class="text-muted small ms-2">x${it.quantity}</span>
-                                        ${it.note ? `<div class="small text-muted fst-italic">${it.note}</div>` : ''}
+                                        ${it.note ? `<div class="small text-muted fst-italic">${escapeHtml(it.note)}</div>` : ''}
                                     </div>
                                     <span class="fw-semibold text-end">${MilkTeaApi.formatVND(it.lineTotal)}</span>
                                 </div>
@@ -190,10 +223,10 @@
                                 <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center border-bottom">
                                     <div>
                                         <span class="fw-bold fs-6 me-2">Đơn #${order.orderId}</span>
-                                        <span class="text-muted small">${new Date(order.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span class="text-muted small">${orderTime}</span>
                                     </div>
                                     <div>
-                                        ${statusBadge}
+                                        ${order.cancellationPending ? getProcessingBadge() : statusBadge}
                                     </div>
                                 </div>
 
@@ -209,16 +242,14 @@
                                         <div class="d-flex align-items-center gap-2">
                                             ${isPaid 
                                                 ? `<span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle me-1"></i>Đã thanh toán</span>` 
-                                                : `<button type="button" class="btn btn-sm btn-primary-custom rounded-pill px-3" onclick="openPaymentModal(${order.orderId}, ${order.totalAmount})">
+                                                : `<button type="button" class="btn btn-sm btn-primary-custom rounded-pill px-3" onclick="event.stopPropagation(); openPaymentModal(${order.orderId}, ${order.totalAmount})">
                                                     <i class="bi bi-qr-code me-1"></i> Thanh Toán
                                                    </button>`
                                             }
 
-                                            ${canCancel ? `
-                                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="openCancelModal(${order.orderId})">
-                                                    Hủy đơn
-                                                </button>
-                                            ` : ''}
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="openOrderDetail(${order.orderId})">
+                                                <i class="bi bi-eye me-1"></i> Chi tiết
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -235,8 +266,45 @@
                 }
             }
 
+            function canCancelOrder(order) {
+                return !order.cancellationPending && ['CHO_THANH_TOAN', 'CHO_XAC_NHAN', 'CHO_CHE_BIEN'].includes(order.status);
+            }
+
+            function formatDateTime(value) {
+                if (!value) return '--';
+                return new Date(value).toLocaleString('vi-VN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+            }
+
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replaceAll('&', '&amp;')
+                    .replaceAll('<', '&lt;')
+                    .replaceAll('>', '&gt;')
+                    .replaceAll('"', '&quot;')
+                    .replaceAll("'", '&#039;');
+            }
+
+            function paymentMethodLabel(method) {
+                switch (method) {
+                    case 'CASH':
+                        return 'Tiền mặt';
+                    case 'BANK_TRANSFER':
+                        return 'Chuyển khoản';
+                    default:
+                        return method || 'Chưa có';
+                }
+            }
+
             function getStatusBadge(status) {
                 switch(status) {
+                    case 'CHO_THANH_TOAN':
+                        return `<span class="badge-status badge-CHO_XAC_NHAN"><i class="bi bi-wallet2"></i> Chờ Thanh Toán</span>`;
                     case 'CHO_XAC_NHAN':
                         return `<span class="badge-status badge-CHO_XAC_NHAN"><i class="bi bi-hourglass-split"></i> Chờ Thu Ngân Xác Nhận</span>`;
                     case 'CHO_CHE_BIEN':
@@ -250,6 +318,145 @@
                     default:
                         return `<span class="badge bg-secondary">${status}</span>`;
                 }
+            }
+
+            function getProcessingBadge() {
+                return `<span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="bi bi-arrow-repeat me-1"></i> Đang xử lý</span>`;
+            }
+
+            async function openOrderDetail(orderId) {
+                currentDetailOrder = null;
+                currentCancelOrderId = null;
+                document.getElementById('detailOrderTitle').textContent = `Đơn #${orderId}`;
+                document.getElementById('detailCancelBtn').classList.add('d-none');
+                document.getElementById('orderDetailBody').innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-custom mb-2"></div>
+                        <p class="text-muted small mb-0">Đang nạp chi tiết đơn hàng...</p>
+                    </div>
+                `;
+
+                const modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+                modal.show();
+
+                try {
+                    const order = await MilkTeaApi.get(`/api/v1/customer/orders/${orderId}`);
+                    currentDetailOrder = order;
+                    currentCancelOrderId = order.orderId;
+                    renderOrderDetail(order);
+                } catch (e) {
+                    document.getElementById('orderDetailBody').innerHTML = `
+                        <div class="alert alert-danger rounded-3 mb-0">
+                            ${escapeHtml(e.message || 'Không thể nạp chi tiết đơn hàng')}
+                        </div>
+                    `;
+                }
+            }
+
+            function renderOrderDetail(order) {
+                document.getElementById('detailOrderTitle').textContent = `Đơn #${order.orderId}`;
+                const cancelBtn = document.getElementById('detailCancelBtn');
+                if (canCancelOrder(order)) {
+                    cancelBtn.classList.remove('d-none');
+                } else {
+                    cancelBtn.classList.add('d-none');
+                }
+
+                const items = order.items || [];
+                const itemsHtml = items.map(it => `
+                    <div class="row align-items-center py-2 border-bottom">
+                        <div class="col-5">
+                            <div class="fw-semibold">${escapeHtml(it.productName)}</div>
+                            <div class="small text-muted">Size ${escapeHtml(it.size)} · ${MilkTeaApi.formatVND(it.unitPrice)}</div>
+                        </div>
+                        <div class="col-3 text-center fw-semibold">${it.quantity}</div>
+                        <div class="col-4 text-end fw-bold">${MilkTeaApi.formatVND(it.lineTotal)}</div>
+                    </div>
+                `).join('');
+                const notes = items
+                    .filter(it => it.note)
+                    .map(it => `${it.productName}: ${it.note}`)
+                    .join('\n');
+
+                document.getElementById('orderDetailBody').innerHTML = `
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
+                        <div class="fw-bold fs-5">Chi tiết đơn hàng: <span class="ms-2">ORD${String(order.orderId).padStart(3, '0')}</span></div>
+                        <div>${order.cancellationPending ? getProcessingBadge() : getStatusBadge(order.status)}</div>
+                    </div>
+
+                    <h5 class="brand-font text-center mb-3">Thông tin chung</h5>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="p-3 h-100">
+                                <div class="small text-muted fw-semibold">Tên khách hàng:</div>
+                                <div class="fw-semibold">${escapeHtml(order.customerName || order.customerEmail || 'Khách hàng')}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 h-100">
+                                <div class="small text-muted fw-semibold">Bàn:</div>
+                                <div class="fw-semibold">${escapeHtml(order.tableName || 'Không có')}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 h-100">
+                                <div class="small text-muted fw-semibold">Thời gian:</div>
+                                <div class="fw-semibold">${formatDateTime(order.createdAt)}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 h-100">
+                                <div class="small text-muted fw-semibold">Phương thức thanh toán:</div>
+                                <div class="fw-semibold">${escapeHtml(paymentMethodLabel(order.paymentMethod))}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-2 mb-3">
+                        <div class="row fw-bold text-muted border-bottom pb-2">
+                            <div class="col-5">Tên món</div>
+                            <div class="col-3 text-center">Số lượng</div>
+                            <div class="col-4 text-end">Thành tiền</div>
+                        </div>
+                        ${itemsHtml || `<div class="text-muted small py-3">Không có món trong đơn.</div>`}
+                    </div>
+
+                    <div class="row g-4 align-items-start">
+                        <div class="col-md-5">
+                            <div class="fw-bold mb-2">Ghi chú:</div>
+                            <div class="border rounded-3 p-3 bg-white text-muted small" style="min-height: 120px; white-space: pre-line;">
+                                ${notes ? escapeHtml(notes) : 'Không có ghi chú'}
+                            </div>
+                        </div>
+                        <div class="col-md-7">
+                            <div class="p-3 bg-light rounded-4">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Tạm tính:</span>
+                                    <strong>${MilkTeaApi.formatVND(order.subtotal || 0)}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Giảm giá:</span>
+                                    <strong class="text-danger">-${MilkTeaApi.formatVND(order.discountAmount || 0)}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Phụ thu/ Ghi chú:</span>
+                                    <strong>${MilkTeaApi.formatVND(order.surchargeAmount || 0)}</strong>
+                                </div>
+                                <div class="border-top pt-3 d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold">Tổng thanh toán:</span>
+                                    <span class="fs-4 fw-bold product-price">${MilkTeaApi.formatVND(order.totalAmount || 0)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function openCancelModalFromDetail() {
+                if (!currentDetailOrder) return;
+                const detailModal = bootstrap.Modal.getInstance(document.getElementById('orderDetailModal'));
+                if (detailModal) detailModal.hide();
+                openCancelModal(currentDetailOrder.orderId);
             }
 
             function openPaymentModal(orderId, amount) {
@@ -285,28 +492,47 @@
 
             function openCancelModal(orderId) {
                 currentCancelOrderId = orderId;
-                document.getElementById('cancelReasonInput').value = '';
+                const input = document.getElementById('cancelReasonInput');
+                input.value = '';
+                input.classList.remove('is-invalid');
+                document.getElementById('cancelModalTitle').textContent = `YÊU CẦU HỦY ĐƠN #${orderId}`;
+                const btn = document.getElementById('confirmCancelBtn');
+                btn.disabled = false;
+                btn.innerHTML = 'Xác nhận hủy';
                 const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
                 modal.show();
             }
 
             async function submitCancelRequest() {
                 if (!currentCancelOrderId) return;
-                const reason = document.getElementById('cancelReasonInput').value.trim();
+                const input = document.getElementById('cancelReasonInput');
+                const reason = input.value.trim();
                 if (!reason) {
-                    MilkTeaApi.showToast('Vui lòng nhập lý do hủy đơn', 'warning');
+                    input.classList.add('is-invalid');
+                    input.focus();
                     return;
                 }
+                input.classList.remove('is-invalid');
 
+                const btn = document.getElementById('confirmCancelBtn');
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Đang gửi...`;
                 try {
-                    await MilkTeaApi.post(`/api/v1/orders/${currentCancelOrderId}/cancellations`, { reason });
-                    MilkTeaApi.showToast('Đã gửi yêu cầu hủy đơn tới Thu ngân', 'success');
+                    await MilkTeaApi.post(`/api/v1/customer/orders/${currentCancelOrderId}/cancellation-requests`, { reason });
+                    MilkTeaApi.showToast('Đã gửi yêu cầu hủy đơn, trạng thái đang xử lý', 'success');
                     const modalEl = document.getElementById('cancelModal');
                     const modal = bootstrap.Modal.getInstance(modalEl);
                     if (modal) modal.hide();
+                    if (currentDetailOrder && currentDetailOrder.orderId === currentCancelOrderId) {
+                        currentDetailOrder.cancellationPending = true;
+                        renderOrderDetail(currentDetailOrder);
+                    }
                     loadOrdersList();
                 } catch (e) {
                     MilkTeaApi.showToast(e.message || 'Không thể yêu cầu hủy đơn', 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Xác nhận hủy';
                 }
             }
         </script>

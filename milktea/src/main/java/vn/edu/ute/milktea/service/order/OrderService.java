@@ -10,6 +10,7 @@ import vn.edu.ute.milktea.dto.OrderDto;
 import vn.edu.ute.milktea.entity.account.Account;
 import vn.edu.ute.milktea.entity.audit.BusinessAudit;
 import vn.edu.ute.milktea.entity.catalog.Product;
+import vn.edu.ute.milktea.entity.cancellation.CancellationStatus;
 import vn.edu.ute.milktea.entity.order.*;
 import vn.edu.ute.milktea.entity.recipe.ProductRecipe;
 import vn.edu.ute.milktea.entity.settings.GlobalSettings;
@@ -502,6 +503,8 @@ public class OrderService {
             Order order, Invoice invoice, List<OrderItem> items, String tableToken, String counterToken) {
 
         boolean isPaid = invoice != null && paymentRepository.existsByInvoiceId(invoice.getId());
+        var payment = invoice != null ? paymentRepository.findByInvoiceId(invoice.getId()).orElse(null) : null;
+        Account customer = order.getAccount();
 
         List<OrderDto.OrderItemResponse> itemResponses = items.stream().map(it ->
                 OrderDto.OrderItemResponse.builder()
@@ -523,12 +526,17 @@ public class OrderService {
                 .tableName(order.getSession() != null ? order.getSession().getTable().getName() : null)
                 .source(order.getSource())
                 .status(order.getStatus())
+                .customerName(customer != null ? customer.getFullName() : null)
+                .customerEmail(customer != null ? customer.getEmail() : null)
                 .subtotal(invoice != null ? invoice.getSubtotal() : BigDecimal.ZERO)
                 .discountAmount(invoice != null ? invoice.getDiscountAmount() : BigDecimal.ZERO)
+                .surchargeAmount(BigDecimal.ZERO)
                 .totalAmount(invoice != null ? invoice.getTotalAmount() : BigDecimal.ZERO)
                 .discountPercent(invoice != null ? invoice.getSnapshotDiscountPercent() : BigDecimal.ZERO)
                 .invoiceId(invoice != null ? invoice.getId() : null)
                 .invoiceStatus(invoice != null ? invoice.getStatus() : null)
+                .paymentMethod(payment != null ? payment.getMethod().name() : null)
+                .cancellationPending(cancellationRepository.findFirstByOrderIdAndStatus(order.getId(), CancellationStatus.CHO).isPresent())
                 .paid(isPaid)
                 .items(itemResponses)
                 .createdAt(order.getCreatedAt())
@@ -552,6 +560,42 @@ public class OrderService {
             orders = orderRepository.findBySessionId(actor.getSessionId());
         }
         return orders.stream().map(this::mapOrderToResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderDto.OrderResponse> getOrderHistoryForCustomerAccount(CurrentActor actor) {
+        if (actor == null || actor.getAccountId() == null) {
+            throw BusinessException.unauthorized(ErrorCode.ACCESS_DENIED, "Vui lòng đăng nhập để xem lịch sử đơn hàng");
+        }
+        return orderRepository.findByAccountIdOrderByCreatedAtDesc(actor.getAccountId())
+                .stream()
+                .map(this::mapOrderToResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderDto.OrderResponse getOrderForCustomer(Long orderId, CurrentActor actor) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
+
+        if (actor == null) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem đơn hàng này");
+        }
+
+        boolean allowed = false;
+        if (actor.getAccountId() != null && order.getAccount() != null) {
+            allowed = actor.getAccountId().equals(order.getAccount().getId());
+        } else if (actor.getSessionId() != null && order.getSession() != null) {
+            allowed = actor.getSessionId().equals(order.getSession().getId());
+        } else if (actor.getOrderId() != null) {
+            allowed = actor.getOrderId().equals(order.getId());
+        }
+
+        if (!allowed) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem đơn hàng này");
+        }
+
+        return mapOrderToResponse(order);
     }
 
     @Transactional(readOnly = true)

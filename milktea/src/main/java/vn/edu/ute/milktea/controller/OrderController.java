@@ -46,6 +46,20 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.ok(orderService.getOrdersForCustomer(actor)));
     }
 
+    @GetMapping("/customer/order-history")
+    public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getCustomerOrderHistory(HttpServletRequest request) {
+        CurrentActor actor = (CurrentActor) request.getAttribute(JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
+        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrderHistoryForCustomerAccount(actor)));
+    }
+
+    @GetMapping("/customer/orders/{id}")
+    public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> getCustomerOrder(
+            @PathVariable("id") Long orderId,
+            HttpServletRequest request) {
+        CurrentActor actor = (CurrentActor) request.getAttribute(JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
+        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrderForCustomer(orderId, actor)));
+    }
+
     @GetMapping("/cashier/orders")
     public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getCashierOrders(
             @RequestParam(value = "status", required = false) vn.edu.ute.milktea.entity.order.OrderStatus status) {
