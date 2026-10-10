@@ -89,6 +89,7 @@ public class InventoryService {
                     .sourceId(order.getId())
                     .sourceLine(matId)
                     .createdBy(kitchenAccount)
+                    .createdAt(Instant.now())
                     .build();
             movements.add(movement);
         }
