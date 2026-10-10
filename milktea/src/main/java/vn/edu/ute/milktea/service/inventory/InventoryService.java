@@ -89,8 +89,6 @@ public class InventoryService {
                     .sourceId(order.getId())
                     .sourceLine(matId)
                     .createdBy(kitchenAccount)
-                    .createdAt(Instant.now())
-                    .reason("Tiêu hao đơn hàng #" + order.getId())
                     .build();
             movements.add(movement);
         }
@@ -233,10 +231,67 @@ public class InventoryService {
         realtimeEventPublisher.publishAfterCommit("/topic/admin", "STOCK_CHANGED", issue.getId().toString(), null, "1", java.util.Map.of("action", "ISSUE"));
     }
 
-    @Transactional
-    public void recordPreparation(InventoryDto.CreatePreparationBatchRequest request, Account kitchenAccount) {
-        PreparationRecipe recipe = recipeRepository.findById(request.getRecipeId())
-                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Công thức sơ chế không tồn tại: ID " + request.getRecipeId()));
+    
+        @Transactional
+        public void recordPreparation(
+                InventoryDto.CreatePreparationBatchRequest request,
+                Account kitchenAccount) {
+        recordPreparation(request, kitchenAccount, null);
+        }
+
+        @Transactional
+        public void recordPreparation(
+                InventoryDto.CreatePreparationBatchRequest request,
+                Account kitchenAccount,
+                String key) {
+
+        if (kitchenAccount == null) {
+                throw BusinessException.forbidden(
+                        ErrorCode.ACCESS_DENIED,
+                        "Bạn chưa đăng nhập");
+        }
+
+        if (key != null && key.length() > 64) {
+                throw BusinessException.badRequest(
+                        ErrorCode.VALIDATION_FAILED,
+                        "Mã yêu cầu quá dài");
+        }
+
+        String requestKey = (key == null || key.isBlank())
+                ? UUID.randomUUID().toString()
+                : key;
+
+        accountRepository.findByIdWithLock(kitchenAccount.getId())
+                .orElseThrow();
+
+        var existing = batchRepository.findByIdempotencyKey(requestKey);
+
+        if (existing.isPresent()) {
+                PreparationBatch old = existing.get();
+
+                boolean same =
+                        old.getCreatedBy().getId().equals(kitchenAccount.getId())
+                        && old.getRecipe().getId().equals(request.getRecipeId())
+                        && old.getActualQuantity().compareTo(request.getActualQuantity()) == 0
+                        && Objects.equals(
+                                old.getDiscrepancyReason(),
+                                request.getDiscrepancyReason());
+
+                if (!same) {
+                throw BusinessException.conflict(
+                        ErrorCode.IDEMPOTENCY_CONFLICT,
+                        "Mã yêu cầu đã được sử dụng cho mẻ khác");
+                }
+
+                return;
+        }
+
+        PreparationRecipe recipe = recipeRepository
+                .findById(request.getRecipeId())
+                .orElseThrow(() -> BusinessException.notFound(
+                        ErrorCode.VALIDATION_FAILED,
+                        "Công thức sơ chế không tồn tại: ID " + request.getRecipeId()
+                ));
 
         List<PreparationRecipeItem> recipeItems = recipeItemRepository.findByIdRecipeId(recipe.getId());
         if (recipeItems.isEmpty()) {
@@ -252,6 +307,7 @@ public class InventoryService {
                 .discrepancyReason(request.getDiscrepancyReason())
                 .createdBy(kitchenAccount)
                 .postedAt(Instant.now())
+                .idempotencyKey(requestKey)
                 .build();
         batch = batchRepository.save(batch);
 

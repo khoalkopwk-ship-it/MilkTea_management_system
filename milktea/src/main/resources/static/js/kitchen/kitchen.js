@@ -12,6 +12,9 @@ const KitchenApp = (() => {
     let issuing = false;
     let issuingKey = null;
     let issuingFingerprint = null;
+    let preparing = false;
+    let preparationKey = null;
+    let preparationFingerprint = null;
 
     async function init() {
         window.MilkTeaContext = { role: 'KITCHEN' };
@@ -164,23 +167,81 @@ const KitchenApp = (() => {
             document.getElementById('kitchenIssueDate').value=new Date().toLocaleDateString('vi-VN');
         }catch(e){MilkTeaApi.showToast(e.message,'error');}
     }
+
     async function submitIssue() {
-        if(issuing)return;
-        const form=document.getElementById('kitchenIssueForm');if(!form.reportValidity())return;
-        const materialId=document.getElementById('kitchenIssueMaterial').value;
-        const quantity=document.getElementById('kitchenIssueQty').value;
-        if(!materialId || !Number.isFinite(Number(quantity)) || Number(quantity)<=0)return;
-        issuing=true;document.getElementById('kitchenIssueSubmit').disabled=true;
+        if (issuing) return;
+
+        const form = document.getElementById('kitchenIssueForm');
+        if (!form.reportValidity()) return;
+
+        const materialId = Number(
+            document.getElementById('kitchenIssueMaterial').value
+        );
+
+        const quantity = Number(
+            document.getElementById('kitchenIssueQty').value
+        );
+
+        if (!Number.isInteger(materialId) || materialId <= 0 ||
+            !Number.isFinite(quantity) || quantity <= 0) {
+            MilkTeaApi.showToast(
+                'Vui lòng chọn nguyên liệu và nhập số lượng hợp lệ',
+                'warning'
+            );
+            return;
+        }
+
+        issuing = true;
+
+        const submitBtn = document.getElementById('kitchenIssueSubmit');
+        submitBtn.disabled = true;
+
         try {
-            const fingerprint=materialId + ':' + quantity;
-            if(issuingFingerprint!==fingerprint){issuingFingerprint=fingerprint;issuingKey=crypto.randomUUID();}
-            await MilkTeaApi.post('/api/v1/inventory/issues',{reason:'Bếp lấy nguyên liệu',items:[{materialId,quantity}]},{'Idempotency-Key':issuingKey});
-            issuingKey=null;issuingFingerprint=null;
-            document.getElementById('kitchenIssueResult').textContent='Đã ghi phiếu, chuyển nguyên liệu sang bếp và thông báo Admin.';
-            document.getElementById('kitchenIssueQty').value='';
-            await loadStock();await loadIssueMaterials();
-        }catch(e){MilkTeaApi.showToast(e.message,'error');}
-        finally{issuing=false;document.getElementById('kitchenIssueSubmit').disabled=false;}
+            const payload = {
+                reason: 'Bếp lấy nguyên liệu',
+                items: [{
+                    materialId: materialId,
+                    quantity: quantity
+                }]
+            };
+
+            const fingerprint = JSON.stringify(payload);
+
+            if (issuingFingerprint !== fingerprint || !issuingKey) {
+                issuingFingerprint = fingerprint;
+                issuingKey = crypto.randomUUID();
+            }
+
+            await MilkTeaApi.post(
+                '/api/v1/inventory/issues',
+                payload,
+                { 'Idempotency-Key': issuingKey }
+            );
+
+            // Chỉ xóa mã khi server xác nhận thành công
+            issuingKey = null;
+            issuingFingerprint = null;
+
+            document.getElementById('kitchenIssueResult').textContent =
+                'Đã ghi phiếu, chuyển nguyên liệu sang bếp và thông báo Admin.';
+
+            document.getElementById('kitchenIssueQty').value = '';
+
+            // Cập nhật tồn Bếp và danh sách nguyên liệu Kho
+            await Promise.all([
+                loadStock(),
+                loadIssueMaterials()
+            ]);
+
+        } catch (e) {
+            MilkTeaApi.showToast(
+                e.message || 'Không thể lập phiếu lấy nguyên liệu',
+                'error'
+            );
+        } finally {
+            issuing = false;
+            submitBtn.disabled = false;
+        }
     }
 
     // Modal Sự Cố
@@ -217,7 +278,7 @@ const KitchenApp = (() => {
         const select = document.getElementById('remakeMaterialSelect');
         select.innerHTML = '';
         bepStock.forEach(s => {
-            select.innerHTML += `<option value="${s.materialId}">${s.materialName} (Tồn Bếp: ${s.stockBep} ${s.unit})</option>`;
+            select.innerHTML += `<option value="${s.materialId}">${s.materialName} (Tồn Bếp: ${s.quantity} ${s.unit})</option>`;
         });
         const modal = new bootstrap.Modal(document.getElementById('remakeModal'));
         modal.show();
@@ -247,7 +308,9 @@ const KitchenApp = (() => {
     // Tab Tồn Kho Bếp & Sơ Chế
     async function loadStock() {
         try {
-            const stock = await MilkTeaApi.get('/api/v1/inventory/stock');
+            const stock = await MilkTeaApi.get(
+                '/api/v1/inventory/stocks?location=BEP'
+            );
             bepStock = stock || [];
             renderStockTable();
         } catch (e) {
@@ -255,31 +318,50 @@ const KitchenApp = (() => {
         }
     }
 
+    
     function renderStockTable() {
         const tbody = document.getElementById('bepStockTableBody');
         if (!tbody) return;
 
         let html = '';
+
         bepStock.forEach(s => {
-            const isAlert = s.lowStockAlert;
+            const isAlert = s.lowStock;
+
             html += `
                 <tr class="${isAlert ? 'table-warning' : ''}">
                     <td class="fw-semibold">${s.materialName}</td>
-                    <td><span class="badge ${s.materialType === 'THO' ? 'bg-secondary' : 'bg-primary'}">${s.materialType}</span></td>
-                    <td class="fw-bold">${s.stockBep} ${s.unit}</td>
-                    <td class="text-muted">${s.minThreshold} ${s.unit}</td>
                     <td>
-                        ${isAlert ? '<span class="badge bg-danger">Sắp hết hàng!</span>' : '<span class="badge bg-success">Đủ dùng</span>'}
+                        <span class="badge ${s.type === 'THO' ? 'bg-secondary' : 'bg-primary'}">
+                            ${s.type}
+                        </span>
+                    </td>
+                    <td class="fw-bold">${s.quantity} ${s.unit}</td>
+                    <td class="text-muted">${s.threshold} ${s.unit}</td>
+                    <td>
+                        ${isAlert
+                            ? '<span class="badge bg-danger">Sắp hết hàng!</span>'
+                            : '<span class="badge bg-success">Đủ dùng</span>'}
                     </td>
                 </tr>
             `;
         });
-        tbody.innerHTML = html;
+
+        tbody.innerHTML = html || `
+            <tr>
+                <td colspan="5" class="text-center text-muted">
+                    Chưa có dữ liệu tồn kho tại Bếp
+                </td>
+            </tr>
+        `;
     }
+
 
     async function loadPrepRecipes() {
         try {
-            const recipes = await MilkTeaApi.get('/api/v1/admin/recipes/preparations');
+            const recipes = await MilkTeaApi.get(
+                '/api/v1/inventory/preparation-recipes'
+            );
             prepRecipes = recipes || [];
             const select = document.getElementById('prepRecipeSelect');
             if (select) {
@@ -293,28 +375,72 @@ const KitchenApp = (() => {
         }
     }
 
+    
     async function submitPreparation() {
+        if (preparing) return;
+
         const recipeId = document.getElementById('prepRecipeSelect').value;
-        const actualQty = parseFloat(document.getElementById('prepActualQty').value);
+        const actualQty = Number(document.getElementById('prepActualQty').value);
         const reason = document.getElementById('prepReason').value.trim();
 
-        if (!recipeId || !actualQty || actualQty <= 0) {
-            MilkTeaApi.showToast('Vui lòng chọn công thức và nhập sản lượng thực tế', 'warning');
+        if (!recipeId || !Number.isFinite(actualQty) || actualQty <= 0) {
+            MilkTeaApi.showToast(
+                'Vui lòng chọn công thức và nhập sản lượng hợp lệ',
+                'warning'
+            );
             return;
         }
 
+        const payload = {
+            recipeId: Number(recipeId),
+            actualQuantity: actualQty,
+            discrepancyReason: reason
+        };
+
+        const fingerprint = JSON.stringify(payload);
+
+        // Cùng một thao tác sẽ giữ nguyên mã khi thử gửi lại.
+        if (!preparationKey || preparationFingerprint !== fingerprint) {
+            preparationKey = crypto.randomUUID();
+            preparationFingerprint = fingerprint;
+        }
+
+        preparing = true;
+
+        const button = document.querySelector(
+            '[onclick="KitchenApp.submitPreparation()"]'
+        );
+
+        if (button) button.disabled = true;
+
         try {
-            await MilkTeaApi.post('/api/v1/inventory/preparations', {
-                recipeId: parseInt(recipeId),
-                actualQuantity: actualQty,
-                discrepancyReason: reason
-            });
-            MilkTeaApi.showToast('Thực hiện mẻ sơ chế thành công! Tồn Bếp đã được cập nhật.', 'success');
+            await MilkTeaApi.post(
+                '/api/v1/inventory/preparation-batches',
+                payload,
+                { 'Idempotency-Key': preparationKey }
+            );
+
+            MilkTeaApi.showToast(
+                'Đã ghi nhận mẻ sơ chế thành công!',
+                'success'
+            );
+
+            preparationKey = null;
+            preparationFingerprint = null;
+
             document.getElementById('prepActualQty').value = '';
             document.getElementById('prepReason').value = '';
+
             await loadStock();
+
         } catch (e) {
-            MilkTeaApi.showToast(e.message || 'Lỗi thực hiện sơ chế (Kiểm tra lại tồn nguyên liệu thô tại Bếp)', 'error');
+            MilkTeaApi.showToast(
+                e.message || 'Không thể ghi nhận mẻ sơ chế',
+                'error'
+            );
+        } finally {
+            preparing = false;
+            if (button) button.disabled = false;
         }
     }
 

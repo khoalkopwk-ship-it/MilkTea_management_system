@@ -211,36 +211,93 @@
                 loadStockData();
             });
 
-            async function loadStockData() {
-                try {
-                    const stock = await MilkTeaApi.get('/api/v1/inventory/stock');
-                    const tbody = document.getElementById('inventoryStockBody');
-                    let html = '';
-                    (stock || []).forEach(s => {
-                        html += `
-                            <tr class="${s.lowStockAlert ? 'table-warning' : ''}">
-                                <td class="fw-bold">${s.materialName}</td>
-                                <td><span class="badge ${s.materialType === 'THO' ? 'bg-secondary' : 'bg-primary'}">${s.materialType}</span></td>
-                                <td class="text-primary fw-bold">${s.stockKho} ${s.unit}</td>
-                                <td class="text-success fw-bold">${s.stockBep} ${s.unit}</td>
-                                <td class="fw-bold">${s.totalStock} ${s.unit}</td>
-                                <td class="text-muted">${s.minThreshold} ${s.unit}</td>
-                                <td>
-                                    ${s.lowStockAlert ? '<span class="badge bg-danger">Sắp hết hàng!</span>' : '<span class="badge bg-success">An toàn</span>'}
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm btn-link text-primary p-0" onclick="promptThreshold(${s.materialId}, '${s.materialName}', ${s.minThreshold})">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                    tbody.innerHTML = html;
-                } catch (e) {
-                    console.warn(e);
-                }
-            }
+            
+async function loadStockData() {
+    try {
+        const [kho, bep] = await Promise.all([
+            MilkTeaApi.get('/api/v1/inventory/stocks?location=KHO'),
+            MilkTeaApi.get('/api/v1/inventory/stocks?location=BEP')
+        ]);
+
+        const stockMap = new Map();
+
+        (kho || []).forEach(s => {
+            stockMap.set(s.materialId, {
+                materialId: s.materialId,
+                materialName: s.materialName,
+                materialType: s.type,
+                unit: s.unit,
+                stockKho: Number(s.quantity || 0),
+                stockBep: 0,
+                minThreshold: Number(s.threshold || 0),
+                lowStockAlert: Boolean(s.lowStock)
+            });
+        });
+
+        (bep || []).forEach(s => {
+            const item = stockMap.get(s.materialId) || {
+                materialId: s.materialId,
+                materialName: s.materialName,
+                materialType: s.type,
+                unit: s.unit,
+                stockKho: 0,
+                stockBep: 0,
+                minThreshold: 0,
+                lowStockAlert: false
+            };
+
+            item.stockBep = Number(s.quantity || 0);
+            item.lowStockAlert = item.lowStockAlert || Boolean(s.lowStock);
+
+            stockMap.set(s.materialId, item);
+        });
+
+        const tbody = document.getElementById('inventoryStockBody');
+        let html = '';
+
+        stockMap.forEach(s => {
+            const totalStock = s.stockKho + s.stockBep;
+
+            html += `
+                <tr class="${s.lowStockAlert ? 'table-warning' : ''}">
+                    <td class="fw-bold">${s.materialName}</td>
+                    <td>
+                        <span class="badge ${s.materialType === 'THO' ? 'bg-secondary' : 'bg-primary'}">
+                            ${s.materialType}
+                        </span>
+                    </td>
+                    <td class="text-primary fw-bold">${s.stockKho} ${s.unit}</td>
+                    <td class="text-success fw-bold">${s.stockBep} ${s.unit}</td>
+                    <td class="fw-bold">${totalStock} ${s.unit}</td>
+                    <td class="text-muted">${s.minThreshold} ${s.unit}</td>
+                    <td>
+                        ${s.lowStockAlert
+                            ? '<span class="badge bg-danger">Sắp hết hàng!</span>'
+                            : '<span class="badge bg-success">An toàn</span>'}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-link text-primary p-0"
+                            onclick="promptThreshold(${s.materialId}, '${s.materialName}', ${s.minThreshold})">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html || `
+            <tr>
+                <td colspan="8" class="text-center text-muted">
+                    Chưa có dữ liệu tồn kho
+                </td>
+            </tr>
+        `;
+
+    } catch (e) {
+        console.error('Lỗi tải dữ liệu tồn kho:', e);
+    }
+}
+
 
             function promptThreshold(matId, name, cur) {
                 const val = prompt(`Nhập ngưỡng cảnh báo tồn tối thiểu mới cho [${name}]:`, cur);

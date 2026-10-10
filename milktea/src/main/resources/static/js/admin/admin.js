@@ -172,18 +172,47 @@ const AdminApp = (() => {
         }
     }
 
-    async function updateThreshold(materialId, location, threshold) {
-        try {
-            await MilkTeaApi.put('/api/v1/admin/materials/thresholds', {
-                materialId: parseInt(materialId),
-                location: location,
-                minThreshold: parseFloat(threshold)
-            });
-            MilkTeaApi.showToast('Cập nhật ngưỡng cảnh báo tồn tối thiểu thành công!', 'success');
+    
+async function updateThreshold(materialId, location, threshold) {
+    const value = Number(threshold);
+
+    if (!Number.isFinite(value) || value < 0) {
+        MilkTeaApi.showToast(
+            'Ngưỡng tồn phải là số không âm',
+            'warning'
+        );
+        return;
+    }
+
+    try {
+        await MilkTeaApi.put(
+            '/api/v1/inventory/stocks/threshold',
+            {
+                    materialId: Number(materialId),
+                    location: location,
+                    threshold: value
+                }
+            );
+
+            MilkTeaApi.showToast(
+                'Cập nhật ngưỡng cảnh báo thành công!',
+                'success'
+            );
+
+            if (typeof loadStockData === 'function') {
+                await loadStockData();
+            } else {
+                window.location.reload();
+            }
+
         } catch (e) {
-            MilkTeaApi.showToast(e.message || 'Lỗi cập nhật ngưỡng tồn', 'error');
+            MilkTeaApi.showToast(
+                e.message || 'Không thể cập nhật ngưỡng tồn',
+                'error'
+            );
         }
     }
+
 
     // === 6. BÁO CÁO TÀI CHÍNH 4 CHỈ SỐ ===
     async function loadRevenueReport(startDate, endDate) {
