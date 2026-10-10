@@ -72,7 +72,10 @@ public class StaffPageController {
         model.addAttribute("settings", settings);
         model.addAttribute("actor", actor);
         model.addAttribute("categories", categoryRepository.findAll());
-        model.addAttribute("products", productRepository.findAll());
+        model.addAttribute(
+            "products",
+            productRepository.findAllByOrderByIdAsc()
+        );
         model.addAttribute("materials", materialRepository.findAllByActiveTrue());
         return "admin/catalog";
     }

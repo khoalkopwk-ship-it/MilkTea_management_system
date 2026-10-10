@@ -78,7 +78,7 @@
                                         <strong class="d-block" th:text="${p.name}">Trà Sữa</strong>
                                         <small class="text-muted" th:text="${p.description}">Mô tả</small>
                                     </td>
-                                    <td><span class="badge bg-light text-dark border" th:text="${p.category.name}">Danh mục</span></td>
+                                    <td><span class="badge bg-light text-dark border" th:text="${p.category != null ? p.category.name : 'Chưa phân loại'}">Danh mục</span></td>
                                     <td><span class="badge bg-secondary" th:text="${p.size}">M</span></td>
                                     <td class="fw-bold product-price" th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA') + ' ₫'}">25.000 ₫</td>
                                     <td>
@@ -95,10 +95,16 @@
                                             </label>
 
                                             <!-- Nút Cấu Hình Định Lượng Công Thức -->
-                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2"
-                                                    th:attr="onclick=|openRecipeModal(${p.id}, '${p.name}')|" title="Cấu hình công thức">
-                                                <i class="bi bi-sliders"></i>
-                                            </button>
+                                            
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary rounded-pill px-2"
+                                                th:attr="data-product-id=${p.id},
+                                                        data-product-name=${p.name}"
+                                                onclick="openRecipeModal(this.dataset.productId, this.dataset.productName)"
+                                                title="Cấu hình công thức">
+                                            <i class="bi bi-sliders"></i>
+                                        </button>
+
                                         </div>
                                     </td>
                                 </tr>
