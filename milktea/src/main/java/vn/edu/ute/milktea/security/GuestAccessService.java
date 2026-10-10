@@ -63,7 +63,8 @@ public class GuestAccessService {
         if (rawToken == null || rawToken.isBlank()) return Optional.empty();
         String hash = hashToken(rawToken);
         return sessionAccessRepository.findByTokenHashAndRevokedAtIsNull(hash)
-                .filter(a -> a.getExpiresAt().isAfter(Instant.now()));
+                .filter(a -> a.getExpiresAt().isAfter(Instant.now()))
+                .filter(a -> a.getSession().getStatus() == vn.edu.ute.milktea.entity.table.TableSessionStatus.OPEN);
     }
 
     @Transactional(readOnly = true)

@@ -113,7 +113,7 @@ public class OrderController {
     }
 
     @GetMapping("/orders/{id}")
-    public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> getOrder(@PathVariable("id") Long orderId) {
-        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrder(orderId)));
+    public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> getOrder(@PathVariable("id") Long orderId, @AuthenticationPrincipal CurrentActor actor) {
+        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrderForCustomer(orderId, actor)));
     }
 }

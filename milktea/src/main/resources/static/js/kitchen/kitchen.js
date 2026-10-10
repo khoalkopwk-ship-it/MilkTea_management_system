@@ -9,6 +9,9 @@ const KitchenApp = (() => {
     let prepRecipes = [];
     let currentIncidentOrderId = null;
     let currentRemakeOrderId = null;
+    let issuing = false;
+    let issuingKey = null;
+    let issuingFingerprint = null;
 
     async function init() {
         window.MilkTeaContext = { role: 'KITCHEN' };
@@ -18,6 +21,7 @@ const KitchenApp = (() => {
         await loadOrders();
         await loadStock();
         await loadPrepRecipes();
+        await loadIssueMaterials();
     }
 
     function setupRealtime() {
@@ -146,6 +150,37 @@ const KitchenApp = (() => {
         } catch (e) {
             MilkTeaApi.showToast(e.message || 'Không thể hoàn thành đơn (Có thể do thiếu nguyên liệu Bếp)', 'error');
         }
+    }
+
+    async function loadIssueMaterials() {
+        try {
+            const stocks=await MilkTeaApi.get('/api/v1/inventory/stocks?location=KHO');
+            const select=document.getElementById('kitchenIssueMaterial');
+            const selected=select.value;
+            select.replaceChildren();
+            const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Chọn nguyên liệu';select.append(placeholder);
+            (stocks||[]).forEach(m=>{const option=document.createElement('option');option.value=m.materialId;option.textContent=`${m.materialName} (${m.unit}, kho còn ${m.quantity})`;select.append(option);});
+            select.value=selected;
+            document.getElementById('kitchenIssueDate').value=new Date().toLocaleDateString('vi-VN');
+        }catch(e){MilkTeaApi.showToast(e.message,'error');}
+    }
+    async function submitIssue() {
+        if(issuing)return;
+        const form=document.getElementById('kitchenIssueForm');if(!form.reportValidity())return;
+        const materialId=document.getElementById('kitchenIssueMaterial').value;
+        const quantity=document.getElementById('kitchenIssueQty').value;
+        if(!materialId || !Number.isFinite(Number(quantity)) || Number(quantity)<=0)return;
+        issuing=true;document.getElementById('kitchenIssueSubmit').disabled=true;
+        try {
+            const fingerprint=materialId + ':' + quantity;
+            if(issuingFingerprint!==fingerprint){issuingFingerprint=fingerprint;issuingKey=crypto.randomUUID();}
+            await MilkTeaApi.post('/api/v1/inventory/issues',{reason:'Bếp lấy nguyên liệu',items:[{materialId,quantity}]},{'Idempotency-Key':issuingKey});
+            issuingKey=null;issuingFingerprint=null;
+            document.getElementById('kitchenIssueResult').textContent='Đã ghi phiếu, chuyển nguyên liệu sang bếp và thông báo Admin.';
+            document.getElementById('kitchenIssueQty').value='';
+            await loadStock();await loadIssueMaterials();
+        }catch(e){MilkTeaApi.showToast(e.message,'error');}
+        finally{issuing=false;document.getElementById('kitchenIssueSubmit').disabled=false;}
     }
 
     // Modal Sự Cố
@@ -284,6 +319,7 @@ const KitchenApp = (() => {
     }
 
     return {
+        submitIssue,
         init,
         startCooking,
         completeOrder,

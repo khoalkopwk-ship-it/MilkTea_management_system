@@ -5,6 +5,7 @@
 const MilkTeaRealtime = (() => {
     let stompClient = null;
     let isConnected = false;
+    let isConnecting = false;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 8;
     const processedEvents = new Set();
@@ -13,11 +14,12 @@ const MilkTeaRealtime = (() => {
     const activeSubscriptions = [];
 
     function connect(headers = {}) {
-        if (isConnected || (stompClient && stompClient.connected)) {
+        if (isConnected || isConnecting || (stompClient && stompClient.connected)) {
             return;
         }
 
         console.log('Đang kết nối WebSocket STOMP tới /ws...');
+        isConnecting = true;
         const socket = new SockJS('/ws');
         stompClient = Stomp.over(socket);
         stompClient.debug = null; // Tắt debug log rác trong console
@@ -38,6 +40,7 @@ const MilkTeaRealtime = (() => {
 
     function onConnected(frame) {
         console.log('WebSocket STOMP đã kết nối thành công!');
+        isConnecting = false;
         isConnected = true;
         reconnectAttempts = 0;
 
@@ -52,6 +55,7 @@ const MilkTeaRealtime = (() => {
 
     function onError(error) {
         console.warn('Lỗi kết nối WebSocket STOMP:', error);
+        isConnecting = false;
         isConnected = false;
 
         // Thử kết nối lại với exponential backoff có giới hạn
@@ -151,6 +155,7 @@ const MilkTeaRealtime = (() => {
     }
 
     function handleSessionClosed() {
+        if (['CASHIER','ADMIN','KITCHEN'].includes(window.MilkTeaContext?.role)) return;
         console.warn('Nhận sự kiện TABLE_SESSION_CLOSED: Phiên bàn đã kết thúc!');
         if (window.MilkTeaContext) {
             window.MilkTeaContext.sessionId = null;
@@ -189,6 +194,7 @@ const MilkTeaRealtime = (() => {
                 });
             } catch (e) {}
         }
+        isConnecting = false;
         isConnected = false;
         activeSubscriptions.length = 0;
     }

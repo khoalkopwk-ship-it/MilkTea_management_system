@@ -28,6 +28,7 @@ public class OrderDto {
         private Long expectedSessionId; // null nếu đặt đơn đầu mở phiên
 
         @NotEmpty(message = "Danh sách món đặt không được rỗng")
+        @jakarta.validation.Valid
         private List<CartDto.CartItemRequest> items;
 
         private List<CartDto.CartItemRequest> remainingCartItems;
@@ -39,6 +40,7 @@ public class OrderDto {
     @AllArgsConstructor
     public static class CreateCounterOrderRequest {
         @NotEmpty(message = "Danh sách món đặt không được rỗng")
+        @jakarta.validation.Valid
         private List<CartDto.CartItemRequest> items;
 
         private String note;
@@ -89,8 +91,12 @@ public class OrderDto {
         private BigDecimal discountPercent;
         private InvoiceStatus invoiceStatus;
         private String paymentMethod;
+        private Instant paidAt;
+        private String cashierName;
+        private CancellationDto.RefundResponse refund;
         private boolean cancellationPending;
         private boolean paid;
+        private boolean staffCreated;
         private List<OrderItemResponse> items;
         private Instant createdAt;
         private String guestTableToken;   // Trả về khi đơn đầu tạo phiên

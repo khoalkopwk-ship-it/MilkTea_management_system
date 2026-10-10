@@ -7,11 +7,12 @@
 <body>
     <div th:fragment="content" class="container-fluid py-3 px-lg-4">
 
+<span id="posRole" hidden th:attr="data-role=${actor.role}"></span>
         <!-- Top Header POS -->
         <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-primary fs-6 py-2 px-3 rounded-pill"><i class="bi bi-calculator me-1"></i> Quầy Thu Ngân</span>
-                <span class="text-muted small">Quản lý sơ đồ bàn, tạo đơn quầy, xác nhận & ghi nhận thanh toán</span>
+                <span class="text-muted small">Tạo đơn quầy / bàn và quản lý sơ đồ bàn. Xử lý đơn tại “Đơn đã đặt”.</span>
             </div>
             <div>
                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="CashierApp.init()">
@@ -25,7 +26,7 @@
             <div class="col-lg-4 col-xl-3">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-header bg-white py-3 border-bottom">
-                        <h6 class="fw-bold mb-0"><i class="bi bi-cart-plus me-1 text-primary"></i> Tạo Đơn Tại Quầy</h6>
+                        <h6 class="fw-bold mb-0"><i class="bi bi-cart-plus me-1 text-primary"></i> Tạo đơn tại quầy / bàn</h6>
                     </div>
                     <div class="card-body p-3 d-flex flex-column">
 
@@ -62,8 +63,10 @@
                                 <span class="fw-bold">Tổng tiền:</span>
                                 <strong class="fs-5 product-price" id="counterCartTotal">0 ₫</strong>
                             </div>
-                            <button type="button" class="btn btn-primary-custom w-100 py-2 rounded-pill fw-bold" onclick="CashierApp.submitCounterOrder()">
-                                <i class="bi bi-check2-circle me-1"></i> Tạo Đơn Quầy
+                            <select id="counterTableId" class="form-select mb-2"><option value="">Quầy / mang về</option><option th:each="t : ${tables}" th:value="${t.id}" th:text="${t.name}"></option></select>
+                            <select id="counterPayMethod" class="form-select mb-2"><option value="CASH">Tiền mặt</option><option value="BANK_TRANSFER">Chuyển khoản</option></select>
+                            <button id="counterSubmitBtn" type="button" class="btn btn-primary-custom w-100 py-2 rounded-pill fw-bold" onclick="CashierApp.submitCounterOrder()">
+                                <i class="bi bi-check2-circle me-1"></i> Tạo đơn & thanh toán
                             </button>
                         </div>
                     </div>
@@ -79,11 +82,6 @@
                             <i class="bi bi-grid-3x3-gap-fill me-1"></i> Sơ Đồ Bàn
                         </button>
                     </li>
-                    <li class="nav-item">
-                        <button class="nav-link rounded-pill px-4" data-bs-toggle="pill" data-bs-target="#tabOrders">
-                            <i class="bi bi-list-check me-1"></i> Quản Lý Đơn Hàng
-                        </button>
-                    </li>
                 </ul>
 
                 <div class="tab-content">
@@ -96,69 +94,6 @@
                         </div>
                     </div>
 
-                    <!-- Tab 2: Danh Sách Đơn Hàng -->
-                    <div class="tab-pane fade" id="tabOrders">
-                        <div id="ordersListContainer">
-                            <!-- Rendered by cashier.js -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal Ghi Thu Tiền -->
-        <div class="modal fade" id="receiptModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                    <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title brand-font">Ghi Nhận Thanh Toán</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body p-4 text-center">
-                        <input type="hidden" id="receiptOrderId">
-                        <div class="mb-3">
-                            <span class="text-muted">Số tiền cần thanh toán:</span>
-                            <h3 class="product-price fw-bold my-2" id="receiptAmount">0 ₫</h3>
-                        </div>
-                        <p class="text-muted small mb-4">Vui lòng chọn phương thức khách hàng đã thanh toán:</p>
-                        <div class="row g-3">
-                            <div class="col-6">
-                                <button type="button" class="btn btn-outline-success w-100 py-3 rounded-4 fw-bold" onclick="CashierApp.submitReceipt('CASH')">
-                                    <i class="bi bi-cash-stack fs-3 d-block mb-1"></i> Tiền Mặt
-                                </button>
-                            </div>
-                            <div class="col-6">
-                                <button type="button" class="btn btn-outline-primary w-100 py-3 rounded-4 fw-bold" onclick="CashierApp.submitReceipt('BANK_TRANSFER')">
-                                    <i class="bi bi-qr-code-scan fs-3 d-block mb-1"></i> Chuyển Khoản
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal Gán Đơn Quầy Vào Bàn -->
-        <div class="modal fade" id="assignTableModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                    <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title brand-font">Gán Đơn Quầy Vào Bàn</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body p-4">
-                        <input type="hidden" id="assignOrderId">
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">Chọn bàn để gán đơn:</label>
-                            <select class="form-select rounded-3" id="assignTableSelect"></select>
-                            <small class="text-muted">Đơn quầy sẽ được gắn vào phiên của bàn này để khách ngồi tại bàn có thể theo dõi qua mã QR.</small>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold" onclick="CashierApp.submitAssignTable()">
-                                Xác Nhận Gán Bàn
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

@@ -20,6 +20,7 @@ public class CancellationDto {
     @AllArgsConstructor
     public static class CreateCancellationRequest {
         @NotBlank(message = "Lý do hủy đơn không được để trống")
+        @jakarta.validation.constraints.Size(max = 500)
         private String reason;
     }
 
@@ -31,6 +32,7 @@ public class CancellationDto {
         @NotNull(message = "Quyết định không được để trống")
         private Boolean approved;
 
+        @jakarta.validation.constraints.Size(max = 500)
         private String reason;
     }
 
@@ -41,10 +43,13 @@ public class CancellationDto {
     public static class CancellationResponse {
         private Long id;
         private Long orderId;
+        @jakarta.validation.constraints.Size(max = 500)
         private String reason;
         private CancellationStatus status;
         private Instant createdAt;
         private Instant decidedAt;
+        private String decidedBy;
+        private String decisionReason;
     }
 
     @Data
@@ -56,9 +61,11 @@ public class CancellationDto {
         private Long orderId;
         private Long paymentId;
         private BigDecimal amount;
+        @jakarta.validation.constraints.Size(max = 500)
         private String reason;
         private RefundStatus status;
         private Instant approvedAt;
+        private String approvedBy;
         private Instant refundedAt;
     }
 }

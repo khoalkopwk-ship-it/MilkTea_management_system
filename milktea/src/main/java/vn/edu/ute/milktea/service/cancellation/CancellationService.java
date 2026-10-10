@@ -10,25 +10,18 @@ import vn.edu.ute.milktea.entity.account.Account;
 import vn.edu.ute.milktea.entity.audit.BusinessAudit;
 import vn.edu.ute.milktea.entity.cancellation.CancellationRequest;
 import vn.edu.ute.milktea.entity.cancellation.CancellationStatus;
-import vn.edu.ute.milktea.entity.cancellation.RefundRequest;
-import vn.edu.ute.milktea.entity.cancellation.RefundStatus;
 import vn.edu.ute.milktea.entity.order.Invoice;
 import vn.edu.ute.milktea.entity.order.InvoiceStatus;
 import vn.edu.ute.milktea.entity.order.Order;
 import vn.edu.ute.milktea.entity.order.OrderStatus;
-import vn.edu.ute.milktea.entity.payment.Payment;
 import vn.edu.ute.milktea.repository.account.AccountRepository;
 import vn.edu.ute.milktea.repository.audit.BusinessAuditRepository;
 import vn.edu.ute.milktea.repository.cancellation.CancellationRequestRepository;
-import vn.edu.ute.milktea.repository.cancellation.RefundRequestRepository;
 import vn.edu.ute.milktea.repository.order.InvoiceRepository;
 import vn.edu.ute.milktea.repository.order.OrderRepository;
-import vn.edu.ute.milktea.repository.payment.PaymentRepository;
 import vn.edu.ute.milktea.security.CurrentActor;
 
 import java.time.Instant;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -36,11 +29,11 @@ public class CancellationService {
 
     private final OrderRepository orderRepository;
     private final InvoiceRepository invoiceRepository;
-    private final PaymentRepository paymentRepository;
     private final CancellationRequestRepository cancellationRepository;
-    private final RefundRequestRepository refundRepository;
     private final AccountRepository accountRepository;
     private final BusinessAuditRepository auditRepository;
+    private final jakarta.persistence.EntityManager entityManager;
+    private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher publisher;
 
     @Transactional
     public CancellationDto.CancellationResponse requestCancellation(
@@ -82,6 +75,7 @@ public class CancellationService {
                 .createdAt(Instant.now())
                 .build());
 
+        publish(order);
         return CancellationDto.CancellationResponse.builder()
                 .id(cancelReq.getId())
                 .orderId(order.getId())
@@ -95,6 +89,7 @@ public class CancellationService {
         if (actor == null) {
             return false;
         }
+        if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)) return true;
         if (actor.getAccountId() != null && order.getAccount() != null) {
             return actor.getAccountId().equals(order.getAccount().getId());
         }
@@ -116,6 +111,10 @@ public class CancellationService {
         Order order = orderRepository.findByIdWithLock(cancelReq.getOrder().getId())
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
 
+        entityManager.refresh(cancelReq);
+        if (cancelReq.getStatus() != CancellationStatus.CHO) {
+            throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Yêu cầu hủy đã được xử lý");
+        }
         Account cashier = cashierId != null ? accountRepository.findById(cashierId).orElse(null) : null;
         cancelReq.setDecidedBy(cashier);
         cancelReq.setDecidedAt(Instant.now());
@@ -123,7 +122,7 @@ public class CancellationService {
 
         if (Boolean.TRUE.equals(request.getApproved())) {
             // Chấp thuận hủy
-            if (order.getStatus() == OrderStatus.DANG_CHE_BIEN || order.getStatus() == OrderStatus.HOAN_THANH) {
+            if (order.getStatus() != OrderStatus.CHO_THANH_TOAN && order.getStatus() != OrderStatus.CHO_XAC_NHAN && order.getStatus() != OrderStatus.CHO_CHE_BIEN) {
                 throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT,
                         "Không thể chấp thuận hủy vì đơn đã bắt đầu hoặc hoàn thành pha chế: " + order.getStatus());
             }
@@ -138,21 +137,6 @@ public class CancellationService {
                 invoice.setStatus(InvoiceStatus.DA_HUY);
                 invoice.setCancelledAt(Instant.now());
                 invoiceRepository.save(invoice);
-
-                // Nếu đã thu tiền, tạo RefundRequest chờ Admin duyệt
-                Optional<Payment> paymentOpt = paymentRepository.findByInvoiceId(invoice.getId());
-                if (paymentOpt.isPresent()) {
-                    Payment payment = paymentOpt.get();
-                    RefundRequest refund = RefundRequest.builder()
-                            .order(order)
-                            .payment(payment)
-                            .amount(payment.getAmount())
-                            .reason("Hoàn tiền do hủy đơn #" + order.getId() + ": " + cancelReq.getReason())
-                            .status(RefundStatus.CHO_DUYET)
-                            .idempotencyKey(UUID.randomUUID().toString())
-                            .build();
-                    refundRepository.save(refund);
-                }
             }
 
             auditRepository.save(BusinessAudit.builder()
@@ -175,6 +159,7 @@ public class CancellationService {
         }
 
         cancellationRepository.save(cancelReq);
+        publish(order);
     }
 
     @Transactional(readOnly = true)
@@ -189,7 +174,17 @@ public class CancellationService {
                 .status(c.getStatus())
                 .createdAt(c.getCreatedAt())
                 .decidedAt(c.getDecidedAt())
+                .decidedBy(c.getDecidedBy() != null ? c.getDecidedBy().getFullName() : null)
+                .decisionReason(c.getDecisionReason())
                 .build()
         ).toList();
+    }
+
+    private void publish(Order order) {
+        var payload = java.util.Map.<String, Object>of("orderId", order.getId(), "status", order.getStatus().name());
+        String sid = order.getSession() != null ? order.getSession().getId().toString() : null;
+        for (String topic : java.util.List.of("/topic/cashier", "/topic/kitchen", "/topic/admin"))
+            publisher.publishAfterCommit(topic, "ORDER_STATUS_CHANGED", order.getId().toString(), sid, "1", payload);
+        if (sid != null) publisher.publishAfterCommit("/topic/table-sessions/" + sid, "ORDER_STATUS_CHANGED", order.getId().toString(), sid, "1", payload);
     }
 }

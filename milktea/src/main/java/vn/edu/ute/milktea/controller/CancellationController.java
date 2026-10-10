@@ -34,13 +34,13 @@ public class CancellationController {
         return ResponseEntity.status(201).body(ApiResponse.ok(response));
     }
 
-    @GetMapping("/cashier/cancellation-requests")
+    @GetMapping({"/cashier/cancellation-requests", "/admin/cancellation-requests"})
     public ResponseEntity<ApiResponse<java.util.List<CancellationDto.CancellationResponse>>> getCancellationRequests(
             @RequestParam(value = "status", required = false) vn.edu.ute.milktea.entity.cancellation.CancellationStatus status) {
         return ResponseEntity.ok(ApiResponse.ok(cancellationService.getCancellationRequests(status)));
     }
 
-    @PostMapping("/cashier/cancellation-requests/{id}/decision")
+    @PostMapping({"/cashier/cancellation-requests/{id}/decision", "/admin/cancellation-requests/{id}/decision"})
     public ResponseEntity<ApiResponse<Void>> decideCancellation(
             @PathVariable("id") Long requestId,
             @Valid @RequestBody CancellationDto.DecideCancellationRequest requestBody,
@@ -49,6 +49,12 @@ public class CancellationController {
         Long cashierId = actor != null ? actor.getAccountId() : null;
         cancellationService.decideCancellation(requestId, requestBody, cashierId);
         return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    @PostMapping("/cashier/cancellation-requests/{id}/refund")
+    public ResponseEntity<ApiResponse<CancellationDto.RefundResponse>> requestRefund(
+            @PathVariable("id") Long id, @AuthenticationPrincipal CurrentActor actor) {
+        return ResponseEntity.ok(ApiResponse.ok(refundService.requestFromCancellation(id, actor.getAccountId())));
     }
 
     @GetMapping("/admin/refunds")

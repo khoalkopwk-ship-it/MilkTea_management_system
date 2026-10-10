@@ -43,6 +43,7 @@
                             </a>
                         </li>
 
+                        <li class="nav-item" sec:authorize="hasRole('ADMIN')"><a class="nav-link fw-semibold text-danger" th:href="@{/admin/documents}">Phiếu nghiệp vụ</a></li>
                         <!-- Menu Nhân Viên Theo Quyền -->
                         <li class="nav-item" sec:authorize="hasAnyRole('CASHIER', 'ADMIN')">
                             <a class="nav-link fw-bold text-primary" th:href="@{/cashier}">
@@ -64,7 +65,7 @@
                     <!-- Right Controls: Cart & Auth -->
                     <div class="d-flex align-items-center gap-2">
                         <!-- Nút Giỏ Hàng -->
-                        <a th:href="@{/cart(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="btn btn-outline-secondary position-relative rounded-pill px-3 py-1">
+                        <a sec:authorize="!hasRole('CASHIER')" th:href="@{/cart(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="btn btn-outline-secondary position-relative rounded-pill px-3 py-1">
                             <i class="bi bi-bag-heart-fill text-danger me-1"></i> Giỏ Hàng
                             <span id="cartCountBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">
                                 0

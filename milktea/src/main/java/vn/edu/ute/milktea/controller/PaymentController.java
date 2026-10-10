@@ -16,6 +16,7 @@ import vn.edu.ute.milktea.service.payment.PaymentService;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final vn.edu.ute.milktea.service.order.OrderService orderService;
 
     @PostMapping("/cashier/orders/{id}/payments")
     public ResponseEntity<ApiResponse<PaymentDto.PaymentResponse>> recordOrderPayment(
@@ -45,8 +46,10 @@ public class PaymentController {
     public ResponseEntity<ApiResponse<Void>> createOrderNotice(
             @PathVariable("id") Long orderId,
             @Valid @RequestBody PaymentDto.PaymentNoticeRequest requestBody,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @AuthenticationPrincipal CurrentActor actor) {
 
+        orderService.getOrderForCustomer(orderId, actor);
         paymentService.createNoticeForOrder(orderId, requestBody, idempotencyKey);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
@@ -55,9 +58,10 @@ public class PaymentController {
     public ResponseEntity<ApiResponse<Void>> createNotice(
             @PathVariable("id") Long invoiceId,
             @Valid @RequestBody PaymentDto.PaymentNoticeRequest requestBody,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @AuthenticationPrincipal CurrentActor actor) {
 
-        paymentService.createNotice(invoiceId, requestBody, idempotencyKey);
+        paymentService.createAuthorizedNotice(invoiceId, requestBody, idempotencyKey, actor);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

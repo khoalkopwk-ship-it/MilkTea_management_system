@@ -124,6 +124,13 @@ public class StaffPageController {
         return "admin/reports";
     }
 
+    @GetMapping("/admin/documents")
+    public String documentsPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
+        model.addAttribute("settings", settingsRepository.findById(1).orElse(null));
+        model.addAttribute("actor", actor);
+        return "admin/documents";
+    }
+
     @GetMapping("/admin/settings")
     public String adminSettingsPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
         if (actor == null || actor.getRole() != Role.ADMIN) {

@@ -8,6 +8,7 @@ import java.util.Optional;
 
 @Repository
 public interface TableSessionAccessRepository extends JpaRepository<TableSessionAccess, Long> {
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"session", "session.table"})
     Optional<TableSessionAccess> findByTokenHashAndRevokedAtIsNull(String tokenHash);
     void deleteBySessionId(Long sessionId);
 }

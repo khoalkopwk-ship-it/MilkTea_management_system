@@ -44,10 +44,10 @@ const MilkTeaApi = (() => {
 
         // Đính kèm Guest Token nếu có trong RAM session hiện tại
         if (window.MilkTeaContext) {
-            if (window.MilkTeaContext.tableToken) {
+            if (window.MilkTeaContext.tableToken && !headers['X-Table-Session-Token']) {
                 headers['X-Table-Session-Token'] = window.MilkTeaContext.tableToken;
             }
-            if (window.MilkTeaContext.counterToken) {
+            if (window.MilkTeaContext.counterToken && !headers['X-Counter-Order-Token']) {
                 headers['X-Counter-Order-Token'] = window.MilkTeaContext.counterToken;
             }
         }
@@ -105,7 +105,7 @@ const MilkTeaApi = (() => {
     function showToast(message, type = 'success') {
         const toastEl = document.getElementById('liveToast');
         if (toastEl) {
-            const toastBody = toastEl.querySelector('.toast-body');
+            const toastBody = toastEl.querySelector('.toast-message') || toastEl.querySelector('.toast-body');
             const toastTitle = toastEl.querySelector('.toast-title');
             if (toastBody) toastBody.textContent = message;
             if (toastTitle) {

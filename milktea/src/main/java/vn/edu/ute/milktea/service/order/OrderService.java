@@ -8,6 +8,7 @@ import vn.edu.ute.milktea.common.ErrorCode;
 import vn.edu.ute.milktea.dto.CartDto;
 import vn.edu.ute.milktea.dto.OrderDto;
 import vn.edu.ute.milktea.entity.account.Account;
+import vn.edu.ute.milktea.entity.account.Role;
 import vn.edu.ute.milktea.entity.audit.BusinessAudit;
 import vn.edu.ute.milktea.entity.catalog.Product;
 import vn.edu.ute.milktea.entity.cancellation.CancellationStatus;
@@ -60,6 +61,7 @@ public class OrderService {
     private final OrderIngredientSnapshotRepository snapshotRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final vn.edu.ute.milktea.repository.cancellation.RefundRequestRepository refundRepository;
     private final CancellationRequestRepository cancellationRepository;
     private final GlobalSettingsRepository settingsRepository;
     private final AccountRepository accountRepository;
@@ -505,6 +507,7 @@ public class OrderService {
         boolean isPaid = invoice != null && paymentRepository.existsByInvoiceId(invoice.getId());
         var payment = invoice != null ? paymentRepository.findByInvoiceId(invoice.getId()).orElse(null) : null;
         Account customer = order.getAccount();
+        if (customer != null && customer.getRole() != vn.edu.ute.milktea.entity.account.Role.CUSTOMER) customer = null;
 
         List<OrderDto.OrderItemResponse> itemResponses = items.stream().map(it ->
                 OrderDto.OrderItemResponse.builder()
@@ -536,7 +539,11 @@ public class OrderService {
                 .invoiceId(invoice != null ? invoice.getId() : null)
                 .invoiceStatus(invoice != null ? invoice.getStatus() : null)
                 .paymentMethod(payment != null ? payment.getMethod().name() : null)
+                .paidAt(payment != null ? payment.getPaidAt() : null)
+                .cashierName(payment != null && payment.getRecordedBy() != null ? payment.getRecordedBy().getFullName() : null)
+                .refund(refundRepository.findByOrderId(order.getId()).map(r -> vn.edu.ute.milktea.service.cancellation.RefundService.toResponse(r)).orElse(null))
                 .cancellationPending(cancellationRepository.findFirstByOrderIdAndStatus(order.getId(), CancellationStatus.CHO).isPresent())
+                .staffCreated(order.getAccount() != null && (order.getAccount().getRole() == Role.CASHIER || order.getAccount().getRole() == Role.ADMIN))
                 .paid(isPaid)
                 .items(itemResponses)
                 .createdAt(order.getCreatedAt())
@@ -554,12 +561,17 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<OrderDto.OrderResponse> getOrdersForCustomer(CurrentActor actor) {
         List<Order> orders = new ArrayList<>();
-        if (actor != null && actor.getAccountId() != null) {
+        if (actor != null && (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN))) {
+            orders = orderRepository.findAll();
+        } else if (actor != null && actor.getAccountId() != null) {
             orders = orderRepository.findByAccountIdOrderByCreatedAtDesc(actor.getAccountId());
         } else if (actor != null && actor.getSessionId() != null) {
             orders = orderRepository.findBySessionId(actor.getSessionId());
         }
-        return orders.stream().map(this::mapOrderToResponse).toList();
+        if (actor != null && actor.getOrderId() != null) {
+            orders = orderRepository.findById(actor.getOrderId()).map(List::of).orElse(List.of());
+        }
+        return orders.stream().sorted(java.util.Comparator.comparing(Order::getCreatedAt).reversed()).map(this::mapOrderToResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -582,7 +594,8 @@ public class OrderService {
             throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem đơn hàng này");
         }
 
-        boolean allowed = false;
+        boolean allowed = actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN);
+        if (allowed) return mapOrderToResponse(order);
         if (actor.getAccountId() != null && order.getAccount() != null) {
             allowed = actor.getAccountId().equals(order.getAccount().getId());
         } else if (actor.getSessionId() != null && order.getSession() != null) {
