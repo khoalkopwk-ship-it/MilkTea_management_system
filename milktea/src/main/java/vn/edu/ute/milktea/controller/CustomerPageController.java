@@ -63,8 +63,9 @@ public class CustomerPageController {
     public String cartPage(
             @RequestParam(value = "qr", required = false) String qrCode,
             @RequestParam(value = "table", required = false) String tableParam,
-            Model model) {
+            @AuthenticationPrincipal CurrentActor actor, Model model) {
 
+        if (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER)) return "redirect:/cashier";
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         DiningTable table = null;
         if (qrCode != null && !qrCode.isBlank()) {
@@ -90,6 +91,7 @@ public class CustomerPageController {
     public String ordersPage(
             @RequestParam(value = "qr", required = false) String qrCode,
             @RequestParam(value = "table", required = false) String tableParam,
+            @AuthenticationPrincipal CurrentActor actor,
             Model model) {
 
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
@@ -107,6 +109,7 @@ public class CustomerPageController {
         }
 
         model.addAttribute("settings", settings);
+        model.addAttribute("actor", actor);
         model.addAttribute("currentTable", table);
         model.addAttribute("tableQr", table != null ? table.getQrCode() : qrCode);
 

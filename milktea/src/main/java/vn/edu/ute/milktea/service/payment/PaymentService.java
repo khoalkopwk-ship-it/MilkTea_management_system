@@ -120,11 +120,10 @@ public class PaymentService {
         }
 
         // 7. Quy tắc phương thức thanh toán
-        if (order.getSource() == OrderSource.TABLE
-                && request.getMethod() == PaymentMethod.CASH) {
+        if (!isStaffCreated(order) && request.getMethod() == PaymentMethod.CASH) {
             throw BusinessException.conflict(
                     ErrorCode.VALIDATION_FAILED,
-                    "Đơn tại bàn chỉ được chuyển khoản");
+                    "Đơn khách tự đặt chỉ được thanh toán chuyển khoản");
         }
 
         // 8. Không ghi khoản thu thứ hai cho cùng hóa đơn
@@ -168,7 +167,8 @@ public class PaymentService {
         payment = paymentRepository.save(payment);
 
         // 12. Chuyển trạng thái trong cùng transaction
-        order.setStatus(OrderStatus.CHO_XAC_NHAN);
+        order.setStatus(!isStaffCreated(order) && order.getSource() == OrderSource.TABLE
+                ? OrderStatus.CHO_XAC_NHAN : OrderStatus.CHO_CHE_BIEN);
         orderRepository.save(order);
 
         // 13. Ghi lịch sử nghiệp vụ
@@ -177,7 +177,7 @@ public class PaymentService {
                 .accountId(cashierId)
                 .action("PAYMENT_RECORDED")
                 .beforeState("CHO_THANH_TOAN")
-                .afterState("CHO_XAC_NHAN")
+                .afterState(order.getStatus().name())
                 .reason("Ghi thu " + request.getMethod()
                         + ": " + payment.getAmount() + " VND")
                 .createdAt(Instant.now())
@@ -203,6 +203,11 @@ public class PaymentService {
                 "1",
                 eventData);
 
+        if (order.getStatus() == OrderStatus.CHO_CHE_BIEN) {
+            realtimeEventPublisher.publishAfterCommit("/topic/kitchen", "ORDER_STATUS_CHANGED",
+                    order.getId().toString(), sessionId, "1", eventData);
+        }
+
         if (order.getSession() != null) {
             realtimeEventPublisher.publishAfterCommit(
                     "/topic/table-sessions/"
@@ -219,10 +224,28 @@ public class PaymentService {
 
 
     @Transactional
+    public void createAuthorizedNotice(Long invoiceId, PaymentDto.PaymentNoticeRequest request, String key, vn.edu.ute.milktea.security.CurrentActor actor) {
+        var invoice = invoiceRepository.findById(invoiceId).orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy hóa đơn"));
+        var order = invoice.getOrder();
+        boolean allowed = actor != null && (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)
+                || (actor.getAccountId() != null && order.getAccount() != null && actor.getAccountId().equals(order.getAccount().getId()))
+                || (actor.getSessionId() != null && order.getSession() != null && actor.getSessionId().equals(order.getSession().getId()))
+                || (actor.getOrderId() != null && actor.getOrderId().equals(order.getId())));
+        if (!allowed) throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền thanh toán hóa đơn này");
+        createNotice(invoiceId, request, key);
+    }
+
+    @Transactional
     public void createNotice(Long invoiceId, PaymentDto.PaymentNoticeRequest request, String idempotencyKey) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy hóa đơn"));
 
+        if (request == null || request.getMethod() != PaymentMethod.BANK_TRANSFER)
+            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Khách tự đặt chỉ được thông báo thanh toán chuyển khoản");
+        if (invoice.getOrder().getStatus() == OrderStatus.DA_HUY || invoice.getStatus() == InvoiceStatus.DA_HUY)
+            throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Không thanh toán đơn đã hủy");
+        if (paymentRepository.existsByInvoiceId(invoiceId))
+            throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Đơn đã được ghi thu tiền");
         PaymentNotice notice = PaymentNotice.builder()
                 .invoice(invoice)
                 .method(request.getMethod())
@@ -256,6 +279,11 @@ public class PaymentService {
         createNotice(invoice.getId(), request, idempotencyKey);
     }
     
+    private boolean isStaffCreated(Order order) {
+        return order.getAccount() != null && (order.getAccount().getRole() == vn.edu.ute.milktea.entity.account.Role.CASHIER
+                || order.getAccount().getRole() == vn.edu.ute.milktea.entity.account.Role.ADMIN);
+    }
+
     private PaymentDto.PaymentResponse toPaymentResponse(
             Payment payment) {
 

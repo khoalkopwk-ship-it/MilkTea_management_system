@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
 <head>
     <title>Thực Đơn - MilkTea</title>
@@ -66,7 +66,8 @@
                             <span class="product-price" th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA') + ' ₫'}">
                                 25.000 ₫
                             </span>
-                            <button type="button" class="btn btn-sm btn-primary-custom rounded-pill px-3"
+                            <a sec:authorize="hasRole('CASHIER')" href="/cashier" class="btn btn-sm btn-primary-custom rounded-pill px-3">Tạo đơn tại POS</a>
+                            <button sec:authorize="!hasRole('CASHIER')" type="button" class="btn btn-sm btn-primary-custom rounded-pill px-3"
                                     th:attr="onclick=|openCustomizeModal(${p.id}, '${p.name}', '${p.size}', ${p.price}, '${p.imageUrl}')|">
                                 <i class="bi bi-plus-lg me-1"></i> Chọn
                             </button>

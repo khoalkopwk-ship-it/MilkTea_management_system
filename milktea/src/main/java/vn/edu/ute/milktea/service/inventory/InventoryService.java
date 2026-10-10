@@ -28,6 +28,7 @@ public class InventoryService {
     private final StockRepository stockRepository;
     private final StockMovementRepository movementRepository;
     private final MaterialRepository materialRepository;
+    private final vn.edu.ute.milktea.repository.account.AccountRepository accountRepository;
     private final StockIssueRepository stockIssueRepository;
     private final StockIssueItemRepository stockIssueItemRepository;
     private final PreparationBatchRepository batchRepository;
@@ -98,9 +99,43 @@ public class InventoryService {
         movementRepository.saveAll(movements);
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<InventoryDto.StockIssueResponse> listIssues() {
+        return stockIssueRepository.findAll().stream()
+                .sorted(java.util.Comparator.comparing(StockIssue::getCreatedAt).reversed())
+                .map(i -> InventoryDto.StockIssueResponse.builder().id(i.getId()).createdAt(i.getCreatedAt())
+                        .createdBy(i.getCreatedBy() != null ? i.getCreatedBy().getFullName() : "Nhân viên")
+                        .items(stockIssueItemRepository.findByIdIssueId(i.getId()).stream().map(l ->
+                                InventoryDto.StockIssueLineResponse.builder().materialName(l.getMaterial().getName())
+                                        .unit(l.getMaterial().getUnit()).quantity(l.getQuantity()).build()).toList()).build()).toList();
+    }
+
     @Transactional
     public void recordIssue(InventoryDto.CreateStockIssueRequest request, Account kitchenAccount) {
+        recordIssue(request, kitchenAccount, null);
+    }
+
+    @Transactional
+    public void recordIssue(InventoryDto.CreateStockIssueRequest request, Account kitchenAccount, String key) {
+        if (kitchenAccount == null) throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Chỉ nhân viên được lập phiếu");
+        if (key != null && !key.isBlank()) {
+            if (key.length() > 64) throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Mã yêu cầu quá dài");
+            accountRepository.findByIdWithLock(kitchenAccount.getId()).orElseThrow();
+            var existing = stockIssueRepository.findByIdempotencyKey(key);
+            if (existing.isPresent()) {
+                var old = existing.get();
+                var lines = stockIssueItemRepository.findByIdIssueId(old.getId());
+                boolean same = old.getCreatedBy().getId().equals(kitchenAccount.getId())
+                        && java.util.Objects.equals(old.getReason(), request.getReason())
+                        && lines.size() == request.getItems().size()
+                        && lines.stream().allMatch(l -> request.getItems().stream().anyMatch(i ->
+                                l.getMaterial().getId().equals(i.getMaterialId()) && l.getQuantity().compareTo(i.getQuantity()) == 0));
+                if (!same) throw BusinessException.conflict(ErrorCode.IDEMPOTENCY_CONFLICT, "Mã yêu cầu đã dùng cho phiếu khác");
+                return;
+            }
+        }
         StockIssue issue = StockIssue.builder()
+                .idempotencyKey(key)
                 .createdBy(kitchenAccount)
                 .reason(request.getReason())
                 .status(DocumentStatus.DA_GHI_SO)
@@ -112,7 +147,10 @@ public class InventoryService {
         List<StockIssueItem> items = new ArrayList<>();
         List<StockMovement> movements = new ArrayList<>();
 
-        for (var itemReq : request.getItems()) {
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        for (var itemReq : request.getItems().stream().sorted(java.util.Comparator.comparing(InventoryDto.StockIssueItemRequest::getMaterialId)).toList()) {
+            if (itemReq.getQuantity() == null || itemReq.getQuantity().signum() <= 0 || !seen.add(itemReq.getMaterialId()))
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Số lượng phải dương và nguyên liệu không được trùng");
             Material material = materialRepository.findById(itemReq.getMaterialId())
                     .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Nguyên liệu không tồn tại: ID " + itemReq.getMaterialId()));
 

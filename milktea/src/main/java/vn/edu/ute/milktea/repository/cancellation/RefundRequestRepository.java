@@ -13,6 +13,10 @@ import java.util.Optional;
 
 @Repository
 public interface RefundRequestRepository extends JpaRepository<RefundRequest, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from RefundRequest r where r.id = :id")
+    Optional<RefundRequest> findByIdWithLock(@Param("id") Long id);
+
     Optional<RefundRequest> findByOrderId(Long orderId);
     Optional<RefundRequest> findByPaymentId(Long paymentId);
     List<RefundRequest> findByStatus(RefundStatus status);

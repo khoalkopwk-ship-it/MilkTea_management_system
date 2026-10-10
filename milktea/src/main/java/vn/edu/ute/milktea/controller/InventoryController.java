@@ -32,13 +32,21 @@ public class InventoryController {
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.getStocks(location)));
     }
 
+    @GetMapping("/issues")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<InventoryDto.StockIssueResponse>>> listIssues() {
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.listIssues()));
+    }
+
     @PostMapping("/issues")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','KITCHEN')")
     public ResponseEntity<ApiResponse<Void>> createIssue(
+            @RequestHeader(value = "Idempotency-Key", required = false) String key,
             @Valid @RequestBody InventoryDto.CreateStockIssueRequest requestBody,
             @AuthenticationPrincipal CurrentActor actor) {
 
         Account kitchen = actor != null ? accountRepository.findById(actor.getAccountId()).orElse(null) : null;
-        inventoryService.recordIssue(requestBody, kitchen);
+        inventoryService.recordIssue(requestBody, kitchen, key);
         return ResponseEntity.status(201).body(ApiResponse.ok(null));
     }
 

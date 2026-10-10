@@ -4,28 +4,29 @@
  */
 
 const CashierApp = (() => {
-    let currentOrders = [];
     let currentTables = [];
     let counterCart = [];
+    let pendingCounterOrder = null;
+    let submitting = false;
+    let creationKey = null;
+    let creationFingerprint = null;
+    let realtimeReady = false;
 
     async function init() {
-        window.MilkTeaContext = { role: 'CASHIER' };
+        window.MilkTeaContext = { role: document.getElementById('posRole')?.dataset.role || 'CASHIER' };
         MilkTeaRealtime.connect();
 
-        setupRealtime();
+        if (!realtimeReady) { setupRealtime(); realtimeReady = true; }
         await loadTables();
-        await loadOrders();
     }
 
     function setupRealtime() {
         MilkTeaRealtime.on('ORDER_CREATED', () => {
             MilkTeaApi.showToast('Có đơn hàng mới!', 'success');
-            loadOrders();
             loadTables();
         });
 
         MilkTeaRealtime.on('ORDER_STATUS_CHANGED', () => {
-            loadOrders();
         });
 
         MilkTeaRealtime.on('TABLE_SESSION_OPENED', () => {
@@ -34,21 +35,17 @@ const CashierApp = (() => {
 
         MilkTeaRealtime.on('TABLE_SESSION_CLOSED', () => {
             loadTables();
-            loadOrders();
         });
 
         MilkTeaRealtime.on('PAYMENT_RECORDED', () => {
-            loadOrders();
         });
 
         MilkTeaRealtime.on('PAYMENT_NOTICE_CREATED', (e) => {
             MilkTeaApi.showToast('Khách báo đã chuyển khoản đơn!', 'warning');
-            loadOrders();
         });
 
         MilkTeaRealtime.onReconnect(() => {
             loadTables();
-            loadOrders();
         });
     }
 
@@ -73,7 +70,7 @@ const CashierApp = (() => {
                 <div class="col-6 col-md-4 col-lg-3">
                     <div class="table-card ${t.status}">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="fw-bold mb-0">${t.name}</h6>
+                            <h6 class="fw-bold mb-0">${MilkTeaReceipts.esc(t.name)}</h6>
                             <span class="badge ${isBusy ? 'bg-danger' : 'bg-success'} rounded-pill">
                                 ${isBusy ? 'Có Khách' : 'Trống'}
                             </span>
@@ -87,7 +84,7 @@ const CashierApp = (() => {
                                     <i class="bi bi-box-arrow-in-right me-1"></i> Mở Bàn
                                 </button>
                             ` : `
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" onclick="CashierApp.closeSession(${t.activeSessionId}, '${t.name}')">
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" onclick="CashierApp.closeSession(${t.activeSessionId})">
                                     <i class="bi bi-door-closed me-1"></i> Đóng Phiên
                                 </button>
                             `}
@@ -109,7 +106,8 @@ const CashierApp = (() => {
         }
     }
 
-    async function closeSession(sessionId, tableName) {
+    async function closeSession(sessionId) {
+        const tableName = currentTables.find(t => t.activeSessionId === sessionId)?.name || "bàn";
         if (!confirm(`Bạn có chắc chắn muốn đóng phiên của ${tableName}?\nLưu ý: Mọi đơn hàng phải hoàn tất hoặc hủy và đã thanh toán đủ.`)) {
             return;
         }
@@ -118,157 +116,14 @@ const CashierApp = (() => {
             await MilkTeaApi.post(`/api/v1/cashier/table-sessions/${sessionId}/close`);
             MilkTeaApi.showToast(`Đã đóng phiên của ${tableName} thành công!`, 'success');
             await loadTables();
-            await loadOrders();
         } catch (e) {
             MilkTeaApi.showToast(e.message || 'Không thể đóng phiên bàn', 'error');
         }
     }
 
-    async function loadOrders() {
-        try {
-            const orders = await MilkTeaApi.get('/api/v1/cashier/orders');
-            currentOrders = orders || [];
-            renderOrdersList();
-        } catch (e) {
-            console.warn('Lỗi nạp danh sách đơn thu ngân:', e);
-        }
-    }
-
-    function renderOrdersList() {
-        const list = document.getElementById('ordersListContainer');
-        if (!list) return;
-
-        if (currentOrders.length === 0) {
-            list.innerHTML = `
-                <div class="empty-state py-5 text-center text-muted">
-                    <i class="bi bi-receipt fs-1 d-block mb-2"></i>
-                    <p>Hiện không có đơn hàng nào cần xử lý</p>
-                </div>
-            `;
-            return;
-        }
-
-        let html = '';
-        currentOrders.forEach(o => {
-            const isWaitingConfirm = o.status === 'CHO_XAC_NHAN';
-            const isPaid = o.paid === true;
-            const tableLabel = o.tableName ? o.tableName : 'Tại Quầy / Mang Về';
-
-            let itemsText = (o.items || []).map(i => `${i.productName} (x${i.quantity})`).join(', ');
-
-            html += `
-                <div class="card border-0 shadow-sm rounded-4 mb-3">
-                    <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <span class="fw-bold fs-6">Đơn #${o.orderId}</span>
-                                <span class="badge bg-light text-dark border ms-2">${tableLabel}</span>
-                                <span class="badge ${o.source === 'TABLE' ? 'bg-info text-dark' : 'bg-secondary'} ms-1">${o.source}</span>
-                            </div>
-                            <div>
-                                <span class="badge-status badge-${o.status}">${o.status}</span>
-                            </div>
-                        </div>
-
-                        <div class="small text-muted mb-2">${itemsText}</div>
-
-                        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                            <div>
-                                <span class="small text-muted">Tổng tiền:</span>
-                                <strong class="fs-5 product-price ms-1">${MilkTeaApi.formatVND(o.totalAmount)}</strong>
-                                ${isPaid ? '<span class="badge bg-success ms-2">Đã Thu</span>' : '<span class="badge bg-warning text-dark ms-2">Chưa Thu</span>'}
-                            </div>
-
-                            <div class="d-flex gap-2">
-                                ${isWaitingConfirm ? `
-                                    <button class="btn btn-sm btn-primary-custom rounded-pill" onclick="CashierApp.confirmOrder(${o.orderId})">
-                                        <i class="bi bi-check-lg me-1"></i> Xác Nhận Đơn
-                                    </button>
-                                ` : ''}
-
-                                ${!isPaid && o.status !== 'DA_HUY' ? `
-                                    <button class="btn btn-sm btn-success rounded-pill" onclick="CashierApp.openPaymentModal(${o.orderId}, ${o.totalAmount})">
-                                        <i class="bi bi-cash-coin me-1"></i> Ghi Thu Tiền
-                                    </button>
-                                ` : ''}
-
-                                ${o.source === 'COUNTER' && !o.sessionId ? `
-                                    <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="CashierApp.openAssignTableModal(${o.orderId})">
-                                        <i class="bi bi-link-45deg me-1"></i> Gán Bàn
-                                    </button>
-                                ` : ''}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        list.innerHTML = html;
-    }
-
-    async function confirmOrder(orderId) {
-        try {
-            await MilkTeaApi.post(`/api/v1/cashier/orders/${orderId}/confirm`);
-            MilkTeaApi.showToast(`Đã xác nhận đơn #${orderId}, chuyển tới Bếp!`, 'success');
-            await loadOrders();
-        } catch (e) {
-            MilkTeaApi.showToast(e.message || 'Không thể xác nhận đơn', 'error');
-        }
-    }
-
-    function openPaymentModal(orderId, amount) {
-        document.getElementById('receiptOrderId').value = orderId;
-        document.getElementById('receiptAmount').textContent = MilkTeaApi.formatVND(amount);
-        const modal = new bootstrap.Modal(document.getElementById('receiptModal'));
-        modal.show();
-    }
-
-    async function submitReceipt(method) {
-        const orderId = document.getElementById('receiptOrderId').value;
-        try {
-            await MilkTeaApi.post(`/api/v1/cashier/orders/${orderId}/payments`, {
-                method: method,
-                reference: `${method}_${orderId}_${Date.now()}`
-            });
-            MilkTeaApi.showToast(`Đã ghi nhận thanh toán đơn #${orderId}!`, 'success');
-            const modalEl = document.getElementById('receiptModal');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
-            await loadOrders();
-        } catch (e) {
-            MilkTeaApi.showToast(e.message || 'Lỗi ghi nhận thanh toán', 'error');
-        }
-    }
-
-    function openAssignTableModal(orderId) {
-        document.getElementById('assignOrderId').value = orderId;
-        const select = document.getElementById('assignTableSelect');
-        select.innerHTML = '';
-        currentTables.forEach(t => {
-            select.innerHTML += `<option value="${t.id}">${t.name} (${t.status === 'CO_KHACH' ? 'Có khách' : 'Trống'})</option>`;
-        });
-        const modal = new bootstrap.Modal(document.getElementById('assignTableModal'));
-        modal.show();
-    }
-
-    async function submitAssignTable() {
-        const orderId = document.getElementById('assignOrderId').value;
-        const tableId = document.getElementById('assignTableSelect').value;
-        try {
-            await MilkTeaApi.post(`/api/v1/cashier/orders/${orderId}/assign-table`, { tableId });
-            MilkTeaApi.showToast(`Đã gán đơn #${orderId} vào bàn thành công!`, 'success');
-            const modalEl = document.getElementById('assignTableModal');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
-            await loadOrders();
-            await loadTables();
-        } catch (e) {
-            MilkTeaApi.showToast(e.message || 'Lỗi gán bàn', 'error');
-        }
-    }
-
     // POS Quầy: Thêm món vào giỏ quầy
     function addCounterCart(p) {
+        if (submitting || pendingCounterOrder) { MilkTeaApi.showToast('Hoàn tất thanh toán đơn đang tạo trước.', 'warning'); return; }
         const existing = counterCart.find(it => it.productId === p.id);
         if (existing) {
             existing.quantity++;
@@ -303,7 +158,7 @@ const CashierApp = (() => {
             html += `
                 <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                     <div>
-                        <div class="fw-semibold small">${it.productName} (${it.size})</div>
+                        <div class="fw-semibold small">${MilkTeaReceipts.esc(it.productName)} (${MilkTeaReceipts.esc(it.size)})</div>
                         <div class="text-muted small">${MilkTeaApi.formatVND(it.price)} x ${it.quantity}</div>
                     </div>
                     <div class="d-flex align-items-center gap-1">
@@ -319,6 +174,7 @@ const CashierApp = (() => {
     }
 
     function adjustCounterCart(idx, delta) {
+        if (submitting || pendingCounterOrder) return;
         if (!counterCart[idx]) return;
         counterCart[idx].quantity += delta;
         if (counterCart[idx].quantity <= 0) {
@@ -328,11 +184,15 @@ const CashierApp = (() => {
     }
 
     async function submitCounterOrder() {
-        if (counterCart.length === 0) {
+        if (submitting) return;
+        if (counterCart.length === 0 && !pendingCounterOrder) {
             MilkTeaApi.showToast('Vui lòng chọn món trước khi tạo đơn', 'warning');
             return;
         }
 
+        submitting = true;
+        const submitBtn = document.getElementById('counterSubmitBtn');
+        submitBtn.disabled = true;
         try {
             const items = counterCart.map(it => ({
                 productId: it.productId,
@@ -340,27 +200,27 @@ const CashierApp = (() => {
                 note: it.note
             }));
 
-            const created = await MilkTeaApi.post('/api/v1/orders/counter', { items });
-            MilkTeaApi.showToast(`Tạo đơn quầy #${created.orderId} thành công!`, 'success');
+            const tableId = document.getElementById('counterTableId').value;
+            const table = currentTables.find(t => String(t.id) === tableId);
+            const payload = tableId ? {tableId, expectedSessionId: table?.activeSessionId || null, items, remainingCartItems: []} : {items};
+            const fingerprint = JSON.stringify(payload);
+            if (fingerprint !== creationFingerprint) { creationFingerprint = fingerprint; creationKey = crypto.randomUUID(); }
+            const created = pendingCounterOrder || await MilkTeaApi.post(tableId ? '/api/v1/orders/table' : '/api/v1/orders/counter', payload, {'Idempotency-Key':creationKey});
+            pendingCounterOrder = created;
+            await MilkTeaApi.post(`/api/v1/cashier/orders/${created.orderId}/payments`, {method: document.getElementById('counterPayMethod').value, reference: 'POS_' + created.orderId}, {'Idempotency-Key': 'POS_PAYMENT_' + created.orderId});
+            pendingCounterOrder = null;
+            creationKey = null; creationFingerprint = null;
+            await MilkTeaReceipts.open(created.orderId);
+            MilkTeaApi.showToast(`Tạo đơn #${created.orderId} thành công!`, 'success');
             counterCart = [];
             renderCounterCart();
-            await loadOrders();
+            submitBtn.innerHTML = 'Tạo đơn & thanh toán';
+            await loadTables();
         } catch (e) {
-            MilkTeaApi.showToast(e.message || 'Lỗi tạo đơn quầy', 'error');
-        }
+            MilkTeaApi.showToast(e.message || 'Lỗi tạo đơn / ghi thu', 'error');
+            if (pendingCounterOrder) submitBtn.textContent = 'Thử lại thanh toán đơn #' + pendingCounterOrder.orderId;
+        } finally { submitting = false; submitBtn.disabled = false; }
     }
 
-    return {
-        init,
-        openSession,
-        closeSession,
-        confirmOrder,
-        openPaymentModal,
-        submitReceipt,
-        openAssignTableModal,
-        submitAssignTable,
-        addCounterCart,
-        adjustCounterCart,
-        submitCounterOrder
-    };
+    return {init,openSession,closeSession,addCounterCart,adjustCounterCart,submitCounterOrder};
 })();

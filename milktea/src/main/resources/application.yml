@@ -2,9 +2,9 @@ spring:
   application:
     name: milktea
   datasource:
-    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=milktea;encrypt=false;trustServerCertificate=true}
+    url: ${DB_URL:jdbc:sqlserver://localhost:1434;databaseName=milktea;encrypt=false;trustServerCertificate=true}
     username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:123456aA@$}
+    password: ${DB_PASSWORD:161103}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
   jpa:
     open-in-view: false
