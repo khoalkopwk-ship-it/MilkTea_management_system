@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Hồ Sơ Cá Nhân - MilkTea</title>
+</head>
+<body>
+    <div th:fragment="content" class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <!-- Nút điều hướng quay lại -->
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <a id="profileBackBtn" th:href="@{/}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                        <i class="bi bi-arrow-left me-1"></i> Quay Lại
+                    </a>
+                    <span class="text-muted small">Hồ sơ người dùng hệ thống MilkTea</span>
+                </div>
+
+                <!-- Card Tổng Quan Tài Khoản -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+                    <div class="card-body p-4 bg-white">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center"
+                                 style="width: 72px; height: 72px; font-size: 2rem;">
+                                <i class="bi bi-person-circle"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h4 class="mb-0 fw-bold" id="profileDisplayFullName">Đang tải...</h4>
+                                    <span class="badge rounded-pill bg-primary" id="profileRoleBadge">Tài khoản</span>
+                                </div>
+                                <p class="text-muted mb-0 small" id="profileDisplayEmail">email@milktea.vn</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thông báo trạng thái -->
+                <div id="profileAlert" class="alert alert-success d-none py-2 small rounded-3 mb-3" role="alert"></div>
+
+                <div class="row g-4">
+                    <!-- Cột Cập Nhật Thông Tin -->
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-4 h-100">
+                            <div class="card-header bg-white py-3 border-bottom-0">
+                                <h6 class="fw-bold mb-0 text-dark">
+                                    <i class="bi bi-person-lines-fill text-primary me-2"></i>Thông Tin Cá Nhân
+                                </h6>
+                            </div>
+                            <div class="card-body p-4 pt-1">
+                                <form id="updateProfileForm" onsubmit="handleUpdateProfile(event)">
+                                    <div class="mb-3">
+                                        <label for="profileFullName" class="form-label small fw-semibold">Họ và tên</label>
+                                        <input type="text" class="form-control rounded-3" id="profileFullName" required placeholder="Nguyễn Văn A">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="profilePhone" class="form-label small fw-semibold">Số điện thoại</label>
+                                        <input type="tel" class="form-control rounded-3" id="profilePhone" placeholder="0901234567">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="profileEmail" class="form-label small fw-semibold">Email (Không thể đổi)</label>
+                                        <input type="email" class="form-control rounded-3 bg-light" id="profileEmail" readonly>
+                                    </div>
+                                    <button type="submit" id="btnSaveProfile" class="btn btn-primary-custom w-100 py-2 rounded-3 mt-2">
+                                        <i class="bi bi-check2-circle me-1"></i> Lưu Thay Đổi
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cột Đổi Mật Khẩu -->
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-4 h-100">
+                            <div class="card-header bg-white py-3 border-bottom-0">
+                                <h6 class="fw-bold mb-0 text-dark">
+                                    <i class="bi bi-shield-lock-fill text-danger me-2"></i>Đổi Mật Khẩu
+                                </h6>
+                            </div>
+                            <div class="card-body p-4 pt-1">
+                                <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
+                                    <div class="mb-3">
+                                        <label for="oldPassword" class="form-label small fw-semibold">Mật khẩu hiện tại</label>
+                                        <input type="password" class="form-control rounded-3" id="oldPassword" required placeholder="••••••••">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="newPassword" class="form-label small fw-semibold">Mật khẩu mới</label>
+                                        <input type="password" class="form-control rounded-3" id="newPassword" required minlength="6" placeholder="Tối thiểu 6 ký tự">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="confirmNewPassword" class="form-label small fw-semibold">Xác nhận mật khẩu mới</label>
+                                        <input type="password" class="form-control rounded-3" id="confirmNewPassword" required minlength="6" placeholder="Nhập lại mật khẩu mới">
+                                    </div>
+                                    <button type="submit" id="btnChangePass" class="btn btn-outline-danger w-100 py-2 rounded-3 mt-2">
+                                        <i class="bi bi-key-fill me-1"></i> Cập Nhật Mật Khẩu
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script>
+            let currentUser = null;
+
+            async function loadUserProfile() {
+                try {
+                    const data = await MilkTeaApi.get('/api/v1/auth/me');
+                    currentUser = data;
+                    document.getElementById('profileDisplayFullName').textContent = data.fullName || 'Chưa cập nhật tên';
+                    document.getElementById('profileDisplayEmail').textContent = data.email;
+                    document.getElementById('profileFullName').value = data.fullName || '';
+                    document.getElementById('profilePhone').value = data.phone || '';
+                    document.getElementById('profileEmail').value = data.email || '';
+
+                    const roleBadge = document.getElementById('profileRoleBadge');
+                    roleBadge.textContent = data.role;
+                    if (data.role === 'ADMIN') roleBadge.className = 'badge rounded-pill bg-danger';
+                    else if (data.role === 'CASHIER') roleBadge.className = 'badge rounded-pill bg-primary';
+                    else if (data.role === 'KITCHEN') roleBadge.className = 'badge rounded-pill bg-success';
+                    else roleBadge.className = 'badge rounded-pill bg-secondary';
+
+                } catch (err) {
+                    console.error('Không tải được thông tin cá nhân:', err);
+                }
+            }
+
+            async function handleUpdateProfile(e) {
+                e.preventDefault();
+                const fullName = document.getElementById('profileFullName').value.trim();
+                const phone = document.getElementById('profilePhone').value.trim();
+                const btn = document.getElementById('btnSaveProfile');
+                const alertEl = document.getElementById('profileAlert');
+
+                btn.disabled = true;
+                try {
+                    const updated = await MilkTeaApi.put('/api/v1/auth/profile', { fullName, phone });
+                    showAlert('Cập nhật thông tin cá nhân thành công!', 'success');
+                    document.getElementById('profileDisplayFullName').textContent = updated.fullName || 'Chưa cập nhật tên';
+                    if (MilkTeaApi.showToast) MilkTeaApi.showToast('Cập nhật thành công', 'success');
+                } catch (err) {
+                    showAlert(err.message || 'Không thể cập nhật thông tin', 'danger');
+                } finally {
+                    btn.disabled = false;
+                }
+            }
+
+            async function handleChangePassword(e) {
+                e.preventDefault();
+                const oldPassword = document.getElementById('oldPassword').value;
+                const newPassword = document.getElementById('newPassword').value;
+                const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+                const btn = document.getElementById('btnChangePass');
+
+                if (newPassword !== confirmNewPassword) {
+                    showAlert('Mật khẩu xác nhận không khớp!', 'danger');
+                    return;
+                }
+
+                btn.disabled = true;
+                try {
+                    await MilkTeaApi.put('/api/v1/auth/change-password', { oldPassword, newPassword });
+                    showAlert('Đổi mật khẩu thành công! Vui lòng ghi nhớ mật khẩu mới.', 'success');
+                    document.getElementById('changePasswordForm').reset();
+                    if (MilkTeaApi.showToast) MilkTeaApi.showToast('Đổi mật khẩu thành công', 'success');
+                } catch (err) {
+                    showAlert(err.message || 'Mật khẩu cũ không đúng hoặc có lỗi xảy ra', 'danger');
+                } finally {
+                    btn.disabled = false;
+                }
+            }
+
+            function showAlert(msg, type) {
+                const alertEl = document.getElementById('profileAlert');
+                alertEl.textContent = msg;
+                alertEl.className = `alert alert-${type} py-2 small rounded-3 mb-3`;
+                alertEl.classList.remove('d-none');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            document.addEventListener('DOMContentLoaded', loadUserProfile);
+        </script>
+    </th:block>
+</body>
+</html>

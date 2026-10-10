@@ -96,4 +96,34 @@ public class AuthController {
         String token = UUID.randomUUID().toString();
         return ResponseEntity.ok(ApiResponse.ok(Map.of("headerName", "X-CSRF-TOKEN", "token", token)));
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<AuthDto.UserInfo>> getMe(
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor == null || actor.getAccountId() == null) {
+            throw vn.edu.ute.milktea.common.BusinessException.unauthorized(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Vui lòng đăng nhập");
+        }
+        return ResponseEntity.ok(ApiResponse.ok(authService.getProfile(actor.getAccountId())));
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<ApiResponse<AuthDto.UserInfo>> updateProfile(
+            @AuthenticationPrincipal CurrentActor actor,
+            @Valid @RequestBody AuthDto.UpdateProfileRequest request) {
+        if (actor == null || actor.getAccountId() == null) {
+            throw vn.edu.ute.milktea.common.BusinessException.unauthorized(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Vui lòng đăng nhập");
+        }
+        return ResponseEntity.ok(ApiResponse.ok(authService.updateProfile(actor.getAccountId(), request)));
+    }
+
+    @PutMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @AuthenticationPrincipal CurrentActor actor,
+            @Valid @RequestBody AuthDto.ChangePasswordRequest request) {
+        if (actor == null || actor.getAccountId() == null) {
+            throw vn.edu.ute.milktea.common.BusinessException.unauthorized(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Vui lòng đăng nhập");
+        }
+        authService.changePassword(actor.getAccountId(), request);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
 }

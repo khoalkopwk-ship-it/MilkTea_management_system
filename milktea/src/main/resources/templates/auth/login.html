@@ -2,67 +2,146 @@
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
 <head>
-    <title>Đăng Nhập - MilkTea</title>
+    <title>Xác Thực - MilkTea</title>
 </head>
 <body>
     <div th:fragment="content" class="container py-5">
         <div class="row justify-content-center">
-            <div class="col-md-5 col-lg-4">
+            <div class="col-md-6 col-lg-5">
                 <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-                    <div class="card-header bg-white text-center py-4 border-0">
+                    <!-- Card Header -->
+                    <div class="card-header bg-white text-center pt-4 pb-2 border-0">
                         <div class="d-inline-block brand-badge fs-5 mb-2">
                             <i class="bi bi-cup-hot-fill me-1"></i>MilkTea
                         </div>
-                        <h4 class="brand-font mb-1">Đăng Nhập Hệ Thống</h4>
-                        <p class="text-muted small mb-0">Quản trị & Vận hành quán trà sữa</p>
+                        <h4 class="brand-font mb-1">Cổng Xác Thực Hệ Thống</h4>
+                        <p class="text-muted small mb-0">Quản trị, Vận hành & Dành cho Khách hàng</p>
+                    </div>
+
+                    <!-- Nav Tabs: Đăng Nhập & Đăng Ký -->
+                    <div class="px-4 pt-2">
+                        <ul class="nav nav-pills nav-fill bg-light p-1 rounded-3" id="authTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active rounded-3 py-2 fw-semibold" id="login-tab" data-bs-toggle="tab" data-bs-target="#loginTabContent" type="button" role="tab">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-3 py-2 fw-semibold" id="register-tab" data-bs-toggle="tab" data-bs-target="#registerTabContent" type="button" role="tab">
+                                    <i class="bi bi-person-plus me-1"></i> Đăng Ký
+                                </button>
+                            </li>
+                        </ul>
                     </div>
 
                     <div class="card-body p-4">
-                        <div id="loginAlert" class="alert alert-danger d-none py-2 small" role="alert"></div>
+                        <!-- Alert Box -->
+                        <div id="authAlert" class="alert alert-danger d-none py-2 small rounded-3" role="alert"></div>
 
-                        <form id="loginForm" onsubmit="handleLogin(event)">
-                            <div class="mb-3">
-                                <label for="email" class="form-label small fw-semibold">Email tài khoản</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
-                                    <input type="email" class="form-control border-start-0" id="email" required placeholder="name@milktea.vn">
+                        <!-- Tab Content -->
+                        <div class="tab-content" id="authTabContent">
+                            <!-- TAB 1: ĐĂNG NHẬP -->
+                            <div class="tab-pane fade show active" id="loginTabContent" role="tabpanel">
+                                <form id="loginForm" onsubmit="handleLogin(event)">
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label small fw-semibold">Email tài khoản</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+                                            <input type="email" class="form-control border-start-0" id="email" required placeholder="name@milktea.vn">
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label for="password" class="form-label small fw-semibold mb-0">Mật khẩu</label>
+                                            <a href="javascript:void(0)" class="text-primary small text-decoration-none fw-semibold" onclick="openForgotPasswordModal()">
+                                                Quên mật khẩu?
+                                            </a>
+                                        </div>
+                                        <div class="input-group mt-1">
+                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
+                                            <input type="password" class="form-control border-start-0" id="password" required placeholder="••••••••">
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" id="loginBtn" class="btn btn-primary-custom w-100 py-2 rounded-3 mt-3">
+                                        <span class="spinner-border spinner-border-sm me-2 d-none" id="loginSpinner"></span>
+                                        Đăng Nhập
+                                    </button>
+                                </form>
+
+                                <!-- Tài Khoản Mẫu Nhanh -->
+                                <div class="mt-4 pt-3 border-top">
+                                    <p class="text-center text-muted small fw-semibold mb-2">Chọn nhanh tài khoản thử nghiệm:</p>
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-danger text-start py-2 px-3 rounded-3"
+                                                onclick="fillDemo('admin@milktea.vn', 'Password@123')">
+                                            <i class="bi bi-shield-lock-fill me-2"></i><strong>Quản Trị Viên (ADMIN)</strong>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary text-start py-2 px-3 rounded-3"
+                                                onclick="fillDemo('cashier@milktea.vn', 'Password@123')">
+                                            <i class="bi bi-calculator me-2"></i><strong>Thu Ngân (CASHIER)</strong>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-success text-start py-2 px-3 rounded-3"
+                                                onclick="fillDemo('kitchen@milktea.vn', 'Password@123')">
+                                            <i class="bi bi-fire me-2"></i><strong>Bếp Trưởng (KITCHEN)</strong>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary text-start py-2 px-3 rounded-3"
+                                                onclick="fillDemo('customer@milktea.vn', 'Password@123')">
+                                            <i class="bi bi-person me-2"></i><strong>Khách Hàng (CUSTOMER)</strong>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="password" class="form-label small fw-semibold">Mật khẩu</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
-                                    <input type="password" class="form-control border-start-0" id="password" required placeholder="••••••••">
-                                </div>
-                            </div>
+                            <!-- TAB 2: ĐĂNG KÝ -->
+                            <div class="tab-pane fade" id="registerTabContent" role="tabpanel">
+                                <form id="registerForm" onsubmit="handleRegister(event)">
+                                    <div class="mb-3">
+                                        <label for="regFullName" class="form-label small fw-semibold">Họ và tên</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
+                                            <input type="text" class="form-control border-start-0" id="regFullName" required placeholder="Nguyễn Văn A">
+                                        </div>
+                                    </div>
 
-                            <button type="submit" id="loginBtn" class="btn btn-primary-custom w-100 py-2 rounded-3 mt-2">
-                                <span class="spinner-border spinner-border-sm me-2 d-none" id="loginSpinner"></span>
-                                Đăng Nhập
-                            </button>
-                        </form>
+                                    <div class="mb-3">
+                                        <label for="regEmail" class="form-label small fw-semibold">Email đăng ký</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+                                            <input type="email" class="form-control border-start-0" id="regEmail" required placeholder="example@email.com">
+                                        </div>
+                                    </div>
 
-                        <!-- Tài Khoản Mẫu Nhanh -->
-                        <div class="mt-4 pt-3 border-top">
-                            <p class="text-center text-muted small fw-semibold mb-2">Chọn nhanh tài khoản thử nghiệm:</p>
-                            <div class="d-grid gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-danger text-start py-2 px-3 rounded-3"
-                                        onclick="fillDemo('admin@milktea.vn', 'Password@123')">
-                                    <i class="bi bi-shield-lock-fill me-2"></i><strong>Quản Trị Viên (ADMIN)</strong>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-primary text-start py-2 px-3 rounded-3"
-                                        onclick="fillDemo('cashier@milktea.vn', 'Password@123')">
-                                    <i class="bi bi-calculator me-2"></i><strong>Thu Ngân (CASHIER)</strong>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-success text-start py-2 px-3 rounded-3"
-                                        onclick="fillDemo('kitchen@milktea.vn', 'Password@123')">
-                                    <i class="bi bi-fire me-2"></i><strong>Bếp Trưởng (KITCHEN)</strong>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary text-start py-2 px-3 rounded-3"
-                                        onclick="fillDemo('customer@milktea.vn', 'Password@123')">
-                                    <i class="bi bi-person me-2"></i><strong>Khách Hàng (CUSTOMER)</strong>
-                                </button>
+                                    <div class="mb-3">
+                                        <label for="regPhone" class="form-label small fw-semibold">Số điện thoại</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-telephone text-muted"></i></span>
+                                            <input type="tel" class="form-control border-start-0" id="regPhone" placeholder="0901234567">
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="regPassword" class="form-label small fw-semibold">Mật khẩu</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
+                                            <input type="password" class="form-control border-start-0" id="regPassword" required minlength="6" placeholder="Tối thiểu 6 ký tự">
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="regConfirmPassword" class="form-label small fw-semibold">Xác nhận mật khẩu</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-shield-check text-muted"></i></span>
+                                            <input type="password" class="form-control border-start-0" id="regConfirmPassword" required minlength="6" placeholder="Nhập lại mật khẩu">
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" id="registerBtn" class="btn btn-success w-100 py-2 rounded-3 mt-2">
+                                        <span class="spinner-border spinner-border-sm me-2 d-none" id="registerSpinner"></span>
+                                        Đăng Ký Tài Khoản
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -71,8 +150,74 @@
         </div>
     </div>
 
+    <!-- MODAL QUÊN MẬT KHẨU / OTP 2 BƯỚC -->
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-key-fill text-primary me-2"></i>Khôi Phục Mật Khẩu
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-4 pt-2">
+                    <div id="forgotAlert" class="alert alert-danger d-none py-2 small rounded-3" role="alert"></div>
+
+                    <!-- BƯỚC 1: NHẬP EMAIL NHẬN MÃ KHÔI PHỤC -->
+                    <div id="forgotStep1">
+                        <p class="text-muted small">Nhập địa chỉ email đăng ký để nhận mã xác thực khôi phục mật khẩu.</p>
+                        <form id="step1Form" onsubmit="handleRequestReset(event)">
+                            <div class="mb-3">
+                                <label for="forgotEmail" class="form-label small fw-semibold">Email tài khoản</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-envelope text-muted"></i></span>
+                                    <input type="email" class="form-control" id="forgotEmail" required placeholder="name@milktea.vn">
+                                </div>
+                            </div>
+                            <button type="submit" id="btnSendReset" class="btn btn-primary-custom w-100 py-2 rounded-3">
+                                <span class="spinner-border spinner-border-sm me-2 d-none" id="sendResetSpinner"></span>
+                                Gửi Mã Khôi Phục
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- BƯỚC 2: NHẬP MÃ TOKEN/OTP & MẬT KHẨU MỚI -->
+                    <div id="forgotStep2" class="d-none">
+                        <div class="alert alert-info py-2 small rounded-3 mb-3">
+                            <i class="bi bi-info-circle me-1"></i> Mã khôi phục đã được tạo! Bạn có thể sử dụng mã bên dưới để đổi mật khẩu.
+                        </div>
+                        <form id="step2Form" onsubmit="handleConfirmReset(event)">
+                            <div class="mb-3">
+                                <label for="resetTokenInput" class="form-label small fw-semibold">Mã token / OTP</label>
+                                <input type="text" class="form-control font-monospace" id="resetTokenInput" required placeholder="Nhập mã token nhận được">
+                            </div>
+                            <div class="mb-3">
+                                <label for="resetNewPassword" class="form-label small fw-semibold">Mật khẩu mới</label>
+                                <input type="password" class="form-control" id="resetNewPassword" required minlength="6" placeholder="Tối thiểu 6 ký tự">
+                            </div>
+                            <div class="mb-3">
+                                <label for="resetConfirmNewPassword" class="form-label small fw-semibold">Xác nhận mật khẩu mới</label>
+                                <input type="password" class="form-control" id="resetConfirmNewPassword" required minlength="6" placeholder="Nhập lại mật khẩu mới">
+                            </div>
+                            <button type="submit" id="btnConfirmReset" class="btn btn-success w-100 py-2 rounded-3">
+                                <span class="spinner-border spinner-border-sm me-2 d-none" id="confirmResetSpinner"></span>
+                                Xác Nhận Đặt Lại Mật Khẩu
+                            </button>
+                            <button type="button" class="btn btn-link w-100 text-muted small mt-2" onclick="backToStep1()">
+                                <i class="bi bi-arrow-left me-1"></i> Gửi lại mã khác
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <th:block th:fragment="scripts">
         <script>
+            let forgotModal = null;
+
             function fillDemo(email, pass) {
                 document.getElementById('email').value = email;
                 document.getElementById('password').value = pass;
@@ -82,7 +227,7 @@
                 e.preventDefault();
                 const email = document.getElementById('email').value.trim();
                 const password = document.getElementById('password').value;
-                const alertEl = document.getElementById('loginAlert');
+                const alertEl = document.getElementById('authAlert');
                 const btn = document.getElementById('loginBtn');
                 const spinner = document.getElementById('loginSpinner');
 
@@ -92,9 +237,8 @@
 
                 try {
                     const data = await MilkTeaApi.post('/api/v1/auth/login', { email, password });
-                    MilkTeaApi.showToast('Đăng nhập thành công!', 'success');
+                    if (MilkTeaApi.showToast) MilkTeaApi.showToast('Đăng nhập thành công!', 'success');
 
-                    // Điều hướng theo vai trò hoặc query param redirect
                     const urlParams = new URLSearchParams(window.location.search);
                     const redirect = urlParams.get('redirect');
 
@@ -115,7 +259,148 @@
 
                 } catch (err) {
                     alertEl.textContent = err.message || 'Email hoặc mật khẩu không chính xác';
+                    alertEl.className = 'alert alert-danger py-2 small rounded-3';
                     alertEl.classList.remove('d-none');
+                    btn.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            }
+
+            async function handleRegister(e) {
+                e.preventDefault();
+                const fullName = document.getElementById('regFullName').value.trim();
+                const email = document.getElementById('regEmail').value.trim();
+                const phone = document.getElementById('regPhone').value.trim();
+                const password = document.getElementById('regPassword').value;
+                const confirmPass = document.getElementById('regConfirmPassword').value;
+                const alertEl = document.getElementById('authAlert');
+                const btn = document.getElementById('registerBtn');
+                const spinner = document.getElementById('registerSpinner');
+
+                if (password !== confirmPass) {
+                    alertEl.textContent = 'Mật khẩu xác nhận không khớp!';
+                    alertEl.className = 'alert alert-danger py-2 small rounded-3';
+                    alertEl.classList.remove('d-none');
+                    return;
+                }
+
+                alertEl.classList.add('d-none');
+                btn.disabled = true;
+                spinner.classList.remove('d-none');
+
+                try {
+                    const data = await MilkTeaApi.post('/api/v1/auth/register', {
+                        fullName,
+                        email,
+                        phone,
+                        password
+                    });
+
+                    if (MilkTeaApi.showToast) MilkTeaApi.showToast('Đăng ký tài khoản thành công!', 'success');
+                    alertEl.textContent = 'Đăng ký thành công! Đang chuyển hướng...';
+                    alertEl.className = 'alert alert-success py-2 small rounded-3';
+                    alertEl.classList.remove('d-none');
+
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+
+                } catch (err) {
+                    alertEl.textContent = err.message || 'Không thể đăng ký tài khoản';
+                    alertEl.className = 'alert alert-danger py-2 small rounded-3';
+                    alertEl.classList.remove('d-none');
+                    btn.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            }
+
+            function openForgotPasswordModal() {
+                const el = document.getElementById('forgotPasswordModal');
+                if (!forgotModal) forgotModal = new bootstrap.Modal(el);
+                backToStep1();
+                document.getElementById('forgotAlert').classList.add('d-none');
+                document.getElementById('forgotEmail').value = document.getElementById('email').value || '';
+                forgotModal.show();
+            }
+
+            function backToStep1() {
+                document.getElementById('forgotStep1').classList.remove('d-none');
+                document.getElementById('forgotStep2').classList.add('d-none');
+                document.getElementById('forgotAlert').classList.add('d-none');
+            }
+
+            async function handleRequestReset(e) {
+                e.preventDefault();
+                const email = document.getElementById('forgotEmail').value.trim();
+                const alertEl = document.getElementById('forgotAlert');
+                const btn = document.getElementById('btnSendReset');
+                const spinner = document.getElementById('sendResetSpinner');
+
+                alertEl.classList.add('d-none');
+                btn.disabled = true;
+                spinner.classList.remove('d-none');
+
+                try {
+                    const res = await MilkTeaApi.post('/api/v1/auth/password-reset', { email });
+                    const token = res && res.tokenPreview ? res.tokenPreview : '';
+                    if (token) {
+                        document.getElementById('resetTokenInput').value = token;
+                    }
+                    document.getElementById('forgotStep1').classList.add('d-none');
+                    document.getElementById('forgotStep2').classList.remove('d-none');
+                    if (MilkTeaApi.showToast) MilkTeaApi.showToast('Mã khôi phục đã sẵn sàng', 'info');
+                } catch (err) {
+                    alertEl.textContent = err.message || 'Không thể xử lý yêu cầu đặt lại mật khẩu';
+                    alertEl.classList.remove('d-none');
+                } finally {
+                    btn.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            }
+
+            async function handleConfirmReset(e) {
+                e.preventDefault();
+                const token = document.getElementById('resetTokenInput').value.trim();
+                const newPassword = document.getElementById('resetNewPassword').value;
+                const confirmPass = document.getElementById('resetConfirmNewPassword').value;
+                const alertEl = document.getElementById('forgotAlert');
+                const btn = document.getElementById('btnConfirmReset');
+                const spinner = document.getElementById('confirmResetSpinner');
+
+                if (newPassword !== confirmPass) {
+                    alertEl.textContent = 'Mật khẩu xác nhận không khớp!';
+                    alertEl.classList.remove('d-none');
+                    return;
+                }
+
+                alertEl.classList.add('d-none');
+                btn.disabled = true;
+                spinner.classList.remove('d-none');
+
+                try {
+                    await MilkTeaApi.post('/api/v1/auth/password-reset/confirm', {
+                        token,
+                        newPassword
+                    });
+
+                    if (forgotModal) forgotModal.hide();
+                    const mainAlert = document.getElementById('authAlert');
+                    mainAlert.textContent = 'Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.';
+                    mainAlert.className = 'alert alert-success py-2 small rounded-3';
+                    mainAlert.classList.remove('d-none');
+
+                    // Chuyển sang tab login và điền email
+                    const tabBtn = document.getElementById('login-tab');
+                    if (tabBtn) {
+                        const tab = new bootstrap.Tab(tabBtn);
+                        tab.show();
+                    }
+                    document.getElementById('password').value = '';
+
+                } catch (err) {
+                    alertEl.textContent = err.message || 'Mã token không hợp lệ hoặc đã hết hạn';
+                    alertEl.classList.remove('d-none');
+                } finally {
                     btn.disabled = false;
                     spinner.classList.add('d-none');
                 }

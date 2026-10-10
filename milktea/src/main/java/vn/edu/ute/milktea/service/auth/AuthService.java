@@ -139,4 +139,53 @@ public class AuthService {
         resetToken.setUsedAt(Instant.now());
         passwordResetTokenRepository.save(resetToken);
     }
+
+    @Transactional(readOnly = true)
+    public AuthDto.UserInfo getProfile(Long accountId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy tài khoản"));
+        return AuthDto.UserInfo.builder()
+                .id(account.getId())
+                .email(account.getEmail())
+                .fullName(account.getFullName())
+                .phone(account.getPhone())
+                .role(account.getRole())
+                .build();
+    }
+
+    @Transactional
+    public AuthDto.UserInfo updateProfile(Long accountId, AuthDto.UpdateProfileRequest request) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy tài khoản"));
+
+        if (request.getFullName() != null) {
+            account.setFullName(request.getFullName().trim());
+        }
+        if (request.getPhone() != null) {
+            account.setPhone(request.getPhone().trim());
+        }
+        accountRepository.save(account);
+
+        return AuthDto.UserInfo.builder()
+                .id(account.getId())
+                .email(account.getEmail())
+                .fullName(account.getFullName())
+                .phone(account.getPhone())
+                .role(account.getRole())
+                .build();
+    }
+
+    @Transactional
+    public void changePassword(Long accountId, AuthDto.ChangePasswordRequest request) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy tài khoản"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), account.getPasswordHash())) {
+            throw BusinessException.badRequest(ErrorCode.AUTH_INVALID_CREDENTIALS, "Mật khẩu hiện tại không chính xác");
+        }
+
+        account.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        account.setTokenVersion(account.getTokenVersion() + 1);
+        accountRepository.save(account);
+    }
 }
