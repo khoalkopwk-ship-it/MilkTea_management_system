@@ -1,14 +1,33 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
 <body>
     <div th:fragment="navbar">
+        <style sec:authorize="hasAnyRole('ADMIN', 'CHEF', 'KITCHEN')">
+            .navbar-milktea #navbarContent {
+                display: flex !important;
+                flex-basis: auto;
+            }
+
+            .navbar-milktea #navbarContent>.d-flex {
+                margin-left: auto;
+            }
+        </style>
         <nav class="navbar navbar-expand-lg navbar-milktea sticky-top">
             <div class="container-fluid px-lg-4">
                 <!-- Brand / Logo -->
-                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/}">
+                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/}"
+                    sec:authorize="!hasRole('ADMIN')">
                     <span class="brand-badge"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
-                    <span class="brand-font fs-5 d-none d-sm-inline" th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                    <span class="brand-font fs-5 d-none d-sm-inline"
+                        th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                </a>
+
+                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/admin}"
+                    sec:authorize="hasRole('ADMIN')">
+                    <span class="brand-badge"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
+                    <span class="brand-font fs-5 d-none d-sm-inline"
+                        th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
                 </a>
 
                 <!-- Nhãn Bàn Cho Khách Hàng (Nếu có context bàn) -->
@@ -20,20 +39,24 @@
                 </div>
 
                 <!-- Toggler for Mobile -->
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <button sec:authorize="!hasAnyRole('ADMIN', 'CHEF', 'KITCHEN')" class="navbar-toggler border-0"
+                    type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
                 <!-- Navigation Content -->
                 <div class="collapse navbar-collapse" id="navbarContent">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
+                    <ul sec:authorize="!hasAnyRole('ADMIN', 'CHEF', 'KITCHEN')"
+                        class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
                         <li class="nav-item">
-                            <a class="nav-link fw-semibold" th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
+                            <a class="nav-link fw-semibold"
+                                th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
                                 <i class="bi bi-grid me-1"></i> Menu
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link fw-semibold" th:href="@{/orders(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
+                            <a class="nav-link fw-semibold"
+                                th:href="@{/orders(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
                                 <i class="bi bi-receipt me-1"></i> Đơn Đã Đặt
                             </a>
                         </li>
@@ -43,7 +66,9 @@
                             </a>
                         </li>
 
-                        <li class="nav-item" sec:authorize="hasRole('ADMIN')"><a class="nav-link fw-semibold text-danger" th:href="@{/admin/documents}">Phiếu nghiệp vụ</a></li>
+                        <li class="nav-item" sec:authorize="hasRole('ADMIN')"><a
+                                class="nav-link fw-semibold text-danger" th:href="@{/admin/documents}">Phiếu nghiệp
+                                vụ</a></li>
                         <!-- Menu Nhân Viên Theo Quyền -->
                         <li class="nav-item" sec:authorize="hasAnyRole('CASHIER', 'ADMIN')">
                             <a class="nav-link fw-bold text-primary" th:href="@{/cashier}">
@@ -65,27 +90,37 @@
                     <!-- Right Controls: Cart & Auth -->
                     <div class="d-flex align-items-center gap-2">
                         <!-- Nút Giỏ Hàng -->
-                        <a sec:authorize="!hasRole('CASHIER')" th:href="@{/cart(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="btn btn-outline-secondary position-relative rounded-pill px-3 py-1">
+                        <a sec:authorize="!hasAnyRole('CASHIER', 'ADMIN', 'CHEF', 'KITCHEN')"
+                            th:href="@{/cart(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}"
+                            class="btn btn-outline-secondary position-relative rounded-pill px-3 py-1">
                             <i class="bi bi-bag-heart-fill text-danger me-1"></i> Giỏ Hàng
-                            <span id="cartCountBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">
+                            <span id="cartCountBadge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                style="display: none;">
                                 0
                             </span>
                         </a>
 
                         <!-- Khi Đã Đăng Nhập -->
                         <div sec:authorize="isAuthenticated()" class="dropdown ms-2">
-                            <button class="btn btn-light rounded-pill dropdown-toggle d-flex align-items-center gap-2 px-3 py-1 border" type="button" data-bs-toggle="dropdown">
+                            <button
+                                class="btn btn-light rounded-pill dropdown-toggle d-flex align-items-center gap-2 px-3 py-1 border"
+                                type="button" data-bs-toggle="dropdown">
                                 <i class="bi bi-person-circle fs-5 text-muted"></i>
                                 <span sec:authentication="principal.email" class="fw-semibold small">Tài khoản</span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
-                                <li><h6 class="dropdown-header">Tài khoản</h6></li>
+                                <li>
+                                    <h6 class="dropdown-header">Tài khoản</h6>
+                                </li>
                                 <li>
                                     <a class="dropdown-item" th:href="@{/profile}">
                                         <i class="bi bi-person-lines-fill me-2 text-primary"></i> Hồ sơ cá nhân
                                     </a>
                                 </li>
-                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
                                 <li>
                                     <button class="dropdown-item text-danger" onclick="logoutAccount()">
                                         <i class="bi bi-box-arrow-right me-2"></i> Đăng xuất
@@ -96,7 +131,8 @@
 
                         <!-- Khi Chưa Đăng Nhập -->
                         <div sec:authorize="isAnonymous()">
-                            <a th:href="@{/login}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold">
+                            <a th:href="@{/login}"
+                                class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold">
                                 <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
                             </a>
                         </div>
@@ -117,4 +153,5 @@
         </script>
     </div>
 </body>
+
 </html>
