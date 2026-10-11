@@ -10,15 +10,20 @@ import vn.edu.ute.milktea.entity.account.Account;
 import vn.edu.ute.milktea.entity.audit.BusinessAudit;
 import vn.edu.ute.milktea.entity.cancellation.CancellationRequest;
 import vn.edu.ute.milktea.entity.cancellation.CancellationStatus;
+import vn.edu.ute.milktea.entity.cancellation.RefundRequest;
+import vn.edu.ute.milktea.entity.cancellation.RefundStatus;
 import vn.edu.ute.milktea.entity.order.Invoice;
 import vn.edu.ute.milktea.entity.order.InvoiceStatus;
 import vn.edu.ute.milktea.entity.order.Order;
 import vn.edu.ute.milktea.entity.order.OrderStatus;
+import vn.edu.ute.milktea.entity.payment.Payment;
 import vn.edu.ute.milktea.repository.account.AccountRepository;
 import vn.edu.ute.milktea.repository.audit.BusinessAuditRepository;
 import vn.edu.ute.milktea.repository.cancellation.CancellationRequestRepository;
+import vn.edu.ute.milktea.repository.cancellation.RefundRequestRepository;
 import vn.edu.ute.milktea.repository.order.InvoiceRepository;
 import vn.edu.ute.milktea.repository.order.OrderRepository;
+import vn.edu.ute.milktea.repository.payment.PaymentRepository;
 import vn.edu.ute.milktea.security.CurrentActor;
 
 import java.time.Instant;
@@ -29,7 +34,9 @@ public class CancellationService {
 
     private final OrderRepository orderRepository;
     private final InvoiceRepository invoiceRepository;
+    private final PaymentRepository paymentRepository;
     private final CancellationRequestRepository cancellationRepository;
+    private final RefundRequestRepository refundRepository;
     private final AccountRepository accountRepository;
     private final BusinessAuditRepository auditRepository;
     private final jakarta.persistence.EntityManager entityManager;
@@ -137,6 +144,7 @@ public class CancellationService {
                 invoice.setStatus(InvoiceStatus.DA_HUY);
                 invoice.setCancelledAt(Instant.now());
                 invoiceRepository.save(invoice);
+                createRefundIfPaid(cancelReq, invoice, cashierId);
             }
 
             auditRepository.save(BusinessAudit.builder()
@@ -160,6 +168,32 @@ public class CancellationService {
 
         cancellationRepository.save(cancelReq);
         publish(order);
+    }
+
+    private void createRefundIfPaid(CancellationRequest cancelReq, Invoice invoice, Long staffId) {
+        Payment payment = paymentRepository.findByInvoiceId(invoice.getId()).orElse(null);
+        if (payment == null || refundRepository.findByOrderId(invoice.getOrder().getId()).isPresent()) {
+            return;
+        }
+
+        RefundRequest refund = refundRepository.save(RefundRequest.builder()
+                .order(invoice.getOrder())
+                .payment(payment)
+                .amount(payment.getAmount())
+                .reason(cancelReq.getReason())
+                .status(RefundStatus.CHO_DUYET)
+                .idempotencyKey("CANCEL_" + cancelReq.getId())
+                .build());
+
+        auditRepository.save(BusinessAudit.builder()
+                .orderId(invoice.getOrder().getId())
+                .accountId(staffId)
+                .action("REFUND_REQUESTED")
+                .reason(cancelReq.getReason())
+                .createdAt(Instant.now())
+                .build());
+
+        publishRefund(refund);
     }
 
     @Transactional(readOnly = true)
@@ -186,5 +220,27 @@ public class CancellationService {
         for (String topic : java.util.List.of("/topic/cashier", "/topic/kitchen", "/topic/admin"))
             publisher.publishAfterCommit(topic, "ORDER_STATUS_CHANGED", order.getId().toString(), sid, "1", payload);
         if (sid != null) publisher.publishAfterCommit("/topic/table-sessions/" + sid, "ORDER_STATUS_CHANGED", order.getId().toString(), sid, "1", payload);
+    }
+
+    private void publishRefund(RefundRequest refund) {
+        Order order = refund.getOrder();
+        String sid = order.getSession() != null ? order.getSession().getId().toString() : null;
+        var payload = java.util.Map.<String, Object>of(
+                "orderId", order.getId(),
+                "refundId", refund.getId(),
+                "status", refund.getStatus().name()
+        );
+        publisher.publishAfterCommit("/topic/admin", "REFUND_CHANGED", refund.getId().toString(), sid, "1", payload);
+        publisher.publishAfterCommit("/topic/cashier", "REFUND_CHANGED", refund.getId().toString(), sid, "1", payload);
+        if (sid != null) {
+            publisher.publishAfterCommit(
+                    "/topic/table-sessions/" + sid,
+                    "REFUND_CHANGED",
+                    refund.getId().toString(),
+                    sid,
+                    "1",
+                    payload
+            );
+        }
     }
 }
