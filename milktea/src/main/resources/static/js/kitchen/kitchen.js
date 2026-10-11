@@ -7,6 +7,7 @@ const KitchenApp = (() => {
     let kitchenOrders = [];
     let bepStock = [];
     let prepRecipes = [];
+    let preparationHistory = [];
     let currentIncidentOrderId = null;
     let currentRemakeOrderId = null;
     let preparing = false;
@@ -21,6 +22,7 @@ const KitchenApp = (() => {
         await loadOrders();
         await loadStock();
         await loadPrepRecipes();
+        await loadPreparationHistory();
     }
 
     function setupRealtime() {
@@ -30,11 +32,13 @@ const KitchenApp = (() => {
 
         MilkTeaRealtime.on('STOCK_CHANGED', () => {
             loadStock();
+            loadPreparationHistory();
         });
 
         MilkTeaRealtime.onReconnect(() => {
             loadOrders();
             loadStock();
+            loadPreparationHistory();
         });
     }
 
@@ -297,7 +301,119 @@ const KitchenApp = (() => {
         }
     }
 
-    
+    async function loadPreparationHistory() {
+        const tbody = document.getElementById('preparationHistoryTableBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-4">
+                        Đang nạp lịch sử sơ chế...
+                    </td>
+                </tr>
+            `;
+        }
+
+        try {
+            const batches = await MilkTeaApi.get(
+                '/api/v1/inventory/preparation-batches'
+            );
+            preparationHistory = batches || [];
+            renderPreparationHistory();
+        } catch (e) {
+            console.warn('Lỗi nạp lịch sử sơ chế:', e);
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="text-center text-danger py-4">
+                            Không thể nạp lịch sử sơ chế
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+    }
+
+    function renderPreparationHistory() {
+        const tbody = document.getElementById('preparationHistoryTableBody');
+        if (!tbody) return;
+
+        if (preparationHistory.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-4">
+                        Chưa có mẻ sơ chế nào
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = preparationHistory.map(batch => {
+            const diff = Number(batch.differenceQuantity || 0);
+            const diffClass = diff < 0
+                ? 'text-danger'
+                : diff > 0
+                    ? 'text-success'
+                    : 'text-muted';
+
+            return `
+                <tr>
+                    <td class="text-nowrap">${formatDateTime(batch.postedAt)}</td>
+                    <td class="fw-bold">#${batch.id}</td>
+                    <td>${escapeHtml(batch.recipeName || '-')}</td>
+                    <td>${escapeHtml(batch.outputMaterialName || '-')}</td>
+                    <td>${formatQty(batch.expectedQuantity)} ${escapeHtml(batch.unit || '')}</td>
+                    <td>${formatQty(batch.actualQuantity)} ${escapeHtml(batch.unit || '')}</td>
+                    <td class="fw-semibold ${diffClass}">
+                        ${diff > 0 ? '+' : ''}${formatQty(batch.differenceQuantity)}
+                    </td>
+                    <td>${escapeHtml(batch.createdByName || batch.createdByEmail || '-')}</td>
+                    <td class="small text-muted">${escapeHtml(batch.discrepancyReason || '-')}</td>
+                    <td>${formatBatchStatus(batch.status)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function formatBatchStatus(status) {
+        switch (status) {
+            case 'DA_GHI_SO':
+                return '<span class="badge bg-success">Đã ghi sổ</span>';
+            case 'NHAP':
+                return '<span class="badge bg-secondary">Nháp</span>';
+            default:
+                return `<span class="badge bg-light text-dark border">${escapeHtml(status || '-')}</span>`;
+        }
+    }
+
+    function formatDateTime(value) {
+        if (!value) return '-';
+        return new Date(value).toLocaleString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    }
+
+    function formatQty(value) {
+        const number = Number(value || 0);
+        return number.toLocaleString('vi-VN', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 3
+        });
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
     async function submitPreparation() {
         if (preparing) return;
 
@@ -354,6 +470,7 @@ const KitchenApp = (() => {
             document.getElementById('prepReason').value = '';
 
             await loadStock();
+            await loadPreparationHistory();
 
         } catch (e) {
             MilkTeaApi.showToast(
@@ -374,6 +491,7 @@ const KitchenApp = (() => {
         submitIncident,
         openRemakeModal,
         submitRemake,
-        submitPreparation
+        submitPreparation,
+        loadPreparationHistory
     };
 })();

@@ -1,4 +1,5 @@
 package vn.edu.ute.milktea.service.inventory;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,7 @@ import vn.edu.ute.milktea.repository.inventory.*;
 import vn.edu.ute.milktea.repository.order.OrderIngredientSnapshotRepository;
 import vn.edu.ute.milktea.repository.recipe.PreparationRecipeItemRepository;
 import vn.edu.ute.milktea.repository.recipe.PreparationRecipeRepository;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
@@ -90,49 +92,56 @@ public class InventoryService {
         }
         movementRepository.saveAll(movements);
     }
+
     @Transactional
     public void recordPreparation(
             InventoryDto.CreatePreparationBatchRequest request,
-                Account kitchenAccount) {
+            Account kitchenAccount) {
         recordPreparation(request, kitchenAccount, null);
-        }
+    }
+
     @Transactional
     public void recordPreparation(
             InventoryDto.CreatePreparationBatchRequest request,
-                Account kitchenAccount,
-                String key) {
+            Account kitchenAccount,
+            String key) {
         if (kitchenAccount == null) {
-                throw BusinessException.forbidden(
-                        ErrorCode.ACCESS_DENIED,
-                        "Bạn chưa đăng nhập");
+            throw BusinessException.forbidden(
+                    ErrorCode.ACCESS_DENIED,
+                    "Bạn chưa đăng nhập");
         }
+
         if (key != null && key.length() > 64) {
-                throw BusinessException.badRequest(
-                        ErrorCode.VALIDATION_FAILED,
-                        "Mã yêu cầu quá dài");
+            throw BusinessException.badRequest(
+                    ErrorCode.VALIDATION_FAILED,
+                    "Mã yêu cầu quá dài");
         }
+
         String requestKey = (key == null || key.isBlank())
                 ? UUID.randomUUID().toString()
                 : key;
+
         accountRepository.findByIdWithLock(kitchenAccount.getId())
                 .orElseThrow();
+
         var existing = batchRepository.findByIdempotencyKey(requestKey);
         if (existing.isPresent()) {
-                PreparationBatch old = existing.get();
-                boolean same =
-                        old.getCreatedBy().getId().equals(kitchenAccount.getId())
-                        && old.getRecipe().getId().equals(request.getRecipeId())
-                        && old.getActualQuantity().compareTo(request.getActualQuantity()) == 0
-                        && Objects.equals(
-                                old.getDiscrepancyReason(),
-                                request.getDiscrepancyReason());
-                if (!same) {
+            PreparationBatch old = existing.get();
+            boolean same = old.getCreatedBy().getId().equals(kitchenAccount.getId())
+                    && old.getRecipe().getId().equals(request.getRecipeId())
+                    && old.getActualQuantity().compareTo(request.getActualQuantity()) == 0
+                    && Objects.equals(
+                        old.getDiscrepancyReason(),
+                        request.getDiscrepancyReason());
+
+            if (!same) {
                 throw BusinessException.conflict(
                         ErrorCode.IDEMPOTENCY_CONFLICT,
                         "Mã yêu cầu đã được sử dụng cho mẻ khác");
-                }
-                return;
+            }
+            return;
         }
+
         PreparationRecipe recipe = recipeRepository
                 .findById(request.getRecipeId())
                 .orElseThrow(() -> BusinessException.notFound(
@@ -141,8 +150,11 @@ public class InventoryService {
                 ));
         List<PreparationRecipeItem> recipeItems = recipeItemRepository.findByIdRecipeId(recipe.getId());
         if (recipeItems.isEmpty()) {
-            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Công thức sơ chế chưa cấu hình nguyên liệu đầu vào");
+            throw BusinessException.badRequest(
+                    ErrorCode.VALIDATION_FAILED,
+                    "Công thức sơ chế chưa cấu hình nguyên liệu đầu vào");
         }
+
         PreparationBatch batch = PreparationBatch.builder()
                 .recipe(recipe)
                 .outputMaterial(recipe.getOutputMaterial())
@@ -155,26 +167,36 @@ public class InventoryService {
                 .idempotencyKey(requestKey)
                 .build();
         batch = batchRepository.save(batch);
+
         List<PreparationBatchItem> batchItems = new ArrayList<>();
         List<StockMovement> movements = new ArrayList<>();
+
         // Giảm nguyên liệu đầu vào (THO) tại KHO tổng
         for (PreparationRecipeItem item : recipeItems) {
             Material inMat = item.getInputMaterial();
             BigDecimal inQty = item.getStandardInputQuantity();
             Stock inStock = stockRepository.findByIdWithLock(
-                inMat.getId(), StockLocation.KHO)
-                .orElseThrow(() -> BusinessException.notFound(
-                        ErrorCode.INVENTORY_INSUFFICIENT,
-                        "Không tìm thấy nguyên liệu đầu vào tại Kho tổng: "
-                                + inMat.getName()));
+                    inMat.getId(),
+                    StockLocation.KHO)
+                    .orElseThrow(() -> BusinessException.notFound(
+                            ErrorCode.INVENTORY_INSUFFICIENT,
+                            "Không tìm thấy nguyên liệu đầu vào tại Kho tổng: "
+                                    + inMat.getName()));
+
             if (inStock.getQuantity().compareTo(inQty) < 0) {
-                throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
-                        "Nguyên liệu đầu vào tại Kho tổng không đủ để sơ chế mẻ: " + inMat.getName() + " (Còn: " + inStock.getQuantity() + ", cần: " + inQty + ")");
+                throw BusinessException.conflict(
+                        ErrorCode.INVENTORY_INSUFFICIENT,
+                        "Nguyên liệu đầu vào tại Kho tổng không đủ để sơ chế mẻ: "
+                                + inMat.getName()
+                                + " (Còn: " + inStock.getQuantity()
+                                + ", cần: " + inQty + ")");
             }
+
             BigDecimal before = inStock.getQuantity();
             BigDecimal after = before.subtract(inQty);
             inStock.setQuantity(after);
             stockRepository.save(inStock);
+
             batchItems.add(PreparationBatchItem.builder()
                     .id(new PreparationBatchItemId(batch.getId(), inMat.getId()))
                     .batch(batch)
@@ -182,6 +204,7 @@ public class InventoryService {
                     .recipeQuantity(inQty)
                     .actualQuantity(inQty)
                     .build());
+
             movements.add(StockMovement.builder()
                     .material(inMat)
                     .location(StockLocation.KHO)
@@ -197,6 +220,7 @@ public class InventoryService {
                     .reason("Nguyên liệu đầu vào cho mẻ sơ chế #" + batch.getId())
                     .build());
         }
+
         // Tăng nguyên liệu đầu ra (SOCHE) tại BEP
         Material outMat = recipe.getOutputMaterial();
         Stock outStock = stockRepository.findByIdWithLock(outMat.getId(), StockLocation.BEP)
@@ -206,10 +230,12 @@ public class InventoryService {
                         .quantity(BigDecimal.ZERO)
                         .threshold(BigDecimal.ZERO)
                         .build());
+
         BigDecimal outBefore = outStock.getQuantity();
         BigDecimal outAfter = outBefore.add(request.getActualQuantity());
         outStock.setQuantity(outAfter);
         stockRepository.save(outStock);
+
         movements.add(StockMovement.builder()
                 .material(outMat)
                 .location(StockLocation.BEP)
@@ -224,10 +250,61 @@ public class InventoryService {
                 .createdAt(Instant.now())
                 .reason("Sản lượng thực thu mẻ sơ chế #" + batch.getId())
                 .build());
+
         batchItemRepository.saveAll(batchItems);
         movementRepository.saveAll(movements);
-        realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", batch.getId().toString(), null, "1", java.util.Map.of("action", "PREPARATION"));
-        realtimeEventPublisher.publishAfterCommit("/topic/admin", "STOCK_CHANGED", batch.getId().toString(), null, "1", java.util.Map.of("action", "PREPARATION"));
+
+        realtimeEventPublisher.publishAfterCommit(
+                "/topic/stock",
+                "STOCK_CHANGED",
+                batch.getId().toString(),
+                null,
+                "1",
+                java.util.Map.of("action", "PREPARATION"));
+        realtimeEventPublisher.publishAfterCommit(
+                "/topic/admin",
+                "STOCK_CHANGED",
+                batch.getId().toString(),
+                null,
+                "1",
+                java.util.Map.of("action", "PREPARATION"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<InventoryDto.PreparationBatchResponse> listPreparationBatches() {
+        return batchRepository.findAllByOrderByPostedAtDescIdDesc()
+                .stream()
+                .map(this::mapPreparationBatch)
+                .toList();
+    }
+
+    private InventoryDto.PreparationBatchResponse mapPreparationBatch(PreparationBatch batch) {
+        BigDecimal expected = batch.getExpectedQuantity() != null
+                ? batch.getExpectedQuantity()
+                : BigDecimal.ZERO;
+        BigDecimal actual = batch.getActualQuantity() != null
+                ? batch.getActualQuantity()
+                : BigDecimal.ZERO;
+        Account creator = batch.getCreatedBy();
+        Material output = batch.getOutputMaterial();
+        PreparationRecipe recipe = batch.getRecipe();
+
+        return InventoryDto.PreparationBatchResponse.builder()
+                .id(batch.getId())
+                .postedAt(batch.getPostedAt())
+                .recipeId(recipe != null ? recipe.getId() : null)
+                .recipeName(recipe != null ? recipe.getName() : null)
+                .outputMaterialId(output != null ? output.getId() : null)
+                .outputMaterialName(output != null ? output.getName() : null)
+                .expectedQuantity(expected)
+                .actualQuantity(actual)
+                .differenceQuantity(actual.subtract(expected))
+                .unit(output != null ? output.getUnit() : null)
+                .discrepancyReason(batch.getDiscrepancyReason())
+                .createdByEmail(creator != null ? creator.getEmail() : null)
+                .createdByName(creator != null ? creator.getFullName() : null)
+                .status(batch.getStatus() != null ? batch.getStatus().name() : null)
+                .build();
     }
 
     @Transactional

@@ -11,6 +11,7 @@ import java.util.List;
 public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findAllByActiveTrue();
     List<Product> findByCategoryIdAndActiveTrue(Long categoryId);
+    boolean existsByNameIgnoreCaseAndSizeIgnoreCase(String name, String size);
 
     @EntityGraph(attributePaths = {"category"})
     List<Product> findAllByOrderByIdAsc();

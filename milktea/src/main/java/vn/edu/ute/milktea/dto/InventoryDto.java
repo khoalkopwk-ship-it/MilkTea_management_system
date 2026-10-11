@@ -61,6 +61,27 @@ public class InventoryDto {
         private String discrepancyReason;
     }
 
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PreparationBatchResponse {
+        private Long id;
+        private java.time.Instant postedAt;
+        private Long recipeId;
+        private String recipeName;
+        private Long outputMaterialId;
+        private String outputMaterialName;
+        private BigDecimal expectedQuantity;
+        private BigDecimal actualQuantity;
+        private BigDecimal differenceQuantity;
+        private String unit;
+        private String discrepancyReason;
+        private String createdByEmail;
+        private String createdByName;
+        private String status;
+    }
+
     // === NHẬP KHO ===
     @Data
     @Builder

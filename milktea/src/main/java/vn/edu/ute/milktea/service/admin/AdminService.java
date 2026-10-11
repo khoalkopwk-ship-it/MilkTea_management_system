@@ -202,10 +202,19 @@ public class AdminService {
         Category cat = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy danh mục"));
 
+        String productName = request.getName().trim();
+        String productSize = request.getSize().trim().toUpperCase();
+        if (productRepository.existsByNameIgnoreCaseAndSizeIgnoreCase(productName, productSize)) {
+            throw BusinessException.conflict(
+                    ErrorCode.VALIDATION_FAILED,
+                    "Món uống này đã tồn tại với cùng size"
+            );
+        }
+
         Product p = Product.builder()
                 .category(cat)
-                .name(request.getName().trim())
-                .size(request.getSize().trim().toUpperCase())
+                .name(productName)
+                .size(productSize)
                 .description(request.getDescription())
                 .price(request.getPrice())
                 .imageUrl(request.getImageUrl())

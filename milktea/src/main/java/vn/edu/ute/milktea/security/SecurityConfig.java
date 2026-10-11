@@ -4,11 +4,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -80,6 +83,33 @@ public class SecurityConfig {
                         // Everything else authenticated
                         .anyRequest().authenticated()
                 )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            String uri = request.getRequestURI();
+                            boolean staffPage = uri.equals("/admin") || uri.startsWith("/admin/")
+                                    || uri.equals("/cashier") || uri.startsWith("/cashier/")
+                                    || uri.equals("/kitchen") || uri.startsWith("/kitchen/");
+
+                            if (staffPage) {
+                                response.sendRedirect("/login?redirect=" + uri);
+                                return;
+                            }
+                            response.sendError(403);
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                    String uri = request.getRequestURI();
+                    boolean staffPage = uri.equals("/admin") || uri.startsWith("/admin/")
+                            || uri.equals("/cashier") || uri.startsWith("/cashier/")
+                            || uri.equals("/kitchen") || uri.startsWith("/kitchen/");
+                    boolean anonymous = authentication == null || authentication instanceof AnonymousAuthenticationToken;
+
+                    if (staffPage && anonymous) {
+                        response.sendRedirect("/login?redirect=" + uri);
+                        return;
+                    }
+                    response.sendError(403);
+                }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

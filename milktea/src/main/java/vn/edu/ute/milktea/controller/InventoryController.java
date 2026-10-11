@@ -65,6 +65,12 @@ public class InventoryController {
                 .body(ApiResponse.ok(null));
     }
 
+    @GetMapping("/preparation-batches")
+    @PreAuthorize("hasAnyRole('ADMIN','KITCHEN')")
+    public ResponseEntity<ApiResponse<List<InventoryDto.PreparationBatchResponse>>> listPreparationBatches() {
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.listPreparationBatches()));
+    }
+
     
     @PostMapping("/imports")
     public ResponseEntity<ApiResponse<Void>> createImport(
