@@ -37,7 +37,9 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h3 class="brand-font mb-1">Quản Lý Danh Mục & Món Uống</h3>
-                        <p class="text-muted small mb-0">Thêm mới món, upload ảnh Cloudinary, thiết lập công thức tiêu hao</p>
+                        <p class="text-muted small mb-0">
+                            Quản lý danh mục, món uống, kích thước, giá bán và hình ảnh sản phẩm
+                        </p>
                     </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
@@ -46,6 +48,7 @@
                         <button type="button" class="btn btn-primary-custom rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createProductModal">
                             <i class="bi bi-plus-circle me-1"></i> Thêm Món Mới
                         </button>
+
                     </div>
                 </div>
 
@@ -87,23 +90,26 @@
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
+
                                             <!-- Nút Upload Cloudinary -->
-                                            <label class="btn btn-sm btn-outline-info rounded-pill px-2 mb-0" th:title="'Đổi ảnh Cloudinary'">
+                                            <label class="btn btn-sm btn-outline-info rounded-pill px-2 mb-0"
+                                                th:title="'Đổi ảnh Cloudinary'">
                                                 <i class="bi bi-cloud-arrow-up"></i>
-                                                <input type="file" class="d-none" accept="image/jpeg,image/png,image/webp"
-                                                       th:attr="onchange=|AdminApp.uploadProductImage(${p.id}, this)|">
+                                                <input type="file"
+                                                    class="d-none"
+                                                    accept="image/jpeg,image/png,image/webp"
+                                                    th:attr="onchange=|AdminApp.uploadProductImage(${p.id}, this)|">
                                             </label>
 
-                                            <!-- Nút Cấu Hình Định Lượng Công Thức -->
-                                            
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-secondary rounded-pill px-2"
-                                                th:attr="data-product-id=${p.id},
-                                                        data-product-name=${p.name}"
-                                                onclick="openRecipeModal(this.dataset.productId, this.dataset.productName)"
-                                                title="Cấu hình công thức">
-                                            <i class="bi bi-sliders"></i>
-                                        </button>
+                                            <!-- Nút xem công thức, không chỉnh định mức -->
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-secondary rounded-pill px-2"
+                                                    th:attr="data-product-id=${p.id},
+                                                            data-product-name=${p.name}"
+                                                    onclick="openRecipeModal(this.dataset.productId, this.dataset.productName)"
+                                                    title="Xem công thức">
+                                                <i class="bi bi-book"></i>
+                                            </button>
 
                                         </div>
                                     </td>
@@ -115,6 +121,8 @@
 
             </div>
         </div>
+
+        
 
         <!-- Modal Thêm Danh Mục -->
         <div class="modal fade" id="createCategoryModal" tabindex="-1">
@@ -136,6 +144,54 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!--Modal xem công thức món --> 
+        <div class="modal fade" id="recipeModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0 shadow">
+
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="recipeModalTitle">
+                            Công thức món
+                        </h5>
+                        <button type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body p-4">
+                        <input type="hidden" id="recipeProductId">
+                        <p class="text-muted small">Quản lý danh sách nguyên liệu sử dụng cho món uống.</p>
+
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Nguyên Liệu</th>
+                                        <th class="text-center" style="width: 70px;">Xóa</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recipeItemsBody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex gap-2 mb-3">
+                            <select id="addRecipeMaterialSelect" class="form-select form-select-sm">
+                                <option th:each="m : ${materials}"
+                                        th:value="${m.id}"
+                                        th:text="${m.name + ' (' + m.unit + ')'}"></option>
+                            </select>
+                            <button type="button" class="btn btn-sm btn-outline-primary text-nowrap"
+                                    onclick="addRecipeRow()">+ Thêm</button>
+                        </div>
+
+                        <button type="button" class="btn btn-primary-custom w-100"
+                                onclick="saveRecipe()">Lưu Công Thức</button>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -187,57 +243,12 @@
             </div>
         </div>
 
-        <!-- Modal Công Thức Tiêu Hao Món -->
-        <div class="modal fade" id="recipeModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered modal-lg">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                    <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title brand-font" id="recipeModalTitle">Công Thức Tiêu Hao</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body p-4">
-                        <input type="hidden" id="recipeProductId">
-                        <p class="text-muted small">Cấu hình tiêu hao cho một ly, theo đúng đơn vị nguyên liệu (ví dụ 20 g = 0.020 kg). Bếp dùng công thức đang lưu khi hoàn thành đơn.</p>
-                        
-                        <div class="table-responsive mb-3">
-                            <table class="table table-sm align-middle" id="recipeItemsTable">
-                                <thead>
-                                    <tr>
-                                        <th>Nguyên Liệu</th>
-                                        <th style="width: 140px;">Định Mức</th>
-                                        <th style="width: 80px;">Xóa</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recipeItemsBody"></tbody>
-                            </table>
-                        </div>
-
-                        <div class="d-flex gap-2 mb-3">
-                            <select id="addRecipeMaterialSelect" class="form-select form-select-sm rounded-3">
-                                <option th:each="m : ${materials}" th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}">Trà Đen</option>
-                            </select>
-                            <input type="number" step="0.001" id="addRecipeQty" class="form-control form-control-sm rounded-3" style="width: 120px;" placeholder="Định mức">
-                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 text-nowrap" onclick="addRecipeRow()">
-                                <i class="bi bi-plus"></i> Thêm
-                            </button>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold" onclick="saveRecipe()">
-                                Lưu Định Lượng Công Thức
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
     </div>
 
     <th:block th:fragment="scripts">
         <script th:src="@{/js/admin/admin.js}"></script>
         <script>
-            let currentRecipeRows = [];
 
             document.addEventListener('DOMContentLoaded', () => {
                 AdminApp.init();
@@ -252,63 +263,110 @@
                 AdminApp.createProduct(cat, name, size, price, desc);
             }
 
+            let currentRecipeRows = [];
+
             async function openRecipeModal(productId, productName) {
                 document.getElementById('recipeProductId').value = productId;
                 document.getElementById('recipeModalTitle').textContent = `Công Thức: ${productName}`;
-                currentRecipeRows = [];
 
                 try {
                     const data = await MilkTeaApi.get(`/api/v1/admin/products/${productId}/recipe`);
-                    currentRecipeRows = (data && data.ingredients) ? data.ingredients.map(i => ({
-                        materialId: i.materialId,
-                        materialName: i.materialName,
-                        unit: i.unit, quantity: i.quantity
-                    })) : [];
-                } catch (e) {
-                    console.warn(e);
-                }
 
-                renderRecipeRows();
-                const modal = new bootstrap.Modal(document.getElementById('recipeModal'));
-                modal.show();
+                    currentRecipeRows = (data?.ingredients || []).map(item => ({
+                        materialId: item.materialId,
+                        materialName: item.materialName,
+                        unit: item.unit
+                    }));
+
+                    renderRecipeRows();
+
+                    bootstrap.Modal.getOrCreateInstance(
+                        document.getElementById('recipeModal')
+                    ).show();
+                } catch (error) {
+                    console.error(error);
+                    MilkTeaApi.showToast('Không tải được danh sách nguyên liệu.', 'danger');
+                }
             }
 
             function renderRecipeRows() {
                 const tbody = document.getElementById('recipeItemsBody');
-                let html = '';
-                currentRecipeRows.forEach((r, idx) => {
-                    html += `
-                        <tr>
-                            <td>${r.materialName || 'Nguyên liệu #' + r.materialId}${r.unit ? ' ('+r.unit+')' : ''}</td>
-                            <td><input type="number" step="0.001" class="form-control form-control-sm" value="${r.quantity}" onchange="currentRecipeRows[${idx}].quantity = parseFloat(this.value)"></td>
-                            <td><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="currentRecipeRows.splice(${idx}, 1); renderRecipeRows();"><i class="bi bi-trash"></i></button></td>
-                        </tr>
-                    `;
+                tbody.replaceChildren();
+
+                currentRecipeRows.forEach((row, index) => {
+                    const tr = document.createElement('tr');
+
+                    const nameTd = document.createElement('td');
+                    nameTd.textContent = row.materialName;
+
+                    const actionTd = document.createElement('td');
+                    actionTd.className = 'text-center';
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'btn btn-sm btn-outline-danger';
+                    deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                    deleteBtn.onclick = () => {
+                        currentRecipeRows.splice(index, 1);
+                        renderRecipeRows();
+                    };
+
+                    actionTd.appendChild(deleteBtn);
+                    tr.appendChild(nameTd);
+                    tr.appendChild(actionTd);
+                    tbody.appendChild(tr);
                 });
-                tbody.innerHTML = html;
             }
 
             function addRecipeRow() {
                 const select = document.getElementById('addRecipeMaterialSelect');
-                const matId = parseInt(select.value);
-                const matName = select.options[select.selectedIndex].text;
-                const qty = Number(document.getElementById('addRecipeQty').value);
-                if (!Number.isFinite(qty) || qty <= 0) { MilkTeaApi.showToast('Nhập định lượng lớn hơn 0 theo đơn vị nguyên liệu.', 'warning'); return; }
-                if (currentRecipeRows.some(r => r.materialId === matId)) { MilkTeaApi.showToast('Nguyên liệu đã có trong công thức. Sửa định lượng ở dòng hiện có.', 'warning'); return; }
+                const materialId = Number(select.value);
 
-                currentRecipeRows.push({ materialId: matId, materialName: matName, quantity: qty });
+                if (!materialId) {
+                    MilkTeaApi.showToast('Vui lòng chọn nguyên liệu.', 'warning');
+                    return;
+                }
+
+                if (currentRecipeRows.some(row => Number(row.materialId) === materialId)) {
+                    MilkTeaApi.showToast('Nguyên liệu này đã có trong công thức.', 'warning');
+                    return;
+                }
+
+                const materialName = select.options[select.selectedIndex].text;
+
+                currentRecipeRows.push({
+                    materialId: materialId,
+                    materialName: materialName,
+                    unit: ''
+                });
+
                 renderRecipeRows();
-                document.getElementById('addRecipeQty').value = '';
             }
 
             async function saveRecipe() {
-                const pId = document.getElementById('recipeProductId').value;
-                const items = currentRecipeRows.map(r => ({ materialId: r.materialId, quantity: r.quantity }));
-                await AdminApp.updateRecipe(pId, items);
-                const modalEl = document.getElementById('recipeModal');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
+                const productId = document.getElementById('recipeProductId').value;
+
+                const items = currentRecipeRows.map(row => ({
+                    materialId: Number(row.materialId)
+                }));
+
+                try {
+                    await MilkTeaApi.put(
+                        `/api/v1/admin/products/${productId}/recipe`,
+                        { items: items }
+                    );
+
+                    MilkTeaApi.showToast('Đã lưu công thức thành công.', 'success');
+
+                    bootstrap.Modal.getInstance(
+                        document.getElementById('recipeModal')
+                    )?.hide();
+                } catch (error) {
+                    console.error(error);
+                    MilkTeaApi.showToast('Không lưu được công thức.', 'danger');
+                }
             }
+
         </script>
     </th:block>
 </body>

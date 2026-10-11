@@ -1,5 +1,4 @@
 package vn.edu.ute.milktea.service.inventory;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +15,6 @@ import vn.edu.ute.milktea.repository.inventory.*;
 import vn.edu.ute.milktea.repository.order.OrderIngredientSnapshotRepository;
 import vn.edu.ute.milktea.repository.recipe.PreparationRecipeItemRepository;
 import vn.edu.ute.milktea.repository.recipe.PreparationRecipeRepository;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
@@ -24,7 +22,6 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class InventoryService {
-
     private final StockRepository stockRepository;
     private final StockMovementRepository movementRepository;
     private final MaterialRepository materialRepository;
@@ -44,129 +41,84 @@ public class InventoryService {
 
     @Transactional
     public void completeOrderConsumption(Order order, Account kitchenAccount) {
-        Map<Long, BigDecimal> quantities = new TreeMap<>();
-        Map<Long, Material> materials = new HashMap<>();
-        for (var item : orderItemRepository.findByOrderId(order.getId())) {
-            var recipes = productRecipeRepository.findByIdProductId(item.getProduct().getId());
-            if (recipes.isEmpty()) {
-                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
-                        "Món chưa có công thức tiêu hao: " + item.getSnapshotName());
-            }
-            for (var recipe : recipes) {
-                if (recipe.getQuantity() == null || recipe.getQuantity().signum() <= 0) {
-                    throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Định lượng công thức phải lớn hơn 0");
-                }
-                Long materialId = recipe.getMaterial().getId();
-                quantities.merge(materialId, recipe.getQuantity().multiply(BigDecimal.valueOf(item.getQuantity())), BigDecimal::add);
-                materials.put(materialId, recipe.getMaterial());
-            }
+        // Snapshot được chốt khi tạo đơn; không tính lại từ định mức CongThucMon.
+        List<OrderIngredientSnapshot> snapshots = snapshotRepository.findByIdOrderId(order.getId());
+        if (snapshots.isEmpty()) {
+            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                    "Đơn hàng chưa có dữ liệu nguyên liệu tiêu hao: #" + order.getId());
         }
-        var previous = snapshotRepository.findByIdOrderId(order.getId());
-        Map<Long, OrderIngredientSnapshot> previousMap = new HashMap<>();
-        previous.forEach(snap -> previousMap.put(snap.getMaterial().getId(), snap));
-        List<OrderIngredientSnapshot> snapshots = new ArrayList<>();
-        for (var entry : quantities.entrySet()) {
-            Material material = materials.get(entry.getKey());
-            OrderIngredientSnapshot snap = previousMap.get(entry.getKey());
-            if (snap == null) {
-                snap = OrderIngredientSnapshot.builder()
-                        .id(new vn.edu.ute.milktea.entity.order.OrderIngredientSnapshotId(order.getId(), entry.getKey()))
-                        .order(order).material(material).build();
-            }
-            snap.setTotalQuantity(entry.getValue());
-            snap.setSnapshotType(material.getType());
-            snap.setSnapshotUnit(material.getUnit());
-            snapshots.add(snap);
-        }
-        snapshotRepository.deleteAll(previous.stream().filter(snap -> !quantities.containsKey(snap.getMaterial().getId())).toList());
-        snapshotRepository.saveAll(snapshots);
-
-        // Sắp xếp ID nguyên liệu tăng dần để tránh Deadlock khi khóa các dòng Stock
-        List<Long> materialIds = snapshots.stream()
-                .map(s -> s.getMaterial().getId())
-                .distinct()
-                .sorted()
+        // Khóa tồn kho theo thứ tự cố định (mã nguyên liệu, vị trí).
+        List<OrderIngredientSnapshot> sortedSnapshots = snapshots.stream()
+                .sorted(Comparator.comparing((OrderIngredientSnapshot s) -> s.getMaterial().getId())
+                        .thenComparing(s -> s.getMaterial().getType().name()))
                 .toList();
-
-        List<Stock> bepStocks = stockRepository.findByLocationAndMaterialIdInWithLock(StockLocation.BEP, materialIds);
-        Map<Long, Stock> stockMap = new HashMap<>();
-        bepStocks.forEach(s -> stockMap.put(s.getId().getMaterialId(), s));
-
         List<StockMovement> movements = new ArrayList<>();
-
-        for (OrderIngredientSnapshot snap : snapshots) {
-            Long matId = snap.getMaterial().getId();
+        for (OrderIngredientSnapshot snap : sortedSnapshots) {
+            Material material = snap.getMaterial();
             BigDecimal needed = snap.getTotalQuantity();
-
-            Stock stock = stockMap.get(matId);
-            if (stock == null || stock.getQuantity().compareTo(needed) < 0) {
-                BigDecimal current = stock != null ? stock.getQuantity() : BigDecimal.ZERO;
-                throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
-                        "Nguyên liệu [" + snap.getMaterial().getName() + "] tại Bếp không đủ tồn. Cần: "
-                                + needed + " " + snap.getSnapshotUnit() + ", hiện có: " + current);
+            if (needed == null || needed.signum() <= 0) {
+                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                        "Số lượng tiêu hao không hợp lệ: " + material.getName());
             }
-
+            StockLocation location;
+            if (snap.getSnapshotType() == MaterialType.THO) {
+                location = StockLocation.KHO;
+            } else if (snap.getSnapshotType() == MaterialType.SOCHE) {
+                location = StockLocation.BEP;
+            } else {
+                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                        "Loại nguyên liệu không hợp lệ: " + material.getName());
+            }
+            Stock stock = stockRepository.findByIdWithLock(material.getId(), location)
+                    .orElseThrow(() -> BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
+                            "Không tìm thấy tồn kho " + material.getName() + " tại " + location));
             BigDecimal before = stock.getQuantity();
+            if (before.compareTo(needed) < 0) {
+                throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
+                        "Không đủ " + material.getName() + " tại " + location
+                                + ". Cần: " + needed + ", còn: " + before);
+            }
             BigDecimal after = before.subtract(needed);
             stock.setQuantity(after);
-
-            StockMovement movement = StockMovement.builder()
-                    .material(snap.getMaterial())
-                    .location(StockLocation.BEP)
-                    .type(StockMovementType.TIEU_HAO)
-                    .deltaQuantity(needed.negate())
-                    .beforeQuantity(before)
-                    .afterQuantity(after)
-                    .sourceType("ORDER")
-                    .sourceId(order.getId())
-                    .sourceLine(matId)
-                    .createdBy(kitchenAccount)
-                    .createdAt(Instant.now())
-                    .build();
-            movements.add(movement);
+            stockRepository.save(stock);
+            movements.add(StockMovement.builder()
+                    .material(material).location(location).type(StockMovementType.TIEU_HAO)
+                    .deltaQuantity(needed.negate()).beforeQuantity(before).afterQuantity(after)
+                    .sourceType("ORDER").sourceId(order.getId()).sourceLine(material.getId())
+                    .createdBy(kitchenAccount).createdAt(Instant.now())
+                    .reason("Tiêu hao đơn hàng #" + order.getId()).build());
         }
-
-        stockRepository.saveAll(bepStocks);
         movementRepository.saveAll(movements);
     }
-
-        @Transactional
-        public void recordPreparation(
-                InventoryDto.CreatePreparationBatchRequest request,
+    @Transactional
+    public void recordPreparation(
+            InventoryDto.CreatePreparationBatchRequest request,
                 Account kitchenAccount) {
         recordPreparation(request, kitchenAccount, null);
         }
-
-        @Transactional
-        public void recordPreparation(
-                InventoryDto.CreatePreparationBatchRequest request,
+    @Transactional
+    public void recordPreparation(
+            InventoryDto.CreatePreparationBatchRequest request,
                 Account kitchenAccount,
                 String key) {
-
         if (kitchenAccount == null) {
                 throw BusinessException.forbidden(
                         ErrorCode.ACCESS_DENIED,
                         "Bạn chưa đăng nhập");
         }
-
         if (key != null && key.length() > 64) {
                 throw BusinessException.badRequest(
                         ErrorCode.VALIDATION_FAILED,
                         "Mã yêu cầu quá dài");
         }
-
         String requestKey = (key == null || key.isBlank())
                 ? UUID.randomUUID().toString()
                 : key;
-
         accountRepository.findByIdWithLock(kitchenAccount.getId())
                 .orElseThrow();
-
         var existing = batchRepository.findByIdempotencyKey(requestKey);
-
         if (existing.isPresent()) {
                 PreparationBatch old = existing.get();
-
                 boolean same =
                         old.getCreatedBy().getId().equals(kitchenAccount.getId())
                         && old.getRecipe().getId().equals(request.getRecipeId())
@@ -174,28 +126,23 @@ public class InventoryService {
                         && Objects.equals(
                                 old.getDiscrepancyReason(),
                                 request.getDiscrepancyReason());
-
                 if (!same) {
                 throw BusinessException.conflict(
                         ErrorCode.IDEMPOTENCY_CONFLICT,
                         "Mã yêu cầu đã được sử dụng cho mẻ khác");
                 }
-
                 return;
         }
-
         PreparationRecipe recipe = recipeRepository
                 .findById(request.getRecipeId())
                 .orElseThrow(() -> BusinessException.notFound(
                         ErrorCode.VALIDATION_FAILED,
                         "Công thức sơ chế không tồn tại: ID " + request.getRecipeId()
                 ));
-
         List<PreparationRecipeItem> recipeItems = recipeItemRepository.findByIdRecipeId(recipe.getId());
         if (recipeItems.isEmpty()) {
             throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Công thức sơ chế chưa cấu hình nguyên liệu đầu vào");
         }
-
         PreparationBatch batch = PreparationBatch.builder()
                 .recipe(recipe)
                 .outputMaterial(recipe.getOutputMaterial())
@@ -208,15 +155,12 @@ public class InventoryService {
                 .idempotencyKey(requestKey)
                 .build();
         batch = batchRepository.save(batch);
-
         List<PreparationBatchItem> batchItems = new ArrayList<>();
         List<StockMovement> movements = new ArrayList<>();
-
         // Giảm nguyên liệu đầu vào (THO) tại KHO tổng
         for (PreparationRecipeItem item : recipeItems) {
             Material inMat = item.getInputMaterial();
             BigDecimal inQty = item.getStandardInputQuantity();
-
             Stock inStock = stockRepository.findByIdWithLock(
                 inMat.getId(), StockLocation.KHO)
                 .orElseThrow(() -> BusinessException.notFound(
@@ -227,12 +171,10 @@ public class InventoryService {
                 throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
                         "Nguyên liệu đầu vào tại Kho tổng không đủ để sơ chế mẻ: " + inMat.getName() + " (Còn: " + inStock.getQuantity() + ", cần: " + inQty + ")");
             }
-
             BigDecimal before = inStock.getQuantity();
             BigDecimal after = before.subtract(inQty);
             inStock.setQuantity(after);
             stockRepository.save(inStock);
-
             batchItems.add(PreparationBatchItem.builder()
                     .id(new PreparationBatchItemId(batch.getId(), inMat.getId()))
                     .batch(batch)
@@ -240,7 +182,6 @@ public class InventoryService {
                     .recipeQuantity(inQty)
                     .actualQuantity(inQty)
                     .build());
-
             movements.add(StockMovement.builder()
                     .material(inMat)
                     .location(StockLocation.KHO)
@@ -256,7 +197,6 @@ public class InventoryService {
                     .reason("Nguyên liệu đầu vào cho mẻ sơ chế #" + batch.getId())
                     .build());
         }
-
         // Tăng nguyên liệu đầu ra (SOCHE) tại BEP
         Material outMat = recipe.getOutputMaterial();
         Stock outStock = stockRepository.findByIdWithLock(outMat.getId(), StockLocation.BEP)
@@ -266,12 +206,10 @@ public class InventoryService {
                         .quantity(BigDecimal.ZERO)
                         .threshold(BigDecimal.ZERO)
                         .build());
-
         BigDecimal outBefore = outStock.getQuantity();
         BigDecimal outAfter = outBefore.add(request.getActualQuantity());
         outStock.setQuantity(outAfter);
         stockRepository.save(outStock);
-
         movements.add(StockMovement.builder()
                 .material(outMat)
                 .location(StockLocation.BEP)
@@ -286,10 +224,8 @@ public class InventoryService {
                 .createdAt(Instant.now())
                 .reason("Sản lượng thực thu mẻ sơ chế #" + batch.getId())
                 .build());
-
         batchItemRepository.saveAll(batchItems);
         movementRepository.saveAll(movements);
-
         realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", batch.getId().toString(), null, "1", java.util.Map.of("action", "PREPARATION"));
         realtimeEventPublisher.publishAfterCommit("/topic/admin", "STOCK_CHANGED", batch.getId().toString(), null, "1", java.util.Map.of("action", "PREPARATION"));
     }
@@ -298,7 +234,6 @@ public class InventoryService {
     public void configureThreshold(InventoryDto.UpdateThresholdRequest request) {
         Stock stock = stockRepository.findByIdWithLock(request.getMaterialId(), request.getLocation())
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy nguyên liệu tại vị trí " + request.getLocation()));
-
         stock.setThreshold(request.getThreshold());
         stockRepository.save(stock);
     }
@@ -321,12 +256,13 @@ public class InventoryService {
 
     // ==========================================
     // NHẬP KHO (KHO)
+
     // ==========================================
+
     @Transactional
-        public InventoryDto.ImportReceiptResponse recordImport(
+    public InventoryDto.ImportReceiptResponse recordImport(
                 InventoryDto.CreateImportReceiptRequest request,
                 Account account) {
-
         ImportReceipt receipt = ImportReceipt.builder()
                 .createdBy(account)
                 .reason(request.getReason())
@@ -334,28 +270,21 @@ public class InventoryService {
                 .status(DocumentStatus.DA_GHI_SO)
                 .createdAt(Instant.now())
                 .postedAt(Instant.now())
-
                 // Tạo mã yêu cầu duy nhất cho phiếu nhập
                 .idempotencyKey(java.util.UUID.randomUUID().toString())
-
                 .build();
-
         receipt = importReceiptRepository.save(receipt);
-
         List<ImportReceiptItem> items = new ArrayList<>();
         List<StockMovement> movements = new ArrayList<>();
-
         for (var it : request.getItems()) {
             Material material = materialRepository.findById(it.getMaterialId())
                     .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Nguyên liệu không tồn tại: ID " + it.getMaterialId()));
-
                     if (material.getType() != MaterialType.THO) {
                         throw BusinessException.badRequest(
                                 ErrorCode.VALIDATION_FAILED,
                                 "Kho tổng chỉ được nhập nguyên liệu thô: " + material.getName()
                         );
                         }
-
             Stock khoStock = stockRepository.findByIdWithLock(material.getId(), StockLocation.KHO)
                     .orElseGet(() -> Stock.builder()
                             .id(new StockId(material.getId(), StockLocation.KHO))
@@ -363,12 +292,10 @@ public class InventoryService {
                             .quantity(BigDecimal.ZERO)
                             .threshold(BigDecimal.ZERO)
                             .build());
-
             BigDecimal before = khoStock.getQuantity();
             BigDecimal after = before.add(it.getQuantity());
             khoStock.setQuantity(after);
             stockRepository.save(khoStock);
-
             items.add(ImportReceiptItem.builder()
                     .id(new ImportReceiptItemId(receipt.getId(), material.getId()))
                     .receipt(receipt)
@@ -376,7 +303,6 @@ public class InventoryService {
                     .quantity(it.getQuantity())
                     .unitPrice(it.getUnitPrice())
                     .build());
-
             movements.add(StockMovement.builder()
                     .material(material)
                     .location(StockLocation.KHO)
@@ -392,13 +318,10 @@ public class InventoryService {
                     .reason(request.getReason())
                     .build());
         }
-
         importReceiptItemRepository.saveAll(items);
         movementRepository.saveAll(movements);
-
         realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", receipt.getId().toString(), null, "1", java.util.Map.of("action", "IMPORT"));
         realtimeEventPublisher.publishAfterCommit("/topic/admin", "STOCK_CHANGED", receipt.getId().toString(), null, "1", java.util.Map.of("action", "IMPORT"));
-
         return InventoryDto.ImportReceiptResponse.builder()
                 .id(receipt.getId())
                 .reason(receipt.getReason())
@@ -424,29 +347,26 @@ public class InventoryService {
 
     // ==========================================
     // HAO HỤT / HỦY KHO (WASTE)
+
     // ==========================================
+
     @Transactional
     public void recordWaste(InventoryDto.CreateWasteRequest request, Account account) {
         List<StockMovement> movements = new ArrayList<>();
-
         for (var it : request.getItems()) {
             Material material = materialRepository.findById(it.getMaterialId())
                     .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Nguyên liệu không tồn tại: ID " + it.getMaterialId()));
-
             Stock stock = stockRepository.findByIdWithLock(material.getId(), request.getLocation())
                     .orElseThrow(() -> BusinessException.notFound(ErrorCode.INVENTORY_INSUFFICIENT,
                             "Không tìm thấy tồn kho cho nguyên liệu: " + material.getName()));
-
             if (stock.getQuantity().compareTo(it.getQuantity()) < 0) {
                 throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
                         "Tồn kho không đủ để hủy: " + material.getName() + " (Còn: " + stock.getQuantity() + ", cần hủy: " + it.getQuantity() + ")");
             }
-
             BigDecimal before = stock.getQuantity();
             BigDecimal after = before.subtract(it.getQuantity());
             stock.setQuantity(after);
             stockRepository.save(stock);
-
             movements.add(StockMovement.builder()
                     .material(material)
                     .location(request.getLocation())
@@ -461,23 +381,22 @@ public class InventoryService {
                     .reason(request.getReason())
                     .build());
         }
-
         movementRepository.saveAll(movements);
-
         auditRepository.save(vn.edu.ute.milktea.entity.audit.BusinessAudit.builder()
                 .accountId(account != null ? account.getId() : null)
                 .action("INVENTORY_WASTE_RECORDED")
                 .reason(request.getReason())
                 .createdAt(Instant.now())
                 .build());
-
         realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", request.getLocation().name(), null, "1", java.util.Map.of("action", "WASTE"));
         realtimeEventPublisher.publishAfterCommit("/topic/admin", "STOCK_CHANGED", request.getLocation().name(), null, "1", java.util.Map.of("action", "WASTE"));
     }
 
     // ==========================================
     // LỊCH SỬ BIẾN ĐỘNG KHO (MOVEMENTS)
+
     // ==========================================
+
     @Transactional(readOnly = true)
     public List<InventoryDto.StockMovementResponse> listMovements(Long materialId, StockLocation location) {
         List<StockMovement> list;
@@ -505,12 +424,13 @@ public class InventoryService {
 
     // ==========================================
     // SỰ CỐ PHA CHẾ & PHA BÙ (INCIDENTS & REMAKE)
+
     // ==========================================
+
     @Transactional
     public InventoryDto.IncidentResponse recordIncident(Long orderId, InventoryDto.IncidentRequest request, Account kitchenAccount) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng #" + orderId));
-
         vn.edu.ute.milktea.entity.audit.BusinessAudit audit = vn.edu.ute.milktea.entity.audit.BusinessAudit.builder()
                 .orderId(order.getId())
                 .accountId(kitchenAccount != null ? kitchenAccount.getId() : null)
@@ -519,7 +439,6 @@ public class InventoryService {
                 .createdAt(Instant.now())
                 .build();
         audit = auditRepository.save(audit);
-
         return InventoryDto.IncidentResponse.builder()
                 .id(audit.getId())
                 .orderId(order.getId())
@@ -561,27 +480,21 @@ public class InventoryService {
     public void recordAdditionalConsumption(Long orderId, InventoryDto.AdditionalConsumptionRequest request, Account kitchenAccount) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng #" + orderId));
-
         List<StockMovement> movements = new ArrayList<>();
-
         for (var item : request.getItems()) {
             Material material = materialRepository.findById(item.getMaterialId())
                     .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Nguyên liệu không tồn tại: ID " + item.getMaterialId()));
-
             Stock stock = stockRepository.findByIdWithLock(material.getId(), StockLocation.BEP)
                     .orElseThrow(() -> BusinessException.notFound(ErrorCode.INVENTORY_INSUFFICIENT,
                             "Không tìm thấy tồn tại Bếp cho nguyên liệu: " + material.getName()));
-
             if (stock.getQuantity().compareTo(item.getQuantity()) < 0) {
                 throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
                         "Tồn tại Bếp không đủ để pha bù: " + material.getName() + " (Còn: " + stock.getQuantity() + ", cần: " + item.getQuantity() + ")");
             }
-
             BigDecimal before = stock.getQuantity();
             BigDecimal after = before.subtract(item.getQuantity());
             stock.setQuantity(after);
             stockRepository.save(stock);
-
             movements.add(StockMovement.builder()
                     .material(material)
                     .location(StockLocation.BEP)
@@ -597,9 +510,7 @@ public class InventoryService {
                     .reason("Pha bù đơn hàng #" + order.getId() + ": " + request.getReason())
                     .build());
         }
-
         movementRepository.saveAll(movements);
-
         auditRepository.save(vn.edu.ute.milktea.entity.audit.BusinessAudit.builder()
                 .orderId(order.getId())
                 .accountId(kitchenAccount != null ? kitchenAccount.getId() : null)
@@ -607,7 +518,6 @@ public class InventoryService {
                 .reason(request.getReason())
                 .createdAt(Instant.now())
                 .build());
-
         realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", order.getId().toString(), null, "1", java.util.Map.of("action", "REMAKE"));
     }
 }
