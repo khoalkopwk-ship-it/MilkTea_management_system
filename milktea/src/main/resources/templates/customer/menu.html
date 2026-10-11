@@ -26,18 +26,18 @@
                 <p class="text-muted small mb-0">Hương vị trà sữa nguyên bản, pha chế thủ công thơm ngon mỗi ngày</p>
             </div>
 
-            <!-- Chips Lọc Danh Mục -->
-            <div class="d-flex gap-2 overflow-auto pb-2" style="max-width: 100%;">
-                <button type="button" class="category-chip active" onclick="filterCategory('ALL', this)">
-                    Tất Cả
-                </button>
-                <button th:each="cat : ${categories}"
-                        type="button" 
-                        class="category-chip" 
-                        th:attr="onclick=|filterCategory('${cat.id}', this)|"
-                        th:text="${cat.name}">
-                    Danh mục
-                </button>
+            <!-- Combobox Lọc Danh Mục -->
+            <div class="menu-category-filter">
+                <select class="form-select rounded-pill fw-semibold shadow-sm"
+                        id="categoryFilterSelect"
+                        onchange="filterCategory(this.value)">
+                    <option value="ALL">Tất Cả</option>
+                    <option th:each="cat : ${categories}"
+                            th:value="${cat.id}"
+                            th:text="${cat.name}">
+                        Danh mục
+                    </option>
+                </select>
             </div>
         </div>
 
@@ -138,10 +138,7 @@
                 CustomerApp.initContext(qr, tableId);
             });
 
-            function filterCategory(catId, btn) {
-                document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
-                btn.classList.add('active');
-
+            function filterCategory(catId) {
                 const items = document.querySelectorAll('.product-item');
                 items.forEach(it => {
                     if (catId === 'ALL' || it.getAttribute('data-category') === catId) {

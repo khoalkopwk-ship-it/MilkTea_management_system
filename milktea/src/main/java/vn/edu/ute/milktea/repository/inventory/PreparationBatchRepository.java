@@ -15,6 +15,8 @@ public interface PreparationBatchRepository
 
     List<PreparationBatch> findByStatus(DocumentStatus status);
 
+    List<PreparationBatch> findAllByOrderByPostedAtDescIdDesc();
+
     Optional<PreparationBatch> findByIdempotencyKey(
             String idempotencyKey);
 }

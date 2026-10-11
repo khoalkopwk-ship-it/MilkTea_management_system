@@ -55,7 +55,11 @@ const AdminApp = (() => {
 
     // === 2. QUẢN LÝ SẢN PHẨM & DANH MỤC ===
     async function createCategory(name) {
-        if (!name || !name.trim()) return;
+        if (!name || !name.trim()) {
+            MilkTeaApi.showToast('Tên danh mục không được để trống', 'warning');
+            return;
+        }
+
         try {
             await MilkTeaApi.post('/api/v1/admin/categories', { name: name.trim() });
             MilkTeaApi.showToast('Tạo danh mục mới thành công!', 'success');
@@ -65,19 +69,85 @@ const AdminApp = (() => {
         }
     }
 
+    async function updateCategory(id, name, active) {
+        if (!id) {
+            MilkTeaApi.showToast('Không xác định được danh mục cần sửa', 'error');
+            return;
+        }
+
+        if (!name || !name.trim()) {
+            MilkTeaApi.showToast('Tên danh mục không được để trống', 'warning');
+            return;
+        }
+
+        try {
+            await MilkTeaApi.put(`/api/v1/admin/categories/${id}`, {
+                name: name.trim(),
+                active: Boolean(active)
+            });
+            MilkTeaApi.showToast('Cập nhật danh mục thành công!', 'success');
+            setTimeout(() => window.location.reload(), 500);
+        } catch (e) {
+            MilkTeaApi.showToast(e.message || 'Lỗi cập nhật danh mục', 'error');
+        }
+    }
+
+    async function deleteCategory(id) {
+        if (!id) {
+            MilkTeaApi.showToast('Không xác định được danh mục cần ẩn', 'error');
+            return;
+        }
+
+        try {
+            await MilkTeaApi.delete(`/api/v1/admin/categories/${id}`);
+            MilkTeaApi.showToast('Đã ẩn danh mục thành công!', 'success');
+            setTimeout(() => window.location.reload(), 500);
+        } catch (e) {
+            MilkTeaApi.showToast(e.message || 'Lỗi ẩn danh mục', 'error');
+        }
+    }
+
     async function createProduct(categoryId, name, size, price, description) {
+        const parsedCategoryId = Number(categoryId);
+        const productName = name ? name.trim() : '';
+        const productSize = size ? size.trim().toUpperCase() : '';
+        const normalizedPrice = String(price || '').replace(/[^\d.]/g, '');
+        const parsedPrice = Number(normalizedPrice);
+
+        if (!Number.isFinite(parsedCategoryId) || parsedCategoryId <= 0) {
+            MilkTeaApi.showToast('Vui lòng chọn danh mục cho món uống', 'warning');
+            return;
+        }
+
+        if (!productName) {
+            MilkTeaApi.showToast('Tên món uống không được để trống', 'warning');
+            return;
+        }
+
+        if (!productSize) {
+            MilkTeaApi.showToast('Size không được để trống', 'warning');
+            return;
+        }
+
+        if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+            MilkTeaApi.showToast('Giá bán phải lớn hơn 0', 'warning');
+            return;
+        }
+
         try {
             await MilkTeaApi.post('/api/v1/admin/products', {
-                categoryId: parseInt(categoryId),
-                name: name.trim(),
-                size: size.trim(),
-                price: parseFloat(price),
-                description: description ? description.trim() : null
+                categoryId: parsedCategoryId,
+                name: productName,
+                size: productSize,
+                price: String(parsedPrice),
+                description: description ? description.trim() : null,
+                active: true
             });
             MilkTeaApi.showToast('Thêm món uống thành công!', 'success');
             setTimeout(() => window.location.reload(), 500);
         } catch (e) {
-            MilkTeaApi.showToast(e.message || 'Lỗi thêm món', 'error');
+            const fieldMessage = e.details ? Object.values(e.details).filter(Boolean).join(', ') : '';
+            MilkTeaApi.showToast(fieldMessage || e.message || 'Lỗi thêm món', 'error');
         }
     }
 
@@ -257,6 +327,8 @@ async function updateThreshold(materialId, location, threshold) {
         init,
         uploadProductImage,
         createCategory,
+        updateCategory,
+        deleteCategory,
         createProduct,
         updateRecipe,
         createTable,

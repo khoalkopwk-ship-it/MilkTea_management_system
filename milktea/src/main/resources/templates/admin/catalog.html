@@ -52,8 +52,86 @@
                     </div>
                 </div>
 
+                <!-- Bảng Danh Mục -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="brand-font mb-1">Danh Mục</h5>
+                            <p class="text-muted small mb-0">Thêm, sửa và bật/tắt danh mục món uống</p>
+                        </div>
+                        <button type="button"
+                                class="btn btn-outline-primary rounded-pill px-3"
+                                data-bs-toggle="modal"
+                                data-bs-target="#createCategoryModal">
+                            <i class="bi bi-folder-plus me-1"></i> Thêm Danh Mục
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 90px;">Mã</th>
+                                    <th>Tên Danh Mục</th>
+                                    <th>Trạng Thái</th>
+                                    <th style="width: 180px;">Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="cat : ${categories}">
+                                    <td class="fw-semibold text-muted" th:text="'#' + ${cat.id}">#1</td>
+                                    <td>
+                                        <strong th:text="${cat.name}">Trà Sữa Truyền Thống</strong>
+                                    </td>
+                                    <td>
+                                        <span th:if="${cat.active}" class="badge bg-success">Đang dùng</span>
+                                        <span th:unless="${cat.active}" class="badge bg-secondary">Đã ẩn</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                                    th:attr="data-category-id=${cat.id},
+                                                             data-category-name=${cat.name},
+                                                             data-category-active=${cat.active}"
+                                                    onclick="openEditCategoryModal(this)"
+                                                    title="Sửa danh mục">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <button th:if="${cat.active}"
+                                                    type="button"
+                                                    class="btn btn-sm btn-outline-danger rounded-pill px-2"
+                                                    th:attr="data-category-id=${cat.id},
+                                                             data-category-name=${cat.name}"
+                                                    onclick="deactivateCategory(this)"
+                                                    title="Ẩn danh mục">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            <button th:unless="${cat.active}"
+                                                    type="button"
+                                                    class="btn btn-sm btn-outline-success rounded-pill px-2"
+                                                    th:attr="data-category-id=${cat.id},
+                                                             data-category-name=${cat.name}"
+                                                    onclick="restoreCategory(this)"
+                                                    title="Bật lại danh mục">
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(categories)}">
+                                    <td colspan="4" class="text-center text-muted py-4">Chưa có danh mục nào.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- Bảng Danh Sách Món -->
                 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="brand-font mb-1">Món Uống</h5>
+                        <p class="text-muted small mb-0">Quản lý món uống, giá bán, hình ảnh và công thức</p>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
@@ -141,6 +219,36 @@
                             <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold"
                                     onclick="AdminApp.createCategory(document.getElementById('newCatName').value)">
                                 Tạo Danh Mục
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Sửa Danh Mục -->
+        <div class="modal fade" id="editCategoryModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font">Sửa Danh Mục</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <input type="hidden" id="editCatId">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Tên danh mục:</label>
+                            <input type="text" id="editCatName" class="form-control rounded-3">
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" role="switch" id="editCatActive">
+                            <label class="form-check-label small fw-semibold" for="editCatActive">Đang sử dụng</label>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="button"
+                                    class="btn btn-primary-custom rounded-pill py-2 fw-bold"
+                                    onclick="submitUpdateCategory()">
+                                Lưu Danh Mục
                             </button>
                         </div>
                     </div>
@@ -261,6 +369,42 @@
                 const price = document.getElementById('newProdPrice').value;
                 const desc = document.getElementById('newProdDesc').value;
                 AdminApp.createProduct(cat, name, size, price, desc);
+            }
+
+            function openEditCategoryModal(button) {
+                document.getElementById('editCatId').value = button.dataset.categoryId;
+                document.getElementById('editCatName').value = button.dataset.categoryName || '';
+                document.getElementById('editCatActive').checked = button.dataset.categoryActive === 'true';
+
+                bootstrap.Modal.getOrCreateInstance(
+                    document.getElementById('editCategoryModal')
+                ).show();
+            }
+
+            function submitUpdateCategory() {
+                const id = document.getElementById('editCatId').value;
+                const name = document.getElementById('editCatName').value;
+                const active = document.getElementById('editCatActive').checked;
+
+                AdminApp.updateCategory(id, name, active);
+            }
+
+            function deactivateCategory(button) {
+                const id = button.dataset.categoryId;
+                const name = button.dataset.categoryName || 'danh mục này';
+
+                if (!confirm(`Ẩn danh mục "${name}"? Các món trong danh mục này vẫn được giữ nguyên.`)) {
+                    return;
+                }
+
+                AdminApp.deleteCategory(id);
+            }
+
+            function restoreCategory(button) {
+                const id = button.dataset.categoryId;
+                const name = button.dataset.categoryName || '';
+
+                AdminApp.updateCategory(id, name, true);
             }
 
             let currentRecipeRows = [];
