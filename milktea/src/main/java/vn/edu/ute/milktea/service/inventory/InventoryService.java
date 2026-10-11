@@ -29,8 +29,6 @@ public class InventoryService {
     private final StockMovementRepository movementRepository;
     private final MaterialRepository materialRepository;
     private final vn.edu.ute.milktea.repository.account.AccountRepository accountRepository;
-    private final StockIssueRepository stockIssueRepository;
-    private final StockIssueItemRepository stockIssueItemRepository;
     private final PreparationBatchRepository batchRepository;
     private final PreparationBatchItemRepository batchItemRepository;
     private final PreparationRecipeRepository recipeRepository;
@@ -132,141 +130,6 @@ public class InventoryService {
         movementRepository.saveAll(movements);
     }
 
-    @Transactional(readOnly = true)
-    public java.util.List<InventoryDto.StockIssueResponse> listIssues() {
-        return stockIssueRepository.findAll().stream()
-                .sorted(java.util.Comparator.comparing(StockIssue::getCreatedAt).reversed())
-                .map(i -> InventoryDto.StockIssueResponse.builder().id(i.getId()).createdAt(i.getCreatedAt())
-                        .createdBy(i.getCreatedBy() != null ? i.getCreatedBy().getFullName() : "Nhân viên")
-                        .items(stockIssueItemRepository.findByIdIssueId(i.getId()).stream().map(l ->
-                                InventoryDto.StockIssueLineResponse.builder().materialName(l.getMaterial().getName())
-                                        .unit(l.getMaterial().getUnit()).quantity(l.getQuantity()).build()).toList()).build()).toList();
-    }
-
-    @Transactional
-    public void recordIssue(InventoryDto.CreateStockIssueRequest request, Account kitchenAccount) {
-        recordIssue(request, kitchenAccount, null);
-    }
-
-    @Transactional
-    public void recordIssue(InventoryDto.CreateStockIssueRequest request, Account kitchenAccount, String key) {
-        if (kitchenAccount == null) throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Chỉ nhân viên được lập phiếu");
-        if (key != null && !key.isBlank()) {
-            if (key.length() > 64) throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Mã yêu cầu quá dài");
-            accountRepository.findByIdWithLock(kitchenAccount.getId()).orElseThrow();
-            var existing = stockIssueRepository.findByIdempotencyKey(key);
-            if (existing.isPresent()) {
-                var old = existing.get();
-                var lines = stockIssueItemRepository.findByIdIssueId(old.getId());
-                boolean same = old.getCreatedBy().getId().equals(kitchenAccount.getId())
-                        && java.util.Objects.equals(old.getReason(), request.getReason())
-                        && lines.size() == request.getItems().size()
-                        && lines.stream().allMatch(l -> request.getItems().stream().anyMatch(i ->
-                                l.getMaterial().getId().equals(i.getMaterialId()) && l.getQuantity().compareTo(i.getQuantity()) == 0));
-                if (!same) throw BusinessException.conflict(ErrorCode.IDEMPOTENCY_CONFLICT, "Mã yêu cầu đã dùng cho phiếu khác");
-                return;
-            }
-        }
-        StockIssue issue = StockIssue.builder()
-                .idempotencyKey(key)
-                .createdBy(kitchenAccount)
-                .reason(request.getReason())
-                .status(DocumentStatus.DA_GHI_SO)
-                .createdAt(Instant.now())
-                .postedAt(Instant.now())
-                .build();
-        issue = stockIssueRepository.save(issue);
-
-        List<StockIssueItem> items = new ArrayList<>();
-        List<StockMovement> movements = new ArrayList<>();
-
-        java.util.Set<Long> seen = new java.util.HashSet<>();
-        for (var itemReq : request.getItems().stream().sorted(java.util.Comparator.comparing(InventoryDto.StockIssueItemRequest::getMaterialId)).toList()) {
-            if (itemReq.getQuantity() == null || itemReq.getQuantity().signum() <= 0 || !seen.add(itemReq.getMaterialId()))
-                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Số lượng phải dương và nguyên liệu không được trùng");
-            Material material = materialRepository.findById(itemReq.getMaterialId())
-                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Nguyên liệu không tồn tại: ID " + itemReq.getMaterialId()));
-
-            BigDecimal qty = itemReq.getQuantity();
-
-            // Khóa dòng KHO và BEP
-            Stock khoStock = stockRepository.findByIdWithLock(material.getId(), StockLocation.KHO)
-                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.INVENTORY_INSUFFICIENT, "Không tìm thấy tồn KHO: " + material.getName()));
-
-            if (khoStock.getQuantity().compareTo(qty) < 0) {
-                throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
-                        "Tồn KHO không đủ để xuất: " + material.getName() + " (Còn: " + khoStock.getQuantity() + ", cần xuất: " + qty + ")");
-            }
-
-            Stock bepStock = stockRepository.findByIdWithLock(material.getId(), StockLocation.BEP)
-                    .orElseGet(() -> Stock.builder()
-                            .id(new StockId(material.getId(), StockLocation.BEP))
-                            .material(material)
-                            .quantity(BigDecimal.ZERO)
-                            .threshold(BigDecimal.ZERO)
-                            .build());
-
-            // Giảm KHO
-            BigDecimal khoBefore = khoStock.getQuantity();
-            BigDecimal khoAfter = khoBefore.subtract(qty);
-            khoStock.setQuantity(khoAfter);
-
-            // Tăng BEP
-            BigDecimal bepBefore = bepStock.getQuantity();
-            BigDecimal bepAfter = bepBefore.add(qty);
-            bepStock.setQuantity(bepAfter);
-
-            stockRepository.save(khoStock);
-            stockRepository.save(bepStock);
-
-            // Lưu chi tiết xuất
-            items.add(StockIssueItem.builder()
-                    .id(new StockIssueItemId(issue.getId(), material.getId()))
-                    .issue(issue)
-                    .material(material)
-                    .quantity(qty)
-                    .build());
-
-            // Ghi 2 dòng lịch sử biến động kho
-            movements.add(StockMovement.builder()
-                    .material(material)
-                    .location(StockLocation.KHO)
-                    .type(StockMovementType.XUAT_DI)
-                    .deltaQuantity(qty.negate())
-                    .beforeQuantity(khoBefore)
-                    .afterQuantity(khoAfter)
-                    .sourceType("ISSUE")
-                    .sourceId(issue.getId())
-                    .sourceLine(material.getId())
-                    .createdBy(kitchenAccount)
-                    .createdAt(Instant.now())
-                    .reason(request.getReason())
-                    .build());
-
-            movements.add(StockMovement.builder()
-                    .material(material)
-                    .location(StockLocation.BEP)
-                    .type(StockMovementType.NHAN_BEP)
-                    .deltaQuantity(qty)
-                    .beforeQuantity(bepBefore)
-                    .afterQuantity(bepAfter)
-                    .sourceType("ISSUE")
-                    .sourceId(issue.getId())
-                    .sourceLine(material.getId())
-                    .createdBy(kitchenAccount)
-                    .createdAt(Instant.now())
-                    .reason(request.getReason())
-                    .build());
-        }
-
-        stockIssueItemRepository.saveAll(items);
-        movementRepository.saveAll(movements);
-
-        realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", issue.getId().toString(), null, "1", java.util.Map.of("action", "ISSUE"));
-        realtimeEventPublisher.publishAfterCommit("/topic/admin", "STOCK_CHANGED", issue.getId().toString(), null, "1", java.util.Map.of("action", "ISSUE"));
-    }
-
-    
         @Transactional
         public void recordPreparation(
                 InventoryDto.CreatePreparationBatchRequest request,
@@ -349,18 +212,20 @@ public class InventoryService {
         List<PreparationBatchItem> batchItems = new ArrayList<>();
         List<StockMovement> movements = new ArrayList<>();
 
-        // Giảm nguyên liệu đầu vào (THO) tại BEP
+        // Giảm nguyên liệu đầu vào (THO) tại KHO tổng
         for (PreparationRecipeItem item : recipeItems) {
             Material inMat = item.getInputMaterial();
             BigDecimal inQty = item.getStandardInputQuantity();
 
-            Stock inStock = stockRepository.findByIdWithLock(inMat.getId(), StockLocation.BEP)
-                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.INVENTORY_INSUFFICIENT,
-                            "Không tìm thấy tồn tại Bếp cho nguyên liệu đầu vào: " + inMat.getName()));
-
+            Stock inStock = stockRepository.findByIdWithLock(
+                inMat.getId(), StockLocation.KHO)
+                .orElseThrow(() -> BusinessException.notFound(
+                        ErrorCode.INVENTORY_INSUFFICIENT,
+                        "Không tìm thấy nguyên liệu đầu vào tại Kho tổng: "
+                                + inMat.getName()));
             if (inStock.getQuantity().compareTo(inQty) < 0) {
                 throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
-                        "Nguyên liệu đầu vào tại Bếp không đủ để nấu mẻ: " + inMat.getName() + " (Còn: " + inStock.getQuantity() + ", cần: " + inQty + ")");
+                        "Nguyên liệu đầu vào tại Kho tổng không đủ để sơ chế mẻ: " + inMat.getName() + " (Còn: " + inStock.getQuantity() + ", cần: " + inQty + ")");
             }
 
             BigDecimal before = inStock.getQuantity();
@@ -378,7 +243,7 @@ public class InventoryService {
 
             movements.add(StockMovement.builder()
                     .material(inMat)
-                    .location(StockLocation.BEP)
+                    .location(StockLocation.KHO)
                     .type(StockMovementType.SOCHE_RA)
                     .deltaQuantity(inQty.negate())
                     .beforeQuantity(before)
@@ -458,7 +323,10 @@ public class InventoryService {
     // NHẬP KHO (KHO)
     // ==========================================
     @Transactional
-    public InventoryDto.ImportReceiptResponse recordImport(InventoryDto.CreateImportReceiptRequest request, Account account) {
+        public InventoryDto.ImportReceiptResponse recordImport(
+                InventoryDto.CreateImportReceiptRequest request,
+                Account account) {
+
         ImportReceipt receipt = ImportReceipt.builder()
                 .createdBy(account)
                 .reason(request.getReason())
@@ -466,7 +334,12 @@ public class InventoryService {
                 .status(DocumentStatus.DA_GHI_SO)
                 .createdAt(Instant.now())
                 .postedAt(Instant.now())
+
+                // Tạo mã yêu cầu duy nhất cho phiếu nhập
+                .idempotencyKey(java.util.UUID.randomUUID().toString())
+
                 .build();
+
         receipt = importReceiptRepository.save(receipt);
 
         List<ImportReceiptItem> items = new ArrayList<>();
@@ -475,6 +348,13 @@ public class InventoryService {
         for (var it : request.getItems()) {
             Material material = materialRepository.findById(it.getMaterialId())
                     .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Nguyên liệu không tồn tại: ID " + it.getMaterialId()));
+
+                    if (material.getType() != MaterialType.THO) {
+                        throw BusinessException.badRequest(
+                                ErrorCode.VALIDATION_FAILED,
+                                "Kho tổng chỉ được nhập nguyên liệu thô: " + material.getName()
+                        );
+                        }
 
             Stock khoStock = stockRepository.findByIdWithLock(material.getId(), StockLocation.KHO)
                     .orElseGet(() -> Stock.builder()
