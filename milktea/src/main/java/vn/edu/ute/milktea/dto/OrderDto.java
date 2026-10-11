@@ -91,6 +91,7 @@ public class OrderDto {
         private BigDecimal discountPercent;
         private InvoiceStatus invoiceStatus;
         private String paymentMethod;
+        private String paymentRequestMethod;
         private Instant paidAt;
         private String cashierName;
         private CancellationDto.RefundResponse refund;

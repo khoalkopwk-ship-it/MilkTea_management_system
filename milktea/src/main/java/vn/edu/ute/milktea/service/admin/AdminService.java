@@ -28,6 +28,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.Set;
+import java.util.HashSet;
 
 @Service
 @RequiredArgsConstructor
@@ -266,8 +268,15 @@ public class AdminService {
         Product p = productRepository.findById(productId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.PRODUCT_UNAVAILABLE, "Không tìm thấy món uống"));
 
+        Set<Long> materialIds = new HashSet<>();
+        for (var item : request.getItems()) {
+            if (item.getQuantity() == null || item.getQuantity().signum() <= 0 || !materialIds.add(item.getMaterialId())) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Định lượng phải lớn hơn 0 và mỗi nguyên liệu chỉ xuất hiện một lần");
+            }
+        }
         // Xóa công thức cũ
         productRecipeRepository.deleteByIdProductId(productId);
+        productRecipeRepository.flush();
 
         List<ProductRecipe> newRecipes = new ArrayList<>();
         for (var item : request.getItems()) {

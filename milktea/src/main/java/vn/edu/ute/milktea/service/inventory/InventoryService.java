@@ -36,6 +36,8 @@ public class InventoryService {
     private final PreparationRecipeRepository recipeRepository;
     private final PreparationRecipeItemRepository recipeItemRepository;
     private final OrderIngredientSnapshotRepository snapshotRepository;
+    private final vn.edu.ute.milktea.repository.order.OrderItemRepository orderItemRepository;
+    private final vn.edu.ute.milktea.repository.recipe.ProductRecipeRepository productRecipeRepository;
     private final ImportReceiptRepository importReceiptRepository;
     private final ImportReceiptItemRepository importReceiptItemRepository;
     private final vn.edu.ute.milktea.repository.audit.BusinessAuditRepository auditRepository;
@@ -44,10 +46,42 @@ public class InventoryService {
 
     @Transactional
     public void completeOrderConsumption(Order order, Account kitchenAccount) {
-        List<OrderIngredientSnapshot> snapshots = snapshotRepository.findByIdOrderId(order.getId());
-        if (snapshots.isEmpty()) {
-            return;
+        Map<Long, BigDecimal> quantities = new TreeMap<>();
+        Map<Long, Material> materials = new HashMap<>();
+        for (var item : orderItemRepository.findByOrderId(order.getId())) {
+            var recipes = productRecipeRepository.findByIdProductId(item.getProduct().getId());
+            if (recipes.isEmpty()) {
+                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                        "Món chưa có công thức tiêu hao: " + item.getSnapshotName());
+            }
+            for (var recipe : recipes) {
+                if (recipe.getQuantity() == null || recipe.getQuantity().signum() <= 0) {
+                    throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Định lượng công thức phải lớn hơn 0");
+                }
+                Long materialId = recipe.getMaterial().getId();
+                quantities.merge(materialId, recipe.getQuantity().multiply(BigDecimal.valueOf(item.getQuantity())), BigDecimal::add);
+                materials.put(materialId, recipe.getMaterial());
+            }
         }
+        var previous = snapshotRepository.findByIdOrderId(order.getId());
+        Map<Long, OrderIngredientSnapshot> previousMap = new HashMap<>();
+        previous.forEach(snap -> previousMap.put(snap.getMaterial().getId(), snap));
+        List<OrderIngredientSnapshot> snapshots = new ArrayList<>();
+        for (var entry : quantities.entrySet()) {
+            Material material = materials.get(entry.getKey());
+            OrderIngredientSnapshot snap = previousMap.get(entry.getKey());
+            if (snap == null) {
+                snap = OrderIngredientSnapshot.builder()
+                        .id(new vn.edu.ute.milktea.entity.order.OrderIngredientSnapshotId(order.getId(), entry.getKey()))
+                        .order(order).material(material).build();
+            }
+            snap.setTotalQuantity(entry.getValue());
+            snap.setSnapshotType(material.getType());
+            snap.setSnapshotUnit(material.getUnit());
+            snapshots.add(snap);
+        }
+        snapshotRepository.deleteAll(previous.stream().filter(snap -> !quantities.containsKey(snap.getMaterial().getId())).toList());
+        snapshotRepository.saveAll(snapshots);
 
         // Sắp xếp ID nguyên liệu tăng dần để tránh Deadlock khi khóa các dòng Stock
         List<Long> materialIds = snapshots.stream()

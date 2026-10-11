@@ -57,7 +57,7 @@
                         <li class="nav-item">
                             <a class="nav-link fw-semibold"
                                 th:href="@{/orders(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
-                                <i class="bi bi-receipt me-1"></i> Đơn Đã Đặt
+                                <i class="bi bi-receipt me-1"></i> Đơn Đã Đặt <span id="pendingOrdersBadge" sec:authorize="hasAnyRole('CASHIER','ADMIN')" class="badge rounded-pill bg-danger ms-1 d-none" aria-live="polite" title="Đơn cần xác nhận"></span>
                             </a>
                         </li>
                         <li class="nav-item" sec:authorize="hasRole('CUSTOMER')">

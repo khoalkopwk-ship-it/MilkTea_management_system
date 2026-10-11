@@ -29,6 +29,8 @@ import java.time.Instant;
 public class PaymentService {
 
     private final InvoiceRepository invoiceRepository;
+    private final vn.edu.ute.milktea.repository.table.DiningTableRepository tableRepository;
+    private final vn.edu.ute.milktea.service.table.TableSessionService tableSessionService;
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final PaymentNoticeRepository paymentNoticeRepository;
@@ -64,6 +66,11 @@ public class PaymentService {
                         ErrorCode.VALIDATION_FAILED,
                         "Không tìm thấy hóa đơn"));
 
+        // Lock table before order/invoice to match table order creation and settlement.
+        if (invoiceLookup.getOrder().getSession() != null) {
+            tableRepository.findByIdWithLock(invoiceLookup.getOrder().getSession().getTable().getId())
+                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
+        }
         // 3. Khóa Order trước, sau đó khóa Invoice
         Order order = orderRepository.findByIdWithLock(
                         invoiceLookup.getOrder().getId())
@@ -112,19 +119,10 @@ public class PaymentService {
                     "Hóa đơn đã bị hủy, không thể thu tiền");
         }
 
-        // 6. Chỉ thu tiền khi đơn đang chờ thanh toán
-        if (order.getStatus() != OrderStatus.CHO_THANH_TOAN) {
-            throw BusinessException.conflict(
-                    ErrorCode.ORDER_STATE_CONFLICT,
-                    "Đơn hàng không ở trạng thái chờ thanh toán");
+        if (order.getStatus() == OrderStatus.DA_HUY) {
+            throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Không thể thu tiền đơn đã hủy");
         }
-
-        // 7. Quy tắc phương thức thanh toán
-        if (!isStaffCreated(order) && request.getMethod() == PaymentMethod.CASH) {
-            throw BusinessException.conflict(
-                    ErrorCode.VALIDATION_FAILED,
-                    "Đơn khách tự đặt chỉ được thanh toán chuyển khoản");
-        }
+        OrderStatus previousStatus = order.getStatus();
 
         // 8. Không ghi khoản thu thứ hai cho cùng hóa đơn
         if (paymentRepository.existsByInvoiceId(invoiceId)) {
@@ -167,8 +165,9 @@ public class PaymentService {
         payment = paymentRepository.save(payment);
 
         // 12. Chuyển trạng thái trong cùng transaction
-        order.setStatus(!isStaffCreated(order) && order.getSource() == OrderSource.TABLE
-                ? OrderStatus.CHO_XAC_NHAN : OrderStatus.CHO_CHE_BIEN);
+        if (order.getStatus() == OrderStatus.CHO_THANH_TOAN) {
+            order.setStatus(isStaffCreated(order) ? OrderStatus.CHO_CHE_BIEN : OrderStatus.CHO_XAC_NHAN);
+        }
         orderRepository.save(order);
 
         // 13. Ghi lịch sử nghiệp vụ
@@ -176,7 +175,7 @@ public class PaymentService {
                 .orderId(order.getId())
                 .accountId(cashierId)
                 .action("PAYMENT_RECORDED")
-                .beforeState("CHO_THANH_TOAN")
+                .beforeState(previousStatus.name())
                 .afterState(order.getStatus().name())
                 .reason("Ghi thu " + request.getMethod()
                         + ": " + payment.getAmount() + " VND")
@@ -219,6 +218,16 @@ public class PaymentService {
                     eventData);
         }
 
+        // A payment request is an explicit request to settle the table.
+        // Keep the session open while another effective invoice is unpaid.
+        if (order.getSession() != null
+                && order.getSession().getStatus() == vn.edu.ute.milktea.entity.table.TableSessionStatus.OPEN
+                && paymentNoticeRepository.findFirstByInvoiceIdOrderByCreatedAtDescIdDesc(invoiceId).isPresent()) {
+            boolean allPaid = invoiceRepository.findBySessionId(order.getSession().getId()).stream()
+                    .allMatch(i -> i.getStatus() != InvoiceStatus.HIEU_LUC
+                            || i.getTotalAmount().signum() == 0 || paymentRepository.existsByInvoiceId(i.getId()));
+            if (allPaid) tableSessionService.closeAfterPayment(order.getSession().getTable().getId(), cashierId);
+        }
         return toPaymentResponse(payment);
     }
 
@@ -240,12 +249,15 @@ public class PaymentService {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy hóa đơn"));
 
-        if (request == null || request.getMethod() != PaymentMethod.BANK_TRANSFER)
-            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Khách tự đặt chỉ được thông báo thanh toán chuyển khoản");
+        if (request == null || request.getMethod() == null)
+            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Chọn phương thức tiền mặt hoặc chuyển khoản");
         if (invoice.getOrder().getStatus() == OrderStatus.DA_HUY || invoice.getStatus() == InvoiceStatus.DA_HUY)
             throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Không thanh toán đơn đã hủy");
         if (paymentRepository.existsByInvoiceId(invoiceId))
             throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Đơn đã được ghi thu tiền");
+        var latest = paymentNoticeRepository.findFirstByInvoiceIdOrderByCreatedAtDescIdDesc(invoiceId);
+        if (latest.isPresent() && latest.get().getMethod() == request.getMethod()
+                && java.util.Objects.equals(latest.get().getReference(), request.getReference())) return;
         PaymentNotice notice = PaymentNotice.builder()
                 .invoice(invoice)
                 .method(request.getMethod())
@@ -258,11 +270,11 @@ public class PaymentService {
         auditRepository.save(BusinessAudit.builder()
                 .orderId(invoice.getOrder().getId())
                 .action("PAYMENT_NOTICE_CREATED")
-                .reason("Khách báo đã chuyển khoản: " + request.getReference())
+                .reason("Khách yêu cầu thanh toán " + request.getMethod() + ": " + request.getReference())
                 .createdAt(Instant.now())
                 .build());
 
-        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "PAYMENT_NOTICE_CREATED", notice.getId().toString(), null, "1", java.util.Map.of("invoiceId", invoice.getId(), "method", request.getMethod()));
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "PAYMENT_NOTICE_CREATED", notice.getId().toString(), null, "1", java.util.Map.of("orderId", invoice.getOrder().getId(), "invoiceId", invoice.getId(), "method", request.getMethod(), "tableName", invoice.getOrder().getSession() != null ? invoice.getOrder().getSession().getTable().getName() : "Quầy"));
     }
 
     @Transactional

@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface PaymentNoticeRepository extends JpaRepository<PaymentNotice, Long> {
     List<PaymentNotice> findByInvoiceId(Long invoiceId);
+    java.util.Optional<PaymentNotice> findFirstByInvoiceIdOrderByCreatedAtDescIdDesc(Long invoiceId);
 }

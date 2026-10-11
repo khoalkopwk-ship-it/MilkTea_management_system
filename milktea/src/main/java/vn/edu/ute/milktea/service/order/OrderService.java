@@ -61,6 +61,7 @@ public class OrderService {
     private final OrderIngredientSnapshotRepository snapshotRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
+    private final vn.edu.ute.milktea.repository.payment.PaymentNoticeRepository paymentNoticeRepository;
     private final vn.edu.ute.milktea.repository.cancellation.RefundRequestRepository refundRepository;
     private final CancellationRequestRepository cancellationRepository;
     private final GlobalSettingsRepository settingsRepository;
@@ -142,7 +143,8 @@ public class OrderService {
                 .session(session)
                 .account(customerAccount)
                 .source(OrderSource.TABLE)
-                .status(OrderStatus.CHO_THANH_TOAN)
+                .status(actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN))
+                        ? OrderStatus.CHO_THANH_TOAN : OrderStatus.CHO_XAC_NHAN)
                 .idempotencyKey(idempotencyKey)
                 .createdAt(Instant.now())
                 .version(0L)
@@ -183,7 +185,7 @@ public class OrderService {
                 .orderId(order.getId())
                 .accountId(customerAccount != null ? customerAccount.getId() : null)
                 .action("ORDER_CREATED")
-                .afterState("CHO_THANH_TOAN")
+                .afterState(order.getStatus().name())
                 .createdAt(Instant.now())
                 .build());
 
@@ -212,7 +214,8 @@ public class OrderService {
                 .session(null)
                 .account(creator)
                 .source(OrderSource.COUNTER)
-                .status(OrderStatus.CHO_THANH_TOAN)
+                .status(actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN))
+                        ? OrderStatus.CHO_THANH_TOAN : OrderStatus.CHO_XAC_NHAN)
                 .note(request.getNote())
                 .idempotencyKey(idempotencyKey)
                 .createdAt(Instant.now())
@@ -249,7 +252,7 @@ public class OrderService {
                 .orderId(order.getId())
                 .accountId(creator != null ? creator.getId() : null)
                 .action("COUNTER_ORDER_CREATED")
-                .afterState("CHO_THANH_TOAN")
+                .afterState(order.getStatus().name())
                 .createdAt(Instant.now())
                 .build());
 
@@ -398,7 +401,7 @@ public class OrderService {
 
         Account kitchen = accountRepository.findById(kitchenId).orElse(null);
 
-        // Tiêu hao kho BEP theo OrderIngredientSnapshot trong cùng transaction (REQUIRED)
+        // Tiêu hao kho BEP theo công thức đang lưu, nhân số ly và lưu snapshot thực tế.
         // Nếu không đủ tồn kho, ném BusinessException.conflict và không đổi trạng thái đơn
         inventoryService.completeOrderConsumption(order, kitchen);
 
@@ -536,6 +539,7 @@ public class OrderService {
                 .refund(refundRepository.findByOrderId(order.getId()).map(r -> vn.edu.ute.milktea.service.cancellation.RefundService.toResponse(r)).orElse(null))
                 .cancellationPending(cancellationRepository.findFirstByOrderIdAndStatus(order.getId(), CancellationStatus.CHO).isPresent())
                 .staffCreated(order.getAccount() != null && (order.getAccount().getRole() == Role.CASHIER || order.getAccount().getRole() == Role.ADMIN))
+                .paymentRequestMethod(invoice != null && !isPaid ? paymentNoticeRepository.findFirstByInvoiceIdOrderByCreatedAtDescIdDesc(invoice.getId()).map(n -> n.getMethod().name()).orElse(null) : null)
                 .paid(isPaid)
                 .items(itemResponses)
                 .createdAt(order.getCreatedAt())
