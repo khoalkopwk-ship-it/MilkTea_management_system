@@ -87,6 +87,15 @@ public class TableSessionService {
 
     @Transactional
     public void closeByCashier(Long tableId, Long cashierId) {
+        closeSession(tableId, cashierId, true);
+    }
+
+    @Transactional
+    public void closeAfterPayment(Long tableId, Long cashierId) {
+        closeSession(tableId, cashierId, false);
+    }
+
+    private void closeSession(Long tableId, Long cashierId, boolean requireCompleted) {
         DiningTable table = tableRepository.findByIdWithLock(tableId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
 
@@ -101,24 +110,23 @@ public class TableSessionService {
             throw BusinessException.badRequest(ErrorCode.TABLE_SESSION_CLOSED, "Phiên bàn đã kết thúc trước đó");
         }
 
-        // 1. Kiểm tra mọi đơn hàng thuộc phiên đều đã hoàn thành hoặc đã hủy
-        long unfinishedCount = orderRepository.countUnfinishedOrdersBySessionId(session.getId());
-        if (unfinishedCount > 0) {
-            throw BusinessException.conflict(ErrorCode.TABLE_CLOSE_NOT_ALLOWED,
-                    "Không thể đóng phiên: Còn " + unfinishedCount + " đơn hàng chưa hoàn thành hoặc hủy");
-        }
-
-        // 2. Kiểm tra mọi hóa đơn HIEU_LUC đã được thu đủ
         List<Invoice> invoices = invoiceRepository.findBySessionId(session.getId());
-        for (Invoice invoice : invoices) {
-            if (invoice.getStatus() == InvoiceStatus.HIEU_LUC) {
-                // Kiểm tra đã thanh toán chưa
-                boolean hasPayment = paymentRepository.existsByInvoiceId(invoice.getId());
-                if (!hasPayment && invoice.getTotalAmount().compareTo(BigDecimal.ZERO) > 0) {
-                    throw BusinessException.conflict(ErrorCode.TABLE_CLOSE_NOT_ALLOWED,
-                            "Không thể đóng phiên: Hóa đơn #" + invoice.getId() + " chưa được thanh toán đủ");
-                }
-            }
+        List<String> unpaid = invoices.stream()
+                .filter(i -> i.getStatus() == InvoiceStatus.HIEU_LUC && i.getTotalAmount().signum() > 0
+                        && !paymentRepository.existsByInvoiceId(i.getId()))
+                .map(i -> String.format("ORD%03d", i.getOrder().getId()) + " (" + i.getTotalAmount().toPlainString() + " VND)")
+                .toList();
+        if (!unpaid.isEmpty()) {
+            throw BusinessException.conflict(ErrorCode.TABLE_CLOSE_NOT_ALLOWED,
+                    "Không thể đóng phiên. Đơn chưa thanh toán: " + String.join(", ", unpaid));
+        }
+        if (requireCompleted) {
+            List<String> unfinished = orderRepository.findBySessionId(session.getId()).stream()
+                    .filter(o -> o.getStatus() != vn.edu.ute.milktea.entity.order.OrderStatus.HOAN_THANH
+                            && o.getStatus() != vn.edu.ute.milktea.entity.order.OrderStatus.DA_HUY)
+                    .map(o -> String.format("ORD%03d", o.getId())).toList();
+            if (!unfinished.isEmpty()) throw BusinessException.conflict(ErrorCode.TABLE_CLOSE_NOT_ALLOWED,
+                    "Không thể đóng phiên. Đơn chưa hoàn thành: " + String.join(", ", unfinished));
         }
 
         Account cashier = cashierId != null ? accountRepository.findById(cashierId).orElse(null) : null;

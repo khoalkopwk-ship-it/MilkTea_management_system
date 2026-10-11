@@ -3,9 +3,9 @@
 <body><div th:fragment="content" class="container py-4">
 <div id="ordersPage" th:attr="data-qr=${tableQr},data-table=${currentTable != null ? currentTable.id : ''}">
 <span id="staffOrders" th:attr="data-role=${actor != null ? actor.role : ''}" sec:authorize="hasAnyRole('CASHIER','ADMIN')" hidden></span>
-<h3 class="brand-font">Đơn đã đặt <span class="table-badge" th:if="${currentTable != null}" th:text="${currentTable.name}"></span></h3>
+<link rel="stylesheet" th:href="@{/css/staff-ui.css}"><h3 class="brand-font">Đơn đã đặt <span class="table-badge" th:if="${currentTable != null}" th:text="${currentTable.name}"></span></h3>
 <div class="row g-2 my-3"><div class="col-md-6"><input id="orderSearch" class="form-control" placeholder="Tìm mã đơn, ví dụ ORD001 hoặc 1" aria-label="Tìm mã đơn"></div>
-<div class="col-md-4"><select id="orderStatus" class="form-select" aria-label="Lọc trạng thái"><option value="">Tất cả trạng thái</option><option value="CHO_THANH_TOAN">Chờ thanh toán</option><option value="CHO_XAC_NHAN">Chờ xác nhận</option><option value="CHO_CHE_BIEN">Chờ pha chế</option><option value="DANG_CHE_BIEN">Đang pha chế</option><option value="HOAN_THANH">Hoàn thành</option><option value="DA_HUY">Đã hủy</option><option value="CANCEL_PENDING">Chờ xác nhận hủy</option></select></div>
+<div class="col-md-4"><select id="orderStatus" class="form-select" aria-label="Lọc trạng thái"><option value="">Tất cả trạng thái</option><option value="CHO_THANH_TOAN">Chờ thanh toán</option><option value="CHO_XAC_NHAN">Chờ xác nhận</option><option value="CHO_CHE_BIEN">Chờ chế biến</option><option value="DANG_CHE_BIEN">Đang chế biến</option><option value="HOAN_THANH">Hoàn thành</option><option value="DA_HUY">Đã hủy</option><option value="CANCEL_PENDING">Chờ xác nhận hủy</option></select></div>
 <div class="col-md-2"><button class="btn btn-outline-secondary w-100" onclick="OrdersApp.load()">Làm mới</button></div></div>
 <div id="ordersError" class="alert alert-danger d-none" role="alert"></div><div id="ordersList" class="d-grid gap-3">Đang tải đơn hàng...</div>
 </div></div>

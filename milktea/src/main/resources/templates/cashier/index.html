@@ -1,112 +1,28 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
-<head>
-    <title>Thu Ngân (POS) - MilkTea</title>
-</head>
-<body>
-    <div th:fragment="content" class="container-fluid py-3 px-lg-4">
-
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head><title>Thu ngân POS</title></head><body>
+<div th:fragment="content" class="container-fluid pos-workspace py-3 px-lg-4">
+<link rel="stylesheet" th:href="@{/css/staff-ui.css}">
 <span id="posRole" hidden th:attr="data-role=${actor.role}"></span>
-        <!-- Top Header POS -->
-        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-            <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-primary fs-6 py-2 px-3 rounded-pill"><i class="bi bi-calculator me-1"></i> Quầy Thu Ngân</span>
-                <span class="text-muted small">Tạo đơn quầy / bàn và quản lý sơ đồ bàn. Xử lý đơn tại “Đơn đã đặt”.</span>
-            </div>
-            <div>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="CashierApp.init()">
-                    <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
-                </button>
-            </div>
-        </div>
-
-        <div class="row g-3">
-            <!-- Cột Trái: POS Tạo Đơn Tại Quầy (Counter Order) -->
-            <div class="col-lg-4 col-xl-3">
-                <div class="card border-0 shadow-sm rounded-4 h-100">
-                    <div class="card-header bg-white py-3 border-bottom">
-                        <h6 class="fw-bold mb-0"><i class="bi bi-cart-plus me-1 text-primary"></i> Tạo đơn tại quầy / bàn</h6>
-                    </div>
-                    <div class="card-body p-3 d-flex flex-column">
-
-                        <!-- Danh Sách Món Nhanh (Click để thêm) -->
-                        <div class="mb-3">
-                            <label class="form-label small fw-semibold text-muted">Chọn món thêm vào đơn:</label>
-                            <div class="overflow-auto pe-1" style="max-height: 240px;">
-                                <div class="d-grid gap-1">
-                                    <button th:each="p : ${products}"
-                                            type="button" 
-                                            class="btn btn-light btn-sm text-start d-flex justify-content-between align-items-center py-2 px-3 border rounded-3"
-                                            th:attr="onclick=|CashierApp.addCounterCart({id: ${p.id}, name: '${p.name}', size: '${p.size}', price: ${p.price}})|">
-                                        <div>
-                                            <strong class="d-block text-truncate" style="max-width: 150px;" th:text="${p.name}">Trà Sữa</strong>
-                                            <span class="badge bg-secondary text-white small" th:text="'Size ' + ${p.size}">M</span>
-                                        </div>
-                                        <span class="text-primary fw-bold" th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA') + ' ₫'}">25.000 ₫</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Giỏ Món Quầy -->
-                        <div class="flex-grow-1 border-top pt-2">
-                            <label class="form-label small fw-semibold text-muted">Món đã chọn:</label>
-                            <div id="counterCartList" class="overflow-auto mb-2" style="max-height: 200px;">
-                                <div class="text-center text-muted small py-4">Chưa chọn món nào</div>
-                            </div>
-                        </div>
-
-                        <!-- Tổng Tiền & Nút Đặt Đơn -->
-                        <div class="pt-3 border-top mt-auto">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="fw-bold">Tổng tiền:</span>
-                                <strong class="fs-5 product-price" id="counterCartTotal">0 ₫</strong>
-                            </div>
-                            <select id="counterTableId" class="form-select mb-2"><option value="">Quầy / mang về</option><option th:each="t : ${tables}" th:value="${t.id}" th:text="${t.name}"></option></select>
-                            <select id="counterPayMethod" class="form-select mb-2"><option value="CASH">Tiền mặt</option><option value="BANK_TRANSFER">Chuyển khoản</option></select>
-                            <button id="counterSubmitBtn" type="button" class="btn btn-primary-custom w-100 py-2 rounded-pill fw-bold" onclick="CashierApp.submitCounterOrder()">
-                                <i class="bi bi-check2-circle me-1"></i> Tạo đơn & thanh toán
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Cột Phải: Sơ Đồ Bàn & Đơn Cần Xử Lý -->
-            <div class="col-lg-8 col-xl-9">
-                <!-- Nav Tabs -->
-                <ul class="nav nav-pills mb-3 gap-2" id="cashierTabs" role="tablist">
-                    <li class="nav-item">
-                        <button class="nav-link active rounded-pill px-4" data-bs-toggle="pill" data-bs-target="#tabTables">
-                            <i class="bi bi-grid-3x3-gap-fill me-1"></i> Sơ Đồ Bàn
-                        </button>
-                    </li>
-                </ul>
-
-                <div class="tab-content">
-                    <!-- Tab 1: Sơ Đồ Bàn -->
-                    <div class="tab-pane fade show active" id="tabTables">
-                        <div class="card border-0 shadow-sm rounded-4 p-4">
-                            <div class="row g-3" id="tablesGrid">
-                                <!-- Rendered by cashier.js -->
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <th:block th:fragment="scripts">
-        <script th:src="@{/js/cashier/cashier.js}"></script>
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                CashierApp.init();
-            });
-        </script>
-    </th:block>
-</body>
-</html>
+<div id="posProductsData" hidden><span th:each="p : ${products}" th:attr="data-id=${p.id},data-name=${p.name},data-size=${p.size},data-price=${p.price},data-image=${p.imageUrl},data-category=${p.category.id}"></span></div>
+<div class="pos-layout">
+<section class="pos-panel pos-checkout"><h4><i class="bi bi-cart3"></i> Tạo đơn tại quầy / bàn</h4>
+<label class="pos-search"><i class="bi bi-search"></i><input id="quickProductSearch" placeholder="Tìm món nhanh..." aria-label="Tìm món nhanh"></label>
+<div class="d-flex justify-content-between align-items-center my-3"><b class="small">MÓN ĐÃ CHỌN <span id="counterItemCount">(0)</span></b><button class="btn btn-sm text-danger" onclick="CashierApp.clearCart()"><i class="bi bi-trash3"></i> Xóa tất cả</button></div>
+<div id="counterCartList" class="pos-cart-list"><div class="text-muted text-center py-5">Chưa chọn món nào</div></div>
+<textarea id="counterOrderNote" class="form-control mt-3" rows="2" maxlength="500" placeholder="Ghi chú đơn hàng (nếu có)..." aria-label="Ghi chú đơn hàng"></textarea>
+<div class="pos-checkout-bottom"><div class="d-flex justify-content-between py-3"><span class="text-muted">Tạm tính</span><strong class="pos-total" id="counterCartTotal">0 ₫</strong></div>
+<label for="counterTableId" class="small text-muted mb-1">Phục vụ tại</label><select id="counterTableId" class="form-select mb-3"><option value="">Quầy / mang về</option><option th:each="t : ${tables}" th:value="${t.id}" th:text="${t.name}"></option></select>
+<label for="counterPayMethod" class="small text-muted mb-1">Phương thức thanh toán</label><select id="counterPayMethod" class="form-select mb-3"><option value="CASH">Tiền mặt</option><option value="BANK_TRANSFER">Chuyển khoản</option></select>
+<button id="counterSubmitBtn" type="button" class="pos-submit" onclick="CashierApp.submitCounterOrder()"><i class="bi bi-check-circle-fill me-2"></i>Thanh toán</button>
+<small class="d-block text-muted text-center mt-2">Giá và giảm giá được tính lại khi lập hóa đơn.</small></div></section>
+<section class="pos-panel pos-menu"><div class="d-flex justify-content-between gap-3 align-items-center mb-3"><h4 class="mb-0"><i class="bi bi-cup-hot"></i> Chọn món</h4><label class="pos-search mb-0"><i class="bi bi-search"></i><input id="posProductSearch" placeholder="Tìm trà sữa, cà phê..." aria-label="Tìm món"></label></div>
+<div class="pos-categories" id="posCategories"><button class="active" data-category="">Tất cả</button><button th:each="c : ${categories}" th:attr="data-category=${c.id}" th:text="${c.name}"></button></div>
+<div id="posProductGrid" class="pos-product-grid"></div></section>
+<section class="pos-panel pos-tables"><div class="d-flex justify-content-between align-items-center mb-3"><h4 class="mb-0"><i class="bi bi-map"></i> Sơ đồ bàn</h4><button class="btn btn-light btn-sm border rounded-3" onclick="CashierApp.refreshTables()"><i class="bi bi-arrow-clockwise"></i> Làm mới</button></div>
+<div class="d-flex gap-3 text-muted small mb-3"><span><i class="bi bi-circle-fill text-success"></i> Trống</span><span><i class="bi bi-circle-fill text-danger"></i> Có khách</span></div><div id="tablesGrid" class="pos-tables-grid"></div></section>
+</div>
+<div class="modal fade" id="tableBlockersModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content rounded-4"><div class="modal-header"><h5 id="tableBlockersTitle">Chưa thể đóng phiên</h5><button class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div><div class="modal-body" id="tableBlockersBody"></div><div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Quay lại kiểm tra</button></div></div></div></div>
+</div>
+<th:block th:fragment="scripts"><script th:src="@{/js/cashier/cashier.js}"></script><script>document.addEventListener('DOMContentLoaded',()=>CashierApp.init());</script></th:block>
+</body></html>

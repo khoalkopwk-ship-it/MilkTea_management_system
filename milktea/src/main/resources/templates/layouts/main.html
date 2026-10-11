@@ -80,6 +80,7 @@
     <div id="receiptShop" hidden th:attr="data-name=${settings != null ? settings.shopName : 'Milktea Café'},data-address=${settings != null ? settings.address : ''},data-bank=${settings != null ? settings.bankName : ''},data-account=${settings != null ? settings.bankAccountNumber : ''},data-holder=${settings != null ? settings.bankAccountHolder : ''}"></div>
     <script th:src="@{/js/common/receipts.js}"></script>
     <script sec:authorize="hasRole('ADMIN')" th:src="@{/js/admin/notifications.js}"></script>
+    <script sec:authorize="hasAnyRole('CASHIER','ADMIN')" th:src="@{/js/common/pending-orders.js}"></script>
     <!-- Page Specific Script Block -->
     <th:block th:if="${scripts != null}" th:replace="${scripts}"></th:block>
 </body>
