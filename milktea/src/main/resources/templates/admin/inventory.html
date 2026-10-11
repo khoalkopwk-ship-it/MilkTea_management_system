@@ -36,16 +36,16 @@
             <div class="col-lg-9 col-xl-10">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
                     <div>
-                        <h3 class="brand-font mb-1">Quản Lý Kho 2 Vị Trí (KHO & BẾP)</h3>
-                        <p class="text-muted small mb-0">Theo dõi tồn kho, nhập hàng, xuất chuyển Kho → Bếp không cần duyệt, và hao hụt</p>
+                        <h3 class="brand-font mb-1">Quản Lý Nguyên Liệu Kho</h3>
+                        <p class="text-muted small mb-0">
+                            Theo dõi nguyên liệu, nhập kho và quản lý hao hụt
+                        </p>
                     </div>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#importModal">
                             <i class="bi bi-box-arrow-in-down me-1"></i> Nhập Kho
                         </button>
-                        <button type="button" class="btn btn-outline-success rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#issueModal">
-                            <i class="bi bi-arrow-right-circle me-1"></i> Chuyển Kho → Bếp
-                        </button>
+                        
                         <button type="button" class="btn btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#wasteModal">
                             <i class="bi bi-trash3 me-1"></i> Báo Hao Hụt
                         </button>
@@ -55,37 +55,58 @@
                 <div class="nav nav-pills gap-2 mb-4"><a class="nav-link active rounded-pill" th:href="@{/admin/inventory}"><i class="bi bi-box-seam me-1"></i> Tồn kho</a><a class="nav-link rounded-pill border" th:href="@{/admin/documents}"><i class="bi bi-files me-1"></i> Chứng từ</a></div>
                 <!-- Bảng Tồn Kho 2 Vị Trí -->
                 <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
-                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold mb-0">Tồn Kho Hiện Tại (2 Vị Trí)</h5>
-                        <button class="btn btn-sm btn-light rounded-pill border" onclick="loadStockData()">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
-                        </button>
-                    </div>
-                    <div class="table-responsive">
+
+                    <div class="card-header bg-white p-3">
+                        <div class="d-flex flex-wrap justify-content-between
+                                    align-items-center gap-3 mb-3">
+
+                            <h5 class="fw-bold mb-0">
+                                Nguyên Liệu Kho
+                            </h5>
+
+                            <button class="btn btn-sm btn-light rounded-pill border"
+                                    onclick="loadStockData()">
+                                <i class="bi bi-arrow-clockwise me-1"></i>
+                                Làm mới
+                            </button>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <input type="text"
+                                    id="stockSearch"
+                                    class="form-control"
+                                    placeholder="Tìm kiếm nguyên liệu thô..."
+                                    oninput="filterStockTable()">
+                            </div>
+                        </div>
+
+                        </div> <!-- Đóng card-header -->
+
+                        <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Nguyên Liệu</th>
+                                    <th>STT</th>
+                                    <th>Nguyên liệu</th>
                                     <th>Loại</th>
-                                    <th class="text-primary fw-bold">Tồn KHO</th>
-                                    <th class="text-success fw-bold">Tồn BẾP</th>
-                                    <th>Tổng Tồn</th>
-                                    <th>Ngưỡng Tối Thiểu</th>
-                                    <th>Cảnh Báo</th>
-                                    <th style="width: 100px;">Sửa Ngưỡng</th>
+                                    <th>Tồn kho</th>
+                                    <th>Ngưỡng tối thiểu</th>
+                                    <th>Cảnh báo</th>
+                                    <th>Thao tác</th>
                                 </tr>
                             </thead>
+
                             <tbody id="inventoryStockBody">
-                                <!-- Dynamic Render from stock API -->
                             </tbody>
-                        </table>
-                    </div>
-                </div>
+                                </table>
+                            </div>
+                        </div> <!-- Đóng card nguyên liệu kho -->
 
-            </div>
-        </div>
+                        </div> <!-- Đóng Main Content -->
+                        </div> <!-- Đóng row -->
 
-        <!-- Modal Nhập Kho -->
+                        <!-- Modal Nhập Kho -->
         <div class="modal fade" id="importModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -105,9 +126,13 @@
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Nguyên liệu nhập:</label>
                             <select id="importMaterialSelect" class="form-select rounded-3">
-                                <option th:each="m : ${materials}" th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}">Trà Đen</option>
+                                <option th:each="m : ${materials}"
+                                        th:if="${m.type != null and m.type.name() == 'THO'}"
+                                        th:value="${m.id}"
+                                        th:text="${m.name + ' (' + m.unit + ')'}">
+                                </option>
                             </select>
-                        </div>
+                                                    </div>
                         <div class="row g-2 mb-4">
                             <div class="col-6">
                                 <label class="form-label small fw-semibold">Số lượng nhập:</label>
@@ -128,39 +153,6 @@
             </div>
         </div>
 
-        <!-- Modal Chuyển Kho -> Bếp -->
-        <div class="modal fade" id="issueModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                    <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title brand-font text-success">Xuất Chuyển KHO → BẾP</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body p-4">
-                        <p class="text-muted small">Xuất nguyên liệu từ KHO chuyển sang phục vụ pha chế tại BẾP (Không cần phê duyệt).</p>
-                        <div class="mb-3">
-                            <label class="form-label small fw-semibold">Nguyên liệu chuyển:</label>
-                            <select id="issueMaterialSelect" class="form-select rounded-3">
-                                <option th:each="m : ${materials}" th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}">Trà Đen</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-semibold">Số lượng chuyển:</label>
-                            <input type="number" step="0.01" id="issueQuantity" class="form-control rounded-3" placeholder="5">
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label small fw-semibold">Lý do chuyển:</label>
-                            <input type="text" id="issueReason" class="form-control rounded-3" placeholder="Bổ sung nguyên liệu pha chế cho Bếp...">
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button type="button" class="btn btn-success rounded-pill py-2 fw-bold" onclick="submitIssueForm()">
-                                Xác Nhận Chuyển Sang Bếp
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Modal Báo Hao Hụt -->
         <div class="modal fade" id="wasteModal" tabindex="-1">
@@ -213,91 +205,182 @@
             });
 
             
+let allStockData = [];
+
 async function loadStockData() {
     try {
-        const [kho, bep] = await Promise.all([
+        const [stocks, materials] = await Promise.all([
             MilkTeaApi.get('/api/v1/inventory/stocks?location=KHO'),
-            MilkTeaApi.get('/api/v1/inventory/stocks?location=BEP')
+            MilkTeaApi.get('/api/v1/admin/materials')
         ]);
 
-        const stockMap = new Map();
+        const activeMaterials = (materials || [])
+            .filter(m =>
+                m.active !== false &&
+                m.type === 'THO'
+            );
+        
+        //Tạo bảng tra cứu tồn kho theo mã nguyên liệu 
+        const stockMap = new Map(
+            (stocks || []).map(s => [
+                Number(s.materialId),
+                s
+            ])
+        );
 
-        (kho || []).forEach(s => {
-            stockMap.set(s.materialId, {
-                materialId: s.materialId,
-                materialName: s.materialName,
-                materialType: s.type,
-                unit: s.unit,
-                stockKho: Number(s.quantity || 0),
-                stockBep: 0,
-                minThreshold: Number(s.threshold || 0),
-                lowStockAlert: Boolean(s.lowStock)
-            });
-        });
+        allStockData = activeMaterials.map(m => {
+            const stock = stockMap.get(Number(m.id));
 
-        (bep || []).forEach(s => {
-            const item = stockMap.get(s.materialId) || {
-                materialId: s.materialId,
-                materialName: s.materialName,
-                materialType: s.type,
-                unit: s.unit,
-                stockKho: 0,
-                stockBep: 0,
-                minThreshold: 0,
-                lowStockAlert: false
+            const quantity = Number(stock?.quantity || 0);
+            const threshold = Number(stock?.threshold || 0);
+
+            return {
+                materialId: m.id,
+                materialName: m.name,
+                materialType: m.type,
+                unit: m.unit,
+
+                stockKho: quantity,
+                minThreshold: threshold,
+                lowStockAlert: quantity <= threshold
             };
-
-            item.stockBep = Number(s.quantity || 0);
-            item.lowStockAlert = item.lowStockAlert || Boolean(s.lowStock);
-
-            stockMap.set(s.materialId, item);
         });
 
-        const tbody = document.getElementById('inventoryStockBody');
-        let html = '';
-
-        stockMap.forEach(s => {
-            const totalStock = s.stockKho + s.stockBep;
-
-            html += `
-                <tr class="${s.lowStockAlert ? 'table-warning' : ''}">
-                    <td class="fw-bold">${s.materialName}</td>
-                    <td>
-                        <span class="badge ${s.materialType === 'THO' ? 'bg-secondary' : 'bg-primary'}">
-                            ${s.materialType}
-                        </span>
-                    </td>
-                    <td class="text-primary fw-bold">${s.stockKho} ${s.unit}</td>
-                    <td class="text-success fw-bold">${s.stockBep} ${s.unit}</td>
-                    <td class="fw-bold">${totalStock} ${s.unit}</td>
-                    <td class="text-muted">${s.minThreshold} ${s.unit}</td>
-                    <td>
-                        ${s.lowStockAlert
-                            ? '<span class="badge bg-danger">Sắp hết hàng!</span>'
-                            : '<span class="badge bg-success">An toàn</span>'}
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-link text-primary p-0"
-                            onclick="promptThreshold(${s.materialId}, '${s.materialName}', ${s.minThreshold})">
-                            <i class="bi bi-pencil-square"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-
-        tbody.innerHTML = html || `
-            <tr>
-                <td colspan="8" class="text-center text-muted">
-                    Chưa có dữ liệu tồn kho
-                </td>
-            </tr>
-        `;
+        filterStockTable();
 
     } catch (e) {
-        console.error('Lỗi tải dữ liệu tồn kho:', e);
+        console.error('Lỗi tải tồn kho:', e);
+        MilkTeaApi.showToast(
+            e.message || 'Không thể tải dữ liệu kho',
+            'error'
+        );
     }
 }
+
+function filterStockTable() {
+    const keyword = document.getElementById('stockSearch')
+        .value.trim().toLowerCase();
+
+    const filtered = allStockData.filter(s => {
+        return s.materialType === 'THO' &&
+            s.materialName.toLowerCase().includes(keyword);
+    });
+
+    const tbody = document.getElementById('inventoryStockBody');
+
+    tbody.innerHTML = filtered.map((s, index) => `
+        <tr class="${s.lowStockAlert ? 'table-warning' : ''}">
+
+            <td>${index + 1}</td>
+
+            <td class="fw-semibold"></td>
+
+            <td>
+                <span class="badge ${s.materialType === 'THO'
+                    ? 'bg-secondary'
+                    : 'bg-primary'}">
+                    ${s.materialType}
+                </span>
+            </td>
+
+            <td class="fw-bold">
+                ${s.stockKho} ${s.unit}
+            </td>
+
+            <td>
+                ${s.minThreshold} ${s.unit}
+            </td>
+
+            <td>
+                ${s.lowStockAlert
+                    ? '<span class="badge bg-danger">Sắp hết hàng</span>'
+                    : '<span class="badge bg-success">An toàn</span>'}
+            </td>
+
+            <td>
+                <div class="d-flex gap-2">
+
+                    <button class="btn btn-sm btn-outline-primary"
+                            data-action="threshold"
+                            data-id="${s.materialId}">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+
+                    <button class="btn btn-sm btn-outline-danger"
+                            data-action="delete"
+                            data-id="${s.materialId}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+
+                </div>
+            </td>
+
+        </tr>
+    `).join('') || `
+        <tr>
+            <td colspan="7" class="text-center text-muted py-4">
+                Không tìm thấy nguyên liệu
+            </td>
+        </tr>
+    `;
+
+    tbody.querySelectorAll('tr').forEach((row, index) => {
+        const s = filtered[index];
+        if (!s) return;
+
+        row.children[1].textContent = s.materialName;
+    });
+}
+
+document.getElementById('inventoryStockBody')
+    .addEventListener('click', async function(event) {
+
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+
+        const id = Number(button.dataset.id);
+        const action = button.dataset.action;
+
+        const material = allStockData.find(m => m.materialId === id);
+        if (!material) return;
+
+        if (action === 'threshold') {
+            promptThreshold(
+                id,
+                material.materialName,
+                material.minThreshold
+            );
+            return;
+        }
+
+        if (action === 'delete') {
+            const confirmed = confirm(
+                `Bạn có chắc muốn ngừng sử dụng nguyên liệu "${material.materialName}"?`
+            );
+
+            if (!confirmed) return;
+
+            button.disabled = true;
+
+            try {
+                await MilkTeaApi.delete(`/api/v1/admin/materials/${id}`);
+
+                MilkTeaApi.showToast(
+                    'Đã ngừng sử dụng nguyên liệu',
+                    'success'
+                );
+
+                await loadStockData();
+
+            } catch (e) {
+                MilkTeaApi.showToast(
+                    e.message || 'Không thể xóa nguyên liệu',
+                    'error'
+                );
+                button.disabled = false;
+            }
+        }
+    });
 
 
             function promptThreshold(matId, name, cur) {
@@ -315,13 +398,6 @@ async function loadStockData() {
                 const qty = parseFloat(document.getElementById('importQuantity').value);
                 const price = parseFloat(document.getElementById('importUnitPrice').value) || 0;
                 AdminApp.submitImport(sup, reas, [{ materialId: matId, quantity: qty, unitPrice: price }]);
-            }
-
-            function submitIssueForm() {
-                const reas = document.getElementById('issueReason').value;
-                const matId = parseInt(document.getElementById('issueMaterialSelect').value);
-                const qty = parseFloat(document.getElementById('issueQuantity').value);
-                AdminApp.submitIssue(reas, [{ materialId: matId, quantity: qty }]);
             }
 
             function submitWasteForm() {

@@ -9,9 +9,6 @@ const KitchenApp = (() => {
     let prepRecipes = [];
     let currentIncidentOrderId = null;
     let currentRemakeOrderId = null;
-    let issuing = false;
-    let issuingKey = null;
-    let issuingFingerprint = null;
     let preparing = false;
     let preparationKey = null;
     let preparationFingerprint = null;
@@ -24,7 +21,6 @@ const KitchenApp = (() => {
         await loadOrders();
         await loadStock();
         await loadPrepRecipes();
-        await loadIssueMaterials();
     }
 
     function setupRealtime() {
@@ -168,82 +164,6 @@ const KitchenApp = (() => {
         }catch(e){MilkTeaApi.showToast(e.message,'error');}
     }
 
-    async function submitIssue() {
-        if (issuing) return;
-
-        const form = document.getElementById('kitchenIssueForm');
-        if (!form.reportValidity()) return;
-
-        const materialId = Number(
-            document.getElementById('kitchenIssueMaterial').value
-        );
-
-        const quantity = Number(
-            document.getElementById('kitchenIssueQty').value
-        );
-
-        if (!Number.isInteger(materialId) || materialId <= 0 ||
-            !Number.isFinite(quantity) || quantity <= 0) {
-            MilkTeaApi.showToast(
-                'Vui lòng chọn nguyên liệu và nhập số lượng hợp lệ',
-                'warning'
-            );
-            return;
-        }
-
-        issuing = true;
-
-        const submitBtn = document.getElementById('kitchenIssueSubmit');
-        submitBtn.disabled = true;
-
-        try {
-            const payload = {
-                reason: 'Bếp lấy nguyên liệu',
-                items: [{
-                    materialId: materialId,
-                    quantity: quantity
-                }]
-            };
-
-            const fingerprint = JSON.stringify(payload);
-
-            if (issuingFingerprint !== fingerprint || !issuingKey) {
-                issuingFingerprint = fingerprint;
-                issuingKey = crypto.randomUUID();
-            }
-
-            await MilkTeaApi.post(
-                '/api/v1/inventory/issues',
-                payload,
-                { 'Idempotency-Key': issuingKey }
-            );
-
-            // Chỉ xóa mã khi server xác nhận thành công
-            issuingKey = null;
-            issuingFingerprint = null;
-
-            document.getElementById('kitchenIssueResult').textContent =
-                'Đã ghi phiếu, chuyển nguyên liệu sang bếp và thông báo Admin.';
-
-            document.getElementById('kitchenIssueQty').value = '';
-
-            // Cập nhật tồn Bếp và danh sách nguyên liệu Kho
-            await Promise.all([
-                loadStock(),
-                loadIssueMaterials()
-            ]);
-
-        } catch (e) {
-            MilkTeaApi.showToast(
-                e.message || 'Không thể lập phiếu lấy nguyên liệu',
-                'error'
-            );
-        } finally {
-            issuing = false;
-            submitBtn.disabled = false;
-        }
-    }
-
     // Modal Sự Cố
     function openIncidentModal(orderId) {
         currentIncidentOrderId = orderId;
@@ -325,7 +245,9 @@ const KitchenApp = (() => {
 
         let html = '';
 
-        bepStock.forEach(s => {
+        bepStock
+            .filter(s => s.type === 'SOCHE')
+            .forEach(s => {
             const isAlert = s.lowStock;
 
             html += `
@@ -350,7 +272,7 @@ const KitchenApp = (() => {
         tbody.innerHTML = html || `
             <tr>
                 <td colspan="5" class="text-center text-muted">
-                    Chưa có dữ liệu tồn kho tại Bếp
+                    Chưa có dữ liệu sơ chế tại Bếp
                 </td>
             </tr>
         `;
@@ -445,7 +367,6 @@ const KitchenApp = (() => {
     }
 
     return {
-        submitIssue,
         init,
         startCooking,
         completeOrder,

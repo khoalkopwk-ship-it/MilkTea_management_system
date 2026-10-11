@@ -50,32 +50,6 @@ public class InventoryDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class StockIssueItemRequest {
-        @NotNull(message = "Mã nguyên liệu không được để trống")
-        private Long materialId;
-
-        @NotNull(message = "Số lượng không được để trống")
-        @DecimalMin(value = "0.001", message = "Số lượng xuất phải lớn hơn 0")
-        private BigDecimal quantity;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CreateStockIssueRequest {
-        @NotNull(message = "Lý do xuất kho không được để trống")
-        private String reason;
-
-        @NotEmpty(message = "Danh sách nguyên liệu xuất không được rỗng")
-        @jakarta.validation.Valid
-        private List<StockIssueItemRequest> items;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class CreatePreparationBatchRequest {
         @NotNull(message = "Mã công thức sơ chế không được để trống")
         private Long recipeId;
@@ -85,20 +59,6 @@ public class InventoryDto {
         private BigDecimal actualQuantity;
 
         private String discrepancyReason;
-    }
-
-    @Data @Builder @NoArgsConstructor @AllArgsConstructor
-    public static class StockIssueResponse {
-        private Long id;
-        private java.time.Instant createdAt;
-        private String createdBy;
-        private List<StockIssueLineResponse> items;
-    }
-    @Data @Builder @NoArgsConstructor @AllArgsConstructor
-    public static class StockIssueLineResponse {
-        private String materialName;
-        private String unit;
-        private BigDecimal quantity;
     }
 
     // === NHẬP KHO ===

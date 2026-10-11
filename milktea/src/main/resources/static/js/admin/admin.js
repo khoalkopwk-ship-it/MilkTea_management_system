@@ -144,20 +144,6 @@ const AdminApp = (() => {
         }
     }
 
-    async function submitIssue(reason, items) {
-        try {
-            // Chuyển KHO -> BẾP không cần Admin duyệt theo domain_system.md
-            await MilkTeaApi.post('/api/v1/inventory/issues', {
-                reason,
-                items
-            });
-            MilkTeaApi.showToast('Chuyển kho sang Bếp thành công! Đã tăng tồn Bếp.', 'success');
-            setTimeout(() => window.location.reload(), 500);
-        } catch (e) {
-            MilkTeaApi.showToast(e.message || 'Lỗi chuyển kho sang Bếp', 'error');
-        }
-    }
-
     async function submitWaste(location, reason, items) {
         try {
             await MilkTeaApi.post('/api/v1/inventory/waste', {
@@ -277,7 +263,6 @@ async function updateThreshold(materialId, location, threshold) {
         createStaff,
         toggleStaffStatus,
         submitImport,
-        submitIssue,
         submitWaste,
         updateThreshold,
         loadRevenueReport,
