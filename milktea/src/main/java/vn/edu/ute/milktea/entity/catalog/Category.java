@@ -23,4 +23,8 @@ public class Category {
     @Column(name = "HoatDong", nullable = false)
     @Builder.Default
     private Boolean active = true;
+
+    @Column(name = "ChoPhepTopping", nullable = false)
+    @Builder.Default
+    private Boolean allowTopping = true;
 }
