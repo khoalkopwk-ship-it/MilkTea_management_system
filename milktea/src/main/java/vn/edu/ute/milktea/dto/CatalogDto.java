@@ -34,6 +34,7 @@ public class CatalogDto {
         private Long id;
         private String name;
         private Boolean active;
+        private Boolean allowTopping;
         private List<ProductItem> products;
     }
 

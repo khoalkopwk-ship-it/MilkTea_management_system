@@ -43,6 +43,7 @@ public class AdminDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class UpdateStaffRequest {
+        private String email;
         private String fullName;
         private String phone;
         private Role role;
@@ -72,6 +73,7 @@ public class AdminDto {
         @NotBlank(message = "Tên danh mục không được để trống")
         private String name;
         private Boolean active;
+        private Boolean allowTopping;
     }
 
     @Data
@@ -82,6 +84,7 @@ public class AdminDto {
         private Long id;
         private String name;
         private Boolean active;
+        private Boolean allowTopping;
     }
 
     // === SẢN PHẨM ===
@@ -123,6 +126,18 @@ public class AdminDto {
         private BigDecimal price;
         private String imageUrl;
         private Boolean active;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProductPageResponse {
+        private List<ProductResponse> items;
+        private long totalItems;
+        private int totalPages;
+        private int page;
+        private int limit;
     }
 
     @Data
@@ -222,6 +237,7 @@ public class AdminDto {
         private MaterialType type;
         private String unit;
         private Boolean active;
+        private BigDecimal averageImportPrice;
     }
 
     // === CÔNG THỨC SƠ CHẾ ===
@@ -255,6 +271,14 @@ public class AdminDto {
         @Positive(message = "Sản lượng chuẩn phải lớn hơn 0")
         private BigDecimal standardOutputQuantity;
 
+        private BigDecimal tolerancePercent;
+
+        private Boolean active;
+
+        private String note;
+
+        private Long version;
+
         private List<PrepRecipeItemDto> inputItems;
     }
 
@@ -269,6 +293,12 @@ public class AdminDto {
         private String outputMaterialName;
         private String outputUnit;
         private BigDecimal standardOutputQuantity;
+        private BigDecimal tolerancePercent;
+        private Boolean active;
+        private Long version;
+        private String note;
+        private String ratioText;
+        private BigDecimal estimatedUnitCost;
         private List<PrepRecipeItemDto> inputItems;
     }
 }

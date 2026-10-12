@@ -61,7 +61,48 @@ public class CancellationService {
                     "Không thể hủy đơn đã hoặc đang được pha chế: " + order.getStatus());
         }
 
-        // Kiểm tra không có yêu cầu hủy nào đang chờ duyệt
+        Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
+        boolean isPaid = invoice != null && paymentRepository.existsByInvoiceId(invoice.getId());
+
+        // Đơn Chờ xác nhận hoặc Đơn Chờ chế biến chưa thu tiền: Hủy trực tiếp ngay lập tức
+        if (order.getStatus() == OrderStatus.CHO_XAC_NHAN || (order.getStatus() == OrderStatus.CHO_CHE_BIEN && !isPaid)) {
+            order.setStatus(OrderStatus.DA_HUY);
+            orderRepository.save(order);
+
+            if (invoice != null) {
+                invoice.setStatus(InvoiceStatus.DA_HUY);
+                invoice.setCancelledAt(Instant.now());
+                invoiceRepository.save(invoice);
+            }
+
+            CancellationRequest cancelReq = CancellationRequest.builder()
+                    .order(order)
+                    .reason(request.getReason())
+                    .status(CancellationStatus.CHAP_THUAN)
+                    .decidedAt(Instant.now())
+                    .decisionReason("Hủy trực tiếp theo quy định")
+                    .createdAt(Instant.now())
+                    .build();
+            cancelReq = cancellationRepository.save(cancelReq);
+
+            auditRepository.save(BusinessAudit.builder()
+                    .orderId(order.getId())
+                    .action("CANCELLATION_DIRECT_APPROVED")
+                    .reason(request.getReason())
+                    .createdAt(Instant.now())
+                    .build());
+
+            publish(order);
+            return CancellationDto.CancellationResponse.builder()
+                    .id(cancelReq.getId())
+                    .orderId(order.getId())
+                    .reason(cancelReq.getReason())
+                    .status(cancelReq.getStatus())
+                    .createdAt(cancelReq.getCreatedAt())
+                    .build();
+        }
+
+        // Đơn Chờ chế biến đã thanh toán: Cần thu ngân duyệt
         var existing = cancellationRepository.findFirstByOrderIdAndStatus(orderId, CancellationStatus.CHO);
         if (existing.isPresent()) {
             throw BusinessException.conflict(ErrorCode.CANCELLATION_PENDING, "Đơn hàng đã có yêu cầu hủy đang chờ xử lý");
@@ -144,7 +185,6 @@ public class CancellationService {
                 invoice.setStatus(InvoiceStatus.DA_HUY);
                 invoice.setCancelledAt(Instant.now());
                 invoiceRepository.save(invoice);
-                createRefundIfPaid(cancelReq, invoice, cashierId);
             }
 
             auditRepository.save(BusinessAudit.builder()

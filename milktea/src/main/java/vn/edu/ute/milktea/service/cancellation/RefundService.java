@@ -29,6 +29,97 @@ public class RefundService {
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher publisher;
 
     @Transactional
+    public vn.edu.ute.milktea.dto.CancellationDto.RefundResponse requestBankRefund(Long orderId, Long staffId) {
+        var order = orderRepository.findByIdWithLock(orderId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
+        if (order.getStatus() != vn.edu.ute.milktea.entity.order.OrderStatus.DA_HUY) {
+            throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Chỉ có thể hoàn tiền cho đơn đã hủy");
+        }
+        var existing = refundRepository.findByOrderId(order.getId());
+        if (existing.isPresent()) {
+            var ex = existing.get();
+            if (ex.getStatus() != RefundStatus.TU_CHOI) {
+                return toResponse(ex);
+            }
+        }
+        var invoice = invoiceRepository.findByOrderId(order.getId())
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy hóa đơn"));
+        var payment = paymentRepository.findByInvoiceId(invoice.getId())
+                .orElseThrow(() -> BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Đơn chưa thu tiền, không cần hoàn tiền"));
+        if (payment.getMethod() != vn.edu.ute.milktea.entity.payment.PaymentMethod.BANK_TRANSFER) {
+            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Đơn thanh toán tiền mặt phải do thu ngân hoàn trực tiếp");
+        }
+        var refund = refundRepository.save(RefundRequest.builder()
+                .order(order)
+                .payment(payment)
+                .amount(payment.getAmount())
+                .reason("Thu ngân gửi yêu cầu hoàn tiền chuyển khoản cho đơn #" + orderId)
+                .status(RefundStatus.CHO_DUYET)
+                .idempotencyKey("REFUND_BANK_" + orderId)
+                .build());
+        auditRepository.save(BusinessAudit.builder()
+                .orderId(order.getId())
+                .accountId(staffId)
+                .action("BANK_REFUND_REQUESTED")
+                .reason("Gửi yêu cầu hoàn tiền chuyển khoản")
+                .createdAt(Instant.now())
+                .build());
+        publish(refund);
+        return toResponse(refund);
+    }
+
+    @Transactional
+    public vn.edu.ute.milktea.dto.CancellationDto.RefundResponse refundCash(Long orderId, Long cashierId) {
+        var order = orderRepository.findByIdWithLock(orderId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
+        if (order.getStatus() != vn.edu.ute.milktea.entity.order.OrderStatus.DA_HUY) {
+            throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Chỉ có thể hoàn tiền cho đơn đã hủy");
+        }
+        var existing = refundRepository.findByOrderId(order.getId());
+        if (existing.isPresent() && existing.get().getStatus() == RefundStatus.DA_HOAN) {
+            throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Đơn hàng đã được hoàn tiền trước đó");
+        }
+        var invoice = invoiceRepository.findByOrderId(order.getId())
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy hóa đơn"));
+        var payment = paymentRepository.findByInvoiceId(invoice.getId())
+                .orElseThrow(() -> BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Đơn chưa thu tiền, không cần hoàn tiền"));
+        if (payment.getMethod() != vn.edu.ute.milktea.entity.payment.PaymentMethod.CASH) {
+            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Đơn thanh toán chuyển khoản phải gửi yêu cầu hoàn tiền đến Admin");
+        }
+        Account cashier = cashierId != null ? accountRepository.findById(cashierId).orElse(null) : null;
+        RefundRequest refund;
+        if (existing.isPresent()) {
+            refund = existing.get();
+            refund.setStatus(RefundStatus.DA_HOAN);
+            refund.setRefundedBy(cashier);
+            refund.setRefundedAt(Instant.now());
+            refund.setRefundReference("CASH_REFUND_" + orderId);
+        } else {
+            refund = RefundRequest.builder()
+                    .order(order)
+                    .payment(payment)
+                    .amount(payment.getAmount())
+                    .reason("Thu ngân thực trả và ghi nhận hoàn tiền mặt")
+                    .status(RefundStatus.DA_HOAN)
+                    .refundedBy(cashier)
+                    .refundedAt(Instant.now())
+                    .refundReference("CASH_REFUND_" + orderId)
+                    .idempotencyKey("REFUND_CASH_" + orderId)
+                    .build();
+        }
+        refund = refundRepository.save(refund);
+        auditRepository.save(BusinessAudit.builder()
+                .orderId(order.getId())
+                .accountId(cashierId)
+                .action("CASH_REFUNDED")
+                .reason("Hoàn tiền mặt thực tế: " + refund.getAmount() + " VND")
+                .createdAt(Instant.now())
+                .build());
+        publish(refund);
+        return toResponse(refund);
+    }
+
+    @Transactional
     public vn.edu.ute.milktea.dto.CancellationDto.RefundResponse requestFromCancellation(Long cancellationId, Long staffId) {
         var cancellation = cancellationRepository.findById(cancellationId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy phiếu hủy"));
@@ -40,13 +131,11 @@ public class RefundService {
         var invoice = invoiceRepository.findByOrderId(order.getId()).orElseThrow();
         var payment = paymentRepository.findByInvoiceId(invoice.getId())
                 .orElseThrow(() -> BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Đơn chưa thu tiền, không cần hoàn tiền"));
-        var refund = refundRepository.save(RefundRequest.builder().order(order).payment(payment)
-                .amount(payment.getAmount()).reason(cancellation.getReason())
-                .status(RefundStatus.CHO_DUYET).idempotencyKey("CANCEL_" + cancellationId).build());
-        auditRepository.save(BusinessAudit.builder().orderId(order.getId()).accountId(staffId)
-                .action("REFUND_REQUESTED").reason(cancellation.getReason()).createdAt(Instant.now()).build());
-        publish(refund);
-        return toResponse(refund);
+        
+        if (payment.getMethod() == vn.edu.ute.milktea.entity.payment.PaymentMethod.CASH) {
+            return refundCash(order.getId(), staffId);
+        }
+        return requestBankRefund(order.getId(), staffId);
     }
 
     @Transactional
@@ -67,12 +156,12 @@ public class RefundService {
             refund.setStatus(RefundStatus.DA_HOAN);
             refund.setRefundedBy(admin);
             refund.setRefundedAt(refund.getApprovedAt());
-            refund.setRefundReference("ADMIN_APPROVAL_" + refundId);
+            refund.setRefundReference("ADMIN_BANK_REFUND_" + refundId);
             auditRepository.save(BusinessAudit.builder()
                     .orderId(refund.getOrder().getId())
                     .accountId(adminId)
-                    .action("REFUND_APPROVED")
-                    .reason(reason)
+                    .action("BANK_REFUND_APPROVED")
+                    .reason(reason != null && !reason.isBlank() ? reason : "Admin xác nhận đã hoàn chuyển khoản")
                     .createdAt(Instant.now())
                     .build());
         } else {
@@ -80,7 +169,7 @@ public class RefundService {
             auditRepository.save(BusinessAudit.builder()
                     .orderId(refund.getOrder().getId())
                     .accountId(adminId)
-                    .action("REFUND_REJECTED")
+                    .action("BANK_REFUND_REJECTED")
                     .reason(reason)
                     .createdAt(Instant.now())
                     .build());

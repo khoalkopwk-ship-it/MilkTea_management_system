@@ -5,7 +5,13 @@ const MilkTeaReceipts = (() => {
     const code = id => 'ORD' + String(id).padStart(3, '0');
     let currentOrder;
     function lines(o) {
-        return `<table class="receipt-items"><thead><tr><th>Tên món</th><th>Số lượng</th><th>Thành tiền</th></tr></thead><tbody>${(o.items || []).map(i => `<tr><td>${esc(i.productName)} <small>${esc(i.size)}</small></td><td>${i.quantity}</td><td>${money(i.lineTotal)}</td></tr>`).join('')}</tbody></table>`;
+        return `<table class="receipt-items"><thead><tr><th>Tên món</th><th>Số lượng</th><th>Thành tiền</th></tr></thead><tbody>${(o.items || []).map(i => {
+            const toppingText = (i.toppings && i.toppings.length)
+                ? `<div class="small text-muted">+ ${i.toppings.map(t => `${esc(t.name)} (${money(t.price)})`).join(', ')}</div>`
+                : '';
+            const noteText = i.note ? `<div class="small text-muted fst-italic">Ghi chú: ${esc(i.note)}</div>` : '';
+            return `<tr><td>${esc(i.productName)} <small class="text-secondary">${esc(i.size)}</small>${toppingText}${noteText}</td><td>${i.quantity}</td><td>${money(i.lineTotal)}</td></tr>`;
+        }).join('')}</tbody></table>`;
     }
     function shop() {
         const e = document.getElementById('receiptShop');
@@ -18,7 +24,7 @@ const MilkTeaReceipts = (() => {
         <h6>Thông tin khách hàng</h6><div class="receipt-meta"><span>Khách hàng: ${esc(o.customerName || 'Khách vãng lai')}</span><span>Bàn: ${esc(o.tableName || 'Quầy / mang về')}</span></div>
         ${lines(o)}<div class="receipt-total"><div><span>Tạm tính:</span><b>${money(o.subtotal)}</b></div><div><span>Giảm giá:</span><b>${money(o.discountAmount)}</b></div><div><span>Phụ thu:</span><b>${money(o.surchargeAmount)}</b></div></div>
         <p>Phương thức thanh toán: ${esc(o.paymentMethod === 'CASH' ? 'Tiền mặt' : o.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : 'Chưa ghi nhận')}</p>
-        <div class="receipt-grand">Tổng cộng: <b>${money(o.totalAmount)}</b></div><p class="receipt-state">${o.status === 'DA_HUY' ? 'ĐƠN ĐÃ HỦY' : o.paid ? 'ĐÃ THANH TOÁN' : 'CHƯA THU TIỀN — Chờ thu ngân xác nhận'}</p>${o.paidAt ? `<p>Thu tiền lúc: ${date(o.paidAt)}</p>` : ''}</article>`;
+        <div class="receipt-grand">Tổng cộng: <b>${money(o.totalAmount)}</b></div><p class="receipt-state">${o.status === 'DA_HUY' ? 'ĐƠN ĐÃ HỦY' : o.paid ? 'ĐÃ THANH TOÁN' : o.status === 'CHO_XAC_NHAN' ? 'CHỜ THU NGÂN XÁC NHẬN ĐƠN' : 'CHƯA THU TIỀN'}</p>${o.paidAt ? `<p>Thu tiền lúc: ${date(o.paidAt)}</p>` : ''}</article>`;
     }
     function refund(o) {
         const r=o.refund;
@@ -30,11 +36,16 @@ const MilkTeaReceipts = (() => {
     }
     function ensureModal() {
         if (document.getElementById('milkReceiptModal')) return;
-        document.body.insertAdjacentHTML('beforeend', `<div class="modal fade" id="milkReceiptModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Hóa đơn / chứng từ</h5><button class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div><div class="modal-body" id="milkReceiptBody"></div><div class="modal-footer" id="milkReceiptFooter"><button class="btn btn-primary-custom" onclick="MilkTeaReceipts.print()">In hóa đơn / phiếu</button><button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button></div></div></div></div>`);
+        document.body.insertAdjacentHTML('beforeend', `<div class="modal fade" id="milkReceiptModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Hóa đơn / chứng từ</h5><button class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div><div class="modal-body" id="milkReceiptBody"></div><div class="modal-footer" id="milkReceiptFooter"></div></div></div></div>`);
+    }
+    function isStaff() {
+        return ['CASHIER', 'ADMIN'].includes(window.MilkTeaContext?.role) || !!document.getElementById('staffOrders') || !!document.getElementById('posRole');
     }
     function show(o, forceInvoice=false) {
         currentOrder = o; ensureModal();
-        document.getElementById('milkReceiptFooter').innerHTML = '<button class="btn btn-primary-custom" onclick="MilkTeaReceipts.print()">In hóa đơn / phiếu</button><button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>';
+        const canPrint = isStaff() && o.status !== 'CHO_XAC_NHAN';
+        const printBtn = canPrint ? '<button class="btn btn-primary-custom" onclick="MilkTeaReceipts.print()">In hóa đơn / phiếu</button>' : '';
+        document.getElementById('milkReceiptFooter').innerHTML = `${printBtn}<button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>`;
         document.getElementById('milkReceiptBody').innerHTML = !forceInvoice && o.status === 'DA_HUY' && ['DA_DUYET','DA_HOAN'].includes(o.refund?.status) ? refund(o) : invoice(o);
         bootstrap.Modal.getOrCreateInstance(document.getElementById('milkReceiptModal')).show();
     }

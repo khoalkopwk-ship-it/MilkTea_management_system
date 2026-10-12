@@ -244,16 +244,38 @@
 
                     setTimeout(() => {
                         const role = data.role || (data.user && data.user.role);
-                        if (redirect && !redirect.includes('/login')) {
-                            window.location.href = redirect;
-                        } else if (role === 'ADMIN') {
-                            window.location.href = '/admin/catalog';
+                        if (role === 'ADMIN') {
+                            window.location.href = '/admin';
                         } else if (role === 'CASHIER') {
                             window.location.href = '/cashier';
                         } else if (role === 'KITCHEN') {
                             window.location.href = '/kitchen';
                         } else {
-                            window.location.href = '/';
+                            // CUSTOMER hoặc Khách hàng thường
+                            let targetUrl = (redirect && !redirect.includes('/login')) ? redirect : '/';
+
+                            // Tìm mã QR bàn từ Cookie hoặc localStorage
+                            let savedTableQr = null;
+                            let savedTableId = null;
+                            const cookies = document.cookie.split(';');
+                            for (let c of cookies) {
+                                const parts = c.trim().split('=');
+                                if (parts[0] === 'MILKTEA_TABLE_QR' && parts[1]) savedTableQr = decodeURIComponent(parts[1]);
+                                if (parts[0] === 'MILKTEA_TABLE_ID' && parts[1]) savedTableId = decodeURIComponent(parts[1]);
+                            }
+                            if (!savedTableQr) savedTableQr = localStorage.getItem('milktea.lastTableQr');
+                            if (!savedTableId) savedTableId = localStorage.getItem('milktea.lastTableId');
+
+                            // Nếu URL đích chưa có param bàn mà trình duyệt đang lưu context bàn -> bổ sung vào URL
+                            if ((savedTableQr || savedTableId) && !targetUrl.includes('qr=') && !targetUrl.includes('table=')) {
+                                const joiner = targetUrl.includes('?') ? '&' : '?';
+                                if (savedTableQr) {
+                                    targetUrl += joiner + 'qr=' + encodeURIComponent(savedTableQr);
+                                } else {
+                                    targetUrl += joiner + 'table=' + encodeURIComponent(savedTableId);
+                                }
+                            }
+                            window.location.href = targetUrl;
                         }
                     }, 500);
 

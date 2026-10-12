@@ -37,3 +37,63 @@ table.orders-table tbody td {
     vertical-align: middle;
     padding: 20px 12px;
 }
+
+/* Staff Order Management Tabs */
+.order-tabs-scroll-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-bottom: 4px;
+}
+.order-tabs-scroll-container::-webkit-scrollbar {
+    height: 5px;
+}
+.order-tabs-scroll-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+.order-tabs-nav {
+    display: flex;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    gap: 8px;
+    margin-bottom: 0;
+}
+.order-tabs-nav .nav-link {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #495057;
+    background-color: #f1f4f8;
+    border: 1px solid #dee2e6;
+    transition: all 0.2s ease;
+}
+.order-tabs-nav .nav-link:hover {
+    background-color: #e2e8f0;
+    color: #1e293b;
+}
+.order-tabs-nav .nav-link.active {
+    background-color: #ce570d;
+    color: #fff;
+    border-color: #ce570d;
+}
+.order-tabs-nav .nav-link .badge {
+    margin-left: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 7px;
+    vertical-align: middle;
+}
+.orders-pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #fff;
+    border: 1px solid #e7ecf2;
+    border-top: 0;
+    border-radius: 0 0 20px 20px;
+}

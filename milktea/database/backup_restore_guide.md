@@ -18,13 +18,37 @@ docker exec -i milktea_db /opt/mssql-tools18/bin/sqlcmd \
 ```
 *(Nếu trên Azure SQL Database: Chạy trực tiếp nội dung `database/sqlserver/schema.sql` qua Azure Portal Query Editor hoặc Azure Data Studio).*
 
-### Bước 1.2: Nạp Dữ Liệu Khởi Tạo Production (Seed)
-Chỉ tạo tài khoản Quản Trị Viên (Admin) và bản ghi cấu hình quán mặc định, **không** tạo dữ liệu mẫu/đơn hàng demo:
+### Bước 1.2: Nạp Dữ Liệu Khởi Tạo Cơ Bản (Seed DML)
+Chạy file script DML để nạp tài khoản hệ thống (Admin, Thu ngân, Bếp, Khách hàng với mật khẩu chuẩn `Password@123`), cấu hình quán, bàn QR, danh mục, menu nước uống & topping, nguyên liệu và tồn kho khởi tạo:
 ```bash
 docker exec -i milktea_db /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "$DB_PASSWORD" -C \
-  -i /docker-entrypoint-initdb.d/seed_prod_admin.sql
+  -i /docker-entrypoint-initdb.d/seed.sql
 ```
+
+### Bước 1.3: Nạp Bộ Dữ Liệu Demo Toàn Diện (Full Demo Seed)
+Khi cần môi trường kiểm thử/nghiệm thu phong phú với đầy đủ 30 món nước uống, 10 topping, đủ 4 mức cảnh báo tồn kho (Hết tồn, Tồn thấp, Bình thường, Chưa cấu hình) ở cả Tổng Kho và Bếp, >= 10 bản ghi cho tất cả các nhóm nghiệp vụ (phiếu nhập, phiếu xuất, mẻ sơ chế, đơn hàng đủ 5 trạng thái, hóa đơn snapshot giảm giá, thanh toán, yêu cầu hủy, yêu cầu hoàn tiền, kết ca kiểm kê hao hụt cuối ca):
+
+```bash
+# Trên Windows với SQL Server cục bộ (PowerShell / Command Prompt):
+sqlcmd -S localhost -E -C -d milktea -i database/sqlserver/seed_demo_full.sql
+
+# Hoặc qua container Docker:
+docker exec -i milktea_db /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P "$DB_PASSWORD" -C \
+  -i /docker-entrypoint-initdb.d/seed_demo_full.sql
+```
+
+#### Danh sách tài khoản thử nghiệm (Mật khẩu đồng bộ: `Password@123`):
+| Email | Vai trò (Role) | Họ tên mô tả | Mục đích kiểm thử |
+|---|---|---|---|
+| `admin@milktea.vn` | `ADMIN` | Quản Trị Viên Hệ Thống | Cấu hình quán, giảm giá, quản lý tài khoản, xem kho tổng & duyệt hoàn tiền |
+| `admin2@milktea.vn` | `ADMIN` | Quản Lý Vận Hành Tuấn | Kiểm thử phân quyền quản trị viên phụ |
+| `cashier@milktea.vn` | `CASHIER` | Thu Ngân Quỳnh | Màn hình POS, duyệt đơn, xác nhận chuyển khoản, mở/đóng phiên bàn |
+| `cashier2@milktea.vn` | `CASHIER` | Thu Ngân Hoàng | Kiểm thử ca thu ngân 2 |
+| `kitchen@milktea.vn` | `KITCHEN` | Bếp Trưởng Lân | KDS nhận đơn pha chế, quản lý mẻ sơ chế, kết ca kiểm kê cuối ca |
+| `kitchen2@milktea.vn` | `KITCHEN` | Pha Chế Minh | Kiểm thử ca bếp 2 |
+| `customer@milktea.vn` | `CUSTOMER` | Khách Hàng Mai | Xem menu, đặt món tại bàn, theo dõi đơn hàng và giỏ phiên |
 
 ---
 

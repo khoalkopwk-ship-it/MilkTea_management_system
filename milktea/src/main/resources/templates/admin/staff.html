@@ -21,7 +21,11 @@
                         <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
                     </a>
                     <a th:href="@{/admin/inventory}" class="admin-nav-link">
-                        <i class="bi bi-boxes"></i> Kho & Chứng Từ
+                        <i class="bi bi-box-seam-fill"></i> Kho Hàng
+                    </a>
+                    <a th:href="@{/admin/documents}" class="admin-nav-link d-flex align-items-center justify-content-between">
+                        <span><i class="bi bi-files me-1"></i> Chứng Từ</span>
+                        <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
                     </a>
                     <a th:href="@{/admin/reports}" class="admin-nav-link">
                         <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
@@ -44,17 +48,43 @@
                     </button>
                 </div>
 
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <!-- Bộ lọc & Tìm kiếm -->
+                <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="staffSearch" class="form-control border-start-0" placeholder="Tìm theo họ tên, email, số điện thoại..." oninput="filterStaffList()">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <select id="staffRoleFilter" class="form-select" onchange="filterStaffList()">
+                                <option value="">Tất cả vai trò nhân viên</option>
+                                <option value="ADMIN">Quản Trị Viên (ADMIN)</option>
+                                <option value="CASHIER">Thu Ngân (CASHIER)</option>
+                                <option value="KITCHEN">Bếp (KITCHEN)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-outline-secondary w-100 rounded-3" onclick="loadStaffList()">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-3">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
+                                    <th style="width: 60px;" class="text-center">STT</th>
                                     <th>Họ Và Tên</th>
                                     <th>Email Đăng Nhập</th>
                                     <th>Số Điện Thoại</th>
                                     <th>Vai Trò</th>
                                     <th>Trạng Thái</th>
-                                    <th style="width: 140px;">Thao Tác</th>
+                                    <th style="width: 170px;" class="text-center">Thao Tác</th>
                                 </tr>
                             </thead>
                             <tbody id="staffTableBody">
@@ -64,10 +94,12 @@
                     </div>
                 </div>
 
+                <div id="staffPagination" class="d-flex justify-content-between align-items-center"></div>
+
             </div>
         </div>
 
-        <!-- Modal Thêm Nhân Viên -->
+        <!-- Modal Thêm Nhân Viên Mới -->
         <div class="modal fade" id="createStaffModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -76,6 +108,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body p-4">
+                        <div id="createStaffError" class="alert alert-danger d-none py-2 mb-3 small"></div>
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Họ và tên:</label>
                             <input type="text" id="staffFullName" class="form-control rounded-3" placeholder="Nguyễn Văn A" required>
@@ -110,58 +143,262 @@
             </div>
         </div>
 
+        <!-- Modal Chỉnh Sửa Nhân Viên -->
+        <div class="modal fade" id="editStaffModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font">Chỉnh Sửa Thông Tin Nhân Viên</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div id="editStaffError" class="alert alert-danger d-none py-2 mb-3 small"></div>
+                        <input type="hidden" id="editStaffId">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Họ và tên:</label>
+                            <input type="text" id="editStaffFullName" class="form-control rounded-3" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Email đăng nhập:</label>
+                            <input type="email" id="editStaffEmail" class="form-control rounded-3" required>
+                            <small class="text-muted">Đổi email sẽ kiểm tra trùng lặp trên toàn hệ thống.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Số điện thoại:</label>
+                            <input type="text" id="editStaffPhone" class="form-control rounded-3">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Vai trò:</label>
+                            <select id="editStaffRole" class="form-select rounded-3">
+                                <option value="CASHIER">Thu Ngân (CASHIER)</option>
+                                <option value="KITCHEN">Bếp (KITCHEN)</option>
+                                <option value="ADMIN">Quản Trị Viên (ADMIN)</option>
+                            </select>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                            <button type="button" class="btn btn-primary-custom rounded-pill px-4 fw-semibold" onclick="submitEditStaff()">
+                                Lưu Thay Đổi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <th:block th:fragment="scripts">
         <script th:src="@{/js/admin/admin.js}"></script>
         <script>
+            let allStaff = [];
+            let currentPage = 1;
+            const pageSize = 10;
+
             document.addEventListener('DOMContentLoaded', async () => {
                 AdminApp.init();
-                loadStaffList();
+                await loadStaffList();
             });
 
             async function loadStaffList() {
                 try {
-                    const staff = await MilkTeaApi.get('/api/v1/admin/accounts');
-                    const tbody = document.getElementById('staffTableBody');
-                    let html = '';
-                    (staff || []).forEach(s => {
-                        let roleBadge = 'bg-secondary';
-                        if (s.role === 'ADMIN') roleBadge = 'bg-danger';
-                        if (s.role === 'CASHIER') roleBadge = 'bg-primary';
-                        if (s.role === 'KITCHEN') roleBadge = 'bg-success';
-
-                        html += `
-                            <tr>
-                                <td class="fw-bold">${s.fullName}</td>
-                                <td>${s.email}</td>
-                                <td>${s.phone || '-'}</td>
-                                <td><span class="badge ${roleBadge}">${s.role}</span></td>
-                                <td>
-                                    ${s.active ? '<span class="badge bg-success">Hoạt động</span>' : '<span class="badge bg-secondary">Bị khóa</span>'}
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm ${s.active ? 'btn-outline-danger' : 'btn-outline-success'} rounded-pill px-3"
-                                            onclick="AdminApp.toggleStaffStatus(${s.id}, ${!s.active})">
-                                        ${s.active ? 'Khóa' : 'Mở khóa'}
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                    tbody.innerHTML = html;
+                    const data = await MilkTeaApi.get('/api/v1/admin/accounts');
+                    allStaff = (data || []).filter(s => s.role !== 'CUSTOMER');
+                    filterStaffList();
                 } catch (e) {
                     console.warn(e);
+                    MilkTeaApi.showToast('Không thể tải danh sách tài khoản', 'error');
                 }
             }
 
-            function submitCreateStaff() {
-                const fn = document.getElementById('staffFullName').value;
-                const em = document.getElementById('staffEmail').value;
+            function filterStaffList() {
+                const search = (document.getElementById('staffSearch')?.value || '').trim().toLowerCase();
+                const roleFilter = document.getElementById('staffRoleFilter')?.value || '';
+
+                const filtered = allStaff.filter(s => {
+                    const matchSearch = !search
+                        || (s.fullName && s.fullName.toLowerCase().includes(search))
+                        || (s.email && s.email.toLowerCase().includes(search))
+                        || (s.phone && s.phone.includes(search));
+                    const matchRole = !roleFilter || s.role === roleFilter;
+                    return matchSearch && matchRole;
+                });
+
+                renderStaffTable(filtered);
+            }
+
+            function renderStaffTable(filtered) {
+                const tbody = document.getElementById('staffTableBody');
+                const totalItems = filtered.length;
+                const totalPages = Math.ceil(totalItems / pageSize) || 1;
+                if (currentPage > totalPages) currentPage = totalPages;
+
+                const startIdx = (currentPage - 1) * pageSize;
+                const pageItems = filtered.slice(startIdx, startIdx + pageSize);
+
+                if (pageItems.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Không tìm thấy tài khoản nhân viên phù hợp.</td></tr>';
+                    renderPagination(0, 1);
+                    return;
+                }
+
+                let html = '';
+                pageItems.forEach((s, idx) => {
+                    const stt = startIdx + idx + 1; // STT liên tục theo phân trang
+                    let roleBadge = 'bg-secondary';
+                    if (s.role === 'ADMIN') roleBadge = 'bg-danger';
+                    if (s.role === 'CASHIER') roleBadge = 'bg-primary';
+                    if (s.role === 'KITCHEN') roleBadge = 'bg-success';
+
+                    html += `
+                        <tr>
+                            <td class="text-center fw-bold text-muted">${stt}</td>
+                            <td class="fw-bold">${MilkTeaReceipts.esc(s.fullName)}</td>
+                            <td>${MilkTeaReceipts.esc(s.email)}</td>
+                            <td>${MilkTeaReceipts.esc(s.phone || '-')}</td>
+                            <td><span class="badge ${roleBadge}">${s.role}</span></td>
+                            <td>
+                                ${s.active ? '<span class="badge bg-success">Hoạt động</span>' : '<span class="badge bg-secondary">Bị khóa</span>'}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-inline-flex gap-1 align-items-center">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                            title="Sửa thông tin"
+                                            onclick="openEditStaffModal(${s.id})">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button class="btn btn-sm ${s.active ? 'btn-outline-danger' : 'btn-outline-success'} rounded-pill px-3"
+                                            onclick="handleToggleStaffStatus(${s.id}, ${!s.active})">
+                                        ${s.active ? 'Khóa' : 'Mở khóa'}
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+                renderPagination(totalItems, totalPages);
+            }
+
+            function renderPagination(totalItems, totalPages) {
+                const container = document.getElementById('staffPagination');
+                if (!container) return;
+                if (totalPages <= 1) {
+                    container.innerHTML = totalItems > 0 ? `<small class="text-muted">Tổng cộng <b>${totalItems}</b> nhân viên</small>` : '';
+                    return;
+                }
+
+                const startIdx = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+                const endIdx = Math.min(currentPage * pageSize, totalItems);
+
+                let pagesHtml = '';
+                for (let p = 1; p <= totalPages; p++) {
+                    pagesHtml += `<li class="page-item ${p === currentPage ? 'active' : ''}"><button class="page-link" onclick="goToPage(${p})">${p}</button></li>`;
+                }
+
+                container.innerHTML = `
+                    <small class="text-muted">Hiển thị <b>${startIdx}-${endIdx}</b> trong <b>${totalItems}</b> nhân viên</small>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><button class="page-link" onclick="goToPage(${currentPage - 1})">«</button></li>
+                        ${pagesHtml}
+                        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><button class="page-link" onclick="goToPage(${currentPage + 1})">»</button></li>
+                    </ul>
+                `;
+            }
+
+            function goToPage(page) {
+                currentPage = page;
+                filterStaffList();
+            }
+
+            function openEditStaffModal(id) {
+                const staff = allStaff.find(s => s.id === id);
+                if (!staff) return;
+
+                document.getElementById('editStaffId').value = staff.id;
+                document.getElementById('editStaffFullName').value = staff.fullName || '';
+                document.getElementById('editStaffEmail').value = staff.email || '';
+                document.getElementById('editStaffPhone').value = staff.phone || '';
+                document.getElementById('editStaffRole').value = staff.role || 'CASHIER';
+
+                const errBox = document.getElementById('editStaffError');
+                errBox.classList.add('d-none');
+                errBox.textContent = '';
+
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('editStaffModal')).show();
+            }
+
+            async function submitEditStaff() {
+                const id = document.getElementById('editStaffId').value;
+                const fullName = document.getElementById('editStaffFullName').value.trim();
+                const email = document.getElementById('editStaffEmail').value.trim();
+                const phone = document.getElementById('editStaffPhone').value.trim();
+                const role = document.getElementById('editStaffRole').value;
+                const errBox = document.getElementById('editStaffError');
+
+                if (!fullName) {
+                    errBox.textContent = 'Vui lòng nhập họ và tên';
+                    errBox.classList.remove('d-none');
+                    return;
+                }
+                if (!email) {
+                    errBox.textContent = 'Vui lòng nhập email đăng nhập';
+                    errBox.classList.remove('d-none');
+                    return;
+                }
+
+                try {
+                    await AdminApp.updateStaff(id, fullName, email, phone, role);
+                    bootstrap.Modal.getInstance(document.getElementById('editStaffModal'))?.hide();
+                    await loadStaffList();
+                } catch (e) {
+                    errBox.textContent = e.message || 'Lỗi cập nhật nhân viên';
+                    errBox.classList.remove('d-none');
+                }
+            }
+
+            async function handleToggleStaffStatus(id, active) {
+                const staff = allStaff.find(s => s.id === id);
+                const actionName = active ? 'mở khóa' : 'khóa';
+                if (!confirm(`Bạn có chắc muốn ${actionName} tài khoản "${staff ? staff.fullName : '#' + id}"?`)) return;
+
+                try {
+                    await AdminApp.toggleStaffStatus(id, active);
+                    await loadStaffList();
+                } catch (e) {
+                    MilkTeaApi.showToast(e.message || 'Lỗi cập nhật trạng thái', 'error');
+                }
+            }
+
+            async function submitCreateStaff() {
+                const fn = document.getElementById('staffFullName').value.trim();
+                const em = document.getElementById('staffEmail').value.trim();
                 const pw = document.getElementById('staffPassword').value;
-                const ph = document.getElementById('staffPhone').value;
+                const ph = document.getElementById('staffPhone').value.trim();
                 const ro = document.getElementById('staffRole').value;
-                AdminApp.createStaff(fn, em, pw, ph, ro);
+                const errBox = document.getElementById('createStaffError');
+
+                if (!fn || !em || !pw) {
+                    errBox.textContent = 'Vui lòng điền đủ họ tên, email và mật khẩu';
+                    errBox.classList.remove('d-none');
+                    return;
+                }
+
+                try {
+                    await MilkTeaApi.post('/api/v1/admin/accounts', {
+                        fullName: fn,
+                        email: em,
+                        password: pw,
+                        phone: ph,
+                        role: ro
+                    });
+                    MilkTeaApi.showToast('Tạo tài khoản nhân viên thành công!', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('createStaffModal'))?.hide();
+                    await loadStaffList();
+                } catch (e) {
+                    errBox.textContent = e.message || 'Lỗi tạo nhân viên';
+                    errBox.classList.remove('d-none');
+                }
             }
         </script>
     </th:block>

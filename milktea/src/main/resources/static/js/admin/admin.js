@@ -8,6 +8,27 @@ const AdminApp = (() => {
     async function init() {
         window.MilkTeaContext = { role: 'ADMIN' };
         MilkTeaRealtime.connect();
+        refreshAdminRefundBadge();
+        MilkTeaRealtime.on('REFUND_CHANGED', refreshAdminRefundBadge);
+        MilkTeaRealtime.on('CANCELLATION_REQUESTED', refreshAdminRefundBadge);
+        MilkTeaRealtime.onReconnect(refreshAdminRefundBadge);
+
+        if (document.getElementById('productTableBody')) {
+            loadProducts(1);
+        }
+    }
+
+    async function refreshAdminRefundBadge() {
+        try {
+            const res = await MilkTeaApi.get('/api/v1/admin/documents/refunds/pending-count');
+            const count = (res && typeof res.pendingCount === 'number') ? res.pendingCount : 0;
+            document.querySelectorAll('.admin-refund-badge').forEach(el => {
+                el.textContent = count;
+                el.classList.toggle('d-none', count === 0);
+            });
+        } catch (e) {
+            console.debug('Error refreshing admin refund badge:', e);
+        }
     }
 
     // === 1. QUẢN LÝ ẢNH CLOUDINARY ===
@@ -54,14 +75,17 @@ const AdminApp = (() => {
     }
 
     // === 2. QUẢN LÝ SẢN PHẨM & DANH MỤC ===
-    async function createCategory(name) {
+    async function createCategory(name, allowTopping = true) {
         if (!name || !name.trim()) {
             MilkTeaApi.showToast('Tên danh mục không được để trống', 'warning');
             return;
         }
 
         try {
-            await MilkTeaApi.post('/api/v1/admin/categories', { name: name.trim() });
+            await MilkTeaApi.post('/api/v1/admin/categories', {
+                name: name.trim(),
+                allowTopping: Boolean(allowTopping)
+            });
             MilkTeaApi.showToast('Tạo danh mục mới thành công!', 'success');
             setTimeout(() => window.location.reload(), 500);
         } catch (e) {
@@ -69,7 +93,7 @@ const AdminApp = (() => {
         }
     }
 
-    async function updateCategory(id, name, active) {
+    async function updateCategory(id, name, active, allowTopping = true) {
         if (!id) {
             MilkTeaApi.showToast('Không xác định được danh mục cần sửa', 'error');
             return;
@@ -83,7 +107,8 @@ const AdminApp = (() => {
         try {
             await MilkTeaApi.put(`/api/v1/admin/categories/${id}`, {
                 name: name.trim(),
-                active: Boolean(active)
+                active: Boolean(active),
+                allowTopping: Boolean(allowTopping)
             });
             MilkTeaApi.showToast('Cập nhật danh mục thành công!', 'success');
             setTimeout(() => window.location.reload(), 500);
@@ -191,11 +216,28 @@ const AdminApp = (() => {
 
     async function toggleStaffStatus(id, active) {
         try {
-            await MilkTeaApi.put(`/api/v1/admin/accounts/${id}/status`, { active });
+            await MilkTeaApi.post(`/api/v1/admin/accounts/${id}/toggle-status`, { active });
             MilkTeaApi.showToast('Cập nhật trạng thái tài khoản thành công!', 'success');
-            setTimeout(() => window.location.reload(), 500);
+            return true;
         } catch (e) {
             MilkTeaApi.showToast(e.message || 'Lỗi cập nhật trạng thái', 'error');
+            throw e;
+        }
+    }
+
+    async function updateStaff(id, fullName, email, phone, role) {
+        try {
+            await MilkTeaApi.put(`/api/v1/admin/accounts/${id}`, {
+                fullName,
+                email,
+                phone,
+                role
+            });
+            MilkTeaApi.showToast('Cập nhật thông tin nhân viên thành công!', 'success');
+            return true;
+        } catch (e) {
+            MilkTeaApi.showToast(e.message || 'Lỗi cập nhật nhân viên', 'error');
+            throw e;
         }
     }
 
@@ -306,7 +348,7 @@ async function updateThreshold(materialId, location, threshold) {
     }
 
     // === 7. CẤU HÌNH QUÁN & KHUYẾN MÃI ===
-    async function updateSettings(shopName, address, bankName, bankAccountNumber, bankAccountHolder, discountPercent) {
+    async function updateSettings(shopName, address, bankName, bankAccountNumber, bankAccountHolder, discountPercent, discountType, discountValue) {
         try {
             await MilkTeaApi.put('/api/v1/admin/settings', {
                 shopName,
@@ -314,12 +356,344 @@ async function updateThreshold(materialId, location, threshold) {
                 bankName,
                 bankAccountNumber,
                 bankAccountHolder,
-                discountPercent: parseFloat(discountPercent || 0)
+                discountPercent: parseFloat(discountPercent || 0),
+                discountType: discountType || 'PERCENT',
+                discountValue: parseFloat(discountValue !== undefined && discountValue !== null ? discountValue : (discountPercent || 0))
             });
             MilkTeaApi.showToast('Cập nhật thông tin quán và khuyến mãi thành công!', 'success');
             setTimeout(() => window.location.reload(), 500);
         } catch (e) {
             MilkTeaApi.showToast(e.message || 'Lỗi cập nhật cài đặt', 'error');
+        }
+    }
+
+    // === 8. QUẢN LÝ MÓN UỐNG NÂNG CAO & CẤU HÌNH GỘP ===
+    let currentProductPage = 1;
+    let currentFullConfigRecipeRows = [];
+
+    async function loadProducts(page = 1) {
+        currentProductPage = page;
+        const tbody = document.getElementById('productTableBody');
+        if (!tbody) return;
+
+        const catSelect = document.getElementById('productFilterCat');
+        const activeSelect = document.getElementById('productFilterActive');
+        const searchInput = document.getElementById('productSearchInput');
+
+        let url = `/api/v1/admin/products?page=${page}&size=10`;
+        if (catSelect && catSelect.value) {
+            url += `&categoryId=${encodeURIComponent(catSelect.value)}`;
+        }
+        if (activeSelect && activeSelect.value !== '') {
+            url += `&active=${encodeURIComponent(activeSelect.value)}`;
+        }
+        if (searchInput && searchInput.value.trim()) {
+            url += `&query=${encodeURIComponent(searchInput.value.trim())}`;
+        }
+
+        try {
+            const data = await MilkTeaApi.get(url);
+            renderProductTable(data);
+        } catch (e) {
+            console.error(e);
+            MilkTeaApi.showToast('Không tải được danh sách món uống', 'error');
+        }
+    }
+
+    function resetProductFilters() {
+        const catSelect = document.getElementById('productFilterCat');
+        const activeSelect = document.getElementById('productFilterActive');
+        const searchInput = document.getElementById('productSearchInput');
+        if (catSelect) catSelect.value = '';
+        if (activeSelect) activeSelect.value = '';
+        if (searchInput) searchInput.value = '';
+        loadProducts(1);
+    }
+
+    function renderProductTable(data) {
+        const tbody = document.getElementById('productTableBody');
+        const pagContainer = document.getElementById('productPaginationContainer');
+        if (!tbody) return;
+
+        const items = data?.items || [];
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-5">Không có món uống nào phù hợp.</td></tr>';
+            if (pagContainer) pagContainer.innerHTML = '';
+            return;
+        }
+
+        const rowsHtml = items.map(p => {
+            const defaultImg = 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=100&q=80';
+            const imgUrl = (p.imageUrl && p.imageUrl.trim()) ? p.imageUrl : defaultImg;
+            const priceFormatted = MilkTeaApi.formatVND ? MilkTeaApi.formatVND(p.price) : (Number(p.price).toLocaleString('vi-VN') + ' ₫');
+            const statusBadge = p.active
+                ? '<span class="badge bg-success">Đang bán</span>'
+                : '<span class="badge bg-secondary">Ngừng bán</span>';
+
+            return `<tr>
+                <td>
+                    <div class="position-relative" style="width: 50px; height: 50px;">
+                        <img id="productImg_${p.id}" src="${imgUrl}" class="rounded-3 w-100 h-100 object-fit-cover border" alt="Ảnh">
+                        <div id="uploadSpinner_${p.id}" class="spinner-border spinner-border-sm text-primary position-absolute top-50 start-50 translate-middle d-none"></div>
+                    </div>
+                </td>
+                <td>
+                    <strong class="d-block">${MilkTeaReceipts ? MilkTeaReceipts.esc(p.name) : p.name}</strong>
+                    <small class="text-muted">${p.description ? (MilkTeaReceipts ? MilkTeaReceipts.esc(p.description) : p.description) : ''}</small>
+                </td>
+                <td><span class="badge bg-light text-dark border">${p.categoryName || 'Chưa phân loại'}</span></td>
+                <td><span class="badge bg-secondary">${p.size || 'M'}</span></td>
+                <td class="fw-bold product-price">${priceFormatted}</td>
+                <td>${statusBadge}</td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                onclick="AdminApp.openProductFullConfig(${p.id})" title="Cấu hình & Công thức">
+                            <i class="bi bi-sliders me-1"></i> Cấu hình
+                        </button>
+                        <label class="btn btn-sm btn-outline-info rounded-pill px-2 mb-0" title="Đổi ảnh Cloudinary">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                            <input type="file" class="d-none" accept="image/jpeg,image/png,image/webp"
+                                   onchange="AdminApp.uploadProductImage(${p.id}, this)">
+                        </label>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        tbody.innerHTML = rowsHtml;
+
+        if (pagContainer) {
+            const totalPages = data.totalPages || 1;
+            const currentPage = data.page || 1;
+            const totalItems = data.totalItems || items.length;
+
+            if (totalPages <= 1) {
+                pagContainer.innerHTML = `<small class="text-muted">Tổng cộng: <b>${totalItems}</b> món uống</small>`;
+                return;
+            }
+
+            let pagBtns = '';
+            for (let i = 1; i <= totalPages; i++) {
+                pagBtns += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <button class="page-link" onclick="AdminApp.loadProducts(${i})">${i}</button>
+                </li>`;
+            }
+
+            pagContainer.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">Trang <b>${currentPage}</b> / <b>${totalPages}</b> (Tổng: <b>${totalItems}</b> món)</small>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                            <button class="page-link" onclick="AdminApp.loadProducts(${currentPage - 1})">«</button>
+                        </li>
+                        ${pagBtns}
+                        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                            <button class="page-link" onclick="AdminApp.loadProducts(${currentPage + 1})">»</button>
+                        </li>
+                    </ul>
+                </div>
+            `;
+        }
+    }
+
+    async function openProductFullConfig(productId) {
+        try {
+            const [product, recipeData] = await Promise.all([
+                MilkTeaApi.get(`/api/v1/admin/products/${productId}`),
+                MilkTeaApi.get(`/api/v1/admin/products/${productId}/recipe`)
+            ]);
+
+            document.getElementById('cfgProductId').value = product.id;
+            document.getElementById('cfgProductOldImageUrl').value = product.imageUrl || '';
+            document.getElementById('cfgProdName').value = product.name || '';
+            document.getElementById('cfgProdCategory').value = product.categoryId || '';
+            document.getElementById('cfgProdActive').value = String(Boolean(product.active));
+            document.getElementById('cfgProdDesc').value = product.description || '';
+            document.getElementById('cfgProdSize').value = product.size || 'M';
+            document.getElementById('cfgProdPrice').value = product.price || '';
+
+            const defaultImg = 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=100&q=80';
+            document.getElementById('cfgProdImgPreview').src = product.imageUrl || defaultImg;
+            document.getElementById('cfgProdFileInput').value = '';
+
+            document.getElementById('fullConfigTitle').textContent = `Cấu Hình: ${product.name} (${product.size})`;
+
+            currentFullConfigRecipeRows = (recipeData?.ingredients || []).map(item => ({
+                materialId: item.materialId,
+                materialName: item.materialName,
+                unit: item.unit,
+                quantity: item.quantity != null ? item.quantity : 1
+            }));
+
+            renderFullConfigRecipeTable();
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('productFullConfigModal')).show();
+        } catch (e) {
+            console.error(e);
+            MilkTeaApi.showToast('Không tải được thông tin món: ' + (e.message || ''), 'error');
+        }
+    }
+
+    function previewFullConfigImage(fileInput) {
+        if (!fileInput.files || fileInput.files.length === 0) return;
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById('cfgProdImgPreview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function renderFullConfigRecipeTable() {
+        const tbody = document.getElementById('cfgRecipeTableBody');
+        if (!tbody) return;
+
+        if (currentFullConfigRecipeRows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Chưa có nguyên liệu nào trong công thức.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = currentFullConfigRecipeRows.map((row, index) => {
+            return `<tr>
+                <td class="fw-semibold">${row.materialName || 'Nguyên liệu #' + row.materialId}</td>
+                <td>
+                    <input type="number" step="0.001" min="0.001" class="form-control form-control-sm"
+                           value="${row.quantity}" onchange="AdminApp.updateFullConfigRecipeQty(${index}, this.value)">
+                </td>
+                <td class="text-muted small">${row.unit || ''}</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="AdminApp.deleteFullConfigRecipeRow(${index})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function updateFullConfigRecipeQty(index, val) {
+        if (currentFullConfigRecipeRows[index]) {
+            currentFullConfigRecipeRows[index].quantity = parseFloat(val) || 0;
+        }
+    }
+
+    function addFullConfigRecipeRow() {
+        const select = document.getElementById('cfgAddMaterialSelect');
+        const qtyInput = document.getElementById('cfgAddQuantityInput');
+        const materialId = Number(select.value);
+        const qty = parseFloat(qtyInput.value) || 1;
+
+        if (!materialId) {
+            MilkTeaApi.showToast('Vui lòng chọn nguyên liệu', 'warning');
+            return;
+        }
+        if (qty <= 0) {
+            MilkTeaApi.showToast('Định lượng phải lớn hơn 0', 'warning');
+            return;
+        }
+
+        if (currentFullConfigRecipeRows.some(r => Number(r.materialId) === materialId)) {
+            MilkTeaApi.showToast('Nguyên liệu này đã có trong công thức', 'warning');
+            return;
+        }
+
+        const rawText = select.options[select.selectedIndex].text;
+        let mName = rawText;
+        let mUnit = '';
+        const match = rawText.match(/^(.*?)\s*\((.*?)\)$/);
+        if (match) {
+            mName = match[1];
+            mUnit = match[2];
+        }
+
+        currentFullConfigRecipeRows.push({
+            materialId,
+            materialName: mName,
+            unit: mUnit,
+            quantity: qty
+        });
+
+        renderFullConfigRecipeTable();
+        qtyInput.value = '1';
+    }
+
+    function deleteFullConfigRecipeRow(index) {
+        currentFullConfigRecipeRows.splice(index, 1);
+        renderFullConfigRecipeTable();
+    }
+
+    async function saveProductFullConfig() {
+        const productId = document.getElementById('cfgProductId').value;
+        const name = document.getElementById('cfgProdName').value.trim();
+        const categoryId = Number(document.getElementById('cfgProdCategory').value);
+        const active = document.getElementById('cfgProdActive').value === 'true';
+        const desc = document.getElementById('cfgProdDesc').value.trim();
+        const size = document.getElementById('cfgProdSize').value.trim().toUpperCase();
+        const price = parseFloat(document.getElementById('cfgProdPrice').value);
+        const oldImg = document.getElementById('cfgProductOldImageUrl').value;
+        const fileInput = document.getElementById('cfgProdFileInput');
+
+        if (!name) {
+            MilkTeaApi.showToast('Tên món không được để trống', 'warning');
+            return;
+        }
+        if (!categoryId) {
+            MilkTeaApi.showToast('Vui lòng chọn danh mục', 'warning');
+            return;
+        }
+        if (!size) {
+            MilkTeaApi.showToast('Size không được để trống', 'warning');
+            return;
+        }
+        if (!price || price <= 0) {
+            MilkTeaApi.showToast('Giá bán phải lớn hơn 0', 'warning');
+            return;
+        }
+
+        const btnSave = document.getElementById('btnSaveFullConfig');
+        if (btnSave) btnSave.disabled = true;
+
+        try {
+            let finalImageUrl = oldImg;
+
+            // 1. Upload ảnh Cloudinary nếu người dùng đã chọn file mới
+            if (fileInput.files && fileInput.files.length > 0) {
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                const uploadRes = await MilkTeaApi.upload(`/api/v1/admin/products/${productId}/image`, formData);
+                if (uploadRes && uploadRes.imageUrl) {
+                    finalImageUrl = uploadRes.imageUrl;
+                }
+            }
+
+            // 2. Cập nhật thông tin món
+            await MilkTeaApi.put(`/api/v1/admin/products/${productId}`, {
+                categoryId,
+                name,
+                size,
+                price: String(price),
+                description: desc || null,
+                imageUrl: finalImageUrl || null,
+                active
+            });
+
+            // 3. Cập nhật công thức
+            const recipeItems = currentFullConfigRecipeRows.map(r => ({
+                materialId: Number(r.materialId),
+                quantity: Number(r.quantity) > 0 ? Number(r.quantity) : 1
+            }));
+            await MilkTeaApi.put(`/api/v1/admin/products/${productId}/recipe`, {
+                items: recipeItems
+            });
+
+            MilkTeaApi.showToast('Cập nhật cấu hình món thành công!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('productFullConfigModal'))?.hide();
+            await loadProducts(currentProductPage);
+        } catch (e) {
+            console.error(e);
+            MilkTeaApi.showToast('Lỗi lưu cấu hình: ' + (e.message || ''), 'error');
+        } finally {
+            if (btnSave) btnSave.disabled = false;
         }
     }
 
@@ -333,11 +707,21 @@ async function updateThreshold(materialId, location, threshold) {
         updateRecipe,
         createTable,
         createStaff,
+        updateStaff,
         toggleStaffStatus,
         submitImport,
         submitWaste,
         updateThreshold,
         loadRevenueReport,
-        updateSettings
+        updateSettings,
+        loadProducts,
+        resetProductFilters,
+        openProductFullConfig,
+        previewFullConfigImage,
+        addFullConfigRecipeRow,
+        deleteFullConfigRecipeRow,
+        updateFullConfigRecipeQty,
+        saveProductFullConfig,
+        refreshAdminRefundBadge
     };
 })();

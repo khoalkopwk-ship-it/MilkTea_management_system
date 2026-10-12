@@ -16,6 +16,17 @@ public class CartDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    public static class ToppingItemResponse {
+        private Long id;
+        private Long productId;
+        private String name;
+        private BigDecimal price;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CartItemRequest {
         @NotNull(message = "Mã món không được để trống")
         private Long productId;
@@ -25,6 +36,8 @@ public class CartDto {
         private Integer quantity;
 
         private String note;
+
+        private List<Long> toppingIds;
     }
 
     @Data
@@ -39,6 +52,8 @@ public class CartDto {
         private Integer quantity;
         private String note;
         private BigDecimal lineTotal;
+        private List<ToppingItemResponse> toppings;
+        private List<Long> toppingIds;
     }
 
     @Data

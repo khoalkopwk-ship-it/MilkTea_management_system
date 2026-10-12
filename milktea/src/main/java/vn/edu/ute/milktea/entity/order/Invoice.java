@@ -38,6 +38,14 @@ public class Invoice {
     @Builder.Default
     private BigDecimal snapshotDiscountPercent = BigDecimal.ZERO;
 
+    @Column(name = "LoaiGiamChot", nullable = false, length = 20)
+    @Builder.Default
+    private String snapshotDiscountType = "PERCENT"; // PERCENT, FIXED_AMOUNT
+
+    @Column(name = "GiaTriGiamChot", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal snapshotDiscountValue = BigDecimal.ZERO;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "TrangThai", nullable = false, length = 12)
     @Builder.Default

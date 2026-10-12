@@ -12,6 +12,9 @@ import vn.edu.ute.milktea.entity.audit.BusinessAudit;
 import vn.edu.ute.milktea.entity.catalog.Product;
 import vn.edu.ute.milktea.entity.cancellation.CancellationStatus;
 import vn.edu.ute.milktea.entity.order.*;
+import vn.edu.ute.milktea.entity.inventory.Material;
+import vn.edu.ute.milktea.entity.payment.PaymentNotice;
+import vn.edu.ute.milktea.entity.payment.PaymentMethod;
 import vn.edu.ute.milktea.entity.recipe.ProductRecipe;
 import vn.edu.ute.milktea.entity.settings.GlobalSettings;
 import vn.edu.ute.milktea.entity.table.DiningTable;
@@ -22,6 +25,7 @@ import vn.edu.ute.milktea.repository.account.AccountRepository;
 import vn.edu.ute.milktea.repository.audit.BusinessAuditRepository;
 import vn.edu.ute.milktea.repository.cancellation.CancellationRequestRepository;
 import vn.edu.ute.milktea.repository.catalog.ProductRepository;
+import vn.edu.ute.milktea.repository.inventory.MaterialRepository;
 import vn.edu.ute.milktea.repository.order.InvoiceRepository;
 import vn.edu.ute.milktea.repository.order.OrderIngredientSnapshotRepository;
 import vn.edu.ute.milktea.repository.order.OrderItemRepository;
@@ -55,6 +59,7 @@ public class OrderService {
     private final ProductRecipeRepository recipeRepository;
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final vn.edu.ute.milktea.repository.order.OrderItemToppingRepository orderItemToppingRepository;
     private final OrderIngredientSnapshotRepository snapshotRepository;
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
@@ -67,6 +72,7 @@ public class OrderService {
     private final GuestAccessService guestAccessService;
     private final InventoryService inventoryService;
     private final FixedRecipeService fixedRecipeService;
+    private final MaterialRepository materialRepository;
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
     @Transactional
     public OrderDto.OrderResponse createTableOrder(OrderDto.CreateTableOrderRequest request, CurrentActor actor, String idempotencyKey) {
@@ -139,20 +145,17 @@ public class OrderService {
         order = orderRepository.save(order);
         List<OrderItem> savedItems = createOrderItemsAndSnapshots(order, request.getItems());
         // Tính toán tổng tiền và giảm giá từ GlobalSettings
-        BigDecimal subtotal = savedItems.stream()
-                .map(it -> it.getSnapshotUnitPrice().multiply(BigDecimal.valueOf(it.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal subtotal = calculateOrderSubtotal(savedItems);
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
-        BigDecimal discountPercent = settings != null ? settings.getDiscountPercent() : BigDecimal.ZERO;
-        BigDecimal discountAmount = subtotal.multiply(discountPercent)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-        BigDecimal totalAmount = subtotal.subtract(discountAmount).max(BigDecimal.ZERO);
+        CalculatedDiscount discount = computeDiscount(subtotal, settings);
         Invoice invoice = Invoice.builder()
                 .order(order)
                 .subtotal(subtotal)
-                .discountAmount(discountAmount)
-                .totalAmount(totalAmount)
-                .snapshotDiscountPercent(discountPercent)
+                .discountAmount(discount.discountAmount)
+                .totalAmount(discount.totalAmount)
+                .snapshotDiscountPercent(discount.snapshotPercent)
+                .snapshotDiscountType(discount.discountType)
+                .snapshotDiscountValue(discount.configValue)
                 .status(InvoiceStatus.HIEU_LUC)
                 .createdAt(Instant.now())
                 .build();
@@ -200,20 +203,17 @@ public class OrderService {
                 .build();
         order = orderRepository.save(order);
         List<OrderItem> savedItems = createOrderItemsAndSnapshots(order, request.getItems());
-        BigDecimal subtotal = savedItems.stream()
-                .map(it -> it.getSnapshotUnitPrice().multiply(BigDecimal.valueOf(it.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal subtotal = calculateOrderSubtotal(savedItems);
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
-        BigDecimal discountPercent = settings != null ? settings.getDiscountPercent() : BigDecimal.ZERO;
-        BigDecimal discountAmount = subtotal.multiply(discountPercent)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-        BigDecimal totalAmount = subtotal.subtract(discountAmount).max(BigDecimal.ZERO);
+        CalculatedDiscount discount = computeDiscount(subtotal, settings);
         Invoice invoice = Invoice.builder()
                 .order(order)
                 .subtotal(subtotal)
-                .discountAmount(discountAmount)
-                .totalAmount(totalAmount)
-                .snapshotDiscountPercent(discountPercent)
+                .discountAmount(discount.discountAmount)
+                .totalAmount(discount.totalAmount)
+                .snapshotDiscountPercent(discount.snapshotPercent)
+                .snapshotDiscountType(discount.discountType)
+                .snapshotDiscountValue(discount.configValue)
                 .status(InvoiceStatus.HIEU_LUC)
                 .createdAt(Instant.now())
                 .build();
@@ -380,7 +380,9 @@ public class OrderService {
     private List<OrderItem> createOrderItemsAndSnapshots(Order order, List<CartDto.CartItemRequest> itemRequests) {
         List<OrderItem> orderItems = new ArrayList<>();
         Map<Long, BigDecimal> aggregatedIngredients = new HashMap<>();
-        Map<Long, ProductRecipe> recipeSampleMap = new HashMap<>();
+        Map<Long, Material> materialSampleMap = new HashMap<>();
+        List<OrderItemTopping> allToppings = new ArrayList<>();
+
         for (var req : itemRequests) {
             Product product = productRepository.findById(req.getProductId())
                     .orElseThrow(() -> BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Món không tồn tại: ID " + req.getProductId()));
@@ -395,48 +397,147 @@ public class OrderService {
                     .snapshotUnitPrice(product.getPrice())
                     .quantity(req.getQuantity())
                     .note(req.getNote())
+                    .toppings(new ArrayList<>())
                     .build();
-            orderItems.add(item);
-            List<ProductRecipe> recipes = recipeRepository.findByIdProductId(product.getId());
-            Map<String, BigDecimal> fixedIngredients = fixedRecipeService.getIngredients(
-                product.getName(), product.getSize());
-            if (recipes.size() != fixedIngredients.size()) {
-                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
-                        "Danh sách nguyên liệu chưa khớp công thức cố định của món: " + product.getName());
-            }
-            Set<String> matched = new HashSet<>();
-            for (ProductRecipe recipe : recipes) {
-                String materialName = recipe.getMaterial().getName();
-                BigDecimal fixedQuantity = fixedIngredients.get(materialName);
-                if (fixedQuantity == null || fixedQuantity.signum() <= 0 || !matched.add(materialName)) {
-                    throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
-                            "Nguyên liệu không hợp lệ trong công thức món: " + product.getName() + " - " + materialName);
+
+            if (req.getToppingIds() != null && !req.getToppingIds().isEmpty()) {
+                if (product.getCategory() != null && !Boolean.TRUE.equals(product.getCategory().getAllowTopping())) {
+                    throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                            "Cấu hình món/danh mục đã thay đổi: Danh mục \"" + product.getCategory().getName() + "\" không còn cho phép chọn topping đi kèm. Vui lòng cập nhật lại giỏ hàng.");
                 }
-                Long matId = recipe.getMaterial().getId();
-                BigDecimal needed = fixedQuantity.multiply(BigDecimal.valueOf(req.getQuantity()));
-                aggregatedIngredients.merge(matId, needed, BigDecimal::add);
-                recipeSampleMap.putIfAbsent(matId, recipe);
+                for (Long tId : req.getToppingIds()) {
+                    Product toppingProd = productRepository.findById(tId)
+                            .orElseThrow(() -> BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Topping không tồn tại: ID " + tId));
+                    if (!Boolean.TRUE.equals(toppingProd.getActive())) {
+                        throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Topping đã ngừng bán: " + toppingProd.getName());
+                    }
+                    OrderItemTopping oit = OrderItemTopping.builder()
+                            .orderItem(item)
+                            .toppingProduct(toppingProd)
+                            .snapshotName(toppingProd.getName())
+                            .snapshotUnitPrice(toppingProd.getPrice())
+                            .build();
+                    item.getToppings().add(oit);
+                    allToppings.add(oit);
+
+                    List<ProductRecipe> tRecipes = recipeRepository.findByIdProductId(toppingProd.getId());
+                    if (!tRecipes.isEmpty()) {
+                        for (ProductRecipe tr : tRecipes) {
+                            BigDecimal normQuantity = tr.getQuantity();
+                            if (normQuantity == null || normQuantity.signum() <= 0) {
+                                Map<String, BigDecimal> tFixed = fixedRecipeService.getIngredients(
+                                        toppingProd.getName(), toppingProd.getSize() != null ? toppingProd.getSize() : "M");
+                                if (tFixed != null) {
+                                    normQuantity = tFixed.get(tr.getMaterial().getName());
+                                }
+                            }
+                            if (normQuantity == null || normQuantity.signum() <= 0) {
+                                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                                        "Định lượng không hợp lệ trong công thức topping: " + toppingProd.getName() + " - " + tr.getMaterial().getName());
+                            }
+                            Long matId = tr.getMaterial().getId();
+                            BigDecimal needed = normQuantity.multiply(BigDecimal.valueOf(req.getQuantity()));
+                            aggregatedIngredients.merge(matId, needed, BigDecimal::add);
+                            materialSampleMap.putIfAbsent(matId, tr.getMaterial());
+                        }
+                    } else {
+                        Map<String, BigDecimal> tFixed = fixedRecipeService.getIngredients(
+                                toppingProd.getName(), toppingProd.getSize() != null ? toppingProd.getSize() : "M");
+                        if (tFixed != null && !tFixed.isEmpty()) {
+                            for (var fEntry : tFixed.entrySet()) {
+                                materialRepository.findByName(fEntry.getKey()).ifPresent(mat -> {
+                                    BigDecimal needed = fEntry.getValue().multiply(BigDecimal.valueOf(req.getQuantity()));
+                                    aggregatedIngredients.merge(mat.getId(), needed, BigDecimal::add);
+                                    materialSampleMap.putIfAbsent(mat.getId(), mat);
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            orderItems.add(item);
+
+            List<ProductRecipe> recipes = recipeRepository.findByIdProductId(product.getId());
+            if (!recipes.isEmpty()) {
+                Set<String> matched = new HashSet<>();
+                for (ProductRecipe recipe : recipes) {
+                    String materialName = recipe.getMaterial().getName();
+                    if (!matched.add(materialName)) {
+                        continue;
+                    }
+                    BigDecimal normQuantity = recipe.getQuantity();
+                    if (normQuantity == null || normQuantity.signum() <= 0) {
+                        Map<String, BigDecimal> fixedIngredients = fixedRecipeService.getIngredients(
+                                product.getName(), product.getSize());
+                        if (fixedIngredients != null) {
+                            normQuantity = fixedIngredients.get(materialName);
+                        }
+                    }
+                    if (normQuantity == null || normQuantity.signum() <= 0) {
+                        throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                                "Định lượng không hợp lệ trong công thức món: " + product.getName() + " - " + materialName);
+                    }
+                    Long matId = recipe.getMaterial().getId();
+                    BigDecimal needed = normQuantity.multiply(BigDecimal.valueOf(req.getQuantity()));
+                    aggregatedIngredients.merge(matId, needed, BigDecimal::add);
+                    materialSampleMap.putIfAbsent(matId, recipe.getMaterial());
+                }
+            } else {
+                Map<String, BigDecimal> fixedIngredients = fixedRecipeService.getIngredients(
+                        product.getName(), product.getSize());
+                if (fixedIngredients != null && !fixedIngredients.isEmpty()) {
+                    for (var fEntry : fixedIngredients.entrySet()) {
+                        materialRepository.findByName(fEntry.getKey()).ifPresent(mat -> {
+                            BigDecimal needed = fEntry.getValue().multiply(BigDecimal.valueOf(req.getQuantity()));
+                            aggregatedIngredients.merge(mat.getId(), needed, BigDecimal::add);
+                            materialSampleMap.putIfAbsent(mat.getId(), mat);
+                        });
+                    }
+                }
             }
         }
         orderItems = orderItemRepository.saveAll(orderItems);
+        if (!allToppings.isEmpty()) {
+            orderItemToppingRepository.saveAll(allToppings);
+        }
         // Lưu OrderIngredientSnapshot cho toàn đơn
         List<OrderIngredientSnapshot> snapshots = new ArrayList<>();
         for (var entry : aggregatedIngredients.entrySet()) {
             Long matId = entry.getKey();
             BigDecimal totalQty = entry.getValue();
-            ProductRecipe sample = recipeSampleMap.get(matId);
-            OrderIngredientSnapshot snap = OrderIngredientSnapshot.builder()
-                    .id(new OrderIngredientSnapshotId(order.getId(), matId))
-                    .order(order)
-                    .material(sample.getMaterial())
-                    .totalQuantity(totalQty)
-                    .snapshotType(sample.getMaterial().getType())
-                    .snapshotUnit(sample.getMaterial().getUnit())
-                    .build();
-            snapshots.add(snap);
+            Material sample = materialSampleMap.get(matId);
+            if (sample != null) {
+                OrderIngredientSnapshot snap = OrderIngredientSnapshot.builder()
+                        .id(new OrderIngredientSnapshotId(order.getId(), matId))
+                        .order(order)
+                        .material(sample)
+                        .totalQuantity(totalQty)
+                        .snapshotType(sample.getType())
+                        .snapshotUnit(sample.getUnit())
+                        .build();
+                snapshots.add(snap);
+            }
         }
         snapshotRepository.saveAll(snapshots);
         return orderItems;
+    }
+
+    private BigDecimal calculateOrderSubtotal(List<OrderItem> items) {
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (OrderItem it : items) {
+            BigDecimal toppingSum = BigDecimal.ZERO;
+            if (it.getToppings() != null && !it.getToppings().isEmpty()) {
+                for (OrderItemTopping t : it.getToppings()) {
+                    if (t.getSnapshotUnitPrice() != null) {
+                        toppingSum = toppingSum.add(t.getSnapshotUnitPrice());
+                    }
+                }
+            }
+            BigDecimal unitPriceWithTopping = it.getSnapshotUnitPrice().add(toppingSum);
+            BigDecimal lineTotal = unitPriceWithTopping.multiply(BigDecimal.valueOf(it.getQuantity()));
+            subtotal = subtotal.add(lineTotal);
+        }
+        return subtotal;
     }
 
     private OrderDto.OrderResponse mapToOrderResponse(
@@ -445,18 +546,49 @@ public class OrderService {
         var payment = invoice != null ? paymentRepository.findByInvoiceId(invoice.getId()).orElse(null) : null;
         Account customer = order.getAccount();
         if (customer != null && customer.getRole() != vn.edu.ute.milktea.entity.account.Role.CUSTOMER) customer = null;
-        List<OrderDto.OrderItemResponse> itemResponses = items.stream().map(it ->
-                OrderDto.OrderItemResponse.builder()
-                        .id(it.getId())
-                        .productId(it.getProduct().getId())
-                        .productName(it.getSnapshotName())
-                        .size(it.getSnapshotSize())
-                        .quantity(it.getQuantity())
-                        .unitPrice(it.getSnapshotUnitPrice())
-                        .lineTotal(it.getSnapshotUnitPrice().multiply(BigDecimal.valueOf(it.getQuantity())))
-                        .note(it.getNote())
-                        .build()
-        ).toList();
+        PaymentNotice latestNotice = invoice != null && !isPaid
+                ? paymentNoticeRepository.findFirstByInvoiceIdOrderByCreatedAtDescIdDesc(invoice.getId()).orElse(null)
+                : null;
+        boolean transferNotified = latestNotice != null
+                && latestNotice.getMethod() == PaymentMethod.BANK_TRANSFER
+                && latestNotice.getReference() != null
+                && (latestNotice.getReference().startsWith("NOTICE_")
+                    || latestNotice.getReference().startsWith("TRANSFERRED_")
+                    || latestNotice.getReference().startsWith("CUSTOMER_TRANSFERRED_"));
+        List<OrderDto.OrderItemResponse> itemResponses = items.stream().map(it -> {
+            List<CartDto.ToppingItemResponse> toppingsList = new ArrayList<>();
+            BigDecimal toppingSum = BigDecimal.ZERO;
+            List<OrderItemTopping> itemToppings = it.getToppings();
+            if (itemToppings == null || itemToppings.isEmpty()) {
+                itemToppings = orderItemToppingRepository.findByOrderItemId(it.getId());
+            }
+            if (itemToppings != null) {
+                for (var t : itemToppings) {
+                    toppingsList.add(CartDto.ToppingItemResponse.builder()
+                            .id(t.getToppingProduct() != null ? t.getToppingProduct().getId() : null)
+                            .productId(t.getToppingProduct() != null ? t.getToppingProduct().getId() : null)
+                            .name(t.getSnapshotName())
+                            .price(t.getSnapshotUnitPrice())
+                            .build());
+                    if (t.getSnapshotUnitPrice() != null) {
+                        toppingSum = toppingSum.add(t.getSnapshotUnitPrice());
+                    }
+                }
+            }
+            BigDecimal unitPriceWithTopping = it.getSnapshotUnitPrice().add(toppingSum);
+            BigDecimal lineTotal = unitPriceWithTopping.multiply(BigDecimal.valueOf(it.getQuantity()));
+            return OrderDto.OrderItemResponse.builder()
+                    .id(it.getId())
+                    .productId(it.getProduct().getId())
+                    .productName(it.getSnapshotName())
+                    .size(it.getSnapshotSize())
+                    .quantity(it.getQuantity())
+                    .unitPrice(it.getSnapshotUnitPrice())
+                    .lineTotal(lineTotal)
+                    .note(it.getNote())
+                    .toppings(toppingsList)
+                    .build();
+        }).toList();
         return OrderDto.OrderResponse.builder()
                 .orderId(order.getId())
                 .sessionId(order.getSession() != null ? order.getSession().getId() : null)
@@ -471,6 +603,8 @@ public class OrderService {
                 .surchargeAmount(BigDecimal.ZERO)
                 .totalAmount(invoice != null ? invoice.getTotalAmount() : BigDecimal.ZERO)
                 .discountPercent(invoice != null ? invoice.getSnapshotDiscountPercent() : BigDecimal.ZERO)
+                .discountType(invoice != null ? invoice.getSnapshotDiscountType() : null)
+                .discountConfigValue(invoice != null ? invoice.getSnapshotDiscountValue() : null)
                 .invoiceId(invoice != null ? invoice.getId() : null)
                 .invoiceStatus(invoice != null ? invoice.getStatus() : null)
                 .paymentMethod(payment != null ? payment.getMethod().name() : null)
@@ -479,7 +613,8 @@ public class OrderService {
                 .refund(refundRepository.findByOrderId(order.getId()).map(r -> vn.edu.ute.milktea.service.cancellation.RefundService.toResponse(r)).orElse(null))
                 .cancellationPending(cancellationRepository.findFirstByOrderIdAndStatus(order.getId(), CancellationStatus.CHO).isPresent())
                 .staffCreated(order.getAccount() != null && (order.getAccount().getRole() == Role.CASHIER || order.getAccount().getRole() == Role.ADMIN))
-                .paymentRequestMethod(invoice != null && !isPaid ? paymentNoticeRepository.findFirstByInvoiceIdOrderByCreatedAtDescIdDesc(invoice.getId()).map(n -> n.getMethod().name()).orElse(null) : null)
+                .paymentRequestMethod(latestNotice != null ? latestNotice.getMethod().name() : null)
+                .transferNotified(transferNotified)
                 .paid(isPaid)
                 .items(itemResponses)
                 .createdAt(order.getCreatedAt())
@@ -545,13 +680,116 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderDto.OrderResponse> getOrdersForCashier(OrderStatus status) {
+        return getOrdersForCashier(status, null, null);
+    }
+
+    private static class CalculatedDiscount {
+        final BigDecimal discountAmount;
+        final BigDecimal totalAmount;
+        final BigDecimal snapshotPercent;
+        final String discountType;
+        final BigDecimal configValue;
+
+        CalculatedDiscount(BigDecimal discountAmount, BigDecimal totalAmount, BigDecimal snapshotPercent, String discountType, BigDecimal configValue) {
+            this.discountAmount = discountAmount;
+            this.totalAmount = totalAmount;
+            this.snapshotPercent = snapshotPercent;
+            this.discountType = discountType;
+            this.configValue = configValue;
+        }
+    }
+
+    private CalculatedDiscount computeDiscount(BigDecimal subtotal, GlobalSettings settings) {
+        String discountType = (settings != null && settings.getDiscountType() != null) ? settings.getDiscountType().trim().toUpperCase() : "PERCENT";
+        BigDecimal configValue = BigDecimal.ZERO;
+        BigDecimal snapshotPercent = BigDecimal.ZERO;
+        BigDecimal discountAmount = BigDecimal.ZERO;
+
+        if (settings != null) {
+            if ("FIXED_AMOUNT".equals(discountType)) {
+                configValue = settings.getDiscountValue() != null ? settings.getDiscountValue() : BigDecimal.ZERO;
+                discountAmount = configValue.min(subtotal).max(BigDecimal.ZERO);
+                snapshotPercent = BigDecimal.ZERO;
+            } else {
+                discountType = "PERCENT";
+                configValue = settings.getDiscountValue() != null && settings.getDiscountValue().signum() > 0
+                        ? settings.getDiscountValue()
+                        : (settings.getDiscountPercent() != null ? settings.getDiscountPercent() : BigDecimal.ZERO);
+                snapshotPercent = configValue;
+                discountAmount = subtotal.multiply(snapshotPercent)
+                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
+                        .min(subtotal)
+                        .max(BigDecimal.ZERO);
+            }
+        }
+        BigDecimal totalAmount = subtotal.subtract(discountAmount).max(BigDecimal.ZERO);
+        return new CalculatedDiscount(discountAmount, totalAmount, snapshotPercent, discountType, configValue);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderDto.OrderResponse> getOrdersForCashier(OrderStatus status, String paymentStatus, String tab, String query) {
         List<Order> orders;
-        if (status != null) {
+        boolean isAllTab = (tab == null || tab.isBlank() || "all".equalsIgnoreCase(tab));
+        if (isAllTab && status != null) {
             orders = orderRepository.findByStatusInOrderByCreatedAtAsc(List.of(status));
         } else {
             orders = orderRepository.findAll();
         }
-        return orders.stream().map(this::mapOrderToResponse).toList();
+        var stream = orders.stream()
+                .sorted(java.util.Comparator.comparing(Order::getCreatedAt).reversed())
+                .map(this::mapOrderToResponse);
+        if (query != null && !query.isBlank()) {
+            String q = query.trim().toUpperCase().replaceFirst("^#", "");
+            stream = stream.filter(o -> {
+                String code = "ORD" + String.format("%03d", o.getOrderId());
+                return code.contains(q) || String.valueOf(o.getOrderId()).equals(q)
+                        || (o.getTableName() != null && o.getTableName().toUpperCase().contains(q))
+                        || (o.getCustomerName() != null && o.getCustomerName().toUpperCase().contains(q));
+            });
+        }
+        if (!isAllTab) {
+            stream = stream.filter(o -> matchesTab(o, tab));
+        } else {
+            if (status != null) {
+                stream = stream.filter(o -> o.getStatus() == status);
+            }
+            if (paymentStatus != null && !paymentStatus.isBlank()) {
+                String ps = paymentStatus.trim().toUpperCase();
+                if ("PAID".equals(ps)) {
+                    stream = stream.filter(OrderDto.OrderResponse::isPaid);
+                } else if ("UNPAID".equals(ps)) {
+                    stream = stream.filter(o -> !o.isPaid() && o.getStatus() != OrderStatus.DA_HUY);
+                } else if ("TRANSFER_PENDING".equals(ps)) {
+                    stream = stream.filter(o -> o.isTransferNotified() && !o.isPaid());
+                }
+            }
+        }
+        return stream.toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderDto.OrderResponse> getOrdersForCashier(OrderStatus status, String tab, String query) {
+        return getOrdersForCashier(status, null, tab, query);
+    }
+
+    public boolean matchesTab(OrderDto.OrderResponse o, String tab) {
+        if (tab == null || tab.isBlank() || "all".equalsIgnoreCase(tab)) return true;
+        switch (tab.toLowerCase()) {
+            case "confirm":
+                return o.getStatus() == OrderStatus.CHO_XAC_NHAN && !o.isStaffCreated();
+            case "cooking":
+                return o.getStatus() == OrderStatus.CHO_CHE_BIEN || o.getStatus() == OrderStatus.DANG_CHE_BIEN;
+            case "completed":
+                return o.getStatus() == OrderStatus.HOAN_THANH;
+            case "transfer":
+                return o.isTransferNotified() && !o.isPaid() && o.getStatus() != OrderStatus.DA_HUY;
+            case "cancel":
+                return o.isCancellationPending() && o.getStatus() == OrderStatus.CHO_CHE_BIEN && o.isPaid();
+            case "refund":
+                return o.getStatus() == OrderStatus.DA_HUY && o.isPaid();
+            default:
+                return true;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -559,5 +797,78 @@ public class OrderService {
         List<Order> orders = orderRepository.findByStatusInOrderByCreatedAtAsc(
                 List.of(OrderStatus.CHO_CHE_BIEN, OrderStatus.DANG_CHE_BIEN));
         return orders.stream().map(this::mapOrderToResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderDto.OrderWorkSummaryResponse getOrderWorkSummary() {
+        List<Order> allOrders = orderRepository.findAll();
+        long totalCount = allOrders.size();
+        long confirmCount = 0;
+        long cookingCount = 0;
+        long completedCount = 0;
+        long transferCount = 0;
+        long cancelCount = 0;
+        long refundCount = 0;
+        Set<Long> pendingActionOrderIds = new HashSet<>();
+
+        var allRefunds = refundRepository.findAll();
+        Map<Long, vn.edu.ute.milktea.entity.cancellation.RefundRequest> refundByOrderId = allRefunds.stream()
+                .collect(java.util.stream.Collectors.toMap(r -> r.getOrder().getId(), r -> r, (r1, r2) -> r1));
+
+        for (Order o : allOrders) {
+            boolean isStaffCreated = o.getAccount() != null && (o.getAccount().getRole() == Role.CASHIER || o.getAccount().getRole() == Role.ADMIN);
+            if (o.getStatus() == OrderStatus.CHO_XAC_NHAN && !isStaffCreated) {
+                confirmCount++;
+                pendingActionOrderIds.add(o.getId());
+            }
+
+            if (o.getStatus() == OrderStatus.CHO_CHE_BIEN || o.getStatus() == OrderStatus.DANG_CHE_BIEN) {
+                cookingCount++;
+            }
+
+            if (o.getStatus() == OrderStatus.HOAN_THANH) {
+                completedCount++;
+            }
+
+            Invoice inv = invoiceRepository.findByOrderId(o.getId()).orElse(null);
+            boolean isPaid = inv != null && paymentRepository.existsByInvoiceId(inv.getId());
+
+            boolean hasPendingCancel = cancellationRepository.findFirstByOrderIdAndStatus(
+                    o.getId(), CancellationStatus.CHO).isPresent();
+            if (hasPendingCancel && o.getStatus() == OrderStatus.CHO_CHE_BIEN && isPaid) {
+                cancelCount++;
+                pendingActionOrderIds.add(o.getId());
+            }
+
+            if (inv != null && inv.getStatus() == InvoiceStatus.HIEU_LUC && !isPaid && o.getStatus() != OrderStatus.DA_HUY) {
+                var latestNotice = paymentNoticeRepository.findFirstByInvoiceIdOrderByCreatedAtDescIdDesc(inv.getId());
+                if (latestNotice.isPresent() && latestNotice.get().getMethod() == vn.edu.ute.milktea.entity.payment.PaymentMethod.BANK_TRANSFER) {
+                    String ref = latestNotice.get().getReference();
+                    if (ref != null && (ref.startsWith("NOTICE_") || ref.startsWith("TRANSFERRED_") || ref.startsWith("CUSTOMER_TRANSFERRED_"))) {
+                        transferCount++;
+                        pendingActionOrderIds.add(o.getId());
+                    }
+                }
+            }
+
+            if (o.getStatus() == OrderStatus.DA_HUY && isPaid) {
+                var refReq = refundByOrderId.get(o.getId());
+                if (refReq == null || refReq.getStatus() != vn.edu.ute.milktea.entity.cancellation.RefundStatus.DA_HOAN) {
+                    refundCount++;
+                    pendingActionOrderIds.add(o.getId());
+                }
+            }
+        }
+
+        return OrderDto.OrderWorkSummaryResponse.builder()
+                .totalCount(totalCount)
+                .confirmCount(confirmCount)
+                .cookingCount(cookingCount)
+                .completedCount(completedCount)
+                .transferCount(transferCount)
+                .cancelCount(cancelCount)
+                .refundCount(refundCount)
+                .pendingActionCount(pendingActionOrderIds.size())
+                .build();
     }
 }

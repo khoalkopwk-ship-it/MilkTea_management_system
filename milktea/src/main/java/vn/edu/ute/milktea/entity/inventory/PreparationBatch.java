@@ -45,6 +45,19 @@ public class PreparationBatch {
     @Column(name = "LyDoChenhLech", length = 500)
     private String discrepancyReason;
 
+    @Column(name = "TongChiPhi", precision = 18, scale = 2)
+    private BigDecimal totalCost;
+
+    @Column(name = "GiaVonBinhQuan", precision = 18, scale = 6)
+    private BigDecimal unitCost;
+
+    @Column(name = "TyLeChenhLech", precision = 7, scale = 2)
+    private BigDecimal ratioVariancePercent;
+
+    @Column(name = "CanhBaoTyLe")
+    @Builder.Default
+    private Boolean toleranceWarning = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "NguoiLap", nullable = false)
     private Account createdBy;
@@ -55,3 +68,4 @@ public class PreparationBatch {
     @Column(name = "MaYeuCau", unique = true, length = 64)
     private String idempotencyKey;
 }
+

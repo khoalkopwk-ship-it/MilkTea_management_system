@@ -68,6 +68,7 @@ public class OrderDto {
         private BigDecimal unitPrice;
         private BigDecimal lineTotal;
         private String note;
+        private List<CartDto.ToppingItemResponse> toppings;
     }
 
     @Data
@@ -89,6 +90,8 @@ public class OrderDto {
         private BigDecimal surchargeAmount;
         private BigDecimal totalAmount;
         private BigDecimal discountPercent;
+        private String discountType;
+        private BigDecimal discountConfigValue;
         private InvoiceStatus invoiceStatus;
         private String paymentMethod;
         private String paymentRequestMethod;
@@ -98,9 +101,25 @@ public class OrderDto {
         private boolean cancellationPending;
         private boolean paid;
         private boolean staffCreated;
+        private boolean transferNotified;
         private List<OrderItemResponse> items;
         private Instant createdAt;
         private String guestTableToken;   // Trả về khi đơn đầu tạo phiên
         private String guestCounterToken; // Trả về cho đơn quầy
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OrderWorkSummaryResponse {
+        private long totalCount;
+        private long confirmCount;
+        private long cookingCount;
+        private long completedCount;
+        private long transferCount;
+        private long cancelCount;
+        private long refundCount;
+        private long pendingActionCount;
     }
 }

@@ -39,6 +39,14 @@ public class GlobalSettings {
     @Builder.Default
     private BigDecimal discountPercent = BigDecimal.ZERO;
 
+    @Column(name = "LoaiGiam", nullable = false, length = 20)
+    @Builder.Default
+    private String discountType = "PERCENT"; // PERCENT, FIXED_AMOUNT
+
+    @Column(name = "GiaTriGiam", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal discountValue = BigDecimal.ZERO;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "NguoiSua")
     private Account modifiedBy;

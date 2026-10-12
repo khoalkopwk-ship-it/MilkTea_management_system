@@ -63,7 +63,31 @@ public class StaffPageController {
         return "kitchen/orders";
     }
 
-    @GetMapping({"/admin", "/admin/catalog"})
+    @GetMapping("/admin")
+    public String adminMainPage(
+            @RequestParam(value = "section", required = false) String section,
+            @AuthenticationPrincipal CurrentActor actor,
+            Model model) {
+        if (actor == null || actor.getRole() != Role.ADMIN) {
+            return "redirect:/login?redirect=/admin";
+        }
+        if ("tables".equalsIgnoreCase(section)) {
+            return adminTablesPage(actor, model);
+        } else if ("staff".equalsIgnoreCase(section)) {
+            return adminStaffPage(actor, model);
+        } else if ("inventory".equalsIgnoreCase(section)) {
+            return adminInventoryPage(actor, model);
+        } else if ("documents".equalsIgnoreCase(section)) {
+            return documentsPage(actor, model);
+        } else if ("reports".equalsIgnoreCase(section)) {
+            return adminReportsPage(actor, model);
+        } else if ("settings".equalsIgnoreCase(section)) {
+            return adminSettingsPage(actor, model);
+        }
+        return adminCatalogPage(actor, model);
+    }
+
+    @GetMapping("/admin/catalog")
     public String adminCatalogPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
         if (actor == null || actor.getRole() != Role.ADMIN) {
             return "redirect:/login?redirect=/admin/catalog";

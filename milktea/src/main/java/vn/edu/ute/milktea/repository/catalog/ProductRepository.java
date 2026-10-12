@@ -9,7 +9,9 @@ import java.util.List;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
+    @EntityGraph(attributePaths = {"category"})
     List<Product> findAllByActiveTrue();
+    @EntityGraph(attributePaths = {"category"})
     List<Product> findByCategoryIdAndActiveTrue(Long categoryId);
     boolean existsByNameIgnoreCaseAndSizeIgnoreCase(String name, String size);
 

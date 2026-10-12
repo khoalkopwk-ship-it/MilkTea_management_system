@@ -21,7 +21,11 @@
                         <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
                     </a>
                     <a th:href="@{/admin/inventory}" class="admin-nav-link active">
-                        <i class="bi bi-boxes"></i> Kho & Chứng Từ
+                        <i class="bi bi-box-seam-fill"></i> Kho Hàng
+                    </a>
+                    <a th:href="@{/admin/documents}" class="admin-nav-link d-flex align-items-center justify-content-between">
+                        <span><i class="bi bi-files me-1"></i> Chứng Từ</span>
+                        <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
                     </a>
                     <a th:href="@{/admin/reports}" class="admin-nav-link">
                         <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
@@ -52,56 +56,147 @@
                     </div>
                 </div>
 
-                <div class="nav nav-pills gap-2 mb-4"><a class="nav-link active rounded-pill" th:href="@{/admin/inventory}"><i class="bi bi-box-seam me-1"></i> Tồn kho</a><a class="nav-link rounded-pill border" th:href="@{/admin/documents}"><i class="bi bi-files me-1"></i> Chứng từ</a></div>
-                <!-- Bảng Tồn Kho 2 Vị Trí -->
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                <!-- Tabs: Tồn kho / Cấu hình định mức / Chứng từ -->
+                <ul class="nav nav-pills gap-2 mb-4" id="inventoryTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active rounded-pill px-3" id="tab-stock-btn" data-bs-toggle="pill" data-bs-target="#tab-stock-pane" type="button" role="tab">
+                            <i class="bi bi-box-seam me-1"></i> Tồn kho
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill border px-3" id="tab-recipe-btn" data-bs-toggle="pill" data-bs-target="#tab-recipe-pane" type="button" role="tab" onclick="loadPreparationRecipesAdmin()">
+                            <i class="bi bi-gear-wide-connected me-1"></i> Cấu hình định mức
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link rounded-pill border px-3" th:href="@{/admin/documents}"><i class="bi bi-files me-1"></i> Chứng từ</a>
+                    </li>
+                </ul>
 
-                    <div class="card-header bg-white p-3">
-                        <div class="d-flex flex-wrap justify-content-between
-                                    align-items-center gap-3 mb-3">
+                <div class="tab-content" id="inventoryTabContent">
+                    <!-- Tab 1: Tồn Kho 2 Vị Trí -->
+                    <div class="tab-pane fade show active" id="tab-stock-pane" role="tabpanel">
+                        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                            <div class="card-header bg-white p-3">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                                    <h5 class="fw-bold mb-0">
+                                        <i class="bi bi-boxes text-primary me-2"></i>Tồn Kho Nguyên Liệu
+                                    </h5>
+                                    <button class="btn btn-sm btn-light rounded-pill border" onclick="loadStockData()">
+                                        <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                                    </button>
+                                </div>
 
-                            <h5 class="fw-bold mb-0">
-                                Nguyên Liệu Kho
-                            </h5>
+                                <!-- Bộ lọc cảnh báo tồn kho -->
+                                <div class="d-flex flex-wrap gap-2 mb-3" id="alertFilterGroup">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill active" data-alert="ALL" onclick="setAlertFilter('ALL')">
+                                        Tất cả <span class="badge rounded-pill bg-secondary ms-1" id="badgeCountTotal">0</span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" data-alert="HET_TON" onclick="setAlertFilter('HET_TON')">
+                                        Hết tồn <span class="badge rounded-pill bg-danger ms-1" id="badgeCountHetTon">0</span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill" data-alert="TON_THAP" onclick="setAlertFilter('TON_THAP')">
+                                        Tồn thấp <span class="badge rounded-pill bg-warning text-dark ms-1" id="badgeCountTonThap">0</span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success rounded-pill" data-alert="BINH_THUONG" onclick="setAlertFilter('BINH_THUONG')">
+                                        Bình thường <span class="badge rounded-pill bg-success ms-1" id="badgeCountBinhThuong">0</span>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-alert="CHUA_CAU_HINH" onclick="setAlertFilter('CHUA_CAU_HINH')">
+                                        Chưa cấu hình <span class="badge rounded-pill bg-secondary ms-1" id="badgeCountChuaCauHinh">0</span>
+                                    </button>
+                                </div>
 
-                            <button class="btn btn-sm btn-light rounded-pill border"
-                                    onclick="loadStockData()">
-                                <i class="bi bi-arrow-clockwise me-1"></i>
-                                Làm mới
-                            </button>
-                        </div>
+                                <div class="row g-2">
+                                    <div class="col-md-8">
+                                        <input type="text"
+                                            id="stockSearch"
+                                            class="form-control"
+                                            placeholder="Tìm kiếm nguyên liệu theo tên..."
+                                            oninput="onStockSearchInput()">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <select id="stockLocationSelect" class="form-select" onchange="loadStockData()">
+                                            <option value="">Tất cả vị trí kho</option>
+                                            <option value="KHO" selected>Kho tổng (KHO)</option>
+                                            <option value="BEP">Bếp pha chế (BEP)</option>
+                                        </select>
+                                    </div>
+                                </div>
 
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <input type="text"
-                                    id="stockSearch"
-                                    class="form-control"
-                                    placeholder="Tìm kiếm nguyên liệu thô..."
-                                    oninput="filterStockTable()">
-                            </div>
-                        </div>
+                            </div> <!-- Đóng card-header -->
 
-                        </div> <!-- Đóng card-header -->
-
-                        <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>STT</th>
-                                    <th>Nguyên liệu</th>
-                                    <th>Loại</th>
-                                    <th>Tồn kho</th>
-                                    <th>Ngưỡng tối thiểu</th>
-                                    <th>Cảnh báo</th>
-                                    <th>Thao tác</th>
-                                </tr>
-                            </thead>
-
-                            <tbody id="inventoryStockBody">
-                            </tbody>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 50px;" class="text-center">STT</th>
+                                            <th>Nguyên liệu</th>
+                                            <th>Loại</th>
+                                            <th>Vị trí</th>
+                                            <th>Tồn kho</th>
+                                            <th>Giá vốn / nhập TB</th>
+                                            <th>Ngưỡng tối thiểu</th>
+                                            <th>Cảnh báo</th>
+                                            <th style="width: 120px;" class="text-center">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="inventoryStockBody">
+                                    </tbody>
                                 </table>
                             </div>
                         </div> <!-- Đóng card nguyên liệu kho -->
+                    </div>
+
+                    <!-- Tab 2: Cấu Hình Định Mức Sơ Chế Cố Định -->
+                    <div class="tab-pane fade" id="tab-recipe-pane" role="tabpanel">
+                        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                            <div class="card-header bg-white p-3">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                    <div>
+                                        <h5 class="fw-bold mb-1">
+                                            <i class="bi bi-gear-wide-connected text-success me-2"></i>Định Mức Sơ Chế Nguyên Liệu
+                                        </h5>
+                                        <p class="text-muted small mb-0">
+                                            Cấu hình định mức sản xuất cố định cho các thành phẩm sơ chế. Bếp ghi mẻ sẽ tự động tiêu hao nguyên liệu thô và tính giá vốn theo định mức đang áp dụng.
+                                        </p>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadPreparationRecipesAdmin()">
+                                            <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                                        </button>
+                                        <button class="btn btn-sm btn-success rounded-pill px-3 fw-semibold" onclick="openCreateRecipeModal()">
+                                            <i class="bi bi-plus-circle me-1"></i> Thêm Định Mức Sơ Chế
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 50px;" class="text-center">STT</th>
+                                            <th style="width: 80px;">Mã ĐM</th>
+                                            <th>Thành phẩm đầu ra</th>
+                                            <th>Tỉ lệ pha chế</th>
+                                            <th>Sản lượng chuẩn</th>
+                                            <th>Giá vốn ước tính</th>
+                                            <th style="width: 90px;" class="text-center">Phiên bản</th>
+                                            <th style="width: 130px;" class="text-center">Trạng thái</th>
+                                            <th>Ghi chú</th>
+                                            <th style="width: 110px;" class="text-center">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminPreparationRecipesBody">
+                                        <tr>
+                                            <td colspan="10" class="text-center text-muted py-4">Đang nạp danh sách định mức sơ chế...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div> <!-- Đóng tab-content -->
 
                         </div> <!-- Đóng Main Content -->
                         </div> <!-- Đóng row -->
@@ -194,202 +289,509 @@
             </div>
         </div>
 
+        <!-- Modal Cấu Hình Định Mức Sơ Chế Cố Định -->
+        <div class="modal fade" id="recipeModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font text-success" id="recipeModalTitle">
+                            <i class="bi bi-gear-wide-connected me-1"></i> Cấu Hình Định Mức Sơ Chế
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <form id="recipeForm" onsubmit="event.preventDefault(); savePreparationRecipe();">
+                            <input type="hidden" id="recipeId" value="">
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-7">
+                                    <label class="form-label small fw-semibold">Thành phẩm sơ chế đầu ra (SOCHE):</label>
+                                    <select id="recipeOutputMaterialSelect" class="form-select rounded-3" onchange="onRecipeOutputChange()" required>
+                                        <option value="">-- Chọn thành phẩm sơ chế --</option>
+                                        <option th:each="m : ${materials}"
+                                                th:if="${m.type != null and m.type.name() == 'SOCHE'}"
+                                                th:value="${m.id}"
+                                                th:attr="data-unit=${m.unit}"
+                                                th:text="${m.name + ' (' + m.unit + ')'}">
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold">Sản lượng đầu ra chuẩn:</label>
+                                    <div class="input-group">
+                                        <input type="number" step="any" min="0.000001" id="recipeOutputQuantity" class="form-control rounded-start-3" placeholder="Ví dụ: 5000" required>
+                                        <span class="input-group-text bg-light text-muted fw-semibold" id="recipeOutputUnitLabel">đơn vị</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Danh sách nguyên liệu thô đầu vào -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label small fw-semibold mb-0">Nguyên liệu thô đầu vào (THO):</label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="addRecipeItemRow()">
+                                        <i class="bi bi-plus-circle me-1"></i> Thêm nguyên liệu thô
+                                    </button>
+                                </div>
+                                <div id="recipeItemsContainer" class="p-3 bg-light rounded-3">
+                                    <!-- Dynamic rows -->
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-8">
+                                    <label class="form-label small fw-semibold">Ghi chú định mức:</label>
+                                    <input type="text" id="recipeNote" class="form-control rounded-3" placeholder="Ví dụ: Định mức 1 kg trà thô pha 5000 ml cốt trà...">
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="recipeActive" checked>
+                                        <label class="form-check-label small fw-semibold" for="recipeActive">Đang áp dụng (kích hoạt)</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 pt-2 border-top">
+                                <button type="submit" id="btnSaveRecipe" class="btn btn-success rounded-pill py-2 fw-bold">
+                                    <i class="bi bi-check2-circle me-1"></i> Lưu Định Mức Sơ Chế
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <th:block th:fragment="scripts">
         <script th:src="@{/js/admin/admin.js}"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', () => {
+            let adminMaterialsList = [];
+            let adminRecipesList = [];
+
+            document.addEventListener('DOMContentLoaded', async () => {
                 AdminApp.init();
                 loadStockData();
+                await loadAdminMaterials();
             });
 
+            async function loadAdminMaterials() {
+                try {
+                    const mats = await MilkTeaApi.get('/api/v1/admin/materials');
+                    adminMaterialsList = mats || [];
+                } catch (e) {
+                    console.warn('Lỗi tải danh mục nguyên liệu:', e);
+                }
+            }
+
+            // ==========================================
+            // QUẢN LÝ CẤU HÌNH ĐỊNH MỨC SƠ CHẾ (ADMIN)
+            // ==========================================
+
+            async function loadPreparationRecipesAdmin() {
+                const tbody = document.getElementById('adminPreparationRecipesBody');
+                if (!tbody) return;
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Đang tải danh sách định mức...</td></tr>';
+
+                try {
+                    const recipes = await MilkTeaApi.get('/api/v1/admin/preparation-recipes');
+                    adminRecipesList = recipes || [];
+                    renderPreparationRecipesAdmin();
+                } catch (e) {
+                    tbody.innerHTML = `<tr><td colspan="10" class="text-center text-danger py-4">Lỗi: ${MilkTeaReceipts.esc(e.message)}</td></tr>`;
+                }
+            }
+
+            function renderPreparationRecipesAdmin() {
+                const tbody = document.getElementById('adminPreparationRecipesBody');
+                if (!tbody) return;
+
+                if (adminRecipesList.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4">Chưa có định mức sơ chế nào được cấu hình</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = adminRecipesList.map((r, idx) => {
+                    const ratioBadge = r.ratioText
+                        ? `<span class="badge bg-light text-primary border fw-bold fs-6">${MilkTeaReceipts.esc(r.ratioText)}</span>`
+                        : `<span class="text-muted">-</span>`;
+
+                    const costFormatted = r.estimatedUnitCost != null && Number(r.estimatedUnitCost) > 0
+                        ? `${MilkTeaApi.formatVND(r.estimatedUnitCost)} / ${MilkTeaReceipts.esc(r.outputUnit || '')}`
+                        : `<span class="text-muted fst-italic">Chưa có giá vốn</span>`;
+
+                    const activeBadge = r.active
+                        ? '<span class="badge bg-success">Đang áp dụng</span>'
+                        : '<span class="badge bg-secondary">Ngừng áp dụng</span>';
+
+                    return `
+                        <tr>
+                            <td class="text-center fw-bold text-muted">${idx + 1}</td>
+                            <td class="fw-bold text-primary">#${r.id}</td>
+                            <td class="fw-semibold">${MilkTeaReceipts.esc(r.outputMaterialName || r.name)}</td>
+                            <td>${ratioBadge}</td>
+                            <td class="fw-bold">${r.standardOutputQuantity} <small class="text-muted">${MilkTeaReceipts.esc(r.outputUnit || '')}</small></td>
+                            <td class="fw-semibold text-success">${costFormatted}</td>
+                            <td class="text-center"><span class="badge bg-light text-dark border">v${r.version || 1}</span></td>
+                            <td class="text-center">${activeBadge}</td>
+                            <td class="small text-muted">${MilkTeaReceipts.esc(r.note || '-')}</td>
+                            <td class="text-center">
+                                <div class="d-inline-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                            title="Chỉnh sửa định mức"
+                                            onclick="openEditRecipeModal(${r.id})">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button class="btn btn-sm ${r.active ? 'btn-outline-warning' : 'btn-outline-success'} rounded-pill px-2"
+                                            title="${r.active ? 'Tắt áp dụng' : 'Bật áp dụng'}"
+                                            onclick="toggleRecipeActive(${r.id}, ${r.active})">
+                                        <i class="bi ${r.active ? 'bi-pause-circle' : 'bi-play-circle'}"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            function onRecipeOutputChange() {
+                const select = document.getElementById('recipeOutputMaterialSelect');
+                const opt = select.options[select.selectedIndex];
+                const unit = opt ? opt.getAttribute('data-unit') : '';
+                const label = document.getElementById('recipeOutputUnitLabel');
+                if (label) label.textContent = unit || 'đơn vị';
+            }
+
+            function openCreateRecipeModal() {
+                document.getElementById('recipeId').value = '';
+                document.getElementById('recipeModalTitle').innerHTML = '<i class="bi bi-plus-circle me-1"></i> Thêm Định Mức Sơ Chế';
+                document.getElementById('recipeOutputMaterialSelect').value = '';
+                document.getElementById('recipeOutputMaterialSelect').disabled = false;
+                document.getElementById('recipeOutputQuantity').value = '';
+                document.getElementById('recipeOutputUnitLabel').textContent = 'đơn vị';
+                document.getElementById('recipeNote').value = '';
+                document.getElementById('recipeActive').checked = true;
+
+                const container = document.getElementById('recipeItemsContainer');
+                container.innerHTML = '';
+                addRecipeItemRow();
+
+                const modal = new bootstrap.Modal(document.getElementById('recipeModal'));
+                modal.show();
+            }
+
+            async function openEditRecipeModal(recipeId) {
+                const recipe = adminRecipesList.find(r => r.id === recipeId);
+                if (!recipe) return;
+
+                document.getElementById('recipeId').value = recipe.id;
+                document.getElementById('recipeModalTitle').innerHTML = `<i class="bi bi-pencil-square me-1"></i> Chỉnh Sửa Định Mức #${recipe.id} (v${recipe.version || 1})`;
+                const outputSel = document.getElementById('recipeOutputMaterialSelect');
+                outputSel.value = recipe.outputMaterialId;
+                outputSel.disabled = true; // Không đổi thành phẩm khi edit để giữ toàn vẹn quan hệ
+                onRecipeOutputChange();
+
+                document.getElementById('recipeOutputQuantity').value = recipe.standardOutputQuantity;
+                document.getElementById('recipeNote').value = recipe.note || '';
+                document.getElementById('recipeActive').checked = Boolean(recipe.active);
+
+                const container = document.getElementById('recipeItemsContainer');
+                container.innerHTML = '';
+                if (recipe.inputItems && recipe.inputItems.length > 0) {
+                    recipe.inputItems.forEach(it => {
+                        addRecipeItemRow(it.inputMaterialId, it.standardQuantity, it.unit);
+                    });
+                } else {
+                    addRecipeItemRow();
+                }
+
+                const modal = new bootstrap.Modal(document.getElementById('recipeModal'));
+                modal.show();
+            }
+
+            function addRecipeItemRow(matId, qty, unit) {
+                const container = document.getElementById('recipeItemsContainer');
+                const rowId = 'rawRow_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+                const thoOptions = adminMaterialsList
+                    .filter(m => m.type === 'THO')
+                    .map(m => `<option value="${m.id}" data-unit="${MilkTeaReceipts.esc(m.unit)}" ${matId == m.id ? 'selected' : ''}>${MilkTeaReceipts.esc(m.name)} (${MilkTeaReceipts.esc(m.unit)})</option>`)
+                    .join('');
+
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'row g-2 align-items-center mb-2 recipe-raw-row';
+                rowDiv.id = rowId;
+                rowDiv.innerHTML = `
+                    <div class="col-md-6">
+                        <select class="form-select form-select-sm raw-mat-select rounded-3" onchange="onRawMatSelectChange('${rowId}')" required>
+                            <option value="">-- Chọn nguyên liệu thô --</option>
+                            ${thoOptions}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="any" min="0.000001" class="form-control raw-mat-qty rounded-start-3"
+                                   placeholder="Lượng đầu vào" value="${qty != null ? qty : ''}" required>
+                            <span class="input-group-text bg-white raw-mat-unit text-muted small">${unit || 'đv'}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2" onclick="removeRecipeItemRow('${rowId}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(rowDiv);
+                onRawMatSelectChange(rowId);
+            }
+
+            function onRawMatSelectChange(rowId) {
+                const row = document.getElementById(rowId);
+                if (!row) return;
+                const sel = row.querySelector('.raw-mat-select');
+                const opt = sel.options[sel.selectedIndex];
+                const unit = opt ? opt.getAttribute('data-unit') : '';
+                const unitSpan = row.querySelector('.raw-mat-unit');
+                if (unitSpan) unitSpan.textContent = unit || 'đv';
+            }
+
+            function removeRecipeItemRow(rowId) {
+                const container = document.getElementById('recipeItemsContainer');
+                if (container.querySelectorAll('.recipe-raw-row').length <= 1) {
+                    MilkTeaApi.showToast('Định mức phải có ít nhất một nguyên liệu thô đầu vào', 'warning');
+                    return;
+                }
+                const row = document.getElementById(rowId);
+                if (row) row.remove();
+            }
+
+            async function savePreparationRecipe() {
+                const recipeId = document.getElementById('recipeId').value;
+                const outputMaterialId = parseInt(document.getElementById('recipeOutputMaterialSelect').value);
+                const outputQuantity = parseFloat(document.getElementById('recipeOutputQuantity').value);
+                const note = document.getElementById('recipeNote').value.trim();
+                const active = document.getElementById('recipeActive').checked;
+
+                if (!outputMaterialId || isNaN(outputQuantity) || outputQuantity <= 0) {
+                    MilkTeaApi.showToast('Vui lòng chọn thành phẩm và nhập sản lượng chuẩn đầu ra hợp lệ (> 0)', 'warning');
+                    return;
+                }
+
+                const rawRows = document.querySelectorAll('.recipe-raw-row');
+                const inputItems = [];
+                let hasInvalid = false;
+
+                rawRows.forEach(row => {
+                    const matId = parseInt(row.querySelector('.raw-mat-select').value);
+                    const qty = parseFloat(row.querySelector('.raw-mat-qty').value);
+                    if (!matId || isNaN(qty) || qty <= 0) {
+                        hasInvalid = true;
+                    } else {
+                        inputItems.push({
+                            inputMaterialId: matId,
+                            standardQuantity: qty
+                        });
+                    }
+                });
+
+                if (hasInvalid || inputItems.length === 0) {
+                    MilkTeaApi.showToast('Vui lòng chọn nguyên liệu thô và nhập lượng đầu vào hợp lệ (> 0) cho tất cả các dòng', 'warning');
+                    return;
+                }
+
+                const payload = {
+                    outputMaterialId: outputMaterialId,
+                    standardOutputQuantity: outputQuantity,
+                    note: note || undefined,
+                    active: active,
+                    items: inputItems
+                };
+
+                const btn = document.getElementById('btnSaveRecipe');
+                if (btn) btn.disabled = true;
+
+                try {
+                    if (recipeId) {
+                        await MilkTeaApi.put(`/api/v1/admin/preparation-recipes/${recipeId}`, payload);
+                        MilkTeaApi.showToast(`Cập nhật định mức #${recipeId} thành công (phiên bản mới)!`, 'success');
+                    } else {
+                        await MilkTeaApi.post('/api/v1/admin/preparation-recipes', payload);
+                        MilkTeaApi.showToast('Tạo định mức sơ chế mới thành công!', 'success');
+                    }
+
+                    const modalEl = document.getElementById('recipeModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+
+                    await loadPreparationRecipesAdmin();
+                } catch (e) {
+                    MilkTeaApi.showToast(e.message || 'Lỗi lưu định mức sơ chế', 'error');
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
+            }
+
+            async function toggleRecipeActive(recipeId, currentActive) {
+                const recipe = adminRecipesList.find(r => r.id === recipeId);
+                if (!recipe) return;
+
+                const newActive = !currentActive;
+                const actionText = newActive ? 'kích hoạt áp dụng' : 'ngừng áp dụng';
+
+                if (!confirm(`Bạn có chắc muốn ${actionText} định mức #${recipeId} cho thành phẩm [${recipe.outputMaterialName}]?`)) {
+                    return;
+                }
+
+                try {
+                    const payload = {
+                        outputMaterialId: recipe.outputMaterialId,
+                        standardOutputQuantity: recipe.standardOutputQuantity,
+                        note: recipe.note,
+                        active: newActive,
+                        items: (recipe.inputItems || []).map(it => ({
+                            inputMaterialId: it.inputMaterialId,
+                            standardQuantity: it.standardQuantity
+                        }))
+                    };
+                    await MilkTeaApi.put(`/api/v1/admin/preparation-recipes/${recipeId}`, payload);
+                    MilkTeaApi.showToast(`Đã ${actionText} định mức thành công!`, 'success');
+                    await loadPreparationRecipesAdmin();
+                } catch (e) {
+                    MilkTeaApi.showToast(e.message || 'Lỗi cập nhật trạng thái định mức', 'error');
+                }
+            }
+
+
             
-let allStockData = [];
+let currentAlertFilter = 'ALL';
+let currentStockSummary = null;
+
+function setAlertFilter(alertKey) {
+    currentAlertFilter = alertKey;
+    document.querySelectorAll('#alertFilterGroup button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.alert === alertKey);
+    });
+    loadStockData();
+}
+
+function onStockSearchInput() {
+    loadStockData();
+}
 
 async function loadStockData() {
+    const loc = document.getElementById('stockLocationSelect')?.value || '';
+    const query = document.getElementById('stockSearch')?.value?.trim() || '';
+    const alertFilter = currentAlertFilter;
+
+    let url = `/api/v1/inventory/stocks/summary?alertFilter=${encodeURIComponent(alertFilter)}`;
+    if (loc) url += `&location=${encodeURIComponent(loc)}`;
+    if (query) url += `&query=${encodeURIComponent(query)}`;
+
     try {
-        const [stocks, materials] = await Promise.all([
-            MilkTeaApi.get('/api/v1/inventory/stocks?location=KHO'),
-            MilkTeaApi.get('/api/v1/admin/materials')
-        ]);
+        const summary = await MilkTeaApi.get(url);
+        currentStockSummary = summary;
 
-        const activeMaterials = (materials || [])
-            .filter(m =>
-                m.active !== false &&
-                m.type === 'THO'
-            );
-        
-        //Tạo bảng tra cứu tồn kho theo mã nguyên liệu 
-        const stockMap = new Map(
-            (stocks || []).map(s => [
-                Number(s.materialId),
-                s
-            ])
-        );
+        // Cập nhật số liệu trên các badge bộ lọc
+        if (summary) {
+            document.getElementById('badgeCountTotal').textContent = summary.totalCount || 0;
+            document.getElementById('badgeCountHetTon').textContent = summary.hetTonCount || 0;
+            document.getElementById('badgeCountTonThap').textContent = summary.tonThapCount || 0;
+            document.getElementById('badgeCountBinhThuong').textContent = summary.binhThuongCount || 0;
+            document.getElementById('badgeCountChuaCauHinh').textContent = summary.chuaCauHinhCount || 0;
+        }
 
-        allStockData = activeMaterials.map(m => {
-            const stock = stockMap.get(Number(m.id));
-
-            const quantity = Number(stock?.quantity || 0);
-            const threshold = Number(stock?.threshold || 0);
-
-            return {
-                materialId: m.id,
-                materialName: m.name,
-                materialType: m.type,
-                unit: m.unit,
-
-                stockKho: quantity,
-                minThreshold: threshold,
-                lowStockAlert: quantity <= threshold
-            };
-        });
-
-        filterStockTable();
-
+        renderStockTable(summary ? summary.items || [] : []);
     } catch (e) {
         console.error('Lỗi tải tồn kho:', e);
-        MilkTeaApi.showToast(
-            e.message || 'Không thể tải dữ liệu kho',
-            'error'
-        );
+        MilkTeaApi.showToast(e.message || 'Không thể tải dữ liệu kho', 'error');
     }
 }
 
-function filterStockTable() {
-    const keyword = document.getElementById('stockSearch')
-        .value.trim().toLowerCase();
-
-    const filtered = allStockData.filter(s => {
-        return s.materialType === 'THO' &&
-            s.materialName.toLowerCase().includes(keyword);
-    });
-
+function renderStockTable(items) {
     const tbody = document.getElementById('inventoryStockBody');
+    if (!items || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Không tìm thấy nguyên liệu phù hợp trong danh sách.</td></tr>';
+        return;
+    }
 
-    tbody.innerHTML = filtered.map((s, index) => `
-        <tr class="${s.lowStockAlert ? 'table-warning' : ''}">
+    tbody.innerHTML = items.map((s, idx) => {
+        const avgPriceFormatted = s.averagePrice != null && s.averagePrice > 0
+            ? `${MilkTeaApi.formatVND(s.averagePrice)} / ${s.unit}`
+            : `<span class="text-muted fst-italic">-</span>`;
 
-            <td>${index + 1}</td>
+        let alertBadge = '<span class="badge bg-secondary">Chưa cấu hình</span>';
+        let rowClass = '';
+        if (s.alertStatus === 'HET_TON') {
+            alertBadge = '<span class="badge bg-danger">Hết tồn</span>';
+            rowClass = 'table-danger';
+        } else if (s.alertStatus === 'TON_THAP') {
+            alertBadge = '<span class="badge bg-warning text-dark">Tồn thấp</span>';
+            rowClass = 'table-warning';
+        } else if (s.alertStatus === 'BINH_THUONG') {
+            alertBadge = '<span class="badge bg-success">Bình thường</span>';
+        }
 
-            <td class="fw-semibold"></td>
+        const locationBadge = s.location === 'KHO'
+            ? '<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Kho tổng (KHO)</span>'
+            : '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Bếp (BEP)</span>';
 
-            <td>
-                <span class="badge ${s.materialType === 'THO'
-                    ? 'bg-secondary'
-                    : 'bg-primary'}">
-                    ${s.materialType}
-                </span>
-            </td>
+        const thresholdText = s.minThreshold != null
+            ? `<b>${s.minThreshold}</b> ${s.unit}`
+            : `<span class="text-muted fst-italic">Chưa đặt</span>`;
 
-            <td class="fw-bold">
-                ${s.stockKho} ${s.unit}
-            </td>
-
-            <td>
-                ${s.minThreshold} ${s.unit}
-            </td>
-
-            <td>
-                ${s.lowStockAlert
-                    ? '<span class="badge bg-danger">Sắp hết hàng</span>'
-                    : '<span class="badge bg-success">An toàn</span>'}
-            </td>
-
-            <td>
-                <div class="d-flex gap-2">
-
-                    <button class="btn btn-sm btn-outline-primary"
-                            data-action="threshold"
-                            data-id="${s.materialId}">
-                        <i class="bi bi-pencil-square"></i>
-                    </button>
-
-                    <button class="btn btn-sm btn-outline-danger"
-                            data-action="delete"
-                            data-id="${s.materialId}">
-                        <i class="bi bi-trash"></i>
-                    </button>
-
-                </div>
-            </td>
-
-        </tr>
-    `).join('') || `
-        <tr>
-            <td colspan="7" class="text-center text-muted py-4">
-                Không tìm thấy nguyên liệu
-            </td>
-        </tr>
-    `;
-
-    tbody.querySelectorAll('tr').forEach((row, index) => {
-        const s = filtered[index];
-        if (!s) return;
-
-        row.children[1].textContent = s.materialName;
-    });
+        return `
+            <tr class="${rowClass}">
+                <td class="text-center fw-bold text-muted">${idx + 1}</td>
+                <td class="fw-semibold">${MilkTeaReceipts.esc(s.materialName)}</td>
+                <td><span class="badge ${s.type === 'THO' ? 'bg-secondary' : 'bg-primary'}">${s.type === 'THO' ? 'THÔ' : 'SƠ CHẾ'}</span></td>
+                <td>${locationBadge}</td>
+                <td class="fw-bold">${s.quantity} <small class="text-muted">${s.unit}</small></td>
+                <td class="fw-semibold text-primary">${avgPriceFormatted}</td>
+                <td>${thresholdText}</td>
+                <td>${alertBadge}</td>
+                <td class="text-center">
+                    <div class="d-inline-flex gap-1">
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                title="Chỉnh sửa ngưỡng tồn"
+                                onclick="promptThreshold(${s.materialId}, '${MilkTeaReceipts.esc(s.materialName)}', '${s.location}', ${s.minThreshold})">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger rounded-pill px-2"
+                                title="Ngừng sử dụng"
+                                onclick="deleteMaterial(${s.materialId}, '${MilkTeaReceipts.esc(s.materialName)}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
-document.getElementById('inventoryStockBody')
-    .addEventListener('click', async function(event) {
-
-        const button = event.target.closest('button[data-action]');
-        if (!button) return;
-
-        const id = Number(button.dataset.id);
-        const action = button.dataset.action;
-
-        const material = allStockData.find(m => m.materialId === id);
-        if (!material) return;
-
-        if (action === 'threshold') {
-            promptThreshold(
-                id,
-                material.materialName,
-                material.minThreshold
-            );
+async function promptThreshold(matId, name, loc, cur) {
+    const val = prompt(`Nhập ngưỡng cảnh báo tồn tối thiểu mới cho [${name}] tại [${loc}]:`, cur != null ? cur : '10');
+    if (val !== null && val.trim() !== '') {
+        const num = parseFloat(val);
+        if (isNaN(num) || num < 0) {
+            MilkTeaApi.showToast('Ngưỡng tồn phải là số không âm', 'warning');
             return;
         }
+        await AdminApp.updateThreshold(matId, loc, num);
+        await loadStockData();
+    }
+}
 
-        if (action === 'delete') {
-            const confirmed = confirm(
-                `Bạn có chắc muốn ngừng sử dụng nguyên liệu "${material.materialName}"?`
-            );
-
-            if (!confirmed) return;
-
-            button.disabled = true;
-
-            try {
-                await MilkTeaApi.delete(`/api/v1/admin/materials/${id}`);
-
-                MilkTeaApi.showToast(
-                    'Đã ngừng sử dụng nguyên liệu',
-                    'success'
-                );
-
-                await loadStockData();
-
-            } catch (e) {
-                MilkTeaApi.showToast(
-                    e.message || 'Không thể xóa nguyên liệu',
-                    'error'
-                );
-                button.disabled = false;
-            }
-        }
-    });
-
-
-            function promptThreshold(matId, name, cur) {
-                const val = prompt(`Nhập ngưỡng cảnh báo tồn tối thiểu mới cho [${name}]:`, cur);
-                if (val !== null && val.trim() !== '') {
-                    AdminApp.updateThreshold(matId, 'KHO', parseFloat(val));
-                    setTimeout(loadStockData, 500);
-                }
-            }
+async function deleteMaterial(id, name) {
+    if (!confirm(`Bạn có chắc muốn ngừng sử dụng nguyên liệu "${name}"?`)) return;
+    try {
+        await MilkTeaApi.delete(`/api/v1/admin/materials/${id}`);
+        MilkTeaApi.showToast('Đã ngừng sử dụng nguyên liệu thành công', 'success');
+        await loadStockData();
+    } catch (e) {
+        MilkTeaApi.showToast(e.message || 'Không thể xóa nguyên liệu', 'error');
+    }
+}
 
             function submitImportForm() {
                 const sup = document.getElementById('importSupplier').value;

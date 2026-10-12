@@ -32,4 +32,11 @@ public class PreparationBatchItem {
 
     @Column(name = "LuongThucDung", nullable = false, precision = 18, scale = 3)
     private BigDecimal actualQuantity;
+
+    @Column(name = "DonGiaVao", precision = 18, scale = 4)
+    private BigDecimal unitPrice;
+
+    @Column(name = "ThanhTien", precision = 18, scale = 2)
+    private BigDecimal totalCost;
 }
+

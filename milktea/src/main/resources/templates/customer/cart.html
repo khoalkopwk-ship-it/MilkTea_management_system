@@ -75,7 +75,8 @@
     <th:block th:fragment="scripts">
         <script th:src="@{/js/customer/customer.js}"></script>
         <script th:inline="javascript">
-            const discountPercent = /*[[${settings != null && settings.discountPercent != null ? settings.discountPercent : 0}]]*/ 0;
+            const discountType = /*[[${settings != null && settings.discountType != null ? settings.discountType : 'PERCENT'}]]*/ 'PERCENT';
+            const discountValue = /*[[${settings != null && settings.discountValue != null ? settings.discountValue : (settings != null && settings.discountPercent != null ? settings.discountPercent : 0)}]]*/ 0;
 
             document.addEventListener('DOMContentLoaded', async () => {
                 const qr = /*[[${tableQr}]]*/ null;
@@ -84,7 +85,7 @@
 
                 // Render giỏ hàng ban đầu
                 const items = window.MilkTeaContext.sessionId ? CustomerApp.getServerCart() : CustomerApp.getLocalCart();
-                const total = items.reduce((acc, it) => acc + (it.price || it.unitPrice || 0) * it.quantity, 0);
+                const total = items.reduce((acc, it) => acc + (it.lineTotal || ((it.price || it.unitPrice || 0) + (it.toppings ? it.toppings.reduce((s,t)=>s+(t.price||0),0) : 0)) * it.quantity), 0);
                 renderCartItems(items, total);
             });
 
@@ -110,25 +111,35 @@
                 let html = '';
                 items.forEach((it, idx) => {
                     const price = it.price || it.unitPrice || 0;
-                    const lineTotal = price * it.quantity;
+                    const toppings = it.toppings || [];
+                    const toppingSum = toppings.reduce((acc, t) => acc + (t.price || 0), 0);
+                    const unitPriceWithTopping = price + toppingSum;
+                    const lineTotal = it.lineTotal || (unitPriceWithTopping * it.quantity);
+                    const toppingText = toppings.length
+                        ? `<div class="small text-muted mb-1">+ Topping: ${toppings.map(t => `${t.name} (${MilkTeaApi.formatVND(t.price)})`).join(', ')}</div>`
+                        : '';
                     html += `
                         <div class="d-flex align-items-center justify-content-between py-3 ${idx > 0 ? 'border-top' : ''}">
                             <div class="flex-grow-1 me-3">
                                 <h6 class="fw-bold mb-1">${it.productName}</h6>
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <span class="badge bg-light text-dark border small">Size ${it.size}</span>
-                                    <span class="text-muted small">${MilkTeaApi.formatVND(price)}</span>
+                                    <span class="text-muted small">${MilkTeaApi.formatVND(unitPriceWithTopping)} / ly</span>
                                 </div>
+                                ${toppingText}
                                 ${it.note ? `<div class="small text-muted fst-italic"><i class="bi bi-chat-left-dots me-1"></i>${it.note}</div>` : ''}
                             </div>
 
-                            <div class="d-flex align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-2">
                                 <div class="input-group input-group-sm" style="width: 100px;">
                                     <button class="btn btn-outline-secondary" type="button" onclick="CustomerApp.updateQuantity(${idx}, -1)">-</button>
                                     <span class="input-group-text bg-white fw-bold px-2">${it.quantity}</span>
                                     <button class="btn btn-outline-secondary" type="button" onclick="CustomerApp.updateQuantity(${idx}, 1)">+</button>
                                 </div>
-                                <span class="fw-bold product-price ms-2" style="min-width: 80px; text-align: right;">${MilkTeaApi.formatVND(lineTotal)}</span>
+                                <span class="fw-bold product-price ms-2" style="min-width: 85px; text-align: right;">${MilkTeaApi.formatVND(lineTotal)}</span>
+                                <button class="btn btn-sm btn-outline-danger border-0 p-1 ms-1" title="Xóa món" onclick="CustomerApp.removeItem(${idx})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </div>
                         </div>
                     `;
@@ -139,13 +150,25 @@
                 // Tính toán giảm giá và tổng tiền
                 const sub = parseFloat(subtotal) || 0;
                 let discountAmount = 0;
-                if (discountPercent > 0) {
-                    discountAmount = (sub * discountPercent) / 100;
-                    document.getElementById('discountRow').style.display = 'flex';
-                    document.getElementById('discountPercentVal').textContent = discountPercent + '%';
-                    document.getElementById('discountVal').textContent = '-' + MilkTeaApi.formatVND(discountAmount);
+                if (discountType === 'FIXED_AMOUNT') {
+                    discountAmount = Math.min(sub, parseFloat(discountValue) || 0);
+                    if (discountAmount > 0) {
+                        document.getElementById('discountRow').style.display = 'flex';
+                        document.getElementById('discountPercentVal').textContent = 'Cố định';
+                        document.getElementById('discountVal').textContent = '-' + MilkTeaApi.formatVND(discountAmount);
+                    } else {
+                        document.getElementById('discountRow').style.display = 'none';
+                    }
                 } else {
-                    document.getElementById('discountRow').style.display = 'none';
+                    const percent = parseFloat(discountValue) || 0;
+                    if (percent > 0) {
+                        discountAmount = Math.min(sub, (sub * percent) / 100);
+                        document.getElementById('discountRow').style.display = 'flex';
+                        document.getElementById('discountPercentVal').textContent = percent + '%';
+                        document.getElementById('discountVal').textContent = '-' + MilkTeaApi.formatVND(discountAmount);
+                    } else {
+                        document.getElementById('discountRow').style.display = 'none';
+                    }
                 }
 
                 const total = Math.max(0, sub - discountAmount);

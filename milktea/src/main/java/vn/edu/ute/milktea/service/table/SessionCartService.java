@@ -63,11 +63,23 @@ public class SessionCartService {
                             "Món uống đã ngừng phục vụ: " + product.getName());
                 }
 
+                if (itemReq.getToppingIds() != null && !itemReq.getToppingIds().isEmpty()) {
+                    if (product.getCategory() != null && !Boolean.TRUE.equals(product.getCategory().getAllowTopping())) {
+                        throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                                "Danh mục \"" + product.getCategory().getName() + "\" không cho phép chọn topping đi kèm");
+                    }
+                }
+
+                String toppingIdsStr = (itemReq.getToppingIds() != null && !itemReq.getToppingIds().isEmpty())
+                        ? itemReq.getToppingIds().stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","))
+                        : null;
+
                 SessionCartItem item = SessionCartItem.builder()
                         .cart(cart)
                         .product(product)
                         .quantity(itemReq.getQuantity())
                         .note(itemReq.getNote())
+                        .toppingIds(toppingIdsStr)
                         .build();
                 newItems.add(item);
             }
@@ -89,7 +101,30 @@ public class SessionCartService {
 
         for (SessionCartItem item : items) {
             Product p = item.getProduct();
-            BigDecimal lineTotal = p.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            List<CartDto.ToppingItemResponse> toppingsList = new ArrayList<>();
+            BigDecimal toppingSum = BigDecimal.ZERO;
+
+            if (item.getToppingIds() != null && !item.getToppingIds().isBlank()) {
+                String[] tIds = item.getToppingIds().split(",");
+                for (String tIdStr : tIds) {
+                    try {
+                        Long tId = Long.parseLong(tIdStr.trim());
+                        productRepository.findById(tId).filter(tp -> Boolean.TRUE.equals(tp.getActive())).ifPresent(tp -> {
+                            toppingsList.add(CartDto.ToppingItemResponse.builder()
+                                    .id(tp.getId())
+                                    .name(tp.getName())
+                                    .price(tp.getPrice())
+                                    .build());
+                        });
+                    } catch (NumberFormatException ignored) {}
+                }
+                for (var t : toppingsList) {
+                    toppingSum = toppingSum.add(t.getPrice());
+                }
+            }
+
+            BigDecimal unitPriceWithTopping = p.getPrice().add(toppingSum);
+            BigDecimal lineTotal = unitPriceWithTopping.multiply(BigDecimal.valueOf(item.getQuantity()));
             total = total.add(lineTotal);
 
             itemResponses.add(CartDto.CartItemResponse.builder()
@@ -100,6 +135,8 @@ public class SessionCartService {
                     .quantity(item.getQuantity())
                     .note(item.getNote())
                     .lineTotal(lineTotal)
+                    .toppings(toppingsList)
+                    .toppingIds(toppingsList.stream().map(CartDto.ToppingItemResponse::getId).toList())
                     .build());
         }
 

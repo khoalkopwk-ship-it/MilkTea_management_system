@@ -19,7 +19,7 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    @PostMapping({"/orders/table", "/customer/orders"})
+    @PostMapping({ "/orders/table", "/customer/orders" })
     public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> createTableOrder(
             @Valid @RequestBody OrderDto.CreateTableOrderRequest requestBody,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
@@ -30,7 +30,7 @@ public class OrderController {
         return ResponseEntity.status(201).body(ApiResponse.ok(response));
     }
 
-    @PostMapping({"/orders/counter", "/cashier/orders"})
+    @PostMapping({ "/orders/counter", "/cashier/orders" })
     public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> createCounterOrder(
             @Valid @RequestBody OrderDto.CreateCounterOrderRequest requestBody,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
@@ -41,13 +41,15 @@ public class OrderController {
     }
 
     @GetMapping("/customer/orders")
-    public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getCustomerOrders(HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getCustomerOrders(
+            HttpServletRequest request) {
         CurrentActor actor = (CurrentActor) request.getAttribute(JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
         return ResponseEntity.ok(ApiResponse.ok(orderService.getOrdersForCustomer(actor)));
     }
 
     @GetMapping("/customer/order-history")
-    public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getCustomerOrderHistory(HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getCustomerOrderHistory(
+            HttpServletRequest request) {
         CurrentActor actor = (CurrentActor) request.getAttribute(JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
         return ResponseEntity.ok(ApiResponse.ok(orderService.getOrderHistoryForCustomerAccount(actor)));
     }
@@ -62,8 +64,16 @@ public class OrderController {
 
     @GetMapping("/cashier/orders")
     public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getCashierOrders(
-            @RequestParam(value = "status", required = false) vn.edu.ute.milktea.entity.order.OrderStatus status) {
-        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrdersForCashier(status)));
+            @RequestParam(value = "status", required = false) vn.edu.ute.milktea.entity.order.OrderStatus status,
+            @RequestParam(value = "paymentStatus", required = false) String paymentStatus,
+            @RequestParam(value = "tab", required = false) String tab,
+            @RequestParam(value = "query", required = false) String query) {
+        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrdersForCashier(status, paymentStatus, tab, query)));
+    }
+
+    @GetMapping("/cashier/orders/work-summary")
+    public ResponseEntity<ApiResponse<OrderDto.OrderWorkSummaryResponse>> getOrderWorkSummary() {
+        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrderWorkSummary()));
     }
 
     @GetMapping("/kitchen/orders")
@@ -113,7 +123,8 @@ public class OrderController {
     }
 
     @GetMapping("/orders/{id}")
-    public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> getOrder(@PathVariable("id") Long orderId, @AuthenticationPrincipal CurrentActor actor) {
+    public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> getOrder(@PathVariable("id") Long orderId,
+            @AuthenticationPrincipal CurrentActor actor) {
         return ResponseEntity.ok(ApiResponse.ok(orderService.getOrderForCustomer(orderId, actor)));
     }
 }
