@@ -133,23 +133,142 @@ const CashierApp = (() => {
         }
     }
 
+    let activeToppingLineId = null;
+
+    function isToppingProduct(p) {
+        if (!p) return false;
+        const catName = (p.categoryName || '').toLowerCase();
+        return catName.includes('topping');
+    }
+
     // POS Quầy: Thêm món vào giỏ quầy
     function addCounterCart(p) {
         if (submitting || pendingCounterOrder) { MilkTeaApi.showToast('Hoàn tất thanh toán đơn đang tạo trước.', 'warning'); return; }
-        const existing = counterCart.find(it => it.productId === p.id);
-        if (existing) {
-            existing.quantity++;
-        } else {
-            counterCart.push({
-                productId: p.id,
-                productName: p.name,
-                size: p.size,
-                price: p.price,
-                quantity: 1,
-                imageUrl: p.imageUrl,
-                note: ''
-            });
+
+        // Nếu đang ở chế độ thêm topping cho một dòng món
+        if (activeToppingLineId) {
+            const targetLine = counterCart.find(it => it.lineId === activeToppingLineId);
+            if (!targetLine) {
+                exitToppingMode();
+            } else {
+                const isTopping = p.isTopping || isToppingProduct(p);
+                if (isTopping) {
+                    const targetProd = products.find(prod => prod.id === targetLine.productId);
+                    if (targetProd && targetProd.allowTopping === false) {
+                        MilkTeaApi.showToast(`Món ${targetLine.productName} không cho phép chọn topping đi kèm!`, 'warning');
+                        return;
+                    }
+
+                    if (!targetLine.toppings) targetLine.toppings = [];
+                    const existsIdx = targetLine.toppings.findIndex(t => t.id === p.id);
+                    if (existsIdx >= 0) {
+                        targetLine.toppings.splice(existsIdx, 1);
+                        MilkTeaApi.showToast(`Đã bỏ topping ${p.name}`, 'info');
+                    } else {
+                        targetLine.toppings.push({ id: p.id, name: p.name, price: p.price });
+                        MilkTeaApi.showToast(`Đã thêm ${p.name} vào ${targetLine.productName}`, 'success');
+                    }
+                    renderCounterCart();
+                    return;
+                } else {
+                    // Nhấn vào món nước khác -> Tự động kết thúc chế độ topping
+                    exitToppingMode();
+                }
+            }
         }
+
+        // Tạo dòng mới có stable lineId
+        const lineId = 'line_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+        counterCart.push({
+            lineId: lineId,
+            productId: p.id,
+            productName: p.name,
+            size: p.size,
+            price: p.price,
+            quantity: 1,
+            imageUrl: p.imageUrl,
+            note: '',
+            toppings: [],
+            noteOpen: false
+        });
+        renderCounterCart();
+    }
+
+    function enterToppingMode(lineId) {
+        const item = counterCart.find(it => it.lineId === lineId);
+        if (!item) return;
+
+        const prod = products.find(p => p.id === item.productId);
+        if (prod && prod.allowTopping === false) {
+            MilkTeaApi.showToast(`Món ${item.productName} thuộc danh mục không cho phép chọn topping!`, 'warning');
+            return;
+        }
+
+        activeToppingLineId = lineId;
+
+        // Chuyển sang tab Topping
+        const toppingBtn = [...document.querySelectorAll('#posCategories button')].find(b => b.textContent.trim().toLowerCase().includes('topping'));
+        if (toppingBtn) {
+            selectedCategory = toppingBtn.dataset.category;
+            document.querySelectorAll('#posCategories button').forEach(el => el.classList.toggle('active', el === toppingBtn));
+        }
+
+        const banner = document.getElementById('posToppingModeBanner');
+        if (banner) {
+            document.getElementById('toppingTargetLineName').textContent = `${item.productName} (Size ${item.size})`;
+            banner.classList.remove('d-none');
+        }
+        renderProducts();
+        MilkTeaApi.showToast(`Chọn topping để thêm/bỏ cho ${item.productName}`, 'info');
+    }
+
+    function exitToppingMode() {
+        activeToppingLineId = null;
+        const banner = document.getElementById('posToppingModeBanner');
+        if (banner) banner.classList.add('d-none');
+        selectedCategory = '';
+        document.querySelectorAll('#posCategories button').forEach((el, idx) => el.classList.toggle('active', idx === 0));
+        renderProducts();
+    }
+
+    function changeLineSize(lineId, newProductId) {
+        const item = counterCart.find(it => it.lineId === lineId);
+        const newProd = products.find(p => p.id === Number(newProductId));
+        if (item && newProd) {
+            item.productId = newProd.id;
+            item.size = newProd.size;
+            item.price = newProd.price;
+            renderCounterCart();
+        }
+    }
+
+    function toggleLineNote(lineId) {
+        const item = counterCart.find(it => it.lineId === lineId);
+        if (item) {
+            item.noteOpen = !item.noteOpen;
+            renderCounterCart();
+        }
+    }
+
+    function updateLineNote(lineId, val) {
+        const item = counterCart.find(it => it.lineId === lineId);
+        if (item) {
+            item.note = val.trim();
+        }
+    }
+
+    function removeLineTopping(lineId, toppingId) {
+        const item = counterCart.find(it => it.lineId === lineId);
+        if (item && item.toppings) {
+            item.toppings = item.toppings.filter(t => t.id !== toppingId);
+            renderCounterCart();
+        }
+    }
+
+    function removeLine(lineId) {
+        if (submitting || pendingCounterOrder) return;
+        if (activeToppingLineId === lineId) exitToppingMode();
+        counterCart = counterCart.filter(it => it.lineId !== lineId);
         renderCounterCart();
     }
 
@@ -157,7 +276,7 @@ const CashierApp = (() => {
         const container = document.getElementById('counterCartList');
         if (!container) return;
 
-        document.getElementById('counterItemCount').textContent='('+counterCart.reduce((n,i)=>n+i.quantity,0)+')';
+        document.getElementById('counterItemCount').textContent = '(' + counterCart.reduce((n, i) => n + i.quantity, 0) + ')';
         if (counterCart.length === 0) {
             container.innerHTML = '<div class="text-center text-muted small py-4">Chưa chọn món nào</div>';
             document.getElementById('counterCartTotal').textContent = '0 ₫';
@@ -166,23 +285,104 @@ const CashierApp = (() => {
 
         let total = 0;
         let html = '';
-        counterCart.forEach((it, idx) => {
-            const lineTotal = it.price * it.quantity;
+        counterCart.forEach((it) => {
+            const toppingSum = (it.toppings || []).reduce((acc, t) => acc + (t.price || 0), 0);
+            const unitPrice = (it.price || 0) + toppingSum;
+            const lineTotal = unitPrice * it.quantity;
             total += lineTotal;
-            html += `<div class="pos-cart-item"><img src="${MilkTeaReceipts.esc(it.imageUrl || '/images/receipt-logo.svg')}" alt="${MilkTeaReceipts.esc(it.productName)}"><div class="pos-cart-info"><div class="d-flex justify-content-between gap-2"><strong>${MilkTeaReceipts.esc(it.productName)}</strong><button class="btn btn-sm p-0 text-muted" aria-label="Xóa món" onclick="CashierApp.removeItem(${idx})">×</button></div><small class="text-muted">Size ${MilkTeaReceipts.esc(it.size)}</small><div class="d-flex justify-content-between align-items-center mt-2"><div class="pos-qty"><button aria-label="Giảm số lượng" onclick="CashierApp.adjustCounterCart(${idx},-1)">−</button><span>${it.quantity}</span><button aria-label="Tăng số lượng" onclick="CashierApp.adjustCounterCart(${idx},1)">+</button></div><span class="pos-cart-price">${MilkTeaApi.formatVND(lineTotal)}</span></div></div></div>`;
+
+            // Lấy danh sách size từ catalog cho sản phẩm này
+            const variants = products.filter(p => p.name === it.productName);
+
+            let sizeSelector = '';
+            if (variants.length > 1) {
+                sizeSelector = `<select class="form-select form-select-sm py-0 px-2 my-1" style="font-size: 0.8rem; height: 26px;" onchange="CashierApp.changeLineSize('${it.lineId}', this.value)">
+                    ${variants.map(v => `<option value="${v.id}" ${v.id === it.productId ? 'selected' : ''}>Size ${v.size} (${MilkTeaApi.formatVND(v.price)})</option>`).join('')}
+                </select>`;
+            } else {
+                sizeSelector = `<small class="text-muted d-block my-1">Size ${it.size} · ${MilkTeaApi.formatVND(it.price)}</small>`;
+            }
+
+            const isCurrentToppingTarget = activeToppingLineId === it.lineId;
+            const targetProd = products.find(p => p.id === it.productId);
+            const isProdTopping = targetProd ? (targetProd.isTopping || isToppingProduct(targetProd)) : false;
+            const canHaveTopping = !isProdTopping && (!targetProd || targetProd.allowTopping !== false);
+
+            let toppingControlHtml = '';
+            if (canHaveTopping) {
+                toppingControlHtml = `
+                    <div class="my-1">
+                        <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none fw-semibold" style="font-size: 0.8rem;" onclick="CashierApp.enterToppingMode('${it.lineId}')">
+                            <i class="bi bi-plus-circle me-1"></i>${it.toppings && it.toppings.length ? 'Sửa topping' : 'Thêm topping'}
+                        </button>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            ${(it.toppings || []).map(t => `
+                                <span class="badge bg-light text-dark border d-inline-flex align-items-center py-1 px-2" style="font-size: 0.75rem;">
+                                    ${MilkTeaReceipts.esc(t.name)} (+${MilkTeaApi.formatVND(t.price)})
+                                    <button type="button" class="btn-close ms-1 p-0" style="font-size: 0.5rem;" aria-label="Xóa topping" onclick="CashierApp.removeLineTopping('${it.lineId}', ${t.id})"></button>
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                toppingControlHtml = `
+                    <div class="my-1">
+                        <small class="text-muted fst-italic" style="font-size: 0.75rem;">Không áp dụng topping</small>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div class="pos-cart-item ${isCurrentToppingTarget ? 'border border-primary bg-primary-subtle' : ''}">
+                    <img src="${MilkTeaReceipts.esc(it.imageUrl || '/images/receipt-logo.svg')}" alt="${MilkTeaReceipts.esc(it.productName)}">
+                    <div class="pos-cart-info">
+                        <div class="d-flex justify-content-between gap-2">
+                            <strong>${MilkTeaReceipts.esc(it.productName)}</strong>
+                            <button class="btn btn-sm p-0 text-muted" aria-label="Xóa món" onclick="CashierApp.removeLine('${it.lineId}')">×</button>
+                        </div>
+                        ${sizeSelector}
+
+                        <!-- Topping gắn vào món -->
+                        ${toppingControlHtml}
+
+                        <!-- Ghi chú dòng món -->
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <button type="button" class="btn btn-sm btn-link p-0 text-secondary" title="Ghi chú món" onclick="CashierApp.toggleLineNote('${it.lineId}')">
+                                <i class="bi bi-chat-left-text${it.note ? '-fill text-primary' : ''}"></i>
+                            </button>
+                            ${it.note && !it.noteOpen ? `<small class="text-muted fst-italic text-truncate" style="max-width: 140px;">${MilkTeaReceipts.esc(it.note)}</small>` : ''}
+                        </div>
+                        ${it.noteOpen ? `
+                            <input type="text" class="form-control form-control-sm mt-1" style="font-size: 0.8rem;" placeholder="Ghi chú món này..." value="${MilkTeaReceipts.esc(it.note || '')}" oninput="CashierApp.updateLineNote('${it.lineId}', this.value)">
+                        ` : ''}
+
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <div class="pos-qty">
+                                <button aria-label="Giảm số lượng" onclick="CashierApp.adjustCounterCart('${it.lineId}', -1)">−</button>
+                                <span>${it.quantity}</span>
+                                <button aria-label="Tăng số lượng" onclick="CashierApp.adjustCounterCart('${it.lineId}', 1)">+</button>
+                            </div>
+                            <span class="pos-cart-price">${MilkTeaApi.formatVND(lineTotal)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
         });
         container.innerHTML = html;
         document.getElementById('counterCartTotal').textContent = MilkTeaApi.formatVND(total);
     }
 
-    function adjustCounterCart(idx, delta) {
+    function adjustCounterCart(lineId, delta) {
         if (submitting || pendingCounterOrder) return;
-        if (!counterCart[idx]) return;
-        counterCart[idx].quantity += delta;
-        if (counterCart[idx].quantity <= 0) {
-            counterCart.splice(idx, 1);
+        const it = counterCart.find(i => i.lineId === lineId);
+        if (!it) return;
+        it.quantity += delta;
+        if (it.quantity <= 0) {
+            removeLine(lineId);
+        } else {
+            renderCounterCart();
         }
-        renderCounterCart();
     }
 
     async function submitCounterOrder() {
@@ -199,7 +399,8 @@ const CashierApp = (() => {
             const items = counterCart.map(it => ({
                 productId: it.productId,
                 quantity: it.quantity,
-                note: [it.note, document.getElementById('counterOrderNote')?.value.trim()].filter(Boolean).join(' · ')
+                note: it.note || '',
+                toppingIds: (it.toppings || []).map(t => t.id)
             }));
 
             const tableId = document.getElementById('counterTableId').value;
@@ -215,9 +416,9 @@ const CashierApp = (() => {
             await MilkTeaReceipts.open(created.orderId);
             MilkTeaApi.showToast(`Tạo đơn #${created.orderId} thành công!`, 'success');
             counterCart = [];
-            document.getElementById('counterOrderNote').value='';
+            exitToppingMode();
             renderCounterCart();
-            submitBtn.innerHTML = 'Thanh toán';
+            submitBtn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Thanh toán';
             await loadTables();
         } catch (e) {
             MilkTeaApi.showToast(e.message || 'Lỗi tạo đơn / ghi thu', 'error');
@@ -227,7 +428,21 @@ const CashierApp = (() => {
 
 
     function setupProducts() {
-        products=[...document.querySelectorAll('#posProductsData [data-id]')].map(el=>({id:Number(el.dataset.id),name:el.dataset.name,size:el.dataset.size,price:Number(el.dataset.price),imageUrl:el.dataset.image,category:el.dataset.category}));
+        products = [...document.querySelectorAll('#posProductsData [data-id]')].map(el => {
+            const catName = el.dataset.categoryName || '';
+            const isTopping = catName.toLowerCase().includes('topping');
+            return {
+                id: Number(el.dataset.id),
+                name: el.dataset.name,
+                size: el.dataset.size,
+                price: Number(el.dataset.price),
+                imageUrl: el.dataset.image,
+                category: el.dataset.category,
+                categoryName: catName,
+                allowTopping: el.dataset.categoryAllowTopping !== 'false',
+                isTopping: isTopping
+            };
+        });
         if(!filtersReady) {
             ['quickProductSearch','posProductSearch'].forEach(id=>document.getElementById(id).addEventListener('input',event=> {
                 ['quickProductSearch','posProductSearch'].forEach(other=>document.getElementById(other).value=event.target.value);
@@ -254,7 +469,7 @@ const CashierApp = (() => {
             return `<article class="pos-product"><img src="${esc(p.imageUrl || '/images/receipt-logo.svg')}" alt="${esc(p.name)}" loading="lazy"><div class="pos-product-body"><h6>${esc(p.name)}</h6><div class="pos-product-price">${variants.length>1?'Từ ':''}${MilkTeaApi.formatVND(p.price)}</div><div class="pos-sizes">${variants.map(v=>`<button data-product-id="${v.id}" title="Size ${esc(v.size)} · ${MilkTeaApi.formatVND(v.price)}">${esc(v.size)}</button>`).join('')}</div></div></article>`;
         }).join('') || '<p class="text-muted p-3">Không có món phù hợp.</p>';
     }
-    function clearCart() {if(submitting || pendingCounterOrder)return;counterCart=[];renderCounterCart();}
+    function clearCart() {if(submitting || pendingCounterOrder)return;counterCart=[];exitToppingMode();renderCounterCart();}
     function removeItem(idx) {if(submitting || pendingCounterOrder)return;counterCart.splice(idx,1);renderCounterCart();}
     async function showSessionBlockers(sessionId,tableName) {
         try {
@@ -270,5 +485,22 @@ const CashierApp = (() => {
             bootstrap.Modal.getOrCreateInstance(document.getElementById('tableBlockersModal')).show();return true;
         }catch(e){return false;}
     }
-    return {init,refreshTables:loadTables,openSession,closeSession,addCounterCart,adjustCounterCart,submitCounterOrder,clearCart,removeItem};
+    return {
+        init,
+        refreshTables: loadTables,
+        openSession,
+        closeSession,
+        addCounterCart,
+        adjustCounterCart,
+        submitCounterOrder,
+        clearCart,
+        removeItem,
+        removeLine,
+        enterToppingMode,
+        exitToppingMode,
+        changeLineSize,
+        toggleLineNote,
+        updateLineNote,
+        removeLineTopping
+    };
 })();

@@ -17,29 +17,36 @@ public class FixedRecipeService {
     private static final Map<String, Map<String, BigDecimal>> RECIPES =
             Map.of(
                 "Trà Sữa Truyền Thống|M", Map.of(
-                    "Trà Đen", new BigDecimal("0.015"),
+                    "Nước Cốt Trà Đen", new BigDecimal("150.000"),
                     "Sữa Đặc", new BigDecimal("0.030"),
                     "Đường Cát", new BigDecimal("0.020"),
                     "Ly Nhựa", BigDecimal.ONE
                 ),
 
                 "Trà Sữa Truyền Thống|L", Map.of(
-                    "Trà Đen", new BigDecimal("0.020"),
+                    "Nước Cốt Trà Đen", new BigDecimal("200.000"),
                     "Sữa Đặc", new BigDecimal("0.040"),
                     "Đường Cát", new BigDecimal("0.025"),
                     "Ly Nhựa", BigDecimal.ONE
                 ),
 
                 "Trà Đào Cam Sả|M", Map.of(
-                    "Trà Đen", new BigDecimal("0.015"),
+                    "Nước Cốt Trà Đen", new BigDecimal("100.000"),
                     "Đường Cát", new BigDecimal("0.020"),
                     "Ly Nhựa", BigDecimal.ONE
                 ),
 
+                "Trà Đào Cam Sả|L", Map.of(
+                    "Nước Cốt Trà Đen", new BigDecimal("150.000"),
+                    "Đường Cát", new BigDecimal("0.025"),
+                    "Ly Nhựa", BigDecimal.ONE
+                ),
+
                 "Trân Châu Đen|M", Map.of(
-                    "Trân Châu Nấu Chín", BigDecimal.ONE
+                    "Trân Châu Nấu Chín", new BigDecimal("50.000")
                 )
             );
+
 
     public BigDecimal getQuantity(
             String productName,

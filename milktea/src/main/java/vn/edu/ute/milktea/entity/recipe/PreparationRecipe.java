@@ -30,7 +30,18 @@ public class PreparationRecipe {
     @Column(name = "LuongDauRaChuan", nullable = false, precision = 18, scale = 3)
     private BigDecimal standardOutputQuantity;
 
+    @Column(name = "NguongCanhBaoTyLe", precision = 5, scale = 2)
+    private BigDecimal tolerancePercent;
+
     @Column(name = "HoatDong", nullable = false)
     @Builder.Default
     private Boolean active = true;
+
+    @Column(name = "GhiChu", length = 500)
+    private String note;
+
+    @Column(name = "Version", nullable = false)
+    @Builder.Default
+    private Long version = 1L;
 }
+
