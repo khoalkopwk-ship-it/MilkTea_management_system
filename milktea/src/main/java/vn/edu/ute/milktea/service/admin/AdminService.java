@@ -24,6 +24,11 @@ import vn.edu.ute.milktea.repository.recipe.PreparationRecipeRepository;
 import vn.edu.ute.milktea.repository.recipe.ProductRecipeRepository;
 import vn.edu.ute.milktea.repository.table.DiningTableRepository;
 
+import vn.edu.ute.milktea.entity.inventory.ImportReceiptItem;
+import vn.edu.ute.milktea.repository.inventory.ImportReceiptItemRepository;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +48,8 @@ public class AdminService {
     private final MaterialRepository materialRepository;
     private final PreparationRecipeRepository preparationRecipeRepository;
     private final PreparationRecipeItemRepository preparationRecipeItemRepository;
+    private final ImportReceiptItemRepository importReceiptItemRepository;
+    private final vn.edu.ute.milktea.repository.audit.BusinessAuditRepository auditRepository;
     private final PasswordEncoder passwordEncoder;
 
     // ==========================================
@@ -88,38 +95,123 @@ public class AdminService {
     }
 
     @Transactional
-    public AdminDto.StaffResponse updateStaffAccount(Long id, AdminDto.UpdateStaffRequest request) {
+    public AdminDto.StaffResponse updateStaffAccount(Long id, AdminDto.UpdateStaffRequest request, Long currentAdminId) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy tài khoản"));
 
-        if (request.getFullName() != null) account.setFullName(request.getFullName());
-        if (request.getPhone() != null) account.setPhone(request.getPhone());
-        if (request.getRole() != null && request.getRole() != Role.CUSTOMER) {
-            account.setRole(request.getRole());
-            account.setTokenVersion(account.getTokenVersion() + 1); // Thu hồi token cũ khi đổi vai trò
-        }
-        if (request.getActive() != null) {
-            account.setActive(request.getActive());
-            if (!request.getActive()) {
-                account.setTokenVersion(account.getTokenVersion() + 1);
+        String beforeState = "role=" + account.getRole() + ",active=" + account.getActive() + ",email=" + account.getEmail();
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            String newEmail = request.getEmail().trim().toLowerCase();
+            if (!newEmail.equalsIgnoreCase(account.getEmail())) {
+                accountRepository.findByEmail(newEmail).ifPresent(other -> {
+                    if (!other.getId().equals(account.getId())) {
+                        throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Email đã được sử dụng bởi tài khoản khác");
+                    }
+                });
+                account.setEmail(newEmail);
             }
         }
 
-        return mapStaff(accountRepository.save(account));
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            account.setFullName(request.getFullName().trim());
+        }
+        if (request.getPhone() != null) {
+            account.setPhone(request.getPhone().trim());
+        }
+
+        if (request.getRole() != null && request.getRole() != account.getRole()) {
+            if (request.getRole() == Role.CUSTOMER) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Không thể chuyển vai trò nhân viên sang CUSTOMER");
+            }
+            if (account.getRole() == Role.ADMIN && request.getRole() != Role.ADMIN) {
+                long activeAdminCount = accountRepository.findAll().stream()
+                        .filter(a -> a.getRole() == Role.ADMIN && Boolean.TRUE.equals(a.getActive()))
+                        .count();
+                if (activeAdminCount <= 1) {
+                    throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Không thể chuyển vai trò của quản trị viên hoạt động cuối cùng");
+                }
+            }
+            account.setRole(request.getRole());
+            account.setTokenVersion(account.getTokenVersion() + 1); // Thu hồi JWT phiên cũ ngay lập tức
+        }
+
+        if (request.getActive() != null && !request.getActive().equals(account.getActive())) {
+            if (!request.getActive()) {
+                if (id.equals(currentAdminId)) {
+                    throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Không thể tự khóa tài khoản của chính mình");
+                }
+                if (account.getRole() == Role.ADMIN) {
+                    long activeAdminCount = accountRepository.findAll().stream()
+                            .filter(a -> a.getRole() == Role.ADMIN && Boolean.TRUE.equals(a.getActive()))
+                            .count();
+                    if (activeAdminCount <= 1) {
+                        throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Không thể khóa tài khoản quản trị viên hoạt động cuối cùng");
+                    }
+                }
+                account.setActive(false);
+                account.setTokenVersion(account.getTokenVersion() + 1);
+            } else {
+                account.setActive(true);
+            }
+        }
+
+        Account saved = accountRepository.save(account);
+        String afterState = "role=" + saved.getRole() + ",active=" + saved.getActive() + ",email=" + saved.getEmail();
+
+        auditRepository.save(vn.edu.ute.milktea.entity.audit.BusinessAudit.builder()
+                .accountId(currentAdminId)
+                .action("STAFF_ACCOUNT_UPDATED")
+                .beforeState(beforeState)
+                .afterState(afterState)
+                .reason("Cập nhật thông tin nhân viên #" + id)
+                .createdAt(Instant.now())
+                .build());
+
+        return mapStaff(saved);
+    }
+
+    @Transactional
+    public AdminDto.StaffResponse toggleStaffStatus(Long id, boolean active, Long currentAdminId) {
+        if (!active && id.equals(currentAdminId)) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Không thể tự khóa tài khoản của chính mình");
+        }
+
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy tài khoản"));
+
+        if (!active && account.getRole() == Role.ADMIN) {
+            long activeAdminCount = accountRepository.findAll().stream()
+                    .filter(a -> a.getRole() == Role.ADMIN && Boolean.TRUE.equals(a.getActive()))
+                    .count();
+            if (activeAdminCount <= 1) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Không thể khóa tài khoản quản trị viên hoạt động cuối cùng");
+            }
+        }
+
+        String before = "active=" + account.getActive();
+        account.setActive(active);
+        if (!active) {
+            account.setTokenVersion(account.getTokenVersion() + 1); // Thu hồi JWT phiên cũ lập tức
+        }
+        Account saved = accountRepository.save(account);
+        String after = "active=" + saved.getActive();
+
+        auditRepository.save(vn.edu.ute.milktea.entity.audit.BusinessAudit.builder()
+                .accountId(currentAdminId)
+                .action(active ? "STAFF_ACCOUNT_UNLOCKED" : "STAFF_ACCOUNT_LOCKED")
+                .beforeState(before)
+                .afterState(after)
+                .reason((active ? "Mở khóa" : "Khóa") + " tài khoản nhân viên #" + id)
+                .createdAt(Instant.now())
+                .build());
+
+        return mapStaff(saved);
     }
 
     @Transactional
     public void deleteStaffAccount(Long id, Long currentAdminId) {
-        if (id.equals(currentAdminId)) {
-            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Không thể tự xóa hoặc vô hiệu hóa tài khoản của chính mình");
-        }
-
-        Account account = accountRepository.findById(id)
-                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy tài khoản"));
-
-        account.setActive(false);
-        account.setTokenVersion(account.getTokenVersion() + 1);
-        accountRepository.save(account);
+        toggleStaffStatus(id, false, currentAdminId);
     }
 
     private AdminDto.StaffResponse mapStaff(Account a) {
@@ -143,6 +235,7 @@ public class AdminService {
                 .id(c.getId())
                 .name(c.getName())
                 .active(c.getActive())
+                .allowTopping(c.getAllowTopping())
                 .build()
         ).toList();
     }
@@ -151,7 +244,7 @@ public class AdminService {
     public AdminDto.CategoryResponse getCategory(Long id) {
         Category c = categoryRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy danh mục"));
-        return AdminDto.CategoryResponse.builder().id(c.getId()).name(c.getName()).active(c.getActive()).build();
+        return AdminDto.CategoryResponse.builder().id(c.getId()).name(c.getName()).active(c.getActive()).allowTopping(c.getAllowTopping()).build();
     }
 
     @Transactional
@@ -159,9 +252,10 @@ public class AdminService {
         Category c = Category.builder()
                 .name(request.getName().trim())
                 .active(request.getActive() != null ? request.getActive() : true)
+                .allowTopping(request.getAllowTopping() != null ? request.getAllowTopping() : true)
                 .build();
         c = categoryRepository.save(c);
-        return AdminDto.CategoryResponse.builder().id(c.getId()).name(c.getName()).active(c.getActive()).build();
+        return AdminDto.CategoryResponse.builder().id(c.getId()).name(c.getName()).active(c.getActive()).allowTopping(c.getAllowTopping()).build();
     }
 
     @Transactional
@@ -170,8 +264,9 @@ public class AdminService {
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy danh mục"));
         if (request.getName() != null) c.setName(request.getName().trim());
         if (request.getActive() != null) c.setActive(request.getActive());
+        if (request.getAllowTopping() != null) c.setAllowTopping(request.getAllowTopping());
         c = categoryRepository.save(c);
-        return AdminDto.CategoryResponse.builder().id(c.getId()).name(c.getName()).active(c.getActive()).build();
+        return AdminDto.CategoryResponse.builder().id(c.getId()).name(c.getName()).active(c.getActive()).allowTopping(c.getAllowTopping()).build();
     }
 
     @Transactional
@@ -188,6 +283,40 @@ public class AdminService {
     @Transactional(readOnly = true)
     public List<AdminDto.ProductResponse> listProducts() {
         return productRepository.findAll().stream().map(this::mapProduct).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AdminDto.ProductPageResponse searchProducts(Long categoryId, Boolean active, String query, int page, int limit) {
+        List<Product> all = productRepository.findAll();
+        var stream = all.stream();
+        if (categoryId != null) {
+            stream = stream.filter(p -> p.getCategory() != null && categoryId.equals(p.getCategory().getId()));
+        }
+        if (active != null) {
+            stream = stream.filter(p -> active.equals(p.getActive()));
+        }
+        if (query != null && !query.isBlank()) {
+            String q = query.trim().toLowerCase();
+            stream = stream.filter(p -> (p.getName() != null && p.getName().toLowerCase().contains(q))
+                    || (p.getDescription() != null && p.getDescription().toLowerCase().contains(q))
+                    || (p.getSize() != null && p.getSize().toLowerCase().contains(q)));
+        }
+        List<AdminDto.ProductResponse> filtered = stream.map(this::mapProduct).toList();
+        int totalItems = filtered.size();
+        int safeLimit = limit <= 0 ? 10 : limit;
+        int totalPages = (int) Math.ceil((double) totalItems / safeLimit);
+        if (totalPages == 0) totalPages = 1;
+        int safePage = Math.max(1, Math.min(page, totalPages));
+        int fromIdx = (safePage - 1) * safeLimit;
+        int toIdx = Math.min(fromIdx + safeLimit, totalItems);
+        List<AdminDto.ProductResponse> paged = fromIdx < totalItems ? filtered.subList(fromIdx, toIdx) : List.of();
+        return AdminDto.ProductPageResponse.builder()
+                .items(paged)
+                .totalItems(totalItems)
+                .totalPages(totalPages)
+                .page(safePage)
+                .limit(safeLimit)
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -395,6 +524,7 @@ public class AdminService {
                 .type(m.getType())
                 .unit(m.getUnit())
                 .active(m.getActive())
+                .averageImportPrice(getMaterialAverageImportPrice(m.getId()))
                 .build()
         ).toList();
     }
@@ -409,7 +539,23 @@ public class AdminService {
                 .type(m.getType())
                 .unit(m.getUnit())
                 .active(m.getActive())
+                .averageImportPrice(getMaterialAverageImportPrice(m.getId()))
                 .build();
+    }
+
+    private BigDecimal getMaterialAverageImportPrice(Long materialId) {
+        List<ImportReceiptItem> items = importReceiptItemRepository.findByIdMaterialId(materialId);
+        if (items == null || items.isEmpty()) return null;
+        BigDecimal totalCost = BigDecimal.ZERO;
+        BigDecimal totalQty = BigDecimal.ZERO;
+        for (ImportReceiptItem it : items) {
+            if (it.getQuantity() != null && it.getQuantity().signum() > 0 && it.getUnitPrice() != null) {
+                totalCost = totalCost.add(it.getQuantity().multiply(it.getUnitPrice()));
+                totalQty = totalQty.add(it.getQuantity());
+            }
+        }
+        if (totalQty.signum() <= 0) return null;
+        return totalCost.divide(totalQty, 2, RoundingMode.HALF_UP);
     }
 
     @Transactional
@@ -459,7 +605,7 @@ public class AdminService {
     }
 
     // ==========================================
-    // 6. QUẢN LÝ CÔNG THỨC SƠ CHẾ
+    // 6. QUẢN LÝ CÔNG THỨC SƠ CHẾ & ĐỊNH MỨC
     // ==========================================
     @Transactional(readOnly = true)
     public List<AdminDto.PreparationRecipeResponse> listPreparationRecipes() {
@@ -478,15 +624,24 @@ public class AdminService {
         Material outMat = materialRepository.findById(request.getOutputMaterialId())
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy bán thành phẩm đầu ra"));
 
+        boolean isActive = request.getActive() == null || Boolean.TRUE.equals(request.getActive());
+        if (isActive && preparationRecipeRepository.existsByOutputMaterialIdAndActiveTrue(outMat.getId())) {
+            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                    "Thành phẩm '" + outMat.getName() + "' đã có định mức đang áp dụng. Mỗi thành phẩm chỉ được có một định mức hoạt động.");
+        }
+
         PreparationRecipe recipe = PreparationRecipe.builder()
                 .name(request.getName().trim())
                 .outputMaterial(outMat)
                 .standardOutputQuantity(request.getStandardOutputQuantity())
-                .active(true)
+                .tolerancePercent(request.getTolerancePercent())
+                .active(isActive)
+                .note(request.getNote() != null ? request.getNote().trim() : null)
+                .version(1L)
                 .build();
         recipe = preparationRecipeRepository.save(recipe);
 
-        if (request.getInputItems() != null) {
+        if (request.getInputItems() != null && !request.getInputItems().isEmpty()) {
             List<PreparationRecipeItem> items = new ArrayList<>();
             for (var in : request.getInputItems()) {
                 Material inMat = materialRepository.findById(in.getInputMaterialId())
@@ -500,6 +655,8 @@ public class AdminService {
                         .build());
             }
             preparationRecipeItemRepository.saveAll(items);
+        } else {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Định mức phải có ít nhất một nguyên liệu đầu vào");
         }
 
         return getPreparationRecipe(recipe.getId());
@@ -510,6 +667,14 @@ public class AdminService {
         PreparationRecipe recipe = preparationRecipeRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy công thức sơ chế"));
 
+        Long targetOutputId = request.getOutputMaterialId() != null ? request.getOutputMaterialId() : recipe.getOutputMaterial().getId();
+        boolean willBeActive = request.getActive() != null ? request.getActive() : Boolean.TRUE.equals(recipe.getActive());
+
+        if (willBeActive && preparationRecipeRepository.existsByOutputMaterialIdAndActiveTrueAndIdNot(targetOutputId, id)) {
+            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                    "Thành phẩm này đã có một định mức khác đang áp dụng. Vui lòng tắt định mức cũ trước khi kích hoạt định mức này.");
+        }
+
         if (request.getName() != null) recipe.setName(request.getName().trim());
         if (request.getOutputMaterialId() != null) {
             Material outMat = materialRepository.findById(request.getOutputMaterialId())
@@ -519,9 +684,19 @@ public class AdminService {
         if (request.getStandardOutputQuantity() != null) {
             recipe.setStandardOutputQuantity(request.getStandardOutputQuantity());
         }
+        if (request.getTolerancePercent() != null) {
+            recipe.setTolerancePercent(request.getTolerancePercent());
+        }
+        if (request.getActive() != null) {
+            recipe.setActive(request.getActive());
+        }
+        if (request.getNote() != null) {
+            recipe.setNote(request.getNote().trim());
+        }
+        recipe.setVersion((recipe.getVersion() != null ? recipe.getVersion() : 1L) + 1L);
         preparationRecipeRepository.save(recipe);
 
-        if (request.getInputItems() != null) {
+        if (request.getInputItems() != null && !request.getInputItems().isEmpty()) {
             preparationRecipeItemRepository.deleteByIdRecipeId(id);
             List<PreparationRecipeItem> items = new ArrayList<>();
             for (var in : request.getInputItems()) {
@@ -549,6 +724,26 @@ public class AdminService {
         preparationRecipeRepository.save(r);
     }
 
+    private String formatQty(BigDecimal val) {
+        if (val == null) return "0";
+        return val.stripTrailingZeros().toPlainString();
+    }
+
+    private BigDecimal getRawMaterialCost(Long matId) {
+        List<ImportReceiptItem> items = importReceiptItemRepository.findByIdMaterialId(matId);
+        if (items.isEmpty()) return null;
+        BigDecimal sumCost = BigDecimal.ZERO;
+        BigDecimal sumQty = BigDecimal.ZERO;
+        for (var it : items) {
+            if (it.getQuantity() != null && it.getQuantity().signum() > 0 && it.getUnitPrice() != null) {
+                sumCost = sumCost.add(it.getQuantity().multiply(it.getUnitPrice()));
+                sumQty = sumQty.add(it.getQuantity());
+            }
+        }
+        if (sumQty.signum() <= 0) return null;
+        return sumCost.divide(sumQty, 6, RoundingMode.HALF_UP);
+    }
+
     private AdminDto.PreparationRecipeResponse mapPrepRecipe(PreparationRecipe r) {
         List<PreparationRecipeItem> items = preparationRecipeItemRepository.findByIdRecipeId(r.getId());
         List<AdminDto.PrepRecipeItemDto> itemDtos = items.stream().map(it -> AdminDto.PrepRecipeItemDto.builder()
@@ -559,6 +754,33 @@ public class AdminService {
                 .build()
         ).toList();
 
+        // Tỉ lệ pha chế: "1 kg → 5000 ml" hoặc "1 kg Trà Đen, 0.5 kg Đường → 5000 ml"
+        String inText = items.stream()
+                .map(it -> formatQty(it.getStandardInputQuantity()) + " " + it.getInputMaterial().getUnit()
+                        + (items.size() > 1 ? " " + it.getInputMaterial().getName() : ""))
+                .collect(java.util.stream.Collectors.joining(", "));
+        String outText = formatQty(r.getStandardOutputQuantity()) + " " + (r.getOutputMaterial().getUnit() != null ? r.getOutputMaterial().getUnit() : "");
+        String ratioText = inText + " → " + outText;
+
+        // Ước tính giá vốn 1 đơn vị thành phẩm theo định mức
+        BigDecimal estimatedUnitCost = null;
+        if (r.getStandardOutputQuantity() != null && r.getStandardOutputQuantity().signum() > 0) {
+            BigDecimal totalStdCost = BigDecimal.ZERO;
+            boolean hasAllPrices = true;
+            for (var it : items) {
+                BigDecimal p = getRawMaterialCost(it.getInputMaterial().getId());
+                if (p != null) {
+                    totalStdCost = totalStdCost.add(it.getStandardInputQuantity().multiply(p));
+                } else {
+                    hasAllPrices = false;
+                    break;
+                }
+            }
+            if (hasAllPrices) {
+                estimatedUnitCost = totalStdCost.divide(r.getStandardOutputQuantity(), 6, RoundingMode.HALF_UP);
+            }
+        }
+
         return AdminDto.PreparationRecipeResponse.builder()
                 .id(r.getId())
                 .name(r.getName())
@@ -566,6 +788,12 @@ public class AdminService {
                 .outputMaterialName(r.getOutputMaterial().getName())
                 .outputUnit(r.getOutputMaterial().getUnit())
                 .standardOutputQuantity(r.getStandardOutputQuantity())
+                .tolerancePercent(r.getTolerancePercent())
+                .active(r.getActive())
+                .version(r.getVersion() != null ? r.getVersion() : 1L)
+                .note(r.getNote())
+                .ratioText(ratioText)
+                .estimatedUnitCost(estimatedUnitCost)
                 .inputItems(itemDtos)
                 .build();
     }

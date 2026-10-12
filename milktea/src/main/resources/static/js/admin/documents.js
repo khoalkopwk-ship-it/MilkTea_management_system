@@ -155,7 +155,7 @@ const DocumentsApp = (() => {
                 ${c.decidedAt ? `<p>Nhân viên xác nhận: ${esc(c.decidedBy || 'Nhân viên')} · ${date(c.decidedAt)}</p>` : ''}
                 <div class="d-flex gap-2">
                     ${c.status === 'CHO'
-                        ? btn('approveCancel', c.id, 'Xác nhận hủy', 'danger') + btn('rejectCancel', c.id, 'Từ chối', 'secondary')
+                        ? '<span class="text-warning small"><i class="bi bi-hourglass-split me-1"></i>Đang chờ thu ngân xác nhận hủy đơn tại POS/Đơn hàng.</span>'
                         : refundState}
                 </div>
             `);
@@ -180,11 +180,11 @@ const DocumentsApp = (() => {
                 <p>Lý do hoàn: ${esc(r.reason || cancellation?.reason || '-')}</p>
                 <p>Số tiền hoàn: <b>${MilkTeaApi.formatVND(r.amount)}</b></p>
                 <p>Trạng thái: ${esc(status)}</p>
-                ${r.approvedAt ? `<p>Admin duyệt: ${esc(r.approvedBy || 'Admin')} · ${date(r.approvedAt)}</p>` : ''}
-                ${r.refundedAt ? `<p>Thời gian hoàn tiền: ${date(r.refundedAt)}</p>` : ''}
+                ${r.approvedAt ? `<p>Admin xác nhận: ${esc(r.approvedBy || 'Admin')} · ${date(r.approvedAt)}</p>` : ''}
+                ${r.refundedAt ? `<p>Thời gian hoàn: ${date(r.refundedAt)} · Người thực hiện: ${esc(r.refundedBy || r.approvedBy || 'Admin')}</p>` : ''}
                 <div class="d-flex gap-2 flex-wrap">
                     ${r.status === 'CHO_DUYET'
-                        ? btn('approveRefund', r.id, 'Xác nhận hoàn tiền', 'success') + btn('rejectRefund', r.id, 'Từ chối', 'danger')
+                        ? btn('approveRefund', r.id, 'Xác nhận đã hoàn chuyển khoản', 'success') + btn('rejectRefund', r.id, 'Từ chối', 'danger')
                         : ['DA_DUYET', 'DA_HOAN'].includes(r.status)
                             ? btn('receipt', r.orderId, 'Xem phiếu hoàn tiền', 'outline-secondary')
                             : ''}
@@ -198,6 +198,18 @@ const DocumentsApp = (() => {
         renderMovements();
         renderCancellations();
         renderRefunds();
+        refreshAdminRefundBadge();
+    }
+
+    async function refreshAdminRefundBadge() {
+        try {
+            const res = await MilkTeaApi.get('/api/v1/admin/documents/refunds/pending-count');
+            const count = (res && typeof res.pendingCount === 'number') ? res.pendingCount : 0;
+            document.querySelectorAll('.admin-refund-badge').forEach(el => {
+                el.textContent = count;
+                el.classList.toggle('d-none', count === 0);
+            });
+        } catch (e) {}
     }
 
     async function load() {
@@ -236,19 +248,15 @@ const DocumentsApp = (() => {
         document.querySelectorAll('[data-doc-action]').forEach(b => b.disabled = true);
 
         try {
-            if (name === 'approveCancel' || name === 'rejectCancel') {
-                await MilkTeaApi.post(`/api/v1/admin/cancellation-requests/${id}/decision`, {
-                    approved: name === 'approveCancel',
-                    reason: 'Admin xác nhận'
-                });
-            } else {
+            if (name === 'approveRefund' || name === 'rejectRefund') {
+                const approved = name === 'approveRefund';
                 await MilkTeaApi.post(`/api/v1/admin/refunds/${id}/decision`, {
-                    approved: name === 'approveRefund',
-                    reason: 'Admin xác nhận hoàn tiền từ phiếu hủy'
+                    approved: approved,
+                    reason: approved ? 'Admin xác nhận đã hoàn chuyển khoản qua ngân hàng' : 'Admin từ chối yêu cầu hoàn tiền'
                 });
+                MilkTeaApi.showToast(approved ? 'Đã xác nhận hoàn chuyển khoản thành công!' : 'Đã từ chối yêu cầu hoàn tiền.');
             }
 
-            MilkTeaApi.showToast('Đã cập nhật phiếu.');
             await load();
         } catch (e) {
             MilkTeaApi.showToast(e.message, 'error');

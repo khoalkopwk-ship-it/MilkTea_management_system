@@ -218,16 +218,6 @@ public class PaymentService {
                     eventData);
         }
 
-        // A payment request is an explicit request to settle the table.
-        // Keep the session open while another effective invoice is unpaid.
-        if (order.getSession() != null
-                && order.getSession().getStatus() == vn.edu.ute.milktea.entity.table.TableSessionStatus.OPEN
-                && paymentNoticeRepository.findFirstByInvoiceIdOrderByCreatedAtDescIdDesc(invoiceId).isPresent()) {
-            boolean allPaid = invoiceRepository.findBySessionId(order.getSession().getId()).stream()
-                    .allMatch(i -> i.getStatus() != InvoiceStatus.HIEU_LUC
-                            || i.getTotalAmount().signum() == 0 || paymentRepository.existsByInvoiceId(i.getId()));
-            if (allPaid) tableSessionService.closeAfterPayment(order.getSession().getTable().getId(), cashierId);
-        }
         return toPaymentResponse(payment);
     }
 
@@ -275,6 +265,26 @@ public class PaymentService {
                 .build());
 
         realtimeEventPublisher.publishAfterCommit("/topic/cashier", "PAYMENT_NOTICE_CREATED", notice.getId().toString(), null, "1", java.util.Map.of("orderId", invoice.getOrder().getId(), "invoiceId", invoice.getId(), "method", request.getMethod(), "tableName", invoice.getOrder().getSession() != null ? invoice.getOrder().getSession().getTable().getName() : "Quầy"));
+    }
+
+    @Transactional
+    public PaymentDto.PaymentResponse confirmTransferReceiptForOrder(Long orderId, Long cashierId, String idempotencyKey) {
+        Invoice invoice = invoiceRepository.findByOrderId(orderId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy hóa đơn cho đơn hàng #" + orderId));
+        if (paymentRepository.existsByInvoiceId(invoice.getId())) {
+            Payment existing = paymentRepository.findByInvoiceId(invoice.getId()).orElse(null);
+            if (existing != null) {
+                return toPaymentResponse(existing);
+            }
+        }
+        PaymentDto.RecordPaymentRequest request = PaymentDto.RecordPaymentRequest.builder()
+                .method(PaymentMethod.BANK_TRANSFER)
+                .reference("TRANSFER_CONFIRMED_" + orderId)
+                .build();
+        String effectiveKey = (idempotencyKey != null && !idempotencyKey.isBlank())
+                ? idempotencyKey
+                : "TRANSFER_CONFIRM_" + orderId;
+        return recordReceipt(invoice.getId(), request, cashierId, effectiveKey);
     }
 
     @Transactional

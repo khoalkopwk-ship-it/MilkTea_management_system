@@ -31,6 +31,9 @@ public class SettingsService {
                         .modifiedAt(Instant.now())
                         .build());
 
+        String discountType = settings.getDiscountType() != null ? settings.getDiscountType() : "PERCENT";
+        BigDecimal discountValue = settings.getDiscountValue() != null ? settings.getDiscountValue() : settings.getDiscountPercent();
+
         return SettingsDto.ShopInfoResponse.builder()
                 .shopName(settings.getShopName())
                 .address(settings.getAddress())
@@ -38,6 +41,8 @@ public class SettingsService {
                 .bankAccountNumber(settings.getBankAccountNumber())
                 .bankAccountHolder(settings.getBankAccountHolder())
                 .discountPercent(settings.getDiscountPercent())
+                .discountType(discountType)
+                .discountValue(discountValue)
                 .build();
     }
 
@@ -55,7 +60,39 @@ public class SettingsService {
         settings.setBankName(request.getBankName());
         settings.setBankAccountNumber(request.getBankAccountNumber());
         settings.setBankAccountHolder(request.getBankAccountHolder());
-        settings.setDiscountPercent(request.getDiscountPercent());
+
+        String type = request.getDiscountType();
+        if (type == null || type.isBlank()) {
+            type = "PERCENT";
+        }
+        type = type.trim().toUpperCase();
+        if (!"PERCENT".equals(type) && !"FIXED_AMOUNT".equals(type)) {
+            type = "PERCENT";
+        }
+
+        BigDecimal val = request.getDiscountValue();
+        if (val == null) {
+            val = request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO;
+        }
+
+        if ("PERCENT".equals(type)) {
+            if (val.compareTo(BigDecimal.ZERO) < 0 || val.compareTo(new BigDecimal("100")) > 0) {
+                throw vn.edu.ute.milktea.common.BusinessException.badRequest(
+                        vn.edu.ute.milktea.common.ErrorCode.VALIDATION_FAILED, "Phần trăm giảm giá phải từ 0% đến 100%");
+            }
+            settings.setDiscountType("PERCENT");
+            settings.setDiscountPercent(val);
+            settings.setDiscountValue(val);
+        } else {
+            if (val.compareTo(BigDecimal.ZERO) < 0) {
+                throw vn.edu.ute.milktea.common.BusinessException.badRequest(
+                        vn.edu.ute.milktea.common.ErrorCode.VALIDATION_FAILED, "Số tiền giảm cố định không được âm");
+            }
+            settings.setDiscountType("FIXED_AMOUNT");
+            settings.setDiscountValue(val);
+            settings.setDiscountPercent(BigDecimal.ZERO);
+        }
+
         settings.setModifiedBy(admin);
         settings.setModifiedAt(Instant.now());
 

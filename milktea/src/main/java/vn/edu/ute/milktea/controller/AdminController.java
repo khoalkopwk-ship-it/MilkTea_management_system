@@ -29,6 +29,7 @@ public class AdminController {
     private final AdminService adminService;
     private final InventoryService inventoryService;
     private final ProductImageService productImageService;
+    private final vn.edu.ute.milktea.service.cancellation.RefundService refundService;
 
     // ==========================================
     // 1. QUẢN LÝ NHÂN VIÊN
@@ -52,8 +53,30 @@ public class AdminController {
     @PutMapping("/accounts/{id}")
     public ResponseEntity<ApiResponse<AdminDto.StaffResponse>> updateStaffAccount(
             @PathVariable("id") Long id,
-            @Valid @RequestBody AdminDto.UpdateStaffRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(adminService.updateStaffAccount(id, request)));
+            @Valid @RequestBody AdminDto.UpdateStaffRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long currentAdminId = actor != null ? actor.getAccountId() : null;
+        return ResponseEntity.ok(ApiResponse.ok(adminService.updateStaffAccount(id, request, currentAdminId)));
+    }
+
+    @PostMapping("/accounts/{id}/toggle-status")
+    public ResponseEntity<ApiResponse<AdminDto.StaffResponse>> toggleStaffStatus(
+            @PathVariable("id") Long id,
+            @RequestBody(required = false) Map<String, Boolean> body,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long currentAdminId = actor != null ? actor.getAccountId() : null;
+        boolean active = body != null && Boolean.TRUE.equals(body.get("active"));
+        return ResponseEntity.ok(ApiResponse.ok(adminService.toggleStaffStatus(id, active, currentAdminId)));
+    }
+
+    @PutMapping("/accounts/{id}/status")
+    public ResponseEntity<ApiResponse<AdminDto.StaffResponse>> updateStaffStatus(
+            @PathVariable("id") Long id,
+            @RequestBody(required = false) Map<String, Boolean> body,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long currentAdminId = actor != null ? actor.getAccountId() : null;
+        boolean active = body != null && Boolean.TRUE.equals(body.get("active"));
+        return ResponseEntity.ok(ApiResponse.ok(adminService.toggleStaffStatus(id, active, currentAdminId)));
     }
 
     @DeleteMapping("/accounts/{id}")
@@ -101,8 +124,24 @@ public class AdminController {
     // 3. QUẢN LÝ SẢN PHẨM & CÔNG THỨC
     // ==========================================
     @GetMapping("/products")
-    public ResponseEntity<ApiResponse<List<AdminDto.ProductResponse>>> listProducts() {
+    public ResponseEntity<ApiResponse<Object>> listProducts(
+            @RequestParam(value = "categoryId", required = false) Long categoryId,
+            @RequestParam(value = "active", required = false) Boolean active,
+            @RequestParam(value = "q", required = false) String query,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "limit", required = false) Integer limit) {
+        if (page != null || limit != null || categoryId != null || active != null || (query != null && !query.isBlank())) {
+            int p = page != null ? page : 1;
+            int l = limit != null ? limit : 10;
+            return ResponseEntity.ok(ApiResponse.ok(adminService.searchProducts(categoryId, active, query, p, l)));
+        }
         return ResponseEntity.ok(ApiResponse.ok(adminService.listProducts()));
+    }
+
+    @GetMapping("/documents/refunds/pending-count")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getPendingRefundsCount() {
+        long count = refundService.getRefunds(vn.edu.ute.milktea.entity.cancellation.RefundStatus.CHO_DUYET).size();
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("pendingCount", count)));
     }
 
     @GetMapping("/products/{id}")

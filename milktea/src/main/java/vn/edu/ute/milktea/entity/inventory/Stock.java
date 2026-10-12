@@ -26,9 +26,8 @@ public class Stock {
     @Builder.Default
     private BigDecimal quantity = BigDecimal.ZERO;
 
-    @Column(name = "NguongCanhBao", nullable = false, precision = 18, scale = 3)
-    @Builder.Default
-    private BigDecimal threshold = BigDecimal.ZERO;
+    @Column(name = "NguongCanhBao", precision = 18, scale = 3)
+    private BigDecimal threshold;
 
     @Version
     @Column(name = "Version", nullable = false)

@@ -42,4 +42,8 @@ public class OrderItem {
 
     @Column(name = "GhiChu", length = 500)
     private String note;
+
+    @OneToMany(mappedBy = "orderItem", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private java.util.List<OrderItemTopping> toppings = new java.util.ArrayList<>();
 }

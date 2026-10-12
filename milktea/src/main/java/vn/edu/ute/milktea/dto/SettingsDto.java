@@ -24,6 +24,8 @@ public class SettingsDto {
         private String bankAccountNumber;
         private String bankAccountHolder;
         private BigDecimal discountPercent;
+        private String discountType; // PERCENT, FIXED_AMOUNT
+        private BigDecimal discountValue;
     }
 
     @Data
@@ -40,9 +42,8 @@ public class SettingsDto {
         private String bankAccountNumber;
         private String bankAccountHolder;
 
-        @NotNull(message = "Tỷ lệ giảm giá không được để trống")
-        @DecimalMin(value = "0.00", message = "Tỷ lệ giảm tối thiểu là 0%")
-        @DecimalMax(value = "100.00", message = "Tỷ lệ giảm tối đa là 100%")
-        private BigDecimal discountPercent;
+        private String discountType; // PERCENT, FIXED_AMOUNT
+        private BigDecimal discountValue;
+        private BigDecimal discountPercent; // legacy compatibility
     }
 }

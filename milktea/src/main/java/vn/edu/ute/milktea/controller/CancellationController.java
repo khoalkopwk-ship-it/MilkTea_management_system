@@ -57,6 +57,18 @@ public class CancellationController {
         return ResponseEntity.ok(ApiResponse.ok(refundService.requestFromCancellation(id, actor.getAccountId())));
     }
 
+    @PostMapping({"/cashier/orders/{id}/refund-bank-request", "/cashier/cancellation-requests/{id}/refund-bank-request"})
+    public ResponseEntity<ApiResponse<CancellationDto.RefundResponse>> requestBankRefund(
+            @PathVariable("id") Long orderId, @AuthenticationPrincipal CurrentActor actor) {
+        return ResponseEntity.ok(ApiResponse.ok(refundService.requestBankRefund(orderId, actor.getAccountId())));
+    }
+
+    @PostMapping({"/cashier/orders/{id}/refund-cash", "/cashier/cancellation-requests/{id}/refund-cash"})
+    public ResponseEntity<ApiResponse<CancellationDto.RefundResponse>> refundCash(
+            @PathVariable("id") Long orderId, @AuthenticationPrincipal CurrentActor actor) {
+        return ResponseEntity.ok(ApiResponse.ok(refundService.refundCash(orderId, actor.getAccountId())));
+    }
+
     @GetMapping("/admin/refunds")
     public ResponseEntity<ApiResponse<java.util.List<CancellationDto.RefundResponse>>> getAdminRefunds(
             @RequestParam(value = "status", required = false) vn.edu.ute.milktea.entity.cancellation.RefundStatus status) {

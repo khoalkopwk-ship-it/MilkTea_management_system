@@ -5,9 +5,7 @@ import lombok.*;
 import vn.edu.ute.milktea.entity.catalog.Product;
 
 @Entity
-@Table(name = "ChiTietGioPhien", uniqueConstraints = {
-        @UniqueConstraint(name = "UQ_ChiTietGioPhien_Mon", columnNames = {"MaGio", "MaMon"})
-})
+@Table(name = "ChiTietGioPhien")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,4 +31,7 @@ public class SessionCartItem {
 
     @Column(name = "GhiChu", length = 500)
     private String note;
+
+    @Column(name = "ToppingIds", length = 255)
+    private String toppingIds;
 }

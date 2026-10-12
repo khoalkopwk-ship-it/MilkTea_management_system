@@ -11,4 +11,5 @@ import java.util.List;
 public interface MaterialRepository extends JpaRepository<Material, Long> {
     List<Material> findAllByActiveTrue();
     List<Material> findByTypeAndActiveTrue(MaterialType type);
+    java.util.Optional<Material> findByName(String name);
 }

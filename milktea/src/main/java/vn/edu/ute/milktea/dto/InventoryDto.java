@@ -28,6 +28,22 @@ public class InventoryDto {
         private BigDecimal quantity;
         private BigDecimal threshold;
         private boolean isLowStock;
+        private String alertStatus;
+        private String alertLabel;
+        private BigDecimal averageImportPrice;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StockSummaryResponse {
+        private long totalCount;
+        private long hetTonCount;
+        private long tonThapCount;
+        private long binhThuongCount;
+        private long chuaCauHinhCount;
+        private List<StockItemResponse> items;
     }
 
     @Data
@@ -50,15 +66,46 @@ public class InventoryDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class CreatePreparationBatchRequest {
-        @NotNull(message = "Mã công thức sơ chế không được để trống")
-        private Long recipeId;
+    public static class BatchInputItemRequest {
+        @NotNull(message = "Mã nguyên liệu không được để trống")
+        private Long materialId;
 
-        @NotNull(message = "Sản lượng thực thu không được để trống")
-        @DecimalMin(value = "0.0", message = "Sản lượng không được âm")
+        @NotNull(message = "Lượng nguyên liệu thực tế không được để trống")
+        @DecimalMin(value = "0.000001", message = "Lượng nguyên liệu phải lớn hơn 0")
         private BigDecimal actualQuantity;
 
+        private String unit;
+
+        private BigDecimal unitPrice;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreatePreparationBatchRequest {
+        private Long recipeId;
+        private Long outputMaterialId;
+        private Long recipeVersion;
+        private BigDecimal desiredQuantity;
+        private BigDecimal actualQuantity;
+        private String note;
         private String discrepancyReason;
+        private List<BatchInputItemRequest> inputItems;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PreparationBatchItemResponse {
+        private Long materialId;
+        private String materialName;
+        private String unit;
+        private BigDecimal recipeQuantity;
+        private BigDecimal actualQuantity;
+        private BigDecimal unitPrice;
+        private BigDecimal totalCost;
     }
 
     @Data
@@ -70,6 +117,7 @@ public class InventoryDto {
         private java.time.Instant postedAt;
         private Long recipeId;
         private String recipeName;
+        private Long recipeVersion;
         private Long outputMaterialId;
         private String outputMaterialName;
         private BigDecimal expectedQuantity;
@@ -77,9 +125,15 @@ public class InventoryDto {
         private BigDecimal differenceQuantity;
         private String unit;
         private String discrepancyReason;
+        private String note;
         private String createdByEmail;
         private String createdByName;
         private String status;
+        private BigDecimal totalCost;
+        private BigDecimal unitCost;
+        private BigDecimal ratioVariancePercent;
+        private Boolean toleranceWarning;
+        private List<PreparationBatchItemResponse> items;
     }
 
     // === NHẬP KHO ===
@@ -224,5 +278,100 @@ public class InventoryDto {
 
         @NotEmpty(message = "Danh sách nguyên liệu pha bù không được rỗng")
         private List<AdditionalConsumptionItemRequest> items;
+    }
+
+    // === KẾT CA KHO & HAO HỤT ===
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ShiftSettlementItemRequest {
+        @NotNull(message = "Mã nguyên liệu không được để trống")
+        private Long materialId;
+
+        @NotNull(message = "Tồn thực tế không được để trống")
+        @DecimalMin(value = "0.0", message = "Tồn thực tế không được âm")
+        private BigDecimal actualQuantity;
+
+        @NotNull(message = "Lượng loại bỏ không được để trống")
+        @DecimalMin(value = "0.0", message = "Lượng loại bỏ không được âm")
+        private BigDecimal discardedQuantity;
+
+        @NotNull(message = "Lượng giữ lại không được để trống")
+        @DecimalMin(value = "0.0", message = "Lượng giữ lại không được âm")
+        private BigDecimal retainedQuantity;
+
+        private String reason;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreateShiftSettlementRequest {
+        @NotNull(message = "Vị trí không được để trống")
+        private StockLocation location;
+
+        private String note;
+
+        @NotEmpty(message = "Danh sách kiểm kê không được rỗng")
+        private List<ShiftSettlementItemRequest> items;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ShiftSettlementItemResponse {
+        private Long id;
+        private Long materialId;
+        private String materialName;
+        private String unit;
+        private BigDecimal bookQuantity;
+        private BigDecimal actualQuantity;
+        private BigDecimal discardedQuantity;
+        private BigDecimal retainedQuantity;
+        private BigDecimal unexplainedDifference;
+        private BigDecimal unitCost;
+        private BigDecimal lossCost;
+        private String reason;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ShiftSettlementResponse {
+        private Long id;
+        private StockLocation location;
+        private java.time.Instant closedAt;
+        private String closedByEmail;
+        private String closedByName;
+        private BigDecimal totalLossCost;
+        private String note;
+        private List<ShiftSettlementItemResponse> items;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ShiftSettlementPreviewItem {
+        private Long materialId;
+        private String materialName;
+        private String unit;
+        private BigDecimal bookQuantity;
+        private BigDecimal estimatedUnitCost;
+        private BigDecimal standardThreshold;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ShiftSettlementPreviewResponse {
+        private StockLocation location;
+        private java.time.Instant timestamp;
+        private List<ShiftSettlementPreviewItem> items;
     }
 }

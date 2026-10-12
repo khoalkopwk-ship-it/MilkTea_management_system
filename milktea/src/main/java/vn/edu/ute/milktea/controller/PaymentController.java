@@ -18,6 +18,17 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final vn.edu.ute.milktea.service.order.OrderService orderService;
 
+    @PostMapping("/cashier/orders/{id}/confirm-transfer")
+    public ResponseEntity<ApiResponse<PaymentDto.PaymentResponse>> confirmTransferPayment(
+            @PathVariable("id") Long orderId,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @AuthenticationPrincipal CurrentActor actor) {
+
+        Long cashierId = actor != null ? actor.getAccountId() : null;
+        PaymentDto.PaymentResponse response = paymentService.confirmTransferReceiptForOrder(orderId, cashierId, idempotencyKey);
+        return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
     @PostMapping("/cashier/orders/{id}/payments")
     public ResponseEntity<ApiResponse<PaymentDto.PaymentResponse>> recordOrderPayment(
             @PathVariable("id") Long orderId,

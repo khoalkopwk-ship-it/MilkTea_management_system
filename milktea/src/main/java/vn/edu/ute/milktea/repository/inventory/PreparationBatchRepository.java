@@ -15,7 +15,14 @@ public interface PreparationBatchRepository
 
     List<PreparationBatch> findByStatus(DocumentStatus status);
 
+    List<PreparationBatch> findByOutputMaterialIdAndStatus(Long outputMaterialId, DocumentStatus status);
+
+    List<PreparationBatch> findByOutputMaterialIdAndStatusAndPostedAtBetween(
+            Long outputMaterialId, DocumentStatus status, java.time.Instant from, java.time.Instant to);
+
     List<PreparationBatch> findAllByOrderByPostedAtDescIdDesc();
+
+    List<PreparationBatch> findByPostedAtBetweenOrderByPostedAtDescIdDesc(java.time.Instant from, java.time.Instant to);
 
     Optional<PreparationBatch> findByIdempotencyKey(
             String idempotencyKey);

@@ -3,11 +3,89 @@
 <body><div th:fragment="content" class="container py-4">
 <div id="ordersPage" th:attr="data-qr=${tableQr},data-table=${currentTable != null ? currentTable.id : ''}">
 <span id="staffOrders" th:attr="data-role=${actor != null ? actor.role : ''}" sec:authorize="hasAnyRole('CASHIER','ADMIN')" hidden></span>
-<link rel="stylesheet" th:href="@{/css/staff-ui.css}"><h3 class="brand-font">Đơn đã đặt <span class="table-badge" th:if="${currentTable != null}" th:text="${currentTable.name}"></span></h3>
-<div class="row g-2 my-3"><div class="col-md-6"><input id="orderSearch" class="form-control" placeholder="Tìm mã đơn, ví dụ ORD001 hoặc 1" aria-label="Tìm mã đơn"></div>
-<div class="col-md-4"><select id="orderStatus" class="form-select" aria-label="Lọc trạng thái"><option value="">Tất cả trạng thái</option><option value="CHO_THANH_TOAN">Chờ thanh toán</option><option value="CHO_XAC_NHAN">Chờ xác nhận</option><option value="CHO_CHE_BIEN">Chờ chế biến</option><option value="DANG_CHE_BIEN">Đang chế biến</option><option value="HOAN_THANH">Hoàn thành</option><option value="DA_HUY">Đã hủy</option><option value="CANCEL_PENDING">Chờ xác nhận hủy</option></select></div>
-<div class="col-md-2"><button class="btn btn-outline-secondary w-100" onclick="OrdersApp.load()">Làm mới</button></div></div>
-<div id="ordersError" class="alert alert-danger d-none" role="alert"></div><div id="ordersList" class="d-grid gap-3">Đang tải đơn hàng...</div>
+<link rel="stylesheet" th:href="@{/css/staff-ui.css}">
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="brand-font mb-0">Đơn hàng <span class="table-badge" th:if="${currentTable != null}" th:text="${currentTable.name}"></span></h3>
+</div>
+
+<div sec:authorize="hasAnyRole('CASHIER','ADMIN')" class="order-tabs-scroll-container mb-3" id="staffTabsWrapper">
+    <ul class="nav nav-pills order-tabs-nav" id="orderStaffTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-tab="all" type="button">
+                Tất cả <span class="badge rounded-pill bg-secondary d-none" id="tabBadge_all">0</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-tab="confirm" type="button">
+                Xác nhận đơn <span class="badge rounded-pill bg-danger d-none" id="tabBadge_confirm">0</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-tab="cooking" type="button">
+                Chờ chế biến <span class="badge rounded-pill bg-primary d-none" id="tabBadge_cooking">0</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-tab="transfer" type="button">
+                Xác nhận chuyển khoản <span class="badge rounded-pill bg-info text-dark d-none" id="tabBadge_transfer">0</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-tab="completed" type="button">
+                Hoàn thành <span class="badge rounded-pill bg-success d-none" id="tabBadge_completed">0</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-tab="cancel" type="button">
+                Yêu cầu hủy <span class="badge rounded-pill bg-danger d-none" id="tabBadge_cancel">0</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-tab="refund" type="button">
+                Hoàn tiền <span class="badge rounded-pill bg-warning text-dark d-none" id="tabBadge_refund">0</span>
+            </button>
+        </li>
+    </ul>
+</div>
+
+<div class="row g-2 mb-3" id="orderFiltersRow">
+    <div class="col-md-5" id="colOrderSearch">
+        <input id="orderSearch" class="form-control" placeholder="Tìm mã đơn, tên bàn, khách hàng..." aria-label="Tìm mã đơn">
+    </div>
+    <div class="col-md-3" id="colOrderStatus">
+        <select id="orderStatus" class="form-select" aria-label="Lọc trạng thái">
+            <option value="">Tất cả trạng thái</option>
+            <option value="CHO_XAC_NHAN">Chờ xác nhận</option>
+            <option value="CHO_CHE_BIEN">Chờ chế biến</option>
+            <option value="DANG_CHE_BIEN">Đang chế biến</option>
+            <option value="HOAN_THANH">Hoàn thành</option>
+            <option value="DA_HUY">Đã hủy</option>
+        </select>
+    </div>
+    <div class="col-md-3" id="colPaymentStatus">
+        <select id="orderPaymentStatus" class="form-select" aria-label="Lọc thanh toán">
+            <option value="">Tất cả thanh toán</option>
+            <option value="UNPAID">Chưa thu tiền</option>
+            <option value="TRANSFER_PENDING">Khách báo đã CK</option>
+            <option value="PAID">Đã thu tiền</option>
+        </select>
+    </div>
+    <div class="col-md-3 d-none" id="colRefundStatus">
+        <select id="orderRefundStatus" class="form-select" aria-label="Lọc trạng thái hoàn">
+            <option value="CAN_GUI_YEU_CAU">Cần gửi yêu cầu / Cần hoàn</option>
+            <option value="CHO_XAC_NHAN">Chờ xác nhận</option>
+            <option value="HOAN_TAT">Hoàn tất</option>
+            <option value="TAT_CA">Tất cả</option>
+        </select>
+    </div>
+    <div class="col-md-1" id="colRefreshBtn">
+        <button class="btn btn-outline-secondary w-100" onclick="OrdersApp.load()" title="Làm mới"><i class="bi bi-arrow-clockwise"></i></button>
+    </div>
+</div>
+
+<div id="ordersError" class="alert alert-danger d-none" role="alert"></div>
+<div id="ordersList" class="d-grid gap-3">Đang tải đơn hàng...</div>
+<div id="ordersPagination"></div>
 </div></div>
 <th:block th:fragment="scripts"><script th:src="@{/js/customer/customer.js}"></script><script th:src="@{/js/order/orders.js}"></script></th:block>
 </body></html>
