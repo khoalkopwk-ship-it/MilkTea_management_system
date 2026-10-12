@@ -11,7 +11,6 @@
         <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-success fs-6 py-2 px-3 rounded-pill"><i class="bi bi-fire me-1"></i> Bếp Pha Chế (KDS)</span>
-                <span class="text-muted small">Hàng đợi đơn pha chế theo thời gian thực & tồn kho nguyên liệu Bếp</span>
             </div>
             <div>
                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="KitchenApp.init()">
@@ -19,25 +18,6 @@
                 </button>
             </div>
         </div>
-
-        <!-- Tabs -->
-        <ul class="nav nav-pills mb-3 gap-2" id="kitchenTabs" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active rounded-pill px-4" data-bs-toggle="pill" data-bs-target="#tabKds">
-                    <i class="bi bi-cup-straw me-1"></i> Hàng Đợi Pha Chế
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link rounded-pill px-4" data-bs-toggle="pill" data-bs-target="#tabStock">
-                    <i class="bi bi-box-seam me-1"></i> Kho Bếp & Sơ Chế
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link rounded-pill px-4" data-bs-toggle="pill" data-bs-target="#tabPreparationHistory">
-                    <i class="bi bi-clock-history me-1"></i> Lịch Sử Sơ Chế
-                </button>
-            </li>
-        </ul>
 
         <div class="tab-content">
             <!-- Tab 1: KDS Orders Pipeline -->
@@ -80,22 +60,39 @@
                     <div class="col-lg-4">
                         <div class="card border-0 shadow-sm rounded-4 p-4">
                             <h5 class="fw-bold mb-3"><i class="bi bi-magic me-2 text-success"></i> Sơ Chế Mẻ Mới</h5>
-                            <p class="text-muted small">Bếp tự sơ chế thành phẩm từ nguyên liệu thô (ví dụ: Nấu Trân Châu). Hệ thống sẽ tự động trừ kho nguyên liệu thô và tăng tồn sơ chế.</p>
+                            <p class="text-muted small">Bếp chọn thành phẩm cần sơ chế và nhập sản lượng mong muốn. Lượng nguyên liệu thô cần dùng được tự động tính theo định mức cố định của quán.</p>
 
                             <form onsubmit="event.preventDefault(); KitchenApp.submitPreparation();">
                                 <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Chọn công thức sơ chế:</label>
-                                    <select class="form-select rounded-3" id="prepRecipeSelect" required></select>
+                                    <label class="form-label small fw-semibold">Thành phẩm cần sơ chế:</label>
+                                    <select class="form-select rounded-3" id="prepOutputMaterialSelect" onchange="KitchenApp.onPrepOutputMaterialChange()" required></select>
                                 </div>
+
+                                <div id="prepRecipeInfo" class="p-3 bg-light rounded-3 mb-3 d-none">
+                                    <!-- Rendered dynamically: Tỉ lệ định mức & sản lượng chuẩn -->
+                                </div>
+
                                 <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Sản lượng thực thu:</label>
-                                    <input type="number" step="0.01" class="form-control rounded-3" id="prepActualQty" placeholder="Nhập số lượng thực thu" required>
+                                    <label class="form-label small fw-semibold">Sản lượng mong muốn:</label>
+                                    <div class="input-group">
+                                        <input type="number" step="any" min="0.000001" class="form-control rounded-start-3" id="prepDesiredQty" oninput="KitchenApp.onDesiredQtyChange()" placeholder="Nhập sản lượng mong muốn (> 0)" required>
+                                        <span class="input-group-text bg-light text-muted fw-semibold" id="prepOutputUnit">ml</span>
+                                    </div>
                                 </div>
+
+                                <div id="prepNeededRawMaterialsContainer" class="mb-3 d-none">
+                                    <label class="form-label small fw-semibold">Nguyên liệu thô cần dùng (tự động theo định mức):</label>
+                                    <div id="prepNeededRawMaterials" class="p-3 bg-light rounded-3 small">
+                                        <!-- Rendered readonly raw materials -->
+                                    </div>
+                                </div>
+
                                 <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Ghi chú / Chênh lệch (nếu có):</label>
-                                    <input type="text" class="form-control rounded-3" id="prepReason" placeholder="Lý do chênh lệch...">
+                                    <label class="form-label small fw-semibold">Ghi chú (nếu có):</label>
+                                    <input type="text" class="form-control rounded-3" id="prepNote" placeholder="Ghi chú mẻ sơ chế...">
                                 </div>
-                                <button type="submit" class="btn btn-success w-100 py-2 rounded-pill fw-bold">
+
+                                <button type="submit" id="btnSubmitPrep" class="btn btn-success w-100 py-2 rounded-pill fw-bold">
                                     <i class="bi bi-check2-circle me-1"></i> Xác Nhận Mẻ Sơ Chế
                                 </button>
                             </form>
@@ -114,7 +111,7 @@
                                 Lịch Sử Sơ Chế Nguyên Liệu
                             </h5>
                             <p class="text-muted small mb-0">
-                                Theo dõi các mẻ sơ chế đã ghi nhận tại Bếp.
+                                Theo dõi toàn bộ lịch sử sơ chế từ khi hệ thống hoạt động, thông tin định mức, giá vốn và chi phí thực tế.
                             </p>
                         </div>
                         <button type="button"
@@ -124,30 +121,219 @@
                         </button>
                     </div>
 
+                    <!-- Toolbar Bộ lọc thời gian -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-3 bg-light rounded-3">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="small fw-semibold text-muted">Từ:</span>
+                            <input type="date" id="prepFilterFrom" class="form-control form-control-sm rounded-2" style="width: 145px;">
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="small fw-semibold text-muted">Đến:</span>
+                            <input type="date" id="prepFilterTo" class="form-control form-control-sm rounded-2" style="width: 145px;">
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" onclick="KitchenApp.filterPreparationHistory(false)">
+                            <i class="bi bi-funnel me-1"></i> Lọc
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="KitchenApp.filterPreparationHistory(true)">
+                            <i class="bi bi-infinity me-1"></i> Tất cả thời gian
+                        </button>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
                                 <tr>
                                     <th>Thời gian</th>
                                     <th>Mã mẻ</th>
-                                    <th>Công thức</th>
                                     <th>Thành phẩm</th>
-                                    <th>Dự kiến</th>
-                                    <th>Thực thu</th>
-                                    <th>Chênh lệch</th>
+                                    <th>Nguyên liệu thô</th>
+                                    <th>Sản lượng</th>
+                                    <th>Giá vốn</th>
+                                    <th>Tổng chi phí</th>
                                     <th>Người thực hiện</th>
                                     <th>Ghi chú</th>
-                                    <th>Trạng thái</th>
                                 </tr>
                             </thead>
                             <tbody id="preparationHistoryTableBody">
                                 <tr>
-                                    <td colspan="10" class="text-center text-muted py-4">
+                                    <td colspan="9" class="text-center text-muted py-4">
                                         Đang nạp lịch sử sơ chế...
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: Kiểm Kê & Hao Hụt Cuối Ca -->
+            <div class="tab-pane fade" id="tabShiftSettlement">
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">
+                                <i class="bi bi-clipboard2-check me-2 text-danger"></i>
+                                Bảng Kiểm Kê & Tính Hao Hụt Cuối Ca (Bếp)
+                            </h5>
+                            <p class="text-muted small mb-0">
+                                Kiểm kê tồn thực tế nguyên liệu sơ chế, xác định lượng loại bỏ (hết hạn/đổ bỏ) và lượng giữ lại chuyển ca sau.
+                            </p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="KitchenApp.loadShiftSettlementPreview()">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Nạp Dữ Liệu Tồn Sổ
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-bordered table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nguyên Liệu</th>
+                                    <th>Đơn Vị</th>
+                                    <th>Tồn Sổ</th>
+                                    <th style="width: 140px;">Tồn Thực Tế</th>
+                                    <th style="width: 140px;">Lượng Loại Bỏ</th>
+                                    <th style="width: 140px;">Lượng Giữ Lại</th>
+                                    <th>Giá Vốn / Đơn Vị</th>
+                                    <th>Chi Phí Hao Hụt</th>
+                                    <th>Lý Do</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shiftSettlementTableBody">
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-4">
+                                        Nhấn "Nạp Dữ Liệu Tồn Sổ" để bắt đầu kiểm kê cuối ca
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="table-light fw-bold">
+                                <tr>
+                                    <td colspan="7" class="text-end">TỔNG CHI PHÍ HAO HỤT CUỐI CA:</td>
+                                    <td id="shiftSettlementTotalCost" class="text-danger fs-6">0 ₫</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="row align-items-center g-3">
+                        <div class="col-md-8">
+                            <input type="text" id="shiftSettlementNote" class="form-control rounded-3" placeholder="Ghi chú kết ca (ví dụ: Kết ca tối 12/10)...">
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button type="button" class="btn btn-danger w-100 py-2 rounded-pill fw-bold" onclick="KitchenApp.submitShiftSettlement()">
+                                <i class="bi bi-check2-circle me-1"></i> Xác Nhận Chốt Ca & Ghi Hao Hụt
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lịch Sử Các Biên Bản Kết Ca Đã Chốt -->
+                <div class="card border-0 shadow-sm rounded-4 p-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1"><i class="bi bi-clock-history me-2 text-secondary"></i> Lịch Sử Biên Bản Kết Ca Đã Chốt</h5>
+                            <p class="text-muted small mb-0">Theo dõi lịch sử kết ca và số liệu hao hụt đã chốt qua các ca làm việc.</p>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="KitchenApp.loadPastSettlements()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                        </button>
+                    </div>
+
+                    <!-- Toolbar Bộ lọc thời gian kết ca -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-3 bg-light rounded-3">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="small fw-semibold text-muted">Từ:</span>
+                            <input type="date" id="settlementFilterFrom" class="form-control form-control-sm rounded-2" style="width: 145px;">
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="small fw-semibold text-muted">Đến:</span>
+                            <input type="date" id="settlementFilterTo" class="form-control form-control-sm rounded-2" style="width: 145px;">
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" onclick="KitchenApp.filterPastSettlements(false)">
+                            <i class="bi bi-funnel me-1"></i> Lọc
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="KitchenApp.filterPastSettlements(true)">
+                            <i class="bi bi-infinity me-1"></i> Tất cả thời gian
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Mã BB</th>
+                                    <th>Thời Gian Chốt</th>
+                                    <th>Người Chốt</th>
+                                    <th>Tổng Chi Phí Hao Hụt</th>
+                                    <th>Ghi Chú</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pastSettlementsTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">Chưa có biên bản kết ca nào</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal Chi Tiết Đơn Hàng (Chỉ đọc, không đổi trạng thái/kho) -->
+        <div class="modal fade" id="orderDetailModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <div>
+                            <h5 class="modal-title brand-font text-dark fw-bold mb-1" id="orderDetailTitle">
+                                <i class="bi bi-receipt me-1 text-primary"></i> Chi Tiết Đơn Hàng
+                            </h5>
+                            <span class="badge bg-light text-muted border small" id="orderDetailSubtitle"></span>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="row g-3 mb-3 p-3 bg-light rounded-3">
+                            <div class="col-6 col-md-3">
+                                <span class="text-muted small d-block">Mã Đơn:</span>
+                                <strong class="fs-6" id="orderDetailCode">-</strong>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <span class="text-muted small d-block">Nguồn / Bàn:</span>
+                                <strong class="fs-6" id="orderDetailTable">-</strong>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <span class="text-muted small d-block">Trạng Thái:</span>
+                                <span id="orderDetailStatus" class="badge bg-secondary">-</span>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <span class="text-muted small d-block">Thời Gian Đặt:</span>
+                                <strong class="small" id="orderDetailTime">-</strong>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold mb-2"><i class="bi bi-cup-hot me-1 text-success"></i> Danh Sách Món Cần Chế Biến:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Món &amp; Topping</th>
+                                        <th style="width: 80px;" class="text-center">Size</th>
+                                        <th style="width: 90px;" class="text-center">Số lượng</th>
+                                        <th>Ghi chú</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orderDetailItemsBody">
+                                    <!-- Rendered dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
                     </div>
                 </div>
             </div>

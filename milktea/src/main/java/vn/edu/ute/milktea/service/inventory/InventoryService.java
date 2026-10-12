@@ -18,7 +18,11 @@ import vn.edu.ute.milktea.repository.recipe.PreparationRecipeItemRepository;
 import vn.edu.ute.milktea.repository.recipe.PreparationRecipeRepository;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Service
@@ -37,9 +41,31 @@ public class InventoryService {
     private final vn.edu.ute.milktea.repository.recipe.ProductRecipeRepository productRecipeRepository;
     private final ImportReceiptRepository importReceiptRepository;
     private final ImportReceiptItemRepository importReceiptItemRepository;
+    private final ShiftSettlementRepository shiftSettlementRepository;
+    private final ShiftSettlementItemRepository shiftSettlementItemRepository;
     private final vn.edu.ute.milktea.repository.audit.BusinessAuditRepository auditRepository;
     private final vn.edu.ute.milktea.repository.order.OrderRepository orderRepository;
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
+
+    @Transactional(readOnly = true)
+    public BigDecimal getMaterialCostPrice(Long materialId) {
+        List<ImportReceiptItem> importItems = importReceiptItemRepository.findByIdMaterialId(materialId);
+        if (importItems.isEmpty()) {
+            return null;
+        }
+        BigDecimal totalCost = BigDecimal.ZERO;
+        BigDecimal totalQty = BigDecimal.ZERO;
+        for (ImportReceiptItem item : importItems) {
+            if (item.getQuantity() != null && item.getQuantity().signum() > 0 && item.getUnitPrice() != null) {
+                totalCost = totalCost.add(item.getQuantity().multiply(item.getUnitPrice()));
+                totalQty = totalQty.add(item.getQuantity());
+            }
+        }
+        if (totalQty.signum() <= 0) {
+            return null;
+        }
+        return totalCost.divide(totalQty, 6, RoundingMode.HALF_UP);
+    }
 
     @Transactional
     public void completeOrderConsumption(Order order, Account kitchenAccount) {
@@ -62,29 +88,32 @@ public class InventoryService {
                 throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
                         "Số lượng tiêu hao không hợp lệ: " + material.getName());
             }
-            StockLocation location;
-            if (snap.getSnapshotType() == MaterialType.THO) {
-                location = StockLocation.KHO;
-            } else if (snap.getSnapshotType() == MaterialType.SOCHE) {
-                location = StockLocation.BEP;
-            } else {
-                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
-                        "Loại nguyên liệu không hợp lệ: " + material.getName());
+            StockLocation location = snap.getSnapshotType() == MaterialType.SOCHE ? StockLocation.BEP : StockLocation.KHO;
+            var stockOpt = stockRepository.findByIdWithLock(material.getId(), location);
+            if (stockOpt.isEmpty()) {
+                StockLocation alternate = location == StockLocation.BEP ? StockLocation.KHO : StockLocation.BEP;
+                var altOpt = stockRepository.findByIdWithLock(material.getId(), alternate);
+                if (altOpt.isPresent()) {
+                    stockOpt = altOpt;
+                    location = alternate;
+                }
             }
-            Stock stock = stockRepository.findByIdWithLock(material.getId(), location)
-                    .orElseThrow(() -> BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
-                            "Không tìm thấy tồn kho " + material.getName() + " tại " + location));
+            final StockLocation actualLocation = location;
+            Stock stock = stockOpt.orElseThrow(() -> BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
+                    "Không tìm thấy tồn kho " + material.getName() + " tại " + actualLocation));
             BigDecimal before = stock.getQuantity();
             if (before.compareTo(needed) < 0) {
+                String unit = material.getUnit() != null ? material.getUnit() : "";
                 throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
-                        "Không đủ " + material.getName() + " tại " + location
-                                + ". Cần: " + needed + ", còn: " + before);
+                        "Không đủ tồn kho " + material.getName() + " tại " + actualLocation
+                                + ". Cần: " + needed + (unit.isEmpty() ? "" : " " + unit)
+                                + ", còn: " + before + (unit.isEmpty() ? "" : " " + unit));
             }
             BigDecimal after = before.subtract(needed);
             stock.setQuantity(after);
             stockRepository.save(stock);
             movements.add(StockMovement.builder()
-                    .material(material).location(location).type(StockMovementType.TIEU_HAO)
+                    .material(material).location(actualLocation).type(StockMovementType.TIEU_HAO)
                     .deltaQuantity(needed.negate()).beforeQuantity(before).afterQuantity(after)
                     .sourceType("ORDER").sourceId(order.getId()).sourceLine(material.getId())
                     .createdBy(kitchenAccount).createdAt(Instant.now())
@@ -106,15 +135,22 @@ public class InventoryService {
             Account kitchenAccount,
             String key) {
         if (kitchenAccount == null) {
-            throw BusinessException.forbidden(
-                    ErrorCode.ACCESS_DENIED,
-                    "Bạn chưa đăng nhập");
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn chưa đăng nhập");
         }
-
         if (key != null && key.length() > 64) {
             throw BusinessException.badRequest(
                     ErrorCode.VALIDATION_FAILED,
                     "Mã yêu cầu quá dài");
+        }
+
+        BigDecimal desiredQuantity = request.getDesiredQuantity() != null
+                ? request.getDesiredQuantity()
+                : request.getActualQuantity();
+
+        if (desiredQuantity == null || desiredQuantity.signum() <= 0) {
+            throw BusinessException.badRequest(
+                    ErrorCode.VALIDATION_FAILED,
+                    "Sản lượng thành phẩm mong muốn phải lớn hơn 0");
         }
 
         String requestKey = (key == null || key.isBlank())
@@ -124,15 +160,42 @@ public class InventoryService {
         accountRepository.findByIdWithLock(kitchenAccount.getId())
                 .orElseThrow();
 
+        PreparationRecipe recipe;
+        if (request.getRecipeId() != null) {
+            recipe = recipeRepository.findById(request.getRecipeId())
+                    .orElseThrow(() -> BusinessException.notFound(
+                            ErrorCode.VALIDATION_FAILED,
+                            "Công thức sơ chế không tồn tại: ID " + request.getRecipeId()));
+        } else if (request.getOutputMaterialId() != null) {
+            recipe = recipeRepository.findByOutputMaterialIdAndActiveTrue(request.getOutputMaterialId())
+                    .orElseThrow(() -> BusinessException.notFound(
+                            ErrorCode.VALIDATION_FAILED,
+                            "Không tìm thấy định mức sơ chế đang áp dụng cho thành phẩm ID " + request.getOutputMaterialId()));
+        } else {
+            throw BusinessException.badRequest(
+                    ErrorCode.VALIDATION_FAILED,
+                    "Vui lòng chọn thành phẩm sơ chế");
+        }
+
+        if (!Boolean.TRUE.equals(recipe.getActive())) {
+            throw BusinessException.badRequest(
+                    ErrorCode.VALIDATION_FAILED,
+                    "Định mức sơ chế cho thành phẩm này hiện đang tạm dừng hoặc không còn hiệu lực.");
+        }
+
+        if (request.getRecipeVersion() != null && recipe.getVersion() != null
+                && !recipe.getVersion().equals(request.getRecipeVersion())) {
+            throw BusinessException.conflict(
+                    ErrorCode.ORDER_STATE_CONFLICT,
+                    "Định mức sơ chế đã được Quản trị viên cập nhật phiên bản mới. Vui lòng tải lại thông tin thành phẩm!");
+        }
+
         var existing = batchRepository.findByIdempotencyKey(requestKey);
         if (existing.isPresent()) {
             PreparationBatch old = existing.get();
             boolean same = old.getCreatedBy().getId().equals(kitchenAccount.getId())
-                    && old.getRecipe().getId().equals(request.getRecipeId())
-                    && old.getActualQuantity().compareTo(request.getActualQuantity()) == 0
-                    && Objects.equals(
-                        old.getDiscrepancyReason(),
-                        request.getDiscrepancyReason());
+                    && old.getRecipe().getId().equals(recipe.getId())
+                    && old.getActualQuantity().compareTo(desiredQuantity) == 0;
 
             if (!same) {
                 throw BusinessException.conflict(
@@ -142,54 +205,113 @@ public class InventoryService {
             return;
         }
 
-        PreparationRecipe recipe = recipeRepository
-                .findById(request.getRecipeId())
-                .orElseThrow(() -> BusinessException.notFound(
-                        ErrorCode.VALIDATION_FAILED,
-                        "Công thức sơ chế không tồn tại: ID " + request.getRecipeId()
-                ));
         List<PreparationRecipeItem> recipeItems = recipeItemRepository.findByIdRecipeId(recipe.getId());
         if (recipeItems.isEmpty()) {
             throw BusinessException.badRequest(
                     ErrorCode.VALIDATION_FAILED,
-                    "Công thức sơ chế chưa cấu hình nguyên liệu đầu vào");
+                    "Định mức sơ chế chưa cấu hình nguyên liệu đầu vào");
         }
+
+        BigDecimal stdOutput = recipe.getStandardOutputQuantity();
+        if (stdOutput == null || stdOutput.signum() <= 0) {
+            throw BusinessException.badRequest(
+                    ErrorCode.VALIDATION_FAILED,
+                    "Sản lượng chuẩn của định mức không hợp lệ");
+        }
+
+        // Hệ số mẻ = lượng thành phẩm mong muốn / sản lượng đầu ra của định mức
+        BigDecimal batchScale = desiredQuantity.divide(stdOutput, 12, RoundingMode.HALF_UP);
+
+        class BatchInputRecord {
+            Material material;
+            BigDecimal recipeQuantity;
+            BigDecimal actualQuantity;
+            BigDecimal unitPrice;
+            BigDecimal totalCost;
+        }
+
+        List<BatchInputRecord> inputRecords = new ArrayList<>();
+        BigDecimal totalBatchCost = BigDecimal.ZERO;
+
+        for (PreparationRecipeItem rItem : recipeItems) {
+            Material inMat = rItem.getInputMaterial();
+            BigDecimal stdInput = rItem.getStandardInputQuantity();
+            if (stdInput == null || stdInput.signum() <= 0) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                        "Định lượng đầu vào không hợp lệ cho nguyên liệu: " + inMat.getName());
+            }
+
+            // Lượng nguyên liệu thô cần dùng = lượng đầu vào định mức × hệ số mẻ
+            BigDecimal neededInputQty = stdInput.multiply(batchScale);
+
+            BigDecimal unitPrice = getMaterialCostPrice(inMat.getId());
+            if (unitPrice == null) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                        "Chưa đủ dữ liệu giá vốn cho nguyên liệu: " + inMat.getName());
+            }
+
+            BigDecimal itemCost = neededInputQty.multiply(unitPrice);
+            totalBatchCost = totalBatchCost.add(itemCost);
+
+            BatchInputRecord bir = new BatchInputRecord();
+            bir.material = inMat;
+            bir.recipeQuantity = neededInputQty;
+            bir.actualQuantity = neededInputQty;
+            bir.unitPrice = unitPrice;
+            bir.totalCost = itemCost;
+            inputRecords.add(bir);
+        }
+
+        // Giá vốn 1 đơn vị thành phẩm = chi phí định mức / sản lượng đầu ra định mức (tương đương totalBatchCost / desiredQuantity)
+        BigDecimal unitCost = totalBatchCost.divide(desiredQuantity, 12, RoundingMode.HALF_UP);
+
+        String note = request.getNote() != null ? request.getNote().trim() : request.getDiscrepancyReason();
 
         PreparationBatch batch = PreparationBatch.builder()
                 .recipe(recipe)
                 .outputMaterial(recipe.getOutputMaterial())
-                .expectedQuantity(recipe.getStandardOutputQuantity())
-                .actualQuantity(request.getActualQuantity())
+                .expectedQuantity(stdOutput)
+                .actualQuantity(desiredQuantity)
                 .status(DocumentStatus.DA_GHI_SO)
-                .discrepancyReason(request.getDiscrepancyReason())
+                .discrepancyReason(note)
                 .createdBy(kitchenAccount)
                 .postedAt(Instant.now())
                 .idempotencyKey(requestKey)
+                .totalCost(totalBatchCost.setScale(2, RoundingMode.HALF_UP))
+                .unitCost(unitCost)
+                .ratioVariancePercent(BigDecimal.ZERO)
+                .toleranceWarning(false)
                 .build();
         batch = batchRepository.save(batch);
 
         List<PreparationBatchItem> batchItems = new ArrayList<>();
         List<StockMovement> movements = new ArrayList<>();
 
-        // Giảm nguyên liệu đầu vào (THO) tại KHO tổng
-        for (PreparationRecipeItem item : recipeItems) {
-            Material inMat = item.getInputMaterial();
-            BigDecimal inQty = item.getStandardInputQuantity();
-            Stock inStock = stockRepository.findByIdWithLock(
-                    inMat.getId(),
-                    StockLocation.KHO)
-                    .orElseThrow(() -> BusinessException.notFound(
-                            ErrorCode.INVENTORY_INSUFFICIENT,
-                            "Không tìm thấy nguyên liệu đầu vào tại Kho tổng: "
-                                    + inMat.getName()));
+        for (BatchInputRecord bir : inputRecords) {
+            Material inMat = bir.material;
+            BigDecimal inQty = bir.actualQuantity;
+
+            StockLocation inLoc = StockLocation.BEP;
+            var inStockOpt = stockRepository.findByIdWithLock(inMat.getId(), StockLocation.BEP);
+            if (inStockOpt.isEmpty() || inStockOpt.get().getQuantity().compareTo(inQty) < 0) {
+                var khoStockOpt = stockRepository.findByIdWithLock(inMat.getId(), StockLocation.KHO);
+                if (khoStockOpt.isPresent() && (inStockOpt.isEmpty() || khoStockOpt.get().getQuantity().compareTo(inQty) >= 0)) {
+                    inLoc = StockLocation.KHO;
+                    inStockOpt = khoStockOpt;
+                }
+            }
+
+            Stock inStock = inStockOpt.orElseThrow(() -> BusinessException.notFound(
+                    ErrorCode.INVENTORY_INSUFFICIENT,
+                    "Không tìm thấy nguyên liệu đầu vào tại kho: " + inMat.getName()));
 
             if (inStock.getQuantity().compareTo(inQty) < 0) {
+                String unit = inMat.getUnit() != null ? inMat.getUnit() : "";
                 throw BusinessException.conflict(
                         ErrorCode.INVENTORY_INSUFFICIENT,
-                        "Nguyên liệu đầu vào tại Kho tổng không đủ để sơ chế mẻ: "
-                                + inMat.getName()
-                                + " (Còn: " + inStock.getQuantity()
-                                + ", cần: " + inQty + ")");
+                        "Nguyên liệu đầu vào không đủ: " + inMat.getName()
+                                + " (Còn: " + inStock.getQuantity() + " " + unit
+                                + ", cần: " + inQty + " " + unit + ")");
             }
 
             BigDecimal before = inStock.getQuantity();
@@ -201,13 +323,15 @@ public class InventoryService {
                     .id(new PreparationBatchItemId(batch.getId(), inMat.getId()))
                     .batch(batch)
                     .material(inMat)
-                    .recipeQuantity(inQty)
+                    .recipeQuantity(bir.recipeQuantity)
                     .actualQuantity(inQty)
+                    .unitPrice(bir.unitPrice)
+                    .totalCost(bir.totalCost)
                     .build());
 
             movements.add(StockMovement.builder()
                     .material(inMat)
-                    .location(StockLocation.KHO)
+                    .location(inLoc)
                     .type(StockMovementType.SOCHE_RA)
                     .deltaQuantity(inQty.negate())
                     .beforeQuantity(before)
@@ -221,7 +345,6 @@ public class InventoryService {
                     .build());
         }
 
-        // Tăng nguyên liệu đầu ra (SOCHE) tại BEP
         Material outMat = recipe.getOutputMaterial();
         Stock outStock = stockRepository.findByIdWithLock(outMat.getId(), StockLocation.BEP)
                 .orElseGet(() -> Stock.builder()
@@ -232,7 +355,7 @@ public class InventoryService {
                         .build());
 
         BigDecimal outBefore = outStock.getQuantity();
-        BigDecimal outAfter = outBefore.add(request.getActualQuantity());
+        BigDecimal outAfter = outBefore.add(desiredQuantity);
         outStock.setQuantity(outAfter);
         stockRepository.save(outStock);
 
@@ -240,7 +363,7 @@ public class InventoryService {
                 .material(outMat)
                 .location(StockLocation.BEP)
                 .type(StockMovementType.SOCHE_VAO)
-                .deltaQuantity(request.getActualQuantity())
+                .deltaQuantity(desiredQuantity)
                 .beforeQuantity(outBefore)
                 .afterQuantity(outAfter)
                 .sourceType("BATCH")
@@ -272,10 +395,23 @@ public class InventoryService {
 
     @Transactional(readOnly = true)
     public List<InventoryDto.PreparationBatchResponse> listPreparationBatches() {
-        return batchRepository.findAllByOrderByPostedAtDescIdDesc()
-                .stream()
-                .map(this::mapPreparationBatch)
-                .toList();
+        return listPreparationBatches(null, null, true);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InventoryDto.PreparationBatchResponse> listPreparationBatches(LocalDate from, LocalDate to, boolean all) {
+        List<PreparationBatch> batches;
+        if (all) {
+            batches = batchRepository.findAllByOrderByPostedAtDescIdDesc();
+        } else {
+            ZoneId zone = ZoneId.of("Asia/Ho_Chi_Minh");
+            LocalDate f = (from != null) ? from : LocalDate.now(zone);
+            LocalDate t = (to != null) ? to : LocalDate.now(zone);
+            Instant fromInstant = f.atStartOfDay(zone).toInstant();
+            Instant toInstant = t.atTime(LocalTime.MAX).atZone(zone).toInstant();
+            batches = batchRepository.findByPostedAtBetweenOrderByPostedAtDescIdDesc(fromInstant, toInstant);
+        }
+        return batches.stream().map(this::mapPreparationBatch).toList();
     }
 
     private InventoryDto.PreparationBatchResponse mapPreparationBatch(PreparationBatch batch) {
@@ -289,11 +425,25 @@ public class InventoryService {
         Material output = batch.getOutputMaterial();
         PreparationRecipe recipe = batch.getRecipe();
 
+        List<InventoryDto.PreparationBatchItemResponse> items = batchItemRepository.findByIdBatchId(batch.getId())
+                .stream()
+                .map(bi -> InventoryDto.PreparationBatchItemResponse.builder()
+                        .materialId(bi.getMaterial().getId())
+                        .materialName(bi.getMaterial().getName())
+                        .unit(bi.getMaterial().getUnit())
+                        .recipeQuantity(bi.getRecipeQuantity())
+                        .actualQuantity(bi.getActualQuantity())
+                        .unitPrice(bi.getUnitPrice())
+                        .totalCost(bi.getTotalCost())
+                        .build())
+                .toList();
+
         return InventoryDto.PreparationBatchResponse.builder()
                 .id(batch.getId())
                 .postedAt(batch.getPostedAt())
                 .recipeId(recipe != null ? recipe.getId() : null)
                 .recipeName(recipe != null ? recipe.getName() : null)
+                .recipeVersion(recipe != null ? (recipe.getVersion() != null ? recipe.getVersion() : 1L) : 1L)
                 .outputMaterialId(output != null ? output.getId() : null)
                 .outputMaterialName(output != null ? output.getName() : null)
                 .expectedQuantity(expected)
@@ -301,9 +451,15 @@ public class InventoryService {
                 .differenceQuantity(actual.subtract(expected))
                 .unit(output != null ? output.getUnit() : null)
                 .discrepancyReason(batch.getDiscrepancyReason())
+                .note(batch.getDiscrepancyReason())
                 .createdByEmail(creator != null ? creator.getEmail() : null)
                 .createdByName(creator != null ? creator.getFullName() : null)
                 .status(batch.getStatus() != null ? batch.getStatus().name() : null)
+                .totalCost(batch.getTotalCost())
+                .unitCost(batch.getUnitCost())
+                .ratioVariancePercent(batch.getRatioVariancePercent())
+                .toleranceWarning(batch.getToleranceWarning())
+                .items(items)
                 .build();
     }
 
@@ -318,17 +474,106 @@ public class InventoryService {
     @Transactional(readOnly = true)
     public List<InventoryDto.StockItemResponse> getStocks(StockLocation location) {
         List<Stock> stocks = stockRepository.findByIdLocation(location);
-        return stocks.stream().map(s -> InventoryDto.StockItemResponse.builder()
+        return stocks.stream().map(this::mapStockToResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public InventoryDto.StockSummaryResponse getStocksWithFilter(StockLocation location, String alertFilter, String query) {
+        List<Stock> stocks;
+        if (location != null) {
+            stocks = stockRepository.findByIdLocation(location);
+        } else {
+            stocks = stockRepository.findAll();
+        }
+
+        List<InventoryDto.StockItemResponse> allItems = stocks.stream()
+                .filter(s -> s.getMaterial() != null && Boolean.TRUE.equals(s.getMaterial().getActive()))
+                .map(this::mapStockToResponse)
+                .sorted(Comparator.comparing(InventoryDto.StockItemResponse::getMaterialName))
+                .toList();
+
+        long totalCount = allItems.size();
+        long hetTonCount = allItems.stream().filter(it -> "HET_TON".equals(it.getAlertStatus())).count();
+        long tonThapCount = allItems.stream().filter(it -> "TON_THAP".equals(it.getAlertStatus())).count();
+        long binhThuongCount = allItems.stream().filter(it -> "BINH_THUONG".equals(it.getAlertStatus())).count();
+        long chuaCauHinhCount = allItems.stream().filter(it -> "CHUA_CAU_HINH".equals(it.getAlertStatus())).count();
+
+        var stream = allItems.stream();
+        if (query != null && !query.isBlank()) {
+            String q = query.trim().toLowerCase();
+            stream = stream.filter(it -> it.getMaterialName().toLowerCase().contains(q));
+        }
+
+        if (alertFilter != null && !alertFilter.isBlank() && !"ALL".equalsIgnoreCase(alertFilter)) {
+            String filter = alertFilter.trim().toUpperCase();
+            if ("HET_TON".equals(filter)) {
+                stream = stream.filter(it -> "HET_TON".equals(it.getAlertStatus()));
+            } else if ("TON_THAP".equals(filter)) {
+                stream = stream.filter(it -> "TON_THAP".equals(it.getAlertStatus()));
+            } else if ("BINH_THUONG".equals(filter)) {
+                stream = stream.filter(it -> "BINH_THUONG".equals(it.getAlertStatus()));
+            } else if ("CHUA_CAU_HINH".equals(filter)) {
+                stream = stream.filter(it -> "CHUA_CAU_HINH".equals(it.getAlertStatus()));
+            }
+        }
+
+        return InventoryDto.StockSummaryResponse.builder()
+                .totalCount(totalCount)
+                .hetTonCount(hetTonCount)
+                .tonThapCount(tonThapCount)
+                .binhThuongCount(binhThuongCount)
+                .chuaCauHinhCount(chuaCauHinhCount)
+                .items(stream.toList())
+                .build();
+    }
+
+    private InventoryDto.StockItemResponse mapStockToResponse(Stock s) {
+        BigDecimal avgPrice = null;
+        if (s.getMaterial().getType() == MaterialType.THO) {
+            avgPrice = getMaterialCostPrice(s.getId().getMaterialId());
+        } else if (s.getMaterial().getType() == MaterialType.SOCHE) {
+            try {
+                avgPrice = calculateWeightedAverageUnitCost(s.getId().getMaterialId(), null, null, null, null);
+            } catch (Exception ignored) {
+                avgPrice = null;
+            }
+        }
+        BigDecimal qty = s.getQuantity() != null ? s.getQuantity() : BigDecimal.ZERO;
+        BigDecimal th = s.getThreshold();
+
+        String alertStatus;
+        String alertLabel;
+        boolean isLow = false;
+
+        if (qty.compareTo(BigDecimal.ZERO) == 0) {
+            alertStatus = "HET_TON";
+            alertLabel = "Hết tồn";
+            isLow = true;
+        } else if (th == null) {
+            alertStatus = "CHUA_CAU_HINH";
+            alertLabel = "Chưa cấu hình";
+        } else if (qty.compareTo(th) < 0) {
+            alertStatus = "TON_THAP";
+            alertLabel = "Tồn thấp";
+            isLow = true;
+        } else {
+            alertStatus = "BINH_THUONG";
+            alertLabel = "Bình thường";
+        }
+
+        return InventoryDto.StockItemResponse.builder()
                 .materialId(s.getId().getMaterialId())
                 .materialName(s.getMaterial().getName())
                 .type(s.getMaterial().getType())
                 .unit(s.getMaterial().getUnit())
                 .location(s.getId().getLocation())
-                .quantity(s.getQuantity())
-                .threshold(s.getThreshold())
-                .isLowStock(s.getQuantity().compareTo(s.getThreshold()) <= 0)
-                .build()
-        ).toList();
+                .quantity(qty)
+                .threshold(th)
+                .isLowStock(isLow)
+                .alertStatus(alertStatus)
+                .alertLabel(alertLabel)
+                .averageImportPrice(avgPrice)
+                .build();
     }
 
     // ==========================================
@@ -596,5 +841,296 @@ public class InventoryService {
                 .createdAt(Instant.now())
                 .build());
         realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", order.getId().toString(), null, "1", java.util.Map.of("action", "REMAKE"));
+    }
+
+    // =========================================================================
+    // TÍNH GIÁ VỐN BÌNH QUÂN VÀ KẾT CA KHO / HAO HỤT
+    // =========================================================================
+
+    @Transactional(readOnly = true)
+    public BigDecimal calculateEstimatedRecipeUnitCost(Long outputMaterialId) {
+        PreparationRecipe recipe = recipeRepository.findByOutputMaterialIdAndActiveTrue(outputMaterialId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED,
+                        "Không tìm thấy định mức sơ chế đang áp dụng cho thành phẩm ID: " + outputMaterialId));
+
+        if (recipe.getStandardOutputQuantity() == null || recipe.getStandardOutputQuantity().signum() <= 0) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "Sản lượng đầu ra của định mức sơ chế không hợp lệ");
+        }
+
+        List<PreparationRecipeItem> items = recipeItemRepository.findByIdRecipeId(recipe.getId());
+        BigDecimal totalCost = BigDecimal.ZERO;
+        for (PreparationRecipeItem item : items) {
+            BigDecimal rawCost = getMaterialCostPrice(item.getInputMaterial().getId());
+            if (rawCost == null || rawCost.signum() <= 0) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                        "Nguyên liệu thô '" + item.getInputMaterial().getName() + "' chưa có giá vốn nhập kho hợp lệ");
+            }
+            totalCost = totalCost.add(item.getStandardInputQuantity().multiply(rawCost));
+        }
+
+        return totalCost.divide(recipe.getStandardOutputQuantity(), 12, RoundingMode.HALF_UP);
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal calculateWeightedAverageUnitCost(
+            Long outputMaterialId,
+            Instant fromTime,
+            Instant toTime,
+            BigDecimal openingStock,
+            BigDecimal openingCost) {
+        List<PreparationBatch> batches;
+        if (fromTime != null && toTime != null) {
+            batches = batchRepository.findByOutputMaterialIdAndStatusAndPostedAtBetween(
+                    outputMaterialId, DocumentStatus.DA_GHI_SO, fromTime, toTime);
+        } else {
+            batches = batchRepository.findByOutputMaterialIdAndStatus(outputMaterialId, DocumentStatus.DA_GHI_SO);
+        }
+
+        BigDecimal totalCost = (openingCost != null && openingCost.signum() > 0) ? openingCost : BigDecimal.ZERO;
+        BigDecimal totalOutput = (openingStock != null && openingStock.signum() > 0) ? openingStock : BigDecimal.ZERO;
+
+        for (PreparationBatch b : batches) {
+            if (b.getTotalCost() != null && b.getTotalCost().signum() > 0) {
+                totalCost = totalCost.add(b.getTotalCost());
+            }
+            if (b.getActualQuantity() != null && b.getActualQuantity().signum() > 0) {
+                totalOutput = totalOutput.add(b.getActualQuantity());
+            }
+        }
+
+        if (totalOutput.signum() <= 0 || totalCost.signum() <= 0) {
+            // Fallback sang giá vốn tính theo định mức cố định hiện hành
+            return calculateEstimatedRecipeUnitCost(outputMaterialId);
+        }
+
+        return totalCost.divide(totalOutput, 12, RoundingMode.HALF_UP);
+    }
+
+    @Transactional(readOnly = true)
+    public InventoryDto.ShiftSettlementPreviewResponse getShiftSettlementPreview(StockLocation location) {
+        List<Stock> stocks = stockRepository.findByIdLocation(location);
+        List<InventoryDto.ShiftSettlementPreviewItem> items = new ArrayList<>();
+
+        for (Stock s : stocks) {
+            Material m = s.getMaterial();
+            if (m.getType() == MaterialType.SOCHE) {
+                BigDecimal estimatedUnitCost = null;
+                try {
+                    estimatedUnitCost = calculateWeightedAverageUnitCost(m.getId(), null, null, null, null);
+                } catch (Exception ignored) {
+                }
+
+                items.add(InventoryDto.ShiftSettlementPreviewItem.builder()
+                        .materialId(m.getId())
+                        .materialName(m.getName())
+                        .unit(m.getUnit())
+                        .bookQuantity(s.getQuantity())
+                        .estimatedUnitCost(estimatedUnitCost)
+                        .standardThreshold(s.getThreshold())
+                        .build());
+            }
+        }
+
+        return InventoryDto.ShiftSettlementPreviewResponse.builder()
+                .location(location)
+                .timestamp(Instant.now())
+                .items(items)
+                .build();
+    }
+
+    @Transactional
+    public InventoryDto.ShiftSettlementResponse recordShiftSettlement(
+            InventoryDto.CreateShiftSettlementRequest request,
+            Account account,
+            String idempotencyKey) {
+        if (account == null) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn chưa đăng nhập");
+        }
+
+        String reqKey = (idempotencyKey == null || idempotencyKey.isBlank())
+                ? UUID.randomUUID().toString()
+                : idempotencyKey;
+
+        var existing = shiftSettlementRepository.findByIdempotencyKey(reqKey);
+        if (existing.isPresent()) {
+            return mapShiftSettlement(existing.get());
+        }
+
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Danh sách kiểm kê không được rỗng");
+        }
+
+        Instant now = Instant.now();
+        ShiftSettlement settlement = ShiftSettlement.builder()
+                .location(request.getLocation())
+                .closedAt(now)
+                .fromTime(now.minusSeconds(8 * 3600))
+                .toTime(now)
+                .closedBy(account)
+                .notes(request.getNote())
+                .idempotencyKey(reqKey)
+                .build();
+        settlement = shiftSettlementRepository.save(settlement);
+
+        BigDecimal totalLossCost = BigDecimal.ZERO;
+        List<ShiftSettlementItem> settlementItems = new ArrayList<>();
+        List<StockMovement> movements = new ArrayList<>();
+
+        for (var itemReq : request.getItems()) {
+            Material material = materialRepository.findById(itemReq.getMaterialId())
+                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy nguyên liệu: ID " + itemReq.getMaterialId()));
+
+            Stock stock = stockRepository.findByIdWithLock(material.getId(), request.getLocation())
+                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.INVENTORY_INSUFFICIENT, "Không tìm thấy tồn kho: " + material.getName()));
+
+            BigDecimal bookQty = stock.getQuantity();
+            BigDecimal actualQty = itemReq.getActualQuantity();
+            BigDecimal discardedQty = itemReq.getDiscardedQuantity();
+            BigDecimal retainedQty = itemReq.getRetainedQuantity();
+
+            if (discardedQty.compareTo(bookQty) > 0) {
+                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                        "Lượng loại bỏ (" + discardedQty + ") không được vượt quá tồn sổ sách (" + bookQty + ") của " + material.getName());
+            }
+
+            BigDecimal diff = actualQty.subtract(bookQty);
+
+            // Tính giá vốn bình quân theo sản lượng thực tế
+            BigDecimal unitCost;
+            try {
+                unitCost = calculateWeightedAverageUnitCost(material.getId(), null, null, null, null);
+            } catch (Exception ex) {
+                unitCost = getMaterialCostPrice(material.getId());
+                if (unitCost == null) {
+                    throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                            "Chưa đủ dữ liệu giá vốn để tính hao hụt cho nguyên liệu: " + material.getName());
+                }
+            }
+
+            BigDecimal lossCost = discardedQty.multiply(unitCost).setScale(2, RoundingMode.HALF_UP);
+            totalLossCost = totalLossCost.add(lossCost);
+
+            // Giảm tồn đúng lượng loại bỏ (phần giữ lại được lưu tiếp trong kho)
+            BigDecimal stockBefore = stock.getQuantity();
+            BigDecimal stockAfter = stockBefore.subtract(discardedQty);
+            stock.setQuantity(stockAfter);
+            stockRepository.save(stock);
+
+            if (discardedQty.signum() > 0) {
+                movements.add(StockMovement.builder()
+                        .material(material)
+                        .location(request.getLocation())
+                        .type(StockMovementType.HAO_HUT)
+                        .deltaQuantity(discardedQty.negate())
+                        .beforeQuantity(stockBefore)
+                        .afterQuantity(stockAfter)
+                        .sourceType("SHIFT_SETTLEMENT")
+                        .sourceId(settlement.getId())
+                        .sourceLine(material.getId())
+                        .createdBy(account)
+                        .createdAt(Instant.now())
+                        .reason("Hao hụt loại bỏ cuối ca #" + settlement.getId() + (itemReq.getReason() != null ? ": " + itemReq.getReason() : ""))
+                        .build());
+            }
+
+            settlementItems.add(ShiftSettlementItem.builder()
+                    .settlement(settlement)
+                    .material(material)
+                    .unit(material.getUnit())
+                    .bookQuantity(bookQty)
+                    .actualQuantity(actualQty)
+                    .discardedQuantity(discardedQty)
+                    .retainedQuantity(retainedQty)
+                    .unexplainedDifference(diff)
+                    .unitCost(unitCost)
+                    .lossCost(lossCost)
+                    .reason(itemReq.getReason())
+                    .build());
+        }
+
+        settlement.setTotalLossCost(totalLossCost);
+        shiftSettlementRepository.save(settlement);
+        shiftSettlementItemRepository.saveAll(settlementItems);
+        if (!movements.isEmpty()) {
+            movementRepository.saveAll(movements);
+        }
+
+        realtimeEventPublisher.publishAfterCommit(
+                "/topic/stock",
+                "STOCK_CHANGED",
+                settlement.getId().toString(),
+                null,
+                "1",
+                java.util.Map.of("action", "SHIFT_SETTLEMENT"));
+
+        return mapShiftSettlement(settlement);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InventoryDto.ShiftSettlementResponse> listShiftSettlements(StockLocation location) {
+        return listShiftSettlements(location, null, null, true);
+    }
+
+    @Transactional(readOnly = true)
+    public List<InventoryDto.ShiftSettlementResponse> listShiftSettlements(
+            StockLocation location, LocalDate from, LocalDate to, boolean all) {
+        List<ShiftSettlement> list;
+        if (all) {
+            list = (location != null)
+                    ? shiftSettlementRepository.findByLocationOrderByClosedAtDesc(location)
+                    : shiftSettlementRepository.findAllByOrderByClosedAtDesc();
+        } else {
+            ZoneId zone = ZoneId.of("Asia/Ho_Chi_Minh");
+            LocalDate startDate = (from != null) ? from : LocalDate.now(zone);
+            LocalDate endDate = (to != null) ? to : LocalDate.now(zone);
+            Instant startInstant = startDate.atStartOfDay(zone).toInstant();
+            Instant endInstant = endDate.plusDays(1).atStartOfDay(zone).toInstant();
+
+            list = (location != null)
+                    ? shiftSettlementRepository.findByLocationAndClosedAtBetweenOrderByClosedAtDesc(location, startInstant, endInstant)
+                    : shiftSettlementRepository.findByClosedAtBetweenOrderByClosedAtDesc(startInstant, endInstant);
+        }
+        return list.stream().map(this::mapShiftSettlement).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public InventoryDto.ShiftSettlementResponse getShiftSettlement(Long id) {
+        ShiftSettlement s = shiftSettlementRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy biên bản kết ca: ID " + id));
+        return mapShiftSettlement(s);
+    }
+
+    private InventoryDto.ShiftSettlementResponse mapShiftSettlement(ShiftSettlement settlement) {
+        Account closer = settlement.getClosedBy();
+        List<ShiftSettlementItem> items = shiftSettlementItemRepository.findBySettlementId(settlement.getId());
+
+        List<InventoryDto.ShiftSettlementItemResponse> itemResponses = items.stream().map(it ->
+                InventoryDto.ShiftSettlementItemResponse.builder()
+                        .id(it.getId())
+                        .materialId(it.getMaterial().getId())
+                        .materialName(it.getMaterial().getName())
+                        .unit(it.getUnit())
+                        .bookQuantity(it.getBookQuantity())
+                        .actualQuantity(it.getActualQuantity())
+                        .discardedQuantity(it.getDiscardedQuantity())
+                        .retainedQuantity(it.getRetainedQuantity())
+                        .unexplainedDifference(it.getUnexplainedDifference())
+                        .unitCost(it.getUnitCost())
+                        .lossCost(it.getLossCost())
+                        .reason(it.getReason())
+                        .build()
+        ).toList();
+
+        return InventoryDto.ShiftSettlementResponse.builder()
+                .id(settlement.getId())
+                .location(settlement.getLocation())
+                .closedAt(settlement.getClosedAt())
+                .closedByEmail(closer != null ? closer.getEmail() : null)
+                .closedByName(closer != null ? closer.getFullName() : null)
+                .totalLossCost(settlement.getTotalLossCost())
+                .note(settlement.getNotes())
+                .items(itemResponses)
+                .build();
     }
 }
