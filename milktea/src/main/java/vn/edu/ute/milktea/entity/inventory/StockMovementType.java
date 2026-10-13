@@ -7,5 +7,6 @@ public enum StockMovementType {
     SOCHE_VAO,
     SOCHE_RA,
     TIEU_HAO,
-    HAO_HUT
+    HAO_HUT,
+    DIEU_CHINH
 }

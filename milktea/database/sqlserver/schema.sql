@@ -187,10 +187,12 @@ CREATE TABLE dbo.TonNguyenLieu (
     -- KHO, BEP
     SoLuong DECIMAL(18, 3) NOT NULL CONSTRAINT DF_TonNguyenLieu_SoLuong DEFAULT 0,
     NguongCanhBao DECIMAL(18, 3) NULL,
+    GiaVonDonVi DECIMAL(18, 6) NULL,
     Version BIGINT NOT NULL CONSTRAINT DF_TonNguyenLieu_Version DEFAULT 0,
     CONSTRAINT PK_TonNguyenLieu PRIMARY KEY (MaNL, ViTri),
     CONSTRAINT CK_TonNguyenLieu_SoLuong CHECK (SoLuong >= 0),
     CONSTRAINT CK_TonNguyenLieu_Nguong CHECK (NguongCanhBao >= 0),
+    CONSTRAINT CK_TonNguyenLieu_GiaVon CHECK (GiaVonDonVi IS NULL OR GiaVonDonVi >= 0),
     CONSTRAINT FK_TonNguyenLieu_NguyenLieu FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL)
 );
 CREATE TABLE dbo.CongThucMon (
@@ -357,6 +359,8 @@ CREATE TABLE dbo.LichSuKho (
     NguoiLap BIGINT NOT NULL,
     TaoLuc DATETIME2 NOT NULL,
     LyDo NVARCHAR(500) NULL,
+    GiaVonDonVi DECIMAL(18, 6) NULL,
+    ChiPhiHaoHut DECIMAL(18, 2) NULL,
     CONSTRAINT CK_LichSuKho_TonTruoc CHECK (TonTruoc >= 0),
     CONSTRAINT CK_LichSuKho_TonSau CHECK (TonSau >= 0),
     CONSTRAINT FK_LichSuKho_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL),
