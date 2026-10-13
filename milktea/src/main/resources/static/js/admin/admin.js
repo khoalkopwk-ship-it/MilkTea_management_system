@@ -250,7 +250,14 @@ const AdminApp = (() => {
                 items
             });
             MilkTeaApi.showToast('Nhập kho thành công! Đã tăng tồn kho KHO.', 'success');
-            setTimeout(() => window.location.reload(), 500);
+            const modalEl = document.getElementById('importModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+            if (typeof loadStockData === 'function') {
+                await loadStockData();
+            }
         } catch (e) {
             MilkTeaApi.showToast(e.message || 'Lỗi tạo phiếu nhập kho', 'error');
         }
@@ -259,14 +266,45 @@ const AdminApp = (() => {
     async function submitWaste(location, reason, items) {
         try {
             await MilkTeaApi.post('/api/v1/inventory/waste', {
-                location,
+                location: 'KHO',
                 reason,
                 items
             });
-            MilkTeaApi.showToast('Ghi nhận hao hụt thành công!', 'success');
-            setTimeout(() => window.location.reload(), 500);
+            MilkTeaApi.showToast('Ghi nhận hao hụt thành công! Đã giảm tồn kho KHO.', 'success');
+            const modalEl = document.getElementById('wasteModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+            if (typeof loadStockData === 'function') {
+                await loadStockData();
+            }
         } catch (e) {
             MilkTeaApi.showToast(e.message || 'Lỗi ghi hao hụt', 'error');
+        }
+    }
+
+    async function adjustRawMaterial(materialId, name, quantity, averageImportPrice, threshold, reason) {
+        try {
+            await MilkTeaApi.put('/api/v1/inventory/stocks/adjust', {
+                materialId,
+                name,
+                quantity,
+                averageImportPrice,
+                threshold,
+                reason
+            });
+            MilkTeaApi.showToast('Điều chỉnh thông tin nguyên liệu thành công!', 'success');
+            const modalEl = document.getElementById('editStockModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+            if (typeof loadStockData === 'function') {
+                await loadStockData();
+            }
+        } catch (e) {
+            MilkTeaApi.showToast(e.message || 'Lỗi điều chỉnh nguyên liệu', 'error');
         }
     }
 
@@ -711,6 +749,7 @@ async function updateThreshold(materialId, location, threshold) {
         toggleStaffStatus,
         submitImport,
         submitWaste,
+        adjustRawMaterial,
         updateThreshold,
         loadRevenueReport,
         updateSettings,

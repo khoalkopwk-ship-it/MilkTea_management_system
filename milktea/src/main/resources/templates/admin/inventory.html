@@ -80,11 +80,8 @@
                             <div class="card-header bg-white p-3">
                                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                                     <h5 class="fw-bold mb-0">
-                                        <i class="bi bi-boxes text-primary me-2"></i>Tồn Kho Nguyên Liệu
+                                        <i class="bi bi-boxes text-primary me-2"></i>Tồn Kho Nguyên Liệu Thô (Kho Tổng)
                                     </h5>
-                                    <button class="btn btn-sm btn-light rounded-pill border" onclick="loadStockData()">
-                                        <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
-                                    </button>
                                 </div>
 
                                 <!-- Bộ lọc cảnh báo tồn kho -->
@@ -107,19 +104,15 @@
                                 </div>
 
                                 <div class="row g-2">
-                                    <div class="col-md-8">
-                                        <input type="text"
-                                            id="stockSearch"
-                                            class="form-control"
-                                            placeholder="Tìm kiếm nguyên liệu theo tên..."
-                                            oninput="onStockSearchInput()">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <select id="stockLocationSelect" class="form-select" onchange="loadStockData()">
-                                            <option value="">Tất cả vị trí kho</option>
-                                            <option value="KHO" selected>Kho tổng (KHO)</option>
-                                            <option value="BEP">Bếp pha chế (BEP)</option>
-                                        </select>
+                                    <div class="col-12">
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                            <input type="text"
+                                                id="stockSearch"
+                                                class="form-control border-start-0"
+                                                placeholder="Tìm kiếm nguyên liệu thô theo tên..."
+                                                oninput="onStockSearchInput()">
+                                        </div>
                                     </div>
                                 </div>
 
@@ -132,9 +125,8 @@
                                             <th style="width: 50px;" class="text-center">STT</th>
                                             <th>Nguyên liệu</th>
                                             <th>Loại</th>
-                                            <th>Vị trí</th>
                                             <th>Tồn kho</th>
-                                            <th>Giá vốn / nhập TB</th>
+                                            <th>Giá nhập TB</th>
                                             <th>Ngưỡng tối thiểu</th>
                                             <th>Cảnh báo</th>
                                             <th style="width: 120px;" class="text-center">Thao tác</th>
@@ -161,9 +153,6 @@
                                         </p>
                                     </div>
                                     <div class="d-flex gap-2">
-                                        <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadPreparationRecipesAdmin()">
-                                            <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
-                                        </button>
                                         <button class="btn btn-sm btn-success rounded-pill px-3 fw-semibold" onclick="openCreateRecipeModal()">
                                             <i class="bi bi-plus-circle me-1"></i> Thêm Định Mức Sơ Chế
                                         </button>
@@ -259,16 +248,19 @@
                     </div>
                     <div class="modal-body p-4">
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold">Vị trí xảy ra hao hụt:</label>
-                            <select id="wasteLocationSelect" class="form-select rounded-3">
-                                <option value="BEP">BẾP (Hư hỏng / đổ vỡ khi pha chế)</option>
-                                <option value="KHO">KHO (Hết hạn / ẩm mốc lưu kho)</option>
-                            </select>
+                            <label class="form-label small fw-semibold">Vị trí ghi nhận hao hụt:</label>
+                            <div class="form-control bg-light rounded-3 d-flex align-items-center justify-content-between">
+                                <span class="fw-semibold text-primary"><i class="bi bi-box-seam me-1"></i> Kho tổng (KHO)</span>
+                                <span class="badge bg-secondary">Cố định Kho tổng</span>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Nguyên liệu hao hụt:</label>
                             <select id="wasteMaterialSelect" class="form-select rounded-3">
-                                <option th:each="m : ${materials}" th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}">Trà Đen</option>
+                                <option th:each="m : ${materials}"
+                                        th:if="${m.type != null and m.type.name() == 'THO'}"
+                                        th:value="${m.id}"
+                                        th:text="${m.name + ' (' + m.unit + ')'}">Trà Đen</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -284,6 +276,64 @@
                                 Ghi Nhận Trừ Kho
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Chỉnh Sửa Nguyên Liệu Thô (Kho Tổng) -->
+        <div class="modal fade" id="editStockModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font text-primary" id="editStockModalTitle">
+                            <i class="bi bi-pencil-square me-1"></i> Chỉnh Sửa Nguyên Liệu Kho Tổng
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <form id="editStockForm" onsubmit="event.preventDefault(); submitAdjustStock();">
+                            <input type="hidden" id="editStockMaterialId">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Tên nguyên liệu:</label>
+                                <input type="text" id="editStockMaterialName" class="form-control rounded-3" required>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Số lượng tồn kho:</label>
+                                    <div class="input-group">
+                                        <input type="number" step="any" min="0" id="editStockQuantity" class="form-control rounded-start-3" required>
+                                        <span class="input-group-text bg-light text-muted small" id="editStockUnitSpan">đv</span>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Hiện tại: <span id="currentStockQtyLabel" class="fw-semibold">0</span></small>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Ngưỡng tối thiểu:</label>
+                                    <div class="input-group">
+                                        <input type="number" step="any" min="0" id="editStockThreshold" class="form-control rounded-start-3" placeholder="Chưa đặt">
+                                        <span class="input-group-text bg-light text-muted small" id="editStockUnitSpan2">đv</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Giá nhập trung bình (đồng / đơn vị):</label>
+                                <div class="input-group">
+                                    <input type="number" step="any" min="0" id="editStockCostPrice" class="form-control rounded-start-3" placeholder="0">
+                                    <span class="input-group-text bg-light text-muted small">VND</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Hiện tại: <span id="currentStockPriceLabel" class="fw-semibold">0 VND</span></small>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label small fw-semibold">Lý do điều chỉnh kho:</label>
+                                <textarea id="editStockReason" class="form-control rounded-3" rows="2" placeholder="Bắt buộc nhập lý do nếu thay đổi số lượng tồn hoặc giá nhập..."></textarea>
+                                <small class="text-muted small">Lưu vết chứng từ điều chỉnh và audit lịch sử biến động.</small>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" id="btnSaveStockAdjust" class="btn btn-primary rounded-pill py-2 fw-bold">
+                                    <i class="bi bi-check2-circle me-1"></i> Lưu Thay Đổi
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -369,11 +419,34 @@
         <script>
             let adminMaterialsList = [];
             let adminRecipesList = [];
+            let currentAlertFilter = 'ALL';
+            let currentStockSummary = null;
+            let currentEditingStockItem = null;
 
             document.addEventListener('DOMContentLoaded', async () => {
                 AdminApp.init();
-                loadStockData();
+                await loadStockData();
                 await loadAdminMaterials();
+
+                // Đăng ký đồng bộ Realtime WebSocket sau commit
+                MilkTeaRealtime.on('STOCK_CHANGED', async () => {
+                    await loadStockData();
+                });
+                MilkTeaRealtime.on('MATERIAL_CHANGED', async () => {
+                    await loadAdminMaterials();
+                    await loadStockData();
+                    await loadPreparationRecipesAdmin();
+                });
+                MilkTeaRealtime.on('RECIPE_CHANGED', async () => {
+                    await loadPreparationRecipesAdmin();
+                });
+                MilkTeaRealtime.onReconnect(async () => {
+                    await loadAdminMaterials();
+                    await loadStockData();
+                    if (document.getElementById('tab-recipe-pane')?.classList.contains('active')) {
+                        await loadPreparationRecipesAdmin();
+                    }
+                });
             });
 
             async function loadAdminMaterials() {
@@ -463,7 +536,10 @@
                 if (label) label.textContent = unit || 'đơn vị';
             }
 
-            function openCreateRecipeModal() {
+            async function openCreateRecipeModal() {
+                if (!adminMaterialsList || adminMaterialsList.length === 0) {
+                    await loadAdminMaterials();
+                }
                 document.getElementById('recipeId').value = '';
                 document.getElementById('recipeModalTitle').innerHTML = '<i class="bi bi-plus-circle me-1"></i> Thêm Định Mức Sơ Chế';
                 document.getElementById('recipeOutputMaterialSelect').value = '';
@@ -482,6 +558,9 @@
             }
 
             async function openEditRecipeModal(recipeId) {
+                if (!adminMaterialsList || adminMaterialsList.length === 0) {
+                    await loadAdminMaterials();
+                }
                 const recipe = adminRecipesList.find(r => r.id === recipeId);
                 if (!recipe) return;
 
@@ -489,7 +568,7 @@
                 document.getElementById('recipeModalTitle').innerHTML = `<i class="bi bi-pencil-square me-1"></i> Chỉnh Sửa Định Mức #${recipe.id} (v${recipe.version || 1})`;
                 const outputSel = document.getElementById('recipeOutputMaterialSelect');
                 outputSel.value = recipe.outputMaterialId;
-                outputSel.disabled = true; // Không đổi thành phẩm khi edit để giữ toàn vẹn quan hệ
+                outputSel.disabled = true;
                 onRecipeOutputChange();
 
                 document.getElementById('recipeOutputQuantity').value = recipe.standardOutputQuantity;
@@ -605,7 +684,8 @@
                     standardOutputQuantity: outputQuantity,
                     note: note || undefined,
                     active: active,
-                    items: inputItems
+                    items: inputItems,
+                    inputItems: inputItems
                 };
 
                 const btn = document.getElementById('btnSaveRecipe');
@@ -652,6 +732,10 @@
                         items: (recipe.inputItems || []).map(it => ({
                             inputMaterialId: it.inputMaterialId,
                             standardQuantity: it.standardQuantity
+                        })),
+                        inputItems: (recipe.inputItems || []).map(it => ({
+                            inputMaterialId: it.inputMaterialId,
+                            standardQuantity: it.standardQuantity
                         }))
                     };
                     await MilkTeaApi.put(`/api/v1/admin/preparation-recipes/${recipeId}`, payload);
@@ -662,152 +746,240 @@
                 }
             }
 
+            // ==========================================
+            // QUẢN LÝ TỒN KHO NGUYÊN LIỆU THÔ (KHO TỔNG)
+            // ==========================================
 
-            
-let currentAlertFilter = 'ALL';
-let currentStockSummary = null;
+            function setAlertFilter(alertKey) {
+                currentAlertFilter = alertKey;
+                document.querySelectorAll('#alertFilterGroup button').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.alert === alertKey);
+                });
+                loadStockData();
+            }
 
-function setAlertFilter(alertKey) {
-    currentAlertFilter = alertKey;
-    document.querySelectorAll('#alertFilterGroup button').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.alert === alertKey);
-    });
-    loadStockData();
-}
+            function onStockSearchInput() {
+                loadStockData();
+            }
 
-function onStockSearchInput() {
-    loadStockData();
-}
+            async function loadStockData() {
+                const query = document.getElementById('stockSearch')?.value?.trim() || '';
+                const alertFilter = currentAlertFilter;
 
-async function loadStockData() {
-    const loc = document.getElementById('stockLocationSelect')?.value || '';
-    const query = document.getElementById('stockSearch')?.value?.trim() || '';
-    const alertFilter = currentAlertFilter;
+                let url = `/api/v1/inventory/stocks/summary?location=KHO&type=THO&alertFilter=${encodeURIComponent(alertFilter)}`;
+                if (query) url += `&query=${encodeURIComponent(query)}`;
 
-    let url = `/api/v1/inventory/stocks/summary?alertFilter=${encodeURIComponent(alertFilter)}`;
-    if (loc) url += `&location=${encodeURIComponent(loc)}`;
-    if (query) url += `&query=${encodeURIComponent(query)}`;
+                try {
+                    const summary = await MilkTeaApi.get(url);
+                    currentStockSummary = summary;
 
-    try {
-        const summary = await MilkTeaApi.get(url);
-        currentStockSummary = summary;
+                    // Cập nhật số liệu trên các badge bộ lọc
+                    if (summary) {
+                        document.getElementById('badgeCountTotal').textContent = summary.totalCount || 0;
+                        document.getElementById('badgeCountHetTon').textContent = summary.hetTonCount || 0;
+                        document.getElementById('badgeCountTonThap').textContent = summary.tonThapCount || 0;
+                        document.getElementById('badgeCountBinhThuong').textContent = summary.binhThuongCount || 0;
+                        document.getElementById('badgeCountChuaCauHinh').textContent = summary.chuaCauHinhCount || 0;
+                    }
 
-        // Cập nhật số liệu trên các badge bộ lọc
-        if (summary) {
-            document.getElementById('badgeCountTotal').textContent = summary.totalCount || 0;
-            document.getElementById('badgeCountHetTon').textContent = summary.hetTonCount || 0;
-            document.getElementById('badgeCountTonThap').textContent = summary.tonThapCount || 0;
-            document.getElementById('badgeCountBinhThuong').textContent = summary.binhThuongCount || 0;
-            document.getElementById('badgeCountChuaCauHinh').textContent = summary.chuaCauHinhCount || 0;
-        }
+                    renderStockTable(summary ? summary.items || [] : []);
+                } catch (e) {
+                    console.error('Lỗi tải tồn kho:', e);
+                    MilkTeaApi.showToast(e.message || 'Không thể tải dữ liệu kho', 'error');
+                }
+            }
 
-        renderStockTable(summary ? summary.items || [] : []);
-    } catch (e) {
-        console.error('Lỗi tải tồn kho:', e);
-        MilkTeaApi.showToast(e.message || 'Không thể tải dữ liệu kho', 'error');
-    }
-}
+            function renderStockTable(items) {
+                const tbody = document.getElementById('inventoryStockBody');
+                if (!items || items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Không tìm thấy nguyên liệu thô phù hợp tại Kho tổng.</td></tr>';
+                    return;
+                }
 
-function renderStockTable(items) {
-    const tbody = document.getElementById('inventoryStockBody');
-    if (!items || items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Không tìm thấy nguyên liệu phù hợp trong danh sách.</td></tr>';
-        return;
-    }
+                tbody.innerHTML = items.map((s, idx) => {
+                    const avgPrice = s.averageImportPrice != null ? s.averageImportPrice : s.averagePrice;
+                    const avgPriceFormatted = (avgPrice != null && Number(avgPrice) >= 0)
+                        ? `<span class="fw-bold">${MilkTeaApi.formatVND(avgPrice)}</span> <small class="text-muted">/ ${MilkTeaReceipts.esc(s.unit || '')}</small>`
+                        : `<span class="text-muted fst-italic">-</span>`;
 
-    tbody.innerHTML = items.map((s, idx) => {
-        const avgPriceFormatted = s.averagePrice != null && s.averagePrice > 0
-            ? `${MilkTeaApi.formatVND(s.averagePrice)} / ${s.unit}`
-            : `<span class="text-muted fst-italic">-</span>`;
+                    let alertBadge = '<span class="badge bg-secondary">Chưa cấu hình</span>';
+                    let rowClass = '';
+                    if (s.alertStatus === 'HET_TON') {
+                        alertBadge = '<span class="badge bg-danger">Hết tồn</span>';
+                        rowClass = 'table-danger';
+                    } else if (s.alertStatus === 'TON_THAP') {
+                        alertBadge = '<span class="badge bg-warning text-dark">Tồn thấp</span>';
+                        rowClass = 'table-warning';
+                    } else if (s.alertStatus === 'BINH_THUONG') {
+                        alertBadge = '<span class="badge bg-success">Bình thường</span>';
+                    }
 
-        let alertBadge = '<span class="badge bg-secondary">Chưa cấu hình</span>';
-        let rowClass = '';
-        if (s.alertStatus === 'HET_TON') {
-            alertBadge = '<span class="badge bg-danger">Hết tồn</span>';
-            rowClass = 'table-danger';
-        } else if (s.alertStatus === 'TON_THAP') {
-            alertBadge = '<span class="badge bg-warning text-dark">Tồn thấp</span>';
-            rowClass = 'table-warning';
-        } else if (s.alertStatus === 'BINH_THUONG') {
-            alertBadge = '<span class="badge bg-success">Bình thường</span>';
-        }
+                    const thVal = s.threshold != null ? s.threshold : s.minThreshold;
+                    const thresholdText = (thVal != null && Number(thVal) >= 0)
+                        ? `<b>${thVal}</b> <small class="text-muted">${MilkTeaReceipts.esc(s.unit || '')}</small>`
+                        : `<span class="text-muted fst-italic">Chưa đặt</span>`;
 
-        const locationBadge = s.location === 'KHO'
-            ? '<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Kho tổng (KHO)</span>'
-            : '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Bếp (BEP)</span>';
+                    return `
+                        <tr class="${rowClass}">
+                            <td class="text-center fw-bold text-muted">${idx + 1}</td>
+                            <td class="fw-semibold">${MilkTeaReceipts.esc(s.materialName)}</td>
+                            <td><span class="badge bg-secondary">THÔ</span></td>
+                            <td class="fw-bold text-dark">${s.quantity} <small class="text-muted">${MilkTeaReceipts.esc(s.unit || '')}</small></td>
+                            <td class="text-primary">${avgPriceFormatted}</td>
+                            <td>${thresholdText}</td>
+                            <td>${alertBadge}</td>
+                            <td class="text-center">
+                                <div class="d-inline-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                            title="Chỉnh sửa nguyên liệu (Tên, Tồn kho, Giá nhập TB, Ngưỡng)"
+                                            onclick="openEditStockModal(${s.materialId})">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger rounded-pill px-2"
+                                            title="Ngừng sử dụng"
+                                            onclick="deleteMaterial(${s.materialId}, '${MilkTeaReceipts.esc(s.materialName)}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
 
-        const thresholdText = s.minThreshold != null
-            ? `<b>${s.minThreshold}</b> ${s.unit}`
-            : `<span class="text-muted fst-italic">Chưa đặt</span>`;
+            function openEditStockModal(materialId) {
+                const item = (currentStockSummary?.items || []).find(it => it.materialId === materialId);
+                if (!item) return;
 
-        return `
-            <tr class="${rowClass}">
-                <td class="text-center fw-bold text-muted">${idx + 1}</td>
-                <td class="fw-semibold">${MilkTeaReceipts.esc(s.materialName)}</td>
-                <td><span class="badge ${s.type === 'THO' ? 'bg-secondary' : 'bg-primary'}">${s.type === 'THO' ? 'THÔ' : 'SƠ CHẾ'}</span></td>
-                <td>${locationBadge}</td>
-                <td class="fw-bold">${s.quantity} <small class="text-muted">${s.unit}</small></td>
-                <td class="fw-semibold text-primary">${avgPriceFormatted}</td>
-                <td>${thresholdText}</td>
-                <td>${alertBadge}</td>
-                <td class="text-center">
-                    <div class="d-inline-flex gap-1">
-                        <button class="btn btn-sm btn-outline-primary rounded-pill px-2"
-                                title="Chỉnh sửa ngưỡng tồn"
-                                onclick="promptThreshold(${s.materialId}, '${MilkTeaReceipts.esc(s.materialName)}', '${s.location}', ${s.minThreshold})">
-                            <i class="bi bi-pencil-square"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger rounded-pill px-2"
-                                title="Ngừng sử dụng"
-                                onclick="deleteMaterial(${s.materialId}, '${MilkTeaReceipts.esc(s.materialName)}')">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
+                currentEditingStockItem = item;
+                document.getElementById('editStockMaterialId').value = item.materialId;
+                document.getElementById('editStockMaterialName').value = item.materialName || '';
+                document.getElementById('editStockUnitSpan').textContent = item.unit || 'đv';
+                document.getElementById('editStockUnitSpan2').textContent = item.unit || 'đv';
 
-async function promptThreshold(matId, name, loc, cur) {
-    const val = prompt(`Nhập ngưỡng cảnh báo tồn tối thiểu mới cho [${name}] tại [${loc}]:`, cur != null ? cur : '10');
-    if (val !== null && val.trim() !== '') {
-        const num = parseFloat(val);
-        if (isNaN(num) || num < 0) {
-            MilkTeaApi.showToast('Ngưỡng tồn phải là số không âm', 'warning');
-            return;
-        }
-        await AdminApp.updateThreshold(matId, loc, num);
-        await loadStockData();
-    }
-}
+                document.getElementById('editStockQuantity').value = item.quantity != null ? item.quantity : 0;
+                document.getElementById('currentStockQtyLabel').textContent = `${item.quantity != null ? item.quantity : 0} ${item.unit || ''}`;
 
-async function deleteMaterial(id, name) {
-    if (!confirm(`Bạn có chắc muốn ngừng sử dụng nguyên liệu "${name}"?`)) return;
-    try {
-        await MilkTeaApi.delete(`/api/v1/admin/materials/${id}`);
-        MilkTeaApi.showToast('Đã ngừng sử dụng nguyên liệu thành công', 'success');
-        await loadStockData();
-    } catch (e) {
-        MilkTeaApi.showToast(e.message || 'Không thể xóa nguyên liệu', 'error');
-    }
-}
+                const avgPrice = item.averageImportPrice != null ? item.averageImportPrice : item.averagePrice;
+                document.getElementById('editStockCostPrice').value = avgPrice != null ? avgPrice : '';
+                document.getElementById('currentStockPriceLabel').textContent = avgPrice != null ? `${MilkTeaApi.formatVND(avgPrice)} / ${item.unit || ''}` : 'Chưa có';
+
+                const thVal = item.threshold != null ? item.threshold : item.minThreshold;
+                document.getElementById('editStockThreshold').value = thVal != null ? thVal : '';
+
+                document.getElementById('editStockReason').value = '';
+
+                const modal = new bootstrap.Modal(document.getElementById('editStockModal'));
+                modal.show();
+            }
+
+            async function submitAdjustStock() {
+                if (!currentEditingStockItem) return;
+
+                const materialId = parseInt(document.getElementById('editStockMaterialId').value);
+                const name = document.getElementById('editStockMaterialName').value.trim();
+                const quantityVal = document.getElementById('editStockQuantity').value;
+                const costPriceVal = document.getElementById('editStockCostPrice').value;
+                const thresholdVal = document.getElementById('editStockThreshold').value;
+                const reason = document.getElementById('editStockReason').value.trim();
+
+                if (!name) {
+                    MilkTeaApi.showToast('Tên nguyên liệu không được để trống', 'warning');
+                    return;
+                }
+
+                const quantity = quantityVal !== '' ? parseFloat(quantityVal) : null;
+                const costPrice = costPriceVal !== '' ? parseFloat(costPriceVal) : null;
+                const threshold = thresholdVal !== '' ? parseFloat(thresholdVal) : null;
+
+                if (quantity !== null && (isNaN(quantity) || quantity < 0)) {
+                    MilkTeaApi.showToast('Số lượng tồn không được âm', 'warning');
+                    return;
+                }
+                if (costPrice !== null && (isNaN(costPrice) || costPrice < 0)) {
+                    MilkTeaApi.showToast('Giá nhập trung bình không được âm', 'warning');
+                    return;
+                }
+                if (threshold !== null && (isNaN(threshold) || threshold < 0)) {
+                    MilkTeaApi.showToast('Ngưỡng tối thiểu không được âm', 'warning');
+                    return;
+                }
+
+                const currentQty = currentEditingStockItem.quantity != null ? Number(currentEditingStockItem.quantity) : 0;
+                const currentPrice = currentEditingStockItem.averageImportPrice != null ? Number(currentEditingStockItem.averageImportPrice) : (currentEditingStockItem.averagePrice != null ? Number(currentEditingStockItem.averagePrice) : null);
+
+                const qtyChanged = quantity !== null && Math.abs(quantity - currentQty) > 0.0001;
+                const priceChanged = costPrice !== null && (currentPrice === null || Math.abs(costPrice - currentPrice) > 0.0001);
+
+                if ((qtyChanged || priceChanged) && !reason) {
+                    MilkTeaApi.showToast('Vui lòng nhập lý do điều chỉnh khi thay đổi số lượng tồn hoặc giá nhập trung bình', 'warning');
+                    document.getElementById('editStockReason').focus();
+                    return;
+                }
+
+                const btn = document.getElementById('btnSaveStockAdjust');
+                if (btn) btn.disabled = true;
+
+                try {
+                    await AdminApp.adjustRawMaterial(materialId, name, quantity, costPrice, threshold, reason);
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
+            }
+
+            async function deleteMaterial(id, name) {
+                if (!confirm(`Bạn có chắc muốn ngừng sử dụng nguyên liệu "${name}"?`)) return;
+                try {
+                    await MilkTeaApi.delete(`/api/v1/admin/materials/${id}`);
+                    MilkTeaApi.showToast('Đã ngừng sử dụng nguyên liệu thành công', 'success');
+                    await loadStockData();
+                } catch (e) {
+                    MilkTeaApi.showToast(e.message || 'Không thể xóa nguyên liệu', 'error');
+                }
+            }
 
             function submitImportForm() {
-                const sup = document.getElementById('importSupplier').value;
-                const reas = document.getElementById('importReason').value;
+                const sup = document.getElementById('importSupplier').value.trim();
+                const reas = document.getElementById('importReason').value.trim();
                 const matId = parseInt(document.getElementById('importMaterialSelect').value);
                 const qty = parseFloat(document.getElementById('importQuantity').value);
-                const price = parseFloat(document.getElementById('importUnitPrice').value) || 0;
+                const price = parseFloat(document.getElementById('importUnitPrice').value);
+
+                if (!matId) {
+                    MilkTeaApi.showToast('Vui lòng chọn nguyên liệu nhập', 'warning');
+                    return;
+                }
+                if (isNaN(qty) || qty <= 0) {
+                    MilkTeaApi.showToast('Số lượng nhập phải lớn hơn 0', 'warning');
+                    return;
+                }
+                if (isNaN(price) || price < 0) {
+                    MilkTeaApi.showToast('Đơn giá nhập không được âm', 'warning');
+                    return;
+                }
+
                 AdminApp.submitImport(sup, reas, [{ materialId: matId, quantity: qty, unitPrice: price }]);
             }
 
             function submitWasteForm() {
-                const loc = document.getElementById('wasteLocationSelect').value;
-                const reas = document.getElementById('wasteReason').value;
+                const reas = document.getElementById('wasteReason').value.trim();
                 const matId = parseInt(document.getElementById('wasteMaterialSelect').value);
                 const qty = parseFloat(document.getElementById('wasteQuantity').value);
-                AdminApp.submitWaste(loc, reas, [{ materialId: matId, quantity: qty }]);
+
+                if (!matId) {
+                    MilkTeaApi.showToast('Vui lòng chọn nguyên liệu hao hụt', 'warning');
+                    return;
+                }
+                if (isNaN(qty) || qty <= 0) {
+                    MilkTeaApi.showToast('Số lượng hao hụt phải lớn hơn 0', 'warning');
+                    return;
+                }
+                if (!reas) {
+                    MilkTeaApi.showToast('Vui lòng nhập lý do hao hụt chi tiết', 'warning');
+                    return;
+                }
+
+                AdminApp.submitWaste('KHO', reas, [{ materialId: matId, quantity: qty }]);
             }
         </script>
     </th:block>
