@@ -49,7 +49,9 @@ public class AdminService {
     private final PreparationRecipeRepository preparationRecipeRepository;
     private final PreparationRecipeItemRepository preparationRecipeItemRepository;
     private final ImportReceiptItemRepository importReceiptItemRepository;
+    private final vn.edu.ute.milktea.repository.inventory.StockRepository stockRepository;
     private final vn.edu.ute.milktea.repository.audit.BusinessAuditRepository auditRepository;
+    private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
     private final PasswordEncoder passwordEncoder;
 
     // ==========================================
@@ -91,7 +93,9 @@ public class AdminService {
                 .createdAt(Instant.now())
                 .build();
 
-        return mapStaff(accountRepository.save(account));
+        Account saved = accountRepository.save(account);
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "STAFF_CHANGED", saved.getId().toString(), null, "1", java.util.Map.of("action", "CREATE", "email", saved.getEmail()));
+        return mapStaff(saved);
     }
 
     @Transactional
@@ -168,6 +172,8 @@ public class AdminService {
                 .createdAt(Instant.now())
                 .build());
 
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "STAFF_CHANGED", saved.getId().toString(), null, "1", java.util.Map.of("action", "UPDATE", "email", saved.getEmail()));
+
         return mapStaff(saved);
     }
 
@@ -205,6 +211,8 @@ public class AdminService {
                 .reason((active ? "Mở khóa" : "Khóa") + " tài khoản nhân viên #" + id)
                 .createdAt(Instant.now())
                 .build());
+
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "STAFF_CHANGED", saved.getId().toString(), null, "1", java.util.Map.of("action", active ? "UNLOCK" : "LOCK", "email", saved.getEmail()));
 
         return mapStaff(saved);
     }
@@ -567,6 +575,8 @@ public class AdminService {
                 .active(request.getActive() != null ? request.getActive() : true)
                 .build();
         m = materialRepository.save(m);
+        realtimeEventPublisher.publishAfterCommit("/topic/stock", "MATERIAL_CHANGED", m.getId().toString(), null, "1", java.util.Map.of("action", "CREATE", "name", m.getName()));
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "MATERIAL_CHANGED", m.getId().toString(), null, "1", java.util.Map.of("action", "CREATE", "name", m.getName()));
         return AdminDto.MaterialResponse.builder()
                 .id(m.getId())
                 .name(m.getName())
@@ -587,6 +597,8 @@ public class AdminService {
         if (request.getActive() != null) m.setActive(request.getActive());
 
         m = materialRepository.save(m);
+        realtimeEventPublisher.publishAfterCommit("/topic/stock", "MATERIAL_CHANGED", m.getId().toString(), null, "1", java.util.Map.of("action", "UPDATE", "name", m.getName()));
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "MATERIAL_CHANGED", m.getId().toString(), null, "1", java.util.Map.of("action", "UPDATE", "name", m.getName()));
         return AdminDto.MaterialResponse.builder()
                 .id(m.getId())
                 .name(m.getName())
@@ -602,6 +614,8 @@ public class AdminService {
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy nguyên liệu"));
         m.setActive(false);
         materialRepository.save(m);
+        realtimeEventPublisher.publishAfterCommit("/topic/stock", "MATERIAL_CHANGED", m.getId().toString(), null, "1", java.util.Map.of("action", "DELETE", "name", m.getName()));
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "MATERIAL_CHANGED", m.getId().toString(), null, "1", java.util.Map.of("action", "DELETE", "name", m.getName()));
     }
 
     // ==========================================
@@ -630,8 +644,12 @@ public class AdminService {
                     "Thành phẩm '" + outMat.getName() + "' đã có định mức đang áp dụng. Mỗi thành phẩm chỉ được có một định mức hoạt động.");
         }
 
+        String recipeName = (request.getName() != null && !request.getName().isBlank())
+                ? request.getName().trim()
+                : "Định mức " + outMat.getName();
+
         PreparationRecipe recipe = PreparationRecipe.builder()
-                .name(request.getName().trim())
+                .name(recipeName)
                 .outputMaterial(outMat)
                 .standardOutputQuantity(request.getStandardOutputQuantity())
                 .tolerancePercent(request.getTolerancePercent())
@@ -641,9 +659,10 @@ public class AdminService {
                 .build();
         recipe = preparationRecipeRepository.save(recipe);
 
-        if (request.getInputItems() != null && !request.getInputItems().isEmpty()) {
+        var inputItems = request.getInputItems();
+        if (inputItems != null && !inputItems.isEmpty()) {
             List<PreparationRecipeItem> items = new ArrayList<>();
-            for (var in : request.getInputItems()) {
+            for (var in : inputItems) {
                 Material inMat = materialRepository.findById(in.getInputMaterialId())
                         .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy nguyên liệu đầu vào: ID " + in.getInputMaterialId()));
 
@@ -659,7 +678,10 @@ public class AdminService {
             throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Định mức phải có ít nhất một nguyên liệu đầu vào");
         }
 
-        return getPreparationRecipe(recipe.getId());
+        AdminDto.PreparationRecipeResponse resp = getPreparationRecipe(recipe.getId());
+        realtimeEventPublisher.publishAfterCommit("/topic/stock", "RECIPE_CHANGED", recipe.getId().toString(), null, "1", java.util.Map.of("action", "CREATE", "outputMaterialId", outMat.getId()));
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "RECIPE_CHANGED", recipe.getId().toString(), null, "1", java.util.Map.of("action", "CREATE", "outputMaterialId", outMat.getId()));
+        return resp;
     }
 
     @Transactional
@@ -675,7 +697,11 @@ public class AdminService {
                     "Thành phẩm này đã có một định mức khác đang áp dụng. Vui lòng tắt định mức cũ trước khi kích hoạt định mức này.");
         }
 
-        if (request.getName() != null) recipe.setName(request.getName().trim());
+        if (request.getName() != null && !request.getName().isBlank()) {
+            recipe.setName(request.getName().trim());
+        } else if (recipe.getName() == null || recipe.getName().isBlank()) {
+            recipe.setName("Định mức " + recipe.getOutputMaterial().getName());
+        }
         if (request.getOutputMaterialId() != null) {
             Material outMat = materialRepository.findById(request.getOutputMaterialId())
                     .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy bán thành phẩm đầu ra"));
@@ -693,13 +719,15 @@ public class AdminService {
         if (request.getNote() != null) {
             recipe.setNote(request.getNote().trim());
         }
-        recipe.setVersion((recipe.getVersion() != null ? recipe.getVersion() : 1L) + 1L);
+        long newVersion = (recipe.getVersion() != null ? recipe.getVersion() : 1L) + 1L;
+        recipe.setVersion(newVersion);
         preparationRecipeRepository.save(recipe);
 
-        if (request.getInputItems() != null && !request.getInputItems().isEmpty()) {
+        var inputItems = request.getInputItems();
+        if (inputItems != null && !inputItems.isEmpty()) {
             preparationRecipeItemRepository.deleteByIdRecipeId(id);
             List<PreparationRecipeItem> items = new ArrayList<>();
-            for (var in : request.getInputItems()) {
+            for (var in : inputItems) {
                 Material inMat = materialRepository.findById(in.getInputMaterialId())
                         .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy nguyên liệu đầu vào: ID " + in.getInputMaterialId()));
 
@@ -713,7 +741,10 @@ public class AdminService {
             preparationRecipeItemRepository.saveAll(items);
         }
 
-        return getPreparationRecipe(id);
+        AdminDto.PreparationRecipeResponse resp = getPreparationRecipe(id);
+        realtimeEventPublisher.publishAfterCommit("/topic/stock", "RECIPE_CHANGED", id.toString(), null, String.valueOf(newVersion), java.util.Map.of("action", "UPDATE", "outputMaterialId", recipe.getOutputMaterial().getId()));
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "RECIPE_CHANGED", id.toString(), null, String.valueOf(newVersion), java.util.Map.of("action", "UPDATE", "outputMaterialId", recipe.getOutputMaterial().getId()));
+        return resp;
     }
 
     @Transactional
@@ -722,6 +753,8 @@ public class AdminService {
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy công thức sơ chế"));
         r.setActive(false);
         preparationRecipeRepository.save(r);
+        realtimeEventPublisher.publishAfterCommit("/topic/stock", "RECIPE_CHANGED", id.toString(), null, "1", java.util.Map.of("action", "DEACTIVATE", "outputMaterialId", r.getOutputMaterial().getId()));
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "RECIPE_CHANGED", id.toString(), null, "1", java.util.Map.of("action", "DEACTIVATE", "outputMaterialId", r.getOutputMaterial().getId()));
     }
 
     private String formatQty(BigDecimal val) {
@@ -730,6 +763,11 @@ public class AdminService {
     }
 
     private BigDecimal getRawMaterialCost(Long matId) {
+        var stockOpt = stockRepository.findByIdMaterialIdAndIdLocation(matId, vn.edu.ute.milktea.entity.inventory.StockLocation.KHO);
+        if (stockOpt.isPresent() && stockOpt.get().getCostPrice() != null && stockOpt.get().getCostPrice().signum() > 0) {
+            return stockOpt.get().getCostPrice();
+        }
+
         List<ImportReceiptItem> items = importReceiptItemRepository.findByIdMaterialId(matId);
         if (items.isEmpty()) return null;
         BigDecimal sumCost = BigDecimal.ZERO;
