@@ -33,6 +33,35 @@ const DocumentsApp = (() => {
         `<button class="btn btn-sm btn-${css}" data-doc-action="${action}" data-id="${id}">${label}</button>`;
 
     const card = body => `<article class="card shadow-sm p-3">${body}</article>`;
+    
+    const expandedDocuments = new Set();
+
+    function collapsibleCard(key, title, summary, body, status = '') {
+        const isOpen = expandedDocuments.has(key);
+
+        return `
+            <details class="document-fold"
+                    data-document-key="${esc(key)}"
+                    ${isOpen ? 'open' : ''}>
+                <summary class="document-fold-header">
+                    <div class="flex-grow-1">
+                        <div class="document-fold-title">
+                            ${title}
+                        </div>
+                        <div class="document-fold-summary">
+                            ${summary}
+                        </div>
+                    </div>
+                    ${status ? `<span class="badge bg-secondary">${esc(status)}</span>` : ''}
+                    <i class="bi bi-chevron-down document-fold-arrow"></i>
+                </summary>
+                <div class="document-fold-body">
+                    ${body}
+                </div>
+            </details>
+        `;
+    }
+
 
     function selectedRange() {
         const fromValue = appliedDateFrom;
@@ -84,18 +113,46 @@ const DocumentsApp = (() => {
         </div>`;
     }
 
+    
     function renderImports() {
         const filtered = imports.filter(i => inDateRange(i.createdAt));
-        document.getElementById('importDocuments').innerHTML = filtered.map(i => card(`
-            <div class="d-flex justify-content-between gap-3">
-                <h6>PHIẾU NHẬP PN${String(i.id).padStart(3, '0')}</h6>
-                <span class="badge bg-success">Đã nhập</span>
-            </div>
-            <p class="text-muted small">${date(i.createdAt)} · ${esc(i.createdByEmail || 'Nhân viên')}</p>
-            <p>Nhà cung cấp: ${esc(i.supplier || 'Không ghi')} · ${esc(i.reason || '')}</p>
-            ${renderStockTable(movements.filter(m => m.sourceType === 'IMPORT' && m.sourceId === i.id))}
-        `)).join('') || '<p class="text-muted py-4">Chưa có phiếu nhập kho phù hợp.</p>';
+
+        document.getElementById('importDocuments').innerHTML =
+            filtered.map(i => {
+                const title = `PHIẾU NHẬP PN${String(i.id).padStart(3, '0')}`;
+
+                const summary = `
+                    ${date(i.createdAt)} ·
+                    ${esc(i.createdByEmail || 'Nhân viên')}
+                `;
+
+                const body = `
+                    <p>
+                        Nhà cung cấp:
+                        ${esc(i.supplier || 'Không ghi')}
+                    </p>
+                    ${i.reason
+                        ? `<p>Lý do: ${esc(i.reason)}</p>`
+                        : ''}
+                    ${renderStockTable(
+                        movements.filter(m =>
+                            m.sourceType === 'IMPORT' &&
+                            m.sourceId === i.id
+                        )
+                    )}
+                `;
+
+                return collapsibleCard(
+                    `import-${i.id}`,
+                    title,
+                    summary,
+                    body,
+                    'Đã nhập'
+                );
+            }).join('')
+            || '<p class="text-muted py-4">Chưa có phiếu nhập kho phù hợp.</p>';
     }
+
 
     function renderMovements() {
         const type = document.getElementById('movementTypeFilter').value;
@@ -131,67 +188,150 @@ const DocumentsApp = (() => {
         </div>`;
     }
 
+    
     function renderCancellations() {
         const filtered = cancellations.filter(c => inDateRange(c.createdAt));
-        document.getElementById('cancellationDocuments').innerHTML = filtered.map(c => {
-            const order = orders.get(c.orderId);
-            const refund = refunds.find(r => r.orderId === c.orderId);
-            const refundState = refund
-                ? `<span>Phiếu hoàn RF${refund.id} · ${esc(statusText[refund.status] || refund.status)}</span>`
-                : c.status === 'CHAP_THUAN' && order?.paid
-                    ? '<span>Chờ nhân viên gửi yêu cầu hoàn tiền.</span>'
-                    : '<span>Không có khoản thu cần hoàn.</span>';
 
-            return card(`
-                <h6>PHIẾU HỦY #${c.id} · ${MilkTeaReceipts.code(c.orderId)}</h6>
-                <p>
-                    Ngày lập: ${date(c.createdAt)} ·
+        document.getElementById('cancellationDocuments').innerHTML =
+            filtered.map(c => {
+                const order = orders.get(c.orderId);
+                const refund = refunds.find(r => r.orderId === c.orderId);
+
+                const refundState = refund
+                    ? `<span>Phiếu hoàn RF${refund.id} · ${esc(statusText[refund.status] || refund.status)}</span>`
+                    : c.status === 'CHAP_THUAN' && order?.paid
+                        ? '<span>Chờ nhân viên gửi yêu cầu hoàn tiền.</span>'
+                        : '<span>Không có khoản thu cần hoàn.</span>';
+
+                const title = `
+                    PHIẾU HỦY #${c.id} ·
+                    ${MilkTeaReceipts.code(c.orderId)}
+                `;
+
+                const summary = `
+                    ${date(c.createdAt)} ·
                     Khách: ${esc(order?.customerName || 'Khách vãng lai')} ·
                     Bàn: ${esc(order?.tableName || 'Quầy')}
-                </p>
-                ${orderLines(order)}
-                <p>Lý do: ${esc(c.reason)}</p>
-                <p>Trạng thái: ${esc(statusText[c.status] || c.status)}</p>
-                ${c.decidedAt ? `<p>Nhân viên xác nhận: ${esc(c.decidedBy || 'Nhân viên')} · ${date(c.decidedAt)}</p>` : ''}
-                <div class="d-flex gap-2">
-                    ${c.status === 'CHO'
-                        ? '<span class="text-warning small"><i class="bi bi-hourglass-split me-1"></i>Đang chờ thu ngân xác nhận hủy đơn tại POS/Đơn hàng.</span>'
-                        : refundState}
-                </div>
-            `);
-        }).join('') || '<p class="text-muted">Chưa có phiếu hủy phù hợp.</p>';
+                `;
+
+                const body = `
+                    ${orderLines(order)}
+                    <p>Lý do: ${esc(c.reason)}</p>
+                    <p>
+                        Trạng thái:
+                        ${esc(statusText[c.status] || c.status)}
+                    </p>
+                    ${c.decidedAt
+                        ? `<p>Nhân viên xác nhận:
+                            ${esc(c.decidedBy || 'Nhân viên')} ·
+                            ${date(c.decidedAt)}</p>`
+                        : ''}
+                    <div class="d-flex gap-2">
+                        ${c.status === 'CHO'
+                            ? '<span class="text-warning small"><i class="bi bi-hourglass-split me-1"></i>Đang chờ thu ngân xác nhận hủy đơn tại POS/Đơn hàng.</span>'
+                            : refundState}
+                    </div>
+                `;
+
+                return collapsibleCard(
+                    `cancel-${c.id}`,
+                    title,
+                    summary,
+                    body,
+                    statusText[c.status] || c.status
+                );
+            }).join('')
+            || '<p class="text-muted">Chưa có phiếu hủy phù hợp.</p>';
     }
 
+    
     function renderRefunds() {
-        const filtered = refunds.filter(r => inDateRange(refundDocumentDate(r)));
-        document.getElementById('refundDocuments').innerHTML = filtered.map(r => {
-            const order = orders.get(r.orderId);
-            const cancellation = cancellations.find(c => c.orderId === r.orderId);
-            const status = statusText[r.status] || r.status;
+        const filtered = refunds.filter(r =>
+            inDateRange(refundDocumentDate(r))
+        );
 
-            return card(`
-                <h6>PHIẾU HOÀN RF${r.id} · ${MilkTeaReceipts.code(r.orderId)}</h6>
-                <p>
-                    Ngày lập: ${date(refundDocumentDate(r))} ·
+        document.getElementById('refundDocuments').innerHTML =
+            filtered.map(r => {
+                const order = orders.get(r.orderId);
+                const cancellation = cancellations.find(
+                    c => c.orderId === r.orderId
+                );
+                const status = statusText[r.status] || r.status;
+
+                const title = `
+                    PHIẾU HOÀN RF${r.id} ·
+                    ${MilkTeaReceipts.code(r.orderId)}
+                `;
+
+                const summary = `
+                    ${date(refundDocumentDate(r))} ·
                     Khách: ${esc(order?.customerName || 'Khách vãng lai')} ·
                     Bàn: ${esc(order?.tableName || 'Quầy')}
-                </p>
-                ${orderLines(order)}
-                <p>Lý do hoàn: ${esc(r.reason || cancellation?.reason || '-')}</p>
-                <p>Số tiền hoàn: <b>${MilkTeaApi.formatVND(r.amount)}</b></p>
-                <p>Trạng thái: ${esc(status)}</p>
-                ${r.approvedAt ? `<p>Admin xác nhận: ${esc(r.approvedBy || 'Admin')} · ${date(r.approvedAt)}</p>` : ''}
-                ${r.refundedAt ? `<p>Thời gian hoàn: ${date(r.refundedAt)} · Người thực hiện: ${esc(r.refundedBy || r.approvedBy || 'Admin')}</p>` : ''}
-                <div class="d-flex gap-2 flex-wrap">
-                    ${r.status === 'CHO_DUYET'
-                        ? btn('approveRefund', r.id, 'Xác nhận đã hoàn chuyển khoản', 'success') + btn('rejectRefund', r.id, 'Từ chối', 'danger')
-                        : ['DA_DUYET', 'DA_HOAN'].includes(r.status)
-                            ? btn('receipt', r.orderId, 'Xem phiếu hoàn tiền', 'outline-secondary')
-                            : ''}
-                </div>
-            `);
-        }).join('') || '<p class="text-muted">Chưa có phiếu hoàn phù hợp.</p>';
+                `;
+
+                const body = `
+                    ${orderLines(order)}
+
+                    <p>
+                        Lý do hoàn:
+                        ${esc(r.reason || cancellation?.reason || '-')}
+                    </p>
+
+                    <p>
+                        Số tiền hoàn:
+                        <b>${MilkTeaApi.formatVND(r.amount)}</b>
+                    </p>
+
+                    <p>Trạng thái: ${esc(status)}</p>
+
+                    ${r.approvedAt
+                        ? `<p>Admin xác nhận:
+                            ${esc(r.approvedBy || 'Admin')} ·
+                            ${date(r.approvedAt)}</p>`
+                        : ''}
+
+                    ${r.refundedAt
+                        ? `<p>Thời gian hoàn:
+                            ${date(r.refundedAt)} ·
+                            Người thực hiện:
+                            ${esc(r.refundedBy || r.approvedBy || 'Admin')}</p>`
+                        : ''}
+
+                    <div class="d-flex gap-2 flex-wrap">
+                        ${r.status === 'CHO_DUYET'
+                            ? btn(
+                                'approveRefund',
+                                r.id,
+                                'Xác nhận đã hoàn chuyển khoản',
+                                'success'
+                            ) + btn(
+                                'rejectRefund',
+                                r.id,
+                                'Từ chối',
+                                'danger'
+                            )
+                            : ['DA_DUYET', 'DA_HOAN'].includes(r.status)
+                                ? btn(
+                                    'receipt',
+                                    r.orderId,
+                                    'Xem phiếu hoàn tiền',
+                                    'outline-secondary'
+                                )
+                                : ''}
+                    </div>
+                `;
+
+                return collapsibleCard(
+                    `refund-${r.id}`,
+                    title,
+                    summary,
+                    body,
+                    status
+                );
+            }).join('')
+            || '<p class="text-muted">Chưa có phiếu hoàn phù hợp.</p>';
     }
+
 
     function render() {
         renderImports();
@@ -284,6 +424,24 @@ const DocumentsApp = (() => {
             const button = event.target.closest('[data-doc-action]');
             if (button) action(button.dataset.docAction, button.dataset.id);
         });
+
+                
+        document.addEventListener('toggle', event => {
+            const detail = event.target;
+
+            if (!detail.matches?.('.document-fold')) return;
+
+            const key = detail.dataset.documentKey;
+
+            if (!key) return;
+
+            if (detail.open) {
+                expandedDocuments.add(key);
+            } else {
+                expandedDocuments.delete(key);
+            }
+        }, true);
+
 
         load();
         setInterval(() => {
