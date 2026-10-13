@@ -253,6 +253,7 @@ public class AdminDto {
 
         @NotNull(message = "Định mức đầu vào không được để trống")
         @Positive(message = "Định mức đầu vào phải lớn hơn 0")
+        @com.fasterxml.jackson.annotation.JsonAlias({"standardQuantity", "quantity"})
         private BigDecimal standardQuantity;
     }
 
@@ -261,7 +262,6 @@ public class AdminDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CreatePreparationRecipeRequest {
-        @NotBlank(message = "Tên công thức không được để trống")
         private String name;
 
         @NotNull(message = "Bán thành phẩm đầu ra không được để trống")
@@ -279,6 +279,7 @@ public class AdminDto {
 
         private Long version;
 
+        @com.fasterxml.jackson.annotation.JsonAlias({"inputItems", "items"})
         private List<PrepRecipeItemDto> inputItems;
     }
 

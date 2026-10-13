@@ -10,6 +10,7 @@ import vn.edu.ute.milktea.common.ApiResponse;
 import vn.edu.ute.milktea.dto.AdminDto;
 import vn.edu.ute.milktea.dto.InventoryDto;
 import vn.edu.ute.milktea.entity.account.Account;
+import vn.edu.ute.milktea.entity.inventory.MaterialType;
 import vn.edu.ute.milktea.entity.inventory.StockLocation;
 import vn.edu.ute.milktea.repository.account.AccountRepository;
 import vn.edu.ute.milktea.security.CurrentActor;
@@ -39,11 +40,21 @@ public class InventoryController {
     @GetMapping("/stocks/summary")
     public ResponseEntity<ApiResponse<InventoryDto.StockSummaryResponse>> getStockSummary(
             @RequestParam(value = "location", required = false) StockLocation location,
+            @RequestParam(value = "type", required = false) MaterialType type,
             @RequestParam(value = "alertFilter", required = false) String alertFilter,
             @RequestParam(value = "query", required = false) String query) {
-        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getStocksWithFilter(location, alertFilter, query)));
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getStocksWithFilter(location, type, alertFilter, query)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/stocks/adjust")
+    public ResponseEntity<ApiResponse<Void>> adjustStock(
+            @Valid @RequestBody InventoryDto.AdjustStockRequest requestBody,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Account account = actor != null ? accountRepository.findById(actor.getAccountId()).orElse(null) : null;
+        inventoryService.adjustRawMaterialStock(requestBody, account);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
 
     @PostMapping("/batches")
     public ResponseEntity<ApiResponse<Void>> createBatch(
@@ -86,6 +97,7 @@ public class InventoryController {
     }
 
     
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/imports")
     public ResponseEntity<ApiResponse<Void>> createImport(
             @Valid @RequestBody InventoryDto.CreateImportReceiptRequest requestBody,
@@ -101,6 +113,7 @@ public class InventoryController {
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.listImports()));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/waste")
     public ResponseEntity<ApiResponse<Void>> createWaste(
             @Valid @RequestBody InventoryDto.CreateWasteRequest requestBody,

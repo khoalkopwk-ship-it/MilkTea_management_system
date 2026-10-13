@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface PreparationRecipeItemRepository extends JpaRepository<PreparationRecipeItem, Object> {
     List<PreparationRecipeItem> findByIdRecipeId(Long recipeId);
+    List<PreparationRecipeItem> findByIdMaterialId(Long materialId);
     void deleteByIdRecipeId(Long recipeId);
 }

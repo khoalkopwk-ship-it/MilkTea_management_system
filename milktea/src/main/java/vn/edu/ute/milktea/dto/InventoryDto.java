@@ -31,6 +31,34 @@ public class InventoryDto {
         private String alertStatus;
         private String alertLabel;
         private BigDecimal averageImportPrice;
+        private BigDecimal averagePrice;
+        private BigDecimal minThreshold;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AdjustStockRequest {
+        @NotNull(message = "Mã nguyên liệu không được để trống")
+        private Long materialId;
+
+        private String name;
+
+        @DecimalMin(value = "0.0", message = "Số lượng tồn không được âm")
+        private BigDecimal quantity;
+
+        @DecimalMin(value = "0.0", message = "Giá nhập trung bình không được âm")
+        @com.fasterxml.jackson.annotation.JsonAlias({"costPrice", "averageImportPrice", "averagePrice"})
+        private BigDecimal averageImportPrice;
+
+        @DecimalMin(value = "0.0", message = "Ngưỡng tối thiểu không được âm")
+        @com.fasterxml.jackson.annotation.JsonAlias({"threshold", "minThreshold"})
+        private BigDecimal threshold;
+
+        private String reason;
+
+        private Long version;
     }
 
     @Data
