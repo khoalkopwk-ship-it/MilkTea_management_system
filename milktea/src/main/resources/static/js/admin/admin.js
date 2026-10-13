@@ -438,6 +438,21 @@ async function updateThreshold(materialId, location, threshold) {
         }
     }
 
+    function selectProductCategory(button) {
+        const catInput = document.getElementById('productFilterCat');
+        if (!catInput || !button) return;
+
+        catInput.value = button.dataset.categoryId || '';
+        document.querySelectorAll('#productCategoryButtons [data-category-id]').forEach(btn => {
+            const active = btn === button;
+            btn.classList.toggle('active', active);
+            btn.classList.toggle('btn-primary', active);
+            btn.classList.toggle('btn-outline-primary', !active);
+        });
+
+        loadProducts(1);
+    }
+
     function resetProductFilters() {
         const catSelect = document.getElementById('productFilterCat');
         const activeSelect = document.getElementById('productFilterActive');
@@ -445,6 +460,15 @@ async function updateThreshold(materialId, location, threshold) {
         if (catSelect) catSelect.value = '';
         if (activeSelect) activeSelect.value = '';
         if (searchInput) searchInput.value = '';
+        const allCategoryButton = document.querySelector('#productCategoryButtons [data-category-id=""]');
+        if (allCategoryButton) {
+            document.querySelectorAll('#productCategoryButtons [data-category-id]').forEach(btn => {
+                const active = btn === allCategoryButton;
+                btn.classList.toggle('active', active);
+                btn.classList.toggle('btn-primary', active);
+                btn.classList.toggle('btn-outline-primary', !active);
+            });
+        }
         loadProducts(1);
     }
 
@@ -754,6 +778,7 @@ async function updateThreshold(materialId, location, threshold) {
         loadRevenueReport,
         updateSettings,
         loadProducts,
+        selectProductCategory,
         resetProductFilters,
         openProductFullConfig,
         previewFullConfigImage,
