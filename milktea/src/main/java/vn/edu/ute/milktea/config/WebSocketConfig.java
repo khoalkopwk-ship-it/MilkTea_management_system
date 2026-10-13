@@ -39,9 +39,39 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        org.springframework.web.socket.server.HandshakeInterceptor cookieInterceptor = new org.springframework.web.socket.server.HandshakeInterceptor() {
+            @Override
+            public boolean beforeHandshake(org.springframework.http.server.ServerHttpRequest request,
+                                          org.springframework.http.server.ServerHttpResponse response,
+                                          org.springframework.web.socket.WebSocketHandler wsHandler,
+                                          Map<String, Object> attributes) {
+                if (request instanceof org.springframework.http.server.ServletServerHttpRequest servletRequest) {
+                    jakarta.servlet.http.HttpServletRequest httpRequest = servletRequest.getServletRequest();
+                    jakarta.servlet.http.Cookie[] cookies = httpRequest.getCookies();
+                    if (cookies != null) {
+                        for (jakarta.servlet.http.Cookie c : cookies) {
+                            if (vn.edu.ute.milktea.security.JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE.equals(c.getName())) {
+                                attributes.put(vn.edu.ute.milktea.security.JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, c.getValue());
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+
+            @Override
+            public void afterHandshake(org.springframework.http.server.ServerHttpRequest request,
+                                       org.springframework.http.server.ServerHttpResponse response,
+                                       org.springframework.web.socket.WebSocketHandler wsHandler,
+                                       Exception exception) {
+            }
+        };
+
         registry.addEndpoint("/ws")
+                .addInterceptors(cookieInterceptor)
                 .setAllowedOriginPatterns("*");
         registry.addEndpoint("/ws")
+                .addInterceptors(cookieInterceptor)
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
@@ -80,12 +110,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private void authenticateStompConnect(StompHeaderAccessor accessor) {
         // 1. Kiểm tra header Authorization / Cookie JWT
+        String token = null;
         String bearer = accessor.getFirstNativeHeader("Authorization");
         if (bearer == null) {
             bearer = accessor.getFirstNativeHeader("authorization");
         }
         if (bearer != null && bearer.startsWith("Bearer ")) {
-            String token = bearer.substring(7).trim();
+            token = bearer.substring(7).trim();
+        }
+
+        // 2. Nếu không có header, lấy từ session attributes (được trích xuất từ cookie ở HTTP handshake)
+        if (token == null && accessor.getSessionAttributes() != null) {
+            Object cookieToken = accessor.getSessionAttributes().get(vn.edu.ute.milktea.security.JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE);
+            if (cookieToken instanceof String ct && !ct.isBlank()) {
+                token = ct.trim();
+            }
+        }
+
+        if (token != null) {
             Map<String, Object> claims = jwtService.validateAndExtractClaims(token);
             if (claims != null) {
                 Long accountId = Long.parseLong((String) claims.get("sub"));

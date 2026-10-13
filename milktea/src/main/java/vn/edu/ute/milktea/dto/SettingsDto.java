@@ -23,9 +23,20 @@ public class SettingsDto {
         private String bankName;
         private String bankAccountNumber;
         private String bankAccountHolder;
+        private String logoUrl;
+        private String logoPublicId;
         private BigDecimal discountPercent;
         private String discountType; // PERCENT, FIXED_AMOUNT
         private BigDecimal discountValue;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LogoImageView {
+        private String logoUrl;
+        private String logoPublicId;
     }
 
     @Data
@@ -38,6 +49,8 @@ public class SettingsDto {
         @NotBlank(message = "Địa chỉ quán không được để trống")
         private String address;
 
+        private String logoUrl;
+        private String logoPublicId;
         private String bankName;
         private String bankAccountNumber;
         private String bankAccountHolder;

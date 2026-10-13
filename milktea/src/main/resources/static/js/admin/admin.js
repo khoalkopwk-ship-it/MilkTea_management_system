@@ -11,6 +11,37 @@ const AdminApp = (() => {
         refreshAdminRefundBadge();
         MilkTeaRealtime.on('REFUND_CHANGED', refreshAdminRefundBadge);
         MilkTeaRealtime.on('CANCELLATION_REQUESTED', refreshAdminRefundBadge);
+        MilkTeaRealtime.on('CATALOG_CHANGED', () => {
+            if (document.getElementById('productTableBody')) {
+                loadProducts(1);
+            }
+        });
+        MilkTeaRealtime.on('SETTINGS_CHANGED', async () => {
+            try {
+                const info = await MilkTeaApi.get('/api/v1/public/shop-info');
+                if (info && info.logoUrl) {
+                    document.querySelectorAll('.navbar-milktea .navbar-brand').forEach(brand => {
+                        let img = brand.querySelector('img.navbar-shop-logo');
+                        const badge = brand.querySelector('.navbar-brand-badge');
+                        if (!img) {
+                            img = document.createElement('img');
+                            img.alt = 'Logo';
+                            img.className = 'rounded-circle shadow-sm navbar-shop-logo';
+                            img.style = 'width: 38px; height: 38px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);';
+                            brand.prepend(img);
+                        }
+                        img.src = info.logoUrl;
+                        img.style.display = 'inline-block';
+                        if (badge) badge.style.setProperty('display', 'none', 'important');
+                    });
+                }
+                if (info && info.shopName) {
+                    document.querySelectorAll('.navbar-shop-name').forEach(el => el.textContent = info.shopName);
+                }
+            } catch (e) {
+                console.debug('Error refreshing shop info on SETTINGS_CHANGED:', e);
+            }
+        });
         MilkTeaRealtime.onReconnect(refreshAdminRefundBadge);
 
         if (document.getElementById('productTableBody')) {
@@ -68,6 +99,67 @@ const AdminApp = (() => {
             }
         } catch (e) {
             MilkTeaApi.showToast(e.message || 'Lỗi tải ảnh lên Cloudinary', 'error');
+        } finally {
+            if (spinner) spinner.classList.add('d-none');
+            fileInput.value = '';
+        }
+    }
+
+    async function uploadLogo(fileInput) {
+        if (!fileInput.files || fileInput.files.length === 0) {
+            MilkTeaApi.showToast('Vui lòng chọn một file ảnh logo', 'warning');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!validTypes.includes(file.type.toLowerCase())) {
+            MilkTeaApi.showToast('Định dạng ảnh không hợp lệ (Chỉ nhận JPEG, PNG, WebP)', 'error');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            MilkTeaApi.showToast('Kích thước ảnh vượt quá 5MB', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const spinner = document.getElementById('logoUploadSpinner');
+        if (spinner) spinner.classList.remove('d-none');
+
+        try {
+            const data = await MilkTeaApi.upload('/api/v1/admin/settings/logo', formData);
+            MilkTeaApi.showToast('Đã tải logo quán lên Cloudinary thành công!', 'success');
+
+            const logoImg = document.getElementById('shopLogoPreview');
+            if (logoImg && data.logoUrl) {
+                logoImg.src = data.logoUrl;
+                logoImg.classList.remove('d-none');
+            }
+            const fallbackIcon = document.getElementById('shopLogoFallbackIcon');
+            if (fallbackIcon) fallbackIcon.classList.add('d-none');
+
+            // Cập nhật ngay lập tức logo trên navbar header
+            if (data.logoUrl) {
+                document.querySelectorAll('.navbar-milktea .navbar-brand').forEach(brand => {
+                    let img = brand.querySelector('img.navbar-shop-logo');
+                    const badge = brand.querySelector('.navbar-brand-badge');
+                    if (!img) {
+                        img = document.createElement('img');
+                        img.alt = 'Logo';
+                        img.className = 'rounded-circle shadow-sm navbar-shop-logo';
+                        img.style = 'width: 38px; height: 38px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);';
+                        brand.prepend(img);
+                    }
+                    img.src = data.logoUrl;
+                    img.style.display = 'inline-block';
+                    if (badge) badge.style.setProperty('display', 'none', 'important');
+                });
+            }
+        } catch (e) {
+            MilkTeaApi.showToast(e.message || 'Lỗi tải ảnh logo lên Cloudinary', 'error');
         } finally {
             if (spinner) spinner.classList.add('d-none');
             fileInput.value = '';
@@ -308,22 +400,22 @@ const AdminApp = (() => {
         }
     }
 
-    
-async function updateThreshold(materialId, location, threshold) {
-    const value = Number(threshold);
 
-    if (!Number.isFinite(value) || value < 0) {
-        MilkTeaApi.showToast(
-            'Ngưỡng tồn phải là số không âm',
-            'warning'
-        );
-        return;
-    }
+    async function updateThreshold(materialId, location, threshold) {
+        const value = Number(threshold);
 
-    try {
-        await MilkTeaApi.put(
-            '/api/v1/inventory/stocks/threshold',
-            {
+        if (!Number.isFinite(value) || value < 0) {
+            MilkTeaApi.showToast(
+                'Ngưỡng tồn phải là số không âm',
+                'warning'
+            );
+            return;
+        }
+
+        try {
+            await MilkTeaApi.put(
+                '/api/v1/inventory/stocks/threshold',
+                {
                     materialId: Number(materialId),
                     location: location,
                     threshold: value
@@ -762,6 +854,7 @@ async function updateThreshold(materialId, location, threshold) {
     return {
         init,
         uploadProductImage,
+        uploadLogo,
         createCategory,
         updateCategory,
         deleteCategory,

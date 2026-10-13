@@ -23,6 +23,7 @@ import java.util.UUID;
 public class AuthController {
 
     private final AuthService authService;
+    private final vn.edu.ute.milktea.service.media.ProductImageService productImageService;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthDto.AuthResponse>> login(
@@ -125,5 +126,16 @@ public class AuthController {
         }
         authService.changePassword(actor.getAccountId(), request);
         return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    @PostMapping(value = "/profile/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadProfileAvatar(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor == null || actor.getAccountId() == null) {
+            throw vn.edu.ute.milktea.common.BusinessException.unauthorized(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Vui lòng đăng nhập");
+        }
+        String avatarUrl = productImageService.uploadAvatarImage(actor.getAccountId(), file);
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("avatarUrl", avatarUrl)));
     }
 }

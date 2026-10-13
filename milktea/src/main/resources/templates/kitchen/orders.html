@@ -7,6 +7,13 @@
 <body>
     <div th:fragment="content" class="container-fluid py-3 px-lg-4">
 
+        <!-- Top Header KDS -->
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-success fs-6 py-2 px-3 rounded-pill"><i class="bi bi-fire me-1"></i> Bếp Pha Chế (KDS)</span>
+            </div>
+        </div>
+
         <div class="tab-content">
             <!-- Tab 1: KDS Orders Pipeline -->
             <div class="tab-pane fade show active" id="tabKds">
@@ -102,11 +109,6 @@
                                 Theo dõi toàn bộ lịch sử sơ chế từ khi hệ thống hoạt động, thông tin định mức, giá vốn và chi phí thực tế.
                             </p>
                         </div>
-                        <button type="button"
-                                class="btn btn-sm btn-outline-secondary rounded-pill"
-                                onclick="KitchenApp.loadPreparationHistory()">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
-                        </button>
                     </div>
 
                     <!-- Toolbar Bộ lọc thời gian -->
@@ -225,9 +227,6 @@
                             <h5 class="fw-bold mb-1"><i class="bi bi-clock-history me-2 text-secondary"></i> Lịch Sử Biên Bản Kết Ca Đã Chốt</h5>
                             <p class="text-muted small mb-0">Theo dõi lịch sử kết ca và số liệu hao hụt đã chốt qua các ca làm việc.</p>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="KitchenApp.loadPastSettlements()">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
-                        </button>
                     </div>
 
                     <!-- Toolbar Bộ lọc thời gian kết ca -->

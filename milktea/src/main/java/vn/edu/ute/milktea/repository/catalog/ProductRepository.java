@@ -17,6 +17,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @EntityGraph(attributePaths = {"category"})
     List<Product> findAllByOrderByIdAsc();
+
+    long countByImagePublicId(String imagePublicId);
 }
 
 

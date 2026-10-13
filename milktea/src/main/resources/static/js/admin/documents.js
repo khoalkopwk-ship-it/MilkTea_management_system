@@ -444,9 +444,6 @@ const DocumentsApp = (() => {
 
 
         load();
-        setInterval(() => {
-            if (!document.hidden && !busy) load();
-        }, 15000);
     });
 
     return { load };
