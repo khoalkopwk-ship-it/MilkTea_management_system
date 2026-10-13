@@ -29,6 +29,9 @@ public class Stock {
     @Column(name = "NguongCanhBao", precision = 18, scale = 3)
     private BigDecimal threshold;
 
+    @Column(name = "GiaVonDonVi", precision = 18, scale = 6)
+    private BigDecimal costPrice;
+
     @Version
     @Column(name = "Version", nullable = false)
     @Builder.Default

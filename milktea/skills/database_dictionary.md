@@ -198,6 +198,7 @@ Giữ tên SQL không dấu trong Chương 4; map tên lớp Java tiếng Anh b�
 | MaNL | BIGINT | PK kép cùng ViTri; FK NguyenLieu |
 | ViTri | VARCHAR(8) | KHO / BEP |
 | SoLuong / NguongCanhBao | DECIMAL(18,3) | CHECK >= 0 |
+| GiaVonDonVi | DECIMAL(18,6) | Nullable; giá nhập trung bình (KHO) hoặc giá vốn tồn (BEP) |
 | Version | BIGINT | JPA @Version hoặc khóa pessimistic khi ghi |
 
 ## CongThucMon
@@ -291,6 +292,8 @@ Giữ tên SQL không dấu trong Chương 4; map tên lớp Java tiếng Anh b�
 | NguonLoai / NguonMa / NguonDong | VARCHAR(16) / BIGINT / BIGINT | Khóa chứng từ nguồn |
 | NguoiLap / TaoLuc | BIGINT / DATETIME2 | FK TaiKhoan; NOT NULL |
 | LyDo | NVARCHAR(500) | Bắt buộc hao hụt |
+| GiaVonDonVi | DECIMAL(18,6) | Nullable; giá vốn đơn vị tại thời điểm phát sinh |
+| ChiPhiHaoHut | DECIMAL(18,2) | Nullable; chi phí hao hụt quy đổi |
 
 ## NhatKyNghiepVu
 
