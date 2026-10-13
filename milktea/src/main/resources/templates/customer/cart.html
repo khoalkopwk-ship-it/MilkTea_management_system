@@ -118,7 +118,11 @@
                     const unitPriceWithTopping = price + toppingSum;
                     const lineTotal = it.lineTotal || (unitPriceWithTopping * it.quantity);
                     const toppingText = toppings.length
-                        ? `<div class="small text-muted mb-1">+ Topping: ${toppings.map(t => `${t.name} (${MilkTeaApi.formatVND(t.price)})`).join(', ')}</div>`
+                        ? `<div class="small text-muted mb-1">
+                            ${toppings.map(t => `
+                                <div>+ ${t.name} (${MilkTeaApi.formatVND(t.price)})</div>
+                            `).join('')}
+                        </div>`
                         : '';
                     html += `
                         <div class="d-flex align-items-center justify-content-between py-3 ${idx > 0 ? 'border-top' : ''}">

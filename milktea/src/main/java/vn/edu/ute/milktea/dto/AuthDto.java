@@ -8,7 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import vn.edu.ute.milktea.entity.account.Role;
-
+import jakarta.validation.constraints.Pattern;
 public class AuthDto {
 
     @Data
@@ -38,6 +38,8 @@ public class AuthDto {
         private String password;
 
         private String fullName;
+        @NotBlank(message = "Số điện thoại không được để trống")
+        @Pattern(regexp = "[0-9]{10}", message = "Số điện thoại phải gồm đúng 10 chữ số")
         private String phone;
     }
 

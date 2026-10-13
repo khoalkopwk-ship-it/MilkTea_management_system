@@ -348,7 +348,13 @@
                 const alertEl = document.getElementById('authAlert');
                 const btn = document.getElementById('registerBtn');
                 const spinner = document.getElementById('registerSpinner');
-
+                if (!/^[0-9]{10}$/.test(phone)) {
+                alertEl.textContent = 'Số điện thoại phải gồm đúng 10 chữ số';
+                alertEl.className = 'alert alert-danger py-2 small rounded-3';
+                alertEl.classList.remove('d-none');
+                document.getElementById('regPhone').focus();
+                return;
+            }
                 if (password !== confirmPass) {
                     alertEl.textContent = 'Mật khẩu xác nhận không khớp!';
                     alertEl.className = 'alert alert-danger py-2 small rounded-3';

@@ -1,82 +1,151 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
-<head><title>Tổng Quan Dashboard - Admin</title></head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Tổng Quan Dashboard - Admin</title>
+</head>
 <body>
 <div th:fragment="content" class="container-fluid py-4 px-lg-4 dashboard-page">
-<link rel="stylesheet" th:href="@{/css/admin-dashboard.css}">
-<div class="row g-4 dashboard-shell">
-    <div class="col-lg-3 col-xxl-2 dashboard-sidebar-column">
-        <aside class="admin-sidebar dashboard-panel">
-            <h6 class="text-muted small fw-bold px-2 mb-3 text-uppercase">Quản trị quán</h6>
-            <a th:href="@{/admin/catalog}" class="admin-nav-link">
-                <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
-            </a>
-            <a th:href="@{/admin/tables}" class="admin-nav-link">
-                <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
-            </a>
-            <a th:href="@{/admin/staff}" class="admin-nav-link">
-                <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
-            </a>
-            <a th:href="@{/admin/inventory}" class="admin-nav-link">
-                <i class="bi bi-box-seam-fill"></i> Kho Hàng
-            </a>
-            <a th:href="@{/admin/documents}" class="admin-nav-link d-flex align-items-center justify-content-between">
-                <span><i class="bi bi-files me-1"></i> Chứng Từ</span>
-                <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
-            </a>
-            <a th:href="@{/admin/reports}" class="admin-nav-link active">
-                <i class="bi bi-graph-up-arrow"></i> Tổng Quan Dashboard
-            </a>
-            <a th:href="@{/admin/settings}" class="admin-nav-link">
-                <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
-            </a>
-        </aside>
-    </div>
+    <link rel="stylesheet" th:href="@{/css/admin-dashboard.css}">
 
-    <div class="col-lg-9 col-xxl-10 dashboard-content">
-        <header class="dashboard-heading mb-4">
-            <div>
-                <div class="dashboard-eyebrow">MILKTEA / ADMIN</div>
-                <h2 class="brand-font fw-bold mb-2">Tổng quan hệ thống</h2>
-                <p class="text-muted mb-0">Theo dõi thực thu, đơn hàng, hao hụt nguyên liệu và cảnh báo vận hành.</p>
-            </div>
-            <div class="dashboard-heading-actions">
-                <div class="dashboard-time-tag"><i class="bi bi-calendar-check me-2"></i><span id="dashboardRangeText">Đang tải dữ liệu...</span></div>
-            </div>
-        </header>
+    <div class="admin-report-layout">
+        <div class="admin-sidebar-column">
+            <aside class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
+                <h6 class="text-muted small fw-bold px-2 mb-3 text-uppercase">
+                    Quản trị hệ thống
+                </h6>
 
-        <section class="dashboard-panel dashboard-filter-panel mb-4">
-            <form id="dashboardFilterForm" class="row g-3 align-items-end">
-                <div class="col-sm-6 col-xl-2">
-                    <label for="filterFromDate" class="form-label small fw-semibold">Từ ngày</label>
-                    <input id="filterFromDate" type="date" class="form-control" required>
-                </div>
-                <div class="col-sm-6 col-xl-2">
-                    <label for="filterToDate" class="form-label small fw-semibold">Đến ngày</label>
-                    <input id="filterToDate" type="date" class="form-control" required>
-                </div>
-                <div class="col-xl-8 d-flex gap-2 align-items-center flex-wrap">
-                    <button class="btn btn-primary rounded-pill px-4" type="submit" id="dashboardFilterButton"><i class="bi bi-funnel me-1"></i> Áp dụng</button>
-                    <button class="btn btn-outline-secondary rounded-pill" type="button" data-preset="today">Hôm nay</button>
-                    <button class="btn btn-outline-secondary rounded-pill" type="button" data-preset="month">Tháng này</button>
-                    <button class="btn btn-outline-secondary rounded-pill" type="button" data-preset="last7">7 ngày</button>
-                </div>
-            </form>
-            <p id="dashboardError" class="text-danger small mt-3 mb-0 d-none" role="alert"></p>
-        </section>
+                <a th:href="@{/admin/catalog}" class="admin-nav-link">
+                    <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
+                </a>
 
-        <div class="row g-3 mb-4">
-            <div class="col-sm-6 col-xl-3"><div class="dashboard-kpi kpi-orders"><div class="kpi-head"><span>Tổng đơn</span><i class="bi bi-bag-check"></i></div><div class="kpi-number" id="dashboardTotalOrders">—</div><div class="kpi-detail">Đơn được tạo trong khoảng đã chọn</div></div></div>
-            <div class="col-sm-6 col-xl-3"><div class="dashboard-kpi kpi-net"><div class="kpi-head"><span>Thực thu</span><i class="bi bi-wallet2"></i></div><div class="kpi-number" id="dashboardNetRevenue">—</div><div class="kpi-detail">Thu <span id="dashboardReceived">—</span> · Hoàn <span id="dashboardRefunded">—</span></div></div></div>
-            <div class="col-sm-6 col-xl-3"><div class="dashboard-kpi kpi-unpaid"><div class="kpi-head"><span>Chưa thanh toán</span><i class="bi bi-receipt"></i></div><div class="kpi-number" id="dashboardUnpaidOrders">—</div><div class="kpi-detail">Còn phải thu <span id="dashboardUnpaidAmount">—</span></div></div></div>
-            <div class="col-sm-6 col-xl-3"><div class="dashboard-kpi kpi-waste"><div class="kpi-head"><span>Chi phí hao hụt</span><i class="bi bi-trash3"></i></div><div class="kpi-number" id="dashboardWasteCost">—</div><div class="kpi-detail">Kết ca + báo hủy nguyên liệu</div></div></div>
+                <a th:href="@{/admin/tables}" class="admin-nav-link">
+                    <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
+                </a>
+
+                <a th:href="@{/admin/staff}" class="admin-nav-link">
+                    <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
+                </a>
+
+                <a th:href="@{/admin/inventory}" class="admin-nav-link">
+                    <i class="bi bi-box-seam-fill"></i> Kho Hàng
+                </a>
+
+                <a th:href="@{/admin/documents}"
+                   class="admin-nav-link d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-files me-1"></i> Chứng Từ</span>
+                    <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
+                </a>
+
+                <a th:href="@{/admin/reports}" class="admin-nav-link active">
+                    <i class="bi bi-graph-up-arrow"></i> Báo cáo doanh thu
+                </a>
+
+                <a th:href="@{/admin/settings}" class="admin-nav-link">
+                    <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
+                </a>
+            </aside>
         </div>
 
-        <div class="row g-4 align-items-start dashboard-main-layout">
-            <div class="col-xxl-8 dashboard-charts-column">
-                <div class="row g-4">
-                    <div class="col-xl-7">
-                        <section class="dashboard-panel h-100">
+        <div class="admin-content-column dashboard-content">
+            <header class="dashboard-heading mb-4">
+                <div>
+                    <h2 class="brand-font fw-bold mb-2">Tổng quan hệ thống</h2>
+                    <p class="text-muted mb-0">
+                        Theo dõi thực thu, đơn hàng, hao hụt nguyên liệu và cảnh báo vận hành.
+                    </p>
+                </div>
+                <div class="dashboard-heading-actions">
+                    <section class="dashboard-panel dashboard-filter-panel dashboard-filter-compact">
+                        <form id="dashboardFilterForm" class="dashboard-date-filter">
+                            <div class="dashboard-date-field">
+                                <label for="filterFromDate" class="form-label">Từ ngày</label>
+                                <input id="filterFromDate"
+                                    type="date"
+                                    class="form-control"
+                                    required>
+                            </div>
+
+                            <div class="dashboard-date-field">
+                                <label for="filterToDate" class="form-label">Đến ngày</label>
+                                <input id="filterToDate"
+                                    type="date"
+                                    class="form-control"
+                                    required>
+                            </div>
+
+                            <button class="btn rounded-pill"
+                                    type="submit"
+                                    id="dashboardFilterButton"
+                                    style="background-color: #B86B32; border-color: #B86B32; color: #fff;">
+                                <i class="bi bi-funnel me-1"></i> Áp dụng
+                            </button>
+                        </form>
+
+                        <p id="dashboardError"
+                        class="text-danger small mt-2 mb-0 d-none"
+                        role="alert"></p>
+
+                        <span id="dashboardRangeText" class="d-none"></span>
+                    </section>
+                </div>
+                
+            </header>
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6 col-xl-3">
+                    <div class="dashboard-kpi kpi-orders">
+                        <div class="kpi-head">
+                            <span>Tổng đơn</span>
+                            <i class="bi bi-bag-check"></i>
+                        </div>
+                        <div class="kpi-number" id="dashboardTotalOrders">—</div>
+                        <div class="kpi-detail">Đơn được tạo trong khoảng đã chọn</div>
+                    </div>
+                </div>
+
+                <div class="col-sm-6 col-xl-3">
+                    <div class="dashboard-kpi kpi-net">
+                        <div class="kpi-head">
+                            <span>Thực thu</span>
+                            <i class="bi bi-wallet2"></i>
+                        </div>
+                        <div class="kpi-number" id="dashboardNetRevenue">—</div>
+                        <div class="kpi-detail">
+                            Thu <span id="dashboardReceived">—</span>
+                            · Hoàn <span id="dashboardRefunded">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-sm-6 col-xl-3">
+                    <div class="dashboard-kpi kpi-unpaid">
+                        <div class="kpi-head">
+                            <span>Chưa thanh toán</span>
+                            <i class="bi bi-receipt"></i>
+                        </div>
+                        <div class="kpi-number" id="dashboardUnpaidOrders">—</div>
+                        <div class="kpi-detail">
+                            Còn phải thu <span id="dashboardUnpaidAmount">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-sm-6 col-xl-3">
+                    <div class="dashboard-kpi kpi-waste">
+                        <div class="kpi-head">
+                            <span>Chi phí hao hụt</span>
+                            <i class="bi bi-trash3"></i>
+                        </div>
+                        <div class="kpi-number" id="dashboardWasteCost">—</div>
+                        <div class="kpi-detail">Kết ca + báo hủy nguyên liệu</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-main-layout">
+                <div class="dashboard-charts-column">
+                    <div class="dashboard-chart-grid">
+                        <section class="dashboard-panel">
                             <div class="dashboard-panel-heading">
                                 <div>
                                     <h5>Biểu đồ doanh thu</h5>
@@ -84,12 +153,23 @@
                                 </div>
                                 <i class="bi bi-graph-up-arrow"></i>
                             </div>
-                            <div class="dashboard-legend"><span class="legend-received">Tiền thu</span><span class="legend-refunded">Tiền hoàn</span><span class="legend-net">Thực thu ròng</span></div>
-                            <div class="dashboard-chart-wrap dashboard-chart-lg"><svg id="dashboardRevenueChart" role="img" aria-label="Biểu đồ doanh thu" viewBox="0 0 720 290" preserveAspectRatio="xMidYMid meet"></svg></div>
+
+                            <div class="dashboard-legend">
+                                <span class="legend-received">Tiền thu</span>
+                                <span class="legend-refunded">Tiền hoàn</span>
+                                <span class="legend-net">Thực thu ròng</span>
+                            </div>
+
+                            <div class="dashboard-chart-wrap dashboard-chart-lg">
+                                <svg id="dashboardRevenueChart"
+                                     role="img"
+                                     aria-label="Biểu đồ doanh thu"
+                                     viewBox="0 0 720 290"
+                                     preserveAspectRatio="xMidYMid meet"></svg>
+                            </div>
                         </section>
-                    </div>
-                    <div class="col-xl-5">
-                        <section class="dashboard-panel h-100">
+
+                        <section class="dashboard-panel">
                             <div class="dashboard-panel-heading">
                                 <div>
                                     <h5>Hao hụt theo nguyên liệu</h5>
@@ -97,11 +177,16 @@
                                 </div>
                                 <i class="bi bi-box-seam"></i>
                             </div>
-                            <div class="dashboard-chart-wrap dashboard-chart-lg"><svg id="dashboardTopWaste" role="img" aria-label="Chi phí hao hụt theo nguyên liệu" viewBox="0 0 480 320"></svg></div>
+
+                            <div class="dashboard-chart-wrap dashboard-chart-lg">
+                                <svg id="dashboardTopWaste"
+                                     role="img"
+                                     aria-label="Chi phí hao hụt theo nguyên liệu"
+                                     viewBox="0 0 480 320"></svg>
+                            </div>
                         </section>
-                    </div>
-                    <div class="col-xl-7">
-                        <section class="dashboard-panel h-100">
+
+                        <section class="dashboard-panel">
                             <div class="dashboard-panel-heading">
                                 <div>
                                     <h5>Đơn hàng theo trạng thái</h5>
@@ -109,16 +194,20 @@
                                 </div>
                                 <i class="bi bi-pie-chart"></i>
                             </div>
+
                             <div class="dashboard-donut-layout">
                                 <div class="dashboard-donut" id="dashboardStatusDonut">
-                                    <div class="dashboard-donut-core"><strong id="dashboardStatusTotal">—</strong><small>đơn hàng</small></div>
+                                    <div class="dashboard-donut-core">
+                                        <strong id="dashboardStatusTotal">—</strong>
+                                        <small>đơn hàng</small>
+                                    </div>
                                 </div>
-                                <div id="dashboardStatusLegend" class="dashboard-status-legend"></div>
+                                <div id="dashboardStatusLegend"
+                                     class="dashboard-status-legend"></div>
                             </div>
                         </section>
-                    </div>
-                    <div class="col-xl-5">
-                        <section class="dashboard-panel h-100">
+
+                        <section class="dashboard-panel">
                             <div class="dashboard-panel-heading">
                                 <div>
                                     <h5>Top 5 món bán chạy</h5>
@@ -126,60 +215,83 @@
                                 </div>
                                 <i class="bi bi-cup-straw"></i>
                             </div>
-                            <div id="dashboardTopProducts" class="dashboard-rankings dashboard-rankings-tall"></div>
+
+                            <div id="dashboardTopProducts"
+                                 class="dashboard-rankings dashboard-rankings-tall"></div>
                         </section>
                     </div>
                 </div>
-            </div>
 
-            <div class="col-xxl-4 dashboard-alerts-column">
-                <section class="dashboard-panel dashboard-side-alerts h-100">
-                    <div class="dashboard-panel-heading dashboard-panel-heading-side">
-                        <div>
-                            <h5>Cảnh báo & nghiệp vụ</h5>
-                            <p>Theo dõi nhanh tình trạng kho và hoàn tiền</p>
+                <div class="dashboard-alerts-column">
+                    <section class="dashboard-panel dashboard-side-alerts">
+                        <div class="dashboard-panel-heading dashboard-panel-heading-side">
+                            <div>
+                                <h5>Cảnh báo & nghiệp vụ</h5>
+                                <p>Theo dõi nhanh tình trạng kho và hoàn tiền</p>
+                            </div>
+                            <i class="bi bi-chevron-right"></i>
                         </div>
-                        <i class="bi bi-chevron-right"></i>
-                    </div>
 
-                    <div class="dashboard-alert-section">
-                        <div class="dashboard-alert-section-header danger">
-                            <strong>Nguyên liệu hết</strong><a th:href="@{/admin/inventory}" class="small">Xem kho</a>
-                            <span id="dashboardOutStock">—</span>
+                        <div class="dashboard-alert-section">
+                            <div class="dashboard-alert-section-header danger">
+                                <strong>Nguyên liệu hết</strong>
+                                <a th:href="@{/admin/inventory}" class="small">Xem kho</a>
+                                <span id="dashboardOutStock">—</span>
+                            </div>
+                            <div id="dashboardOutStockList" class="dashboard-alert-list">
+                                <div class="dashboard-empty">Đang tải dữ liệu...</div>
+                            </div>
                         </div>
-                        <div id="dashboardOutStockList" class="dashboard-alert-list">
-                            <div class="dashboard-empty">Đang tải dữ liệu...</div>
-                        </div>
-                    </div>
 
-                    <div class="dashboard-alert-section">
-                        <div class="dashboard-alert-section-header warning">
-                            <strong>Nguyên liệu dưới ngưỡng</strong><a th:href="@{/admin/inventory}" class="small">Xem kho</a>
-                            <span id="dashboardLowStock">—</span>
+                        <div class="dashboard-alert-section">
+                            <div class="dashboard-alert-section-header warning">
+                                <strong>Nguyên liệu dưới ngưỡng</strong>
+                                <a th:href="@{/admin/inventory}" class="small">Xem kho</a>
+                                <span id="dashboardLowStock">—</span>
+                            </div>
+                            <div id="dashboardLowStockList" class="dashboard-alert-list">
+                                <div class="dashboard-empty">Đang tải dữ liệu...</div>
+                            </div>
                         </div>
-                        <div id="dashboardLowStockList" class="dashboard-alert-list">
-                            <div class="dashboard-empty">Đang tải dữ liệu...</div>
-                        </div>
-                    </div>
 
-                    <div class="dashboard-ops-grid">
-                        <div class="dashboard-alert-card info">
-                            <div class="dashboard-alert-card-top"><i class="bi bi-arrow-repeat"></i><span>Yêu cầu hoàn tiền chờ duyệt</span></div>
-                            <div class="dashboard-alert-card-value" id="dashboardPendingRefund">—</div><a th:href="@{/admin/documents}" class="btn btn-primary mt-3">Duyệt hoàn tiền <i class="bi bi-arrow-right ms-1"></i></a>
-                        </div>
-                        <div class="dashboard-alert-card neutral">
-                            <div class="dashboard-alert-card-top"><i class="bi bi-clock-history"></i><span>Kết ca gần nhất</span></div>
-                            <div class="dashboard-alert-card-value small" id="dashboardLastSettlement">—</div>
-                        </div>
-                    </div>
+                        <div class="dashboard-ops-grid">
+                            <div class="dashboard-alert-card info">
+                                <div class="dashboard-alert-card-top">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                    <span>Yêu cầu hoàn tiền chờ duyệt</span>
+                                </div>
+                                <div class="dashboard-alert-card-value"
+                                     id="dashboardPendingRefund">—</div>
+                                <a th:href="@{/admin/documents}"
+                                    class="btn mt-3"
+                                    style="background-color: #B86B32; border-color: #B86B32; color: #fff;">
+                                        Duyệt hoàn tiền <i class="bi bi-arrow-right ms-1"></i>
+                                </a>
+                            </div>
 
-                    <div id="dashboardWasteWarning" class="small text-warning mt-3 d-none"><i class="bi bi-info-circle me-1"></i>Có phiếu hao hụt cũ chưa có giá vốn; tổng hao hụt chỉ phản ánh các khoản đã định giá.</div>
-                </section>
+                            <div class="dashboard-alert-card neutral">
+                                <div class="dashboard-alert-card-top">
+                                    <i class="bi bi-clock-history"></i>
+                                    <span>Kết ca gần nhất</span>
+                                </div>
+                                <div class="dashboard-alert-card-value small"
+                                     id="dashboardLastSettlement">—</div>
+                            </div>
+                        </div>
+
+                        <div id="dashboardWasteWarning"
+                             class="small text-warning mt-3 d-none">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Có phiếu hao hụt cũ chưa có giá vốn; tổng hao hụt chỉ phản ánh
+                            các khoản đã định giá.
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
     </div>
 </div>
-</div>
+
 <th:block th:fragment="scripts">
     <script th:src="@{/js/admin/admin.js}"></script>
     <script th:src="@{/js/admin/dashboard.js}"></script>

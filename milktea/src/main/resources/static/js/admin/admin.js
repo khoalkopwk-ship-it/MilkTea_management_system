@@ -510,7 +510,7 @@ const AdminApp = (() => {
         const activeSelect = document.getElementById('productFilterActive');
         const searchInput = document.getElementById('productSearchInput');
 
-        let url = `/api/v1/admin/products?page=${page}&size=10`;
+        let url = `/api/v1/admin/products?page=${page}&limit=10`;
         if (catSelect && catSelect.value) {
             url += `&categoryId=${encodeURIComponent(catSelect.value)}`;
         }
@@ -518,7 +518,7 @@ const AdminApp = (() => {
             url += `&active=${encodeURIComponent(activeSelect.value)}`;
         }
         if (searchInput && searchInput.value.trim()) {
-            url += `&query=${encodeURIComponent(searchInput.value.trim())}`;
+            url += `&q=${encodeURIComponent(searchInput.value.trim())}`;
         }
 
         try {
@@ -530,40 +530,17 @@ const AdminApp = (() => {
         }
     }
 
-    function selectProductCategory(button) {
-        const catInput = document.getElementById('productFilterCat');
-        if (!catInput || !button) return;
-
-        catInput.value = button.dataset.categoryId || '';
-        document.querySelectorAll('#productCategoryButtons [data-category-id]').forEach(btn => {
-            const active = btn === button;
-            btn.classList.toggle('active', active);
-            btn.classList.toggle('btn-primary', active);
-            btn.classList.toggle('btn-outline-primary', !active);
-        });
-
-        loadProducts(1);
-    }
-
     function resetProductFilters() {
         const catSelect = document.getElementById('productFilterCat');
         const activeSelect = document.getElementById('productFilterActive');
         const searchInput = document.getElementById('productSearchInput');
+
         if (catSelect) catSelect.value = '';
         if (activeSelect) activeSelect.value = '';
         if (searchInput) searchInput.value = '';
-        const allCategoryButton = document.querySelector('#productCategoryButtons [data-category-id=""]');
-        if (allCategoryButton) {
-            document.querySelectorAll('#productCategoryButtons [data-category-id]').forEach(btn => {
-                const active = btn === allCategoryButton;
-                btn.classList.toggle('active', active);
-                btn.classList.toggle('btn-primary', active);
-                btn.classList.toggle('btn-outline-primary', !active);
-            });
-        }
+
         loadProducts(1);
     }
-
     function renderProductTable(data) {
         const tbody = document.getElementById('productTableBody');
         const pagContainer = document.getElementById('productPaginationContainer');
@@ -871,7 +848,6 @@ const AdminApp = (() => {
         loadRevenueReport,
         updateSettings,
         loadProducts,
-        selectProductCategory,
         resetProductFilters,
         openProductFullConfig,
         previewFullConfigImage,

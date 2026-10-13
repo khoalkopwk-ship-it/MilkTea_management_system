@@ -1,4 +1,3 @@
-/* ===== Receipt modal: bỏ khoảng trắng dư 2 bên ===== */
 #milkReceiptModal .receipt-modal-dialog {
     max-width: 620px;
 }
@@ -18,7 +17,6 @@
     padding: 12px 20px 20px;
 }
 
-/* Hóa đơn hiển thị full chiều ngang vùng nội dung */
 .milk-receipt {
     width: 100%;
     max-width: none;
@@ -27,23 +25,49 @@
     box-sizing: border-box;
 }
 
-.milk-receipt.invoice {
-    width: 100%;
-    max-width: none;
+.milk-receipt header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
 }
 
-/* Mobile */
-@media (max-width: 767px) {
-    #milkReceiptModal .receipt-modal-dialog {
-        max-width: calc(100vw - 16px);
-        margin: 8px auto;
-    }
-
-    .milk-receipt {
-        padding: 16px 18px;
-    }
+.receipt-logo {
+    width: 52px;
+    height: 48px;
+    object-fit: contain;
 }
-.milk-receipt header{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px}.receipt-logo{font-size:32px}.milk-receipt h4{text-align:center;font-size:20px;font-weight:700;margin:18px 0}.milk-receipt h6{font-weight:700;margin:18px 0 8px}.receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;font-size:12px;margin:12px 0 24px}
+
+.invoice header {
+    justify-content: flex-start;
+}
+
+.milk-receipt h4 {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    margin: 18px 0;
+}
+
+.milk-receipt h6 {
+    font-weight: 700;
+    margin: 18px 0 8px;
+}
+
+.receipt-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 18px;
+    font-size: 12px;
+    margin: 12px 0 24px;
+}
+
+.receipt-meta > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
 .receipt-items {
     width: 100%;
     border-collapse: collapse;
@@ -51,9 +75,16 @@
     margin: 20px 0;
 }
 
+.receipt-items th,
+.receipt-items td {
+    padding: 8px 2px;
+    vertical-align: top;
+}
+
 .receipt-items th:first-child,
 .receipt-items td:first-child {
     width: 60%;
+    text-align: left;
     overflow-wrap: anywhere;
 }
 
@@ -69,12 +100,160 @@
     text-align: right;
     white-space: nowrap;
 }
-.receipt-items th,
-.receipt-items td{padding:8px 2px;vertical-align:top}
-.receipt-items th:first-child,.receipt-items td:first-child{text-align:left}
-.receipt-items th:nth-child(2),
-.receipt-items td:nth-child(2){text-align:center}
-.receipt-items th:last-child,
-.receipt-items td:last-child{text-align:right;white-space:nowrap}
-.receipt-total>div{display:flex;justify-content:space-between;margin:6px 0}.receipt-grand{border-top:1px solid #777;border-bottom:1px solid #777;text-align:right;font-size:20px;padding:14px 0;margin:18px 0}.receipt-state{text-align:center;font-weight:bold}.refund header h4{text-align:left}.refund .receipt-grand{text-align:left}.document-card{cursor:pointer}@media(max-width:480px){.milk-receipt{padding:12px}.receipt-meta{grid-template-columns:1fr}.receipt-grand{font-size:18px}}@media print{body{margin:0}.milk-receipt{max-width:100%;box-shadow:none}button{display:none}}
-.receipt-logo{width:52px;height:48px;object-fit:contain}.invoice header{justify-content:flex-start}.refund header .receipt-logo{display:block;margin-left:auto}
+
+.receipt-total > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 6px 0;
+}
+
+.receipt-grand {
+    border-top: 1px solid #777;
+    border-bottom: 1px solid #777;
+    text-align: right;
+    font-size: 20px;
+    padding: 14px 0;
+    margin: 18px 0;
+}
+
+.receipt-state {
+    text-align: center;
+    font-weight: bold;
+}
+
+.refund header h4,
+.refund .receipt-grand {
+    text-align: left;
+}
+
+.refund header .receipt-logo {
+    display: block;
+    margin-left: auto;
+}
+
+.document-card {
+    cursor: pointer;
+}
+
+@media screen {
+    #milkReceiptModal .receipt-modal-dialog {
+        width: calc(100% - 24px);
+        max-width: 480px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    #milkReceiptModal .modal-content {
+        max-height: 85vh;
+        border-radius: 16px;
+    }
+
+    #milkReceiptModal .modal-header,
+    #milkReceiptModal .modal-footer {
+        padding: 10px 16px;
+    }
+
+    #milkReceiptModal .modal-title {
+        font-size: 16px;
+    }
+
+    #milkReceiptModal .modal-footer .btn {
+        font-size: 13px;
+        padding: 6px 12px;
+    }
+
+    #milkReceiptModal .milk-receipt {
+        padding: 12px 16px;
+        font-size: 12px;
+        line-height: 1.3;
+    }
+
+    #milkReceiptModal .milk-receipt header {
+        gap: 10px;
+    }
+
+    #milkReceiptModal .receipt-logo {
+        width: 42px;
+        height: 40px;
+    }
+
+    #milkReceiptModal .milk-receipt h4 {
+        font-size: 16px;
+        margin: 10px 0;
+    }
+
+    #milkReceiptModal .milk-receipt h5,
+    #milkReceiptModal .milk-receipt h6 {
+        font-size: 14px;
+        margin: 12px 0 6px;
+    }
+
+    #milkReceiptModal .receipt-meta {
+        gap: 6px 12px;
+        margin: 8px 0 14px;
+    }
+
+    #milkReceiptModal .receipt-items {
+        font-size: 12px;
+        margin: 10px 0;
+    }
+
+    #milkReceiptModal .receipt-items th,
+    #milkReceiptModal .receipt-items td {
+        padding: 6px 2px;
+    }
+
+    #milkReceiptModal .receipt-total > div {
+        margin: 4px 0;
+    }
+
+    #milkReceiptModal .receipt-grand {
+        font-size: 16px;
+        padding: 8px 0;
+        margin: 12px 0;
+    }
+
+    #milkReceiptModal .milk-receipt p {
+        margin-bottom: 6px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    #milkReceiptModal .milk-receipt {
+        padding: 12px;
+    }
+
+    #milkReceiptModal .receipt-meta {
+        grid-template-columns: 1fr;
+    }
+
+    #milkReceiptModal .receipt-items {
+        font-size: 12px;
+    }
+
+    #milkReceiptModal .receipt-items th:first-child,
+    #milkReceiptModal .receipt-items td:first-child {
+        width: 55%;
+    }
+
+    #milkReceiptModal .receipt-items th:last-child,
+    #milkReceiptModal .receipt-items td:last-child {
+        width: 30%;
+    }
+}
+
+@media print {
+    body {
+        margin: 0;
+    }
+
+    .milk-receipt {
+        max-width: 100%;
+        box-shadow: none;
+    }
+
+    button {
+        display: none;
+    }
+}
