@@ -7,7 +7,9 @@ const MilkTeaReceipts = (() => {
     function lines(o) {
         return `<table class="receipt-items"><thead><tr><th>Tên món</th><th>Số lượng</th><th>Thành tiền</th></tr></thead><tbody>${(o.items || []).map(i => {
             const toppingText = (i.toppings && i.toppings.length)
-                ? `<div class="small text-muted">+ ${i.toppings.map(t => `${esc(t.name)} (${money(t.price)})`).join(', ')}</div>`
+                ? `<div class="small text-muted">
+                    ${i.toppings.map(t => `<div>+ ${esc(t.name)} (${money(t.price)})</div>`).join('')}
+                    </div>`
                 : '';
             const noteText = i.note ? `<div class="small text-muted fst-italic">Ghi chú: ${esc(i.note)}</div>` : '';
             return `<tr><td>${esc(i.productName)} <small class="text-secondary">${esc(i.size)}</small>${toppingText}${noteText}</td><td>${i.quantity}</td><td>${money(i.lineTotal)}</td></tr>`;
@@ -36,7 +38,7 @@ const MilkTeaReceipts = (() => {
     }
     function ensureModal() {
         if (document.getElementById('milkReceiptModal')) return;
-        document.body.insertAdjacentHTML('beforeend', `<div class="modal fade" id="milkReceiptModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Hóa đơn / chứng từ</h5><button class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div><div class="modal-body" id="milkReceiptBody"></div><div class="modal-footer" id="milkReceiptFooter"></div></div></div></div>`);
+        document.body.insertAdjacentHTML('beforeend', `<div class="modal fade" id="milkReceiptModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable receipt-modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Chứng từ</h5><button class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div><div class="modal-body" id="milkReceiptBody"></div><div class="modal-footer" id="milkReceiptFooter"></div></div></div></div>`);
     }
     function isStaff() {
         return ['CASHIER', 'ADMIN'].includes(window.MilkTeaContext?.role) || !!document.getElementById('staffOrders') || !!document.getElementById('posRole');

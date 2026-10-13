@@ -213,7 +213,7 @@ const OrdersApp = (() => {
             return `<tr>
                 <td>
                     <b>${MilkTeaReceipts.code(o.orderId)}</b>
-                    <small class="d-block text-muted mt-1">${e(o.tableName || (o.staffCreated ? 'Quầy thu ngân' : 'Quầy / mang về'))}</small>
+                    
                 </td>
                 <td class="text-end fw-semibold text-nowrap">${MilkTeaApi.formatVND(o.totalAmount)}</td>
                 <td>${statusBadge}</td>

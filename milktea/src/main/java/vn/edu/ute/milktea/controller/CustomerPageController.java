@@ -175,24 +175,6 @@ public class CustomerPageController {
         return "customer/orders";
     }
 
-    @GetMapping("/order-history")
-    public String orderHistoryPage(
-            jakarta.servlet.http.HttpServletRequest request,
-            jakarta.servlet.http.HttpServletResponse response,
-            @AuthenticationPrincipal CurrentActor actor, Model model) {
-        if (actor == null || actor.getAccountId() == null) {
-            return "redirect:/login";
-        }
-
-        GlobalSettings settings = settingsRepository.findById(1).orElse(null);
-        DiningTable table = resolveTable(null, null, request, response);
-        model.addAttribute("settings", settings);
-        model.addAttribute("currentTable", table);
-        model.addAttribute("tableQr", table != null ? table.getQrCode() : null);
-
-        return "customer/order-history";
-    }
-
     @GetMapping("/profile")
     public String profilePage(
             @RequestParam(value = "returnUrl", required = false) String returnUrl,

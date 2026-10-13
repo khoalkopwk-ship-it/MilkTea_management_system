@@ -43,4 +43,22 @@ public class ReportController {
 
         return ResponseEntity.ok(ApiResponse.ok(reportService.getOrderReport(fromDate, toDate)));
     }
+    
+@GetMapping("/dashboard")
+public ResponseEntity<ApiResponse<ReportDto.DashboardResponse>> getDashboard(
+        @RequestParam(value = "fromDate", required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate fromDate,
+
+        @RequestParam(value = "toDate", required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate toDate) {
+
+    return ResponseEntity.ok(
+            ApiResponse.ok(
+                    reportService.getDashboard(fromDate, toDate)
+            )
+    );
+}
+
 }

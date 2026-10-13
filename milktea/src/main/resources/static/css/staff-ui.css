@@ -30,14 +30,6 @@
     box-shadow: none;
 }
 
-/* Căn giữa để khoảng cách nhìn đều nhau */
-table.orders-table thead th,
-table.orders-table tbody td {
-    text-align: center !important;
-    vertical-align: middle;
-    padding: 20px 12px;
-}
-
 /* Staff Order Management Tabs */
 .order-tabs-scroll-container {
     overflow-x: auto;
@@ -96,4 +88,122 @@ table.orders-table tbody td {
     border: 1px solid #e7ecf2;
     border-top: 0;
     border-radius: 0 0 20px 20px;
+}
+
+/* ===== GIAO DIEN BANG DON HANG ===== */
+
+/* Khung bao quanh bảng */
+.orders-panel {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.07);
+    overflow: hidden;
+}
+
+/* Bố cục bảng */
+table.orders-table {
+    width: 100%;
+    min-width: 760px;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin-bottom: 0;
+}
+
+/* Giữ 5 cột có độ rộng bằng nhau */
+table.orders-table th,
+table.orders-table td {
+    width: 20%;
+    text-align: left !important;
+    vertical-align: middle;
+}
+table.orders-table th:nth-child(5),
+table.orders-table td:nth-child(5) {
+    width: 24%;
+    text-align: center !important;
+}
+
+/* Tiêu đề các cột */
+table.orders-table thead th {
+    background: #f8f9fa;
+    color: #111111;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 15px 12px;
+    border-bottom: 1px solid #d1d5db;
+    white-space: nowrap;
+}
+
+/* Dòng dữ liệu */
+table.orders-table tbody td {
+    background: #ffffff;
+    color: #111111;
+    font-size: 15px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* Màu nền khi rê chuột */
+table.orders-table tbody tr:hover td {
+    background: #FFFFFF;
+}
+
+/* Bỏ đường kẻ cuối bảng */
+table.orders-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Mã đơn và tổng tiền */
+table.orders-table tbody td:first-child b,
+table.orders-table tbody td:nth-child(2) {
+    font-weight: 400 !important;
+}
+/* Nhãn tình trạng thanh toán */
+.orders-table .payment-pill {
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 5px 9px;
+    display: inline-block;
+}
+
+/* Màu chữ thanh toán */
+.orders-table .payment-done {
+    color: #198754;
+}
+
+.orders-table .payment-wait {
+    color: #b7791f;
+}
+
+.orders-table .payment-danger {
+    color: #dc3545;
+}
+
+/* Nút Chi tiết */
+.orders-table .order-detail-btn {
+    background: #ffffff;
+    color: #1677ff;
+    border: 1px solid #1677ff;
+    border-radius: 50px;
+    padding: 7px 13px;
+    font-size: 12px;
+    font-weight: 500;
+    box-shadow: none;
+}
+
+/* Hover nút Chi tiết */
+.orders-table .order-detail-btn:hover {
+    background: #f0f7ff;
+    border-color: #1677ff;
+    color: #1677ff;
+}
+
+/* Không thay đổi trạng thái hiển thị trên điện thoại */
+@media (max-width: 767px) {
+    table.orders-table thead th,
+    table.orders-table tbody td {
+        padding: 12px 10px;
+        font-size: 13px;
+    }
 }

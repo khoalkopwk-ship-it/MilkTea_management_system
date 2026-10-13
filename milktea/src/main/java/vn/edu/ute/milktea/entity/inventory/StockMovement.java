@@ -60,4 +60,9 @@ public class StockMovement {
 
     @Column(name = "LyDo", length = 500)
     private String reason;
+    @Column(name = "GiaVonDonVi", precision = 18, scale = 6)
+    private BigDecimal unitCost;
+
+    @Column(name = "ChiPhiHaoHut", precision = 18, scale = 2)
+    private BigDecimal lossCost;
 }

@@ -645,16 +645,6 @@ public class OrderService {
         return orders.stream().sorted(java.util.Comparator.comparing(Order::getCreatedAt).reversed()).map(this::mapOrderToResponse).toList();
     }
 
-    @Transactional(readOnly = true)
-    public List<OrderDto.OrderResponse> getOrderHistoryForCustomerAccount(CurrentActor actor) {
-        if (actor == null || actor.getAccountId() == null) {
-            throw BusinessException.unauthorized(ErrorCode.ACCESS_DENIED, "Vui lòng đăng nhập để xem lịch sử đơn hàng");
-        }
-        return orderRepository.findByAccountIdOrderByCreatedAtDesc(actor.getAccountId())
-                .stream()
-                .map(this::mapOrderToResponse)
-                .toList();
-    }
 
     @Transactional(readOnly = true)
     public OrderDto.OrderResponse getOrderForCustomer(Long orderId, CurrentActor actor) {
