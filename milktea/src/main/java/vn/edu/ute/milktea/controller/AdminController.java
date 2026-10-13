@@ -59,6 +59,15 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.ok(adminService.updateStaffAccount(id, request, currentAdminId)));
     }
 
+    @PostMapping(value = "/accounts/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadAvatar(
+            @PathVariable("id") Long id,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CurrentActor actor) {
+        String avatarUrl = productImageService.uploadAvatarImage(id, file);
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("avatarUrl", avatarUrl)));
+    }
+
     @PostMapping("/accounts/{id}/toggle-status")
     public ResponseEntity<ApiResponse<AdminDto.StaffResponse>> toggleStaffStatus(
             @PathVariable("id") Long id,

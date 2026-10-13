@@ -263,6 +263,10 @@ public class AdminService {
                 .allowTopping(request.getAllowTopping() != null ? request.getAllowTopping() : true)
                 .build();
         c = categoryRepository.save(c);
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "CATALOG_CHANGED", c.getId().toString(), null, "1",
+                java.util.Map.of("type", "CATEGORY", "action", "CREATE", "id", c.getId(), "name", c.getName()));
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "CATALOG_CHANGED", c.getId().toString(), null, "1",
+                java.util.Map.of("type", "CATEGORY", "action", "CREATE", "id", c.getId(), "name", c.getName()));
         return AdminDto.CategoryResponse.builder().id(c.getId()).name(c.getName()).active(c.getActive()).allowTopping(c.getAllowTopping()).build();
     }
 
@@ -274,6 +278,10 @@ public class AdminService {
         if (request.getActive() != null) c.setActive(request.getActive());
         if (request.getAllowTopping() != null) c.setAllowTopping(request.getAllowTopping());
         c = categoryRepository.save(c);
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "CATALOG_CHANGED", c.getId().toString(), null, "1",
+                java.util.Map.of("type", "CATEGORY", "action", "UPDATE", "id", c.getId(), "name", c.getName()));
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "CATALOG_CHANGED", c.getId().toString(), null, "1",
+                java.util.Map.of("type", "CATEGORY", "action", "UPDATE", "id", c.getId(), "name", c.getName()));
         return AdminDto.CategoryResponse.builder().id(c.getId()).name(c.getName()).active(c.getActive()).allowTopping(c.getAllowTopping()).build();
     }
 
@@ -283,6 +291,10 @@ public class AdminService {
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy danh mục"));
         c.setActive(false);
         categoryRepository.save(c);
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "CATALOG_CHANGED", c.getId().toString(), null, "1",
+                java.util.Map.of("type", "CATEGORY", "action", "DEACTIVATE", "id", c.getId()));
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "CATALOG_CHANGED", c.getId().toString(), null, "1",
+                java.util.Map.of("type", "CATEGORY", "action", "DEACTIVATE", "id", c.getId()));
     }
 
     // ==========================================
@@ -357,7 +369,12 @@ public class AdminService {
                 .imageUrl(request.getImageUrl())
                 .active(request.getActive() != null ? request.getActive() : true)
                 .build();
-        return mapProduct(productRepository.save(p));
+        Product saved = productRepository.save(p);
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "CATALOG_CHANGED", saved.getId().toString(), null, "1",
+                java.util.Map.of("type", "PRODUCT", "action", "CREATE", "id", saved.getId(), "name", saved.getName()));
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "CATALOG_CHANGED", saved.getId().toString(), null, "1",
+                java.util.Map.of("type", "PRODUCT", "action", "CREATE", "id", saved.getId(), "name", saved.getName()));
+        return mapProduct(saved);
     }
 
     @Transactional
@@ -377,7 +394,12 @@ public class AdminService {
         if (request.getImageUrl() != null) p.setImageUrl(request.getImageUrl());
         if (request.getActive() != null) p.setActive(request.getActive());
 
-        return mapProduct(productRepository.save(p));
+        Product saved = productRepository.save(p);
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "CATALOG_CHANGED", saved.getId().toString(), null, "1",
+                java.util.Map.of("type", "PRODUCT", "action", "UPDATE", "id", saved.getId(), "name", saved.getName()));
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "CATALOG_CHANGED", saved.getId().toString(), null, "1",
+                java.util.Map.of("type", "PRODUCT", "action", "UPDATE", "id", saved.getId(), "name", saved.getName()));
+        return mapProduct(saved);
     }
 
     @Transactional
@@ -386,6 +408,10 @@ public class AdminService {
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.PRODUCT_UNAVAILABLE, "Không tìm thấy món uống"));
         p.setActive(false);
         productRepository.save(p);
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "CATALOG_CHANGED", p.getId().toString(), null, "1",
+                java.util.Map.of("type", "PRODUCT", "action", "DEACTIVATE", "id", p.getId()));
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "CATALOG_CHANGED", p.getId().toString(), null, "1",
+                java.util.Map.of("type", "PRODUCT", "action", "DEACTIVATE", "id", p.getId()));
     }
 
     @Transactional(readOnly = true)

@@ -120,6 +120,33 @@ const CustomerApp = (() => {
             }
         });
 
+        MilkTeaRealtime.on('SETTINGS_CHANGED', async () => {
+            try {
+                const info = await MilkTeaApi.get('/api/v1/public/shop-info');
+                if (info && info.logoUrl) {
+                    document.querySelectorAll('.navbar-milktea .navbar-brand').forEach(brand => {
+                        let img = brand.querySelector('img.navbar-shop-logo');
+                        const badge = brand.querySelector('.navbar-brand-badge');
+                        if (!img) {
+                            img = document.createElement('img');
+                            img.alt = 'Logo';
+                            img.className = 'rounded-circle shadow-sm navbar-shop-logo';
+                            img.style = 'width: 38px; height: 38px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);';
+                            brand.prepend(img);
+                        }
+                        img.src = info.logoUrl;
+                        img.style.display = 'inline-block';
+                        if (badge) badge.style.setProperty('display', 'none', 'important');
+                    });
+                }
+                if (info && info.shopName) {
+                    document.querySelectorAll('.navbar-shop-name').forEach(el => el.textContent = info.shopName);
+                }
+            } catch (e) {
+                console.debug('Error refreshing shop info on SETTINGS_CHANGED:', e);
+            }
+        });
+
         MilkTeaRealtime.onReconnect(() => {
             console.log('WebSocket reconnect: Làm mới dữ liệu từ server...');
             if (window.MilkTeaContext.sessionId) {
@@ -133,7 +160,7 @@ const CustomerApp = (() => {
 
     // Thêm món vào giỏ
     function addToCart(product, quantity = 1, note = '', selectedToppings = []) {
-        const toppingIds = (selectedToppings || []).map(t => Number(t.id || t.productId)).filter(Boolean).sort((a,b) => a - b);
+        const toppingIds = (selectedToppings || []).map(t => Number(t.id || t.productId)).filter(Boolean).sort((a, b) => a - b);
         const toppingSum = (selectedToppings || []).reduce((acc, t) => acc + (Number(t.price) || 0), 0);
         const unitPriceWithTopping = (Number(product.price) || 0) + toppingSum;
         const lineTotal = unitPriceWithTopping * parseInt(quantity);
@@ -156,10 +183,10 @@ const CustomerApp = (() => {
         } else {
             // Chưa có phiên -> Lưu giỏ RAM, chỉ gộp nếu cùng productId, note VÀ cùng toppings
             const tKey = toppingIds.join(',');
-            const existing = localCart.find(it => 
+            const existing = localCart.find(it =>
                 it.productId === item.productId &&
                 (it.note || '') === (item.note || '') &&
-                ((it.toppingIds || []).slice().sort((a,b)=>a-b).join(',')) === tKey
+                ((it.toppingIds || []).slice().sort((a, b) => a - b).join(',')) === tKey
             );
             if (existing) {
                 existing.quantity += item.quantity;
@@ -213,11 +240,11 @@ const CustomerApp = (() => {
             toppingIds: extractToppingIds(it)
         }))];
 
-        const newTKey = extractToppingIds(newItem).slice().sort((a,b)=>a-b).join(',');
-        const existing = itemsToSend.find(it => 
+        const newTKey = extractToppingIds(newItem).slice().sort((a, b) => a - b).join(',');
+        const existing = itemsToSend.find(it =>
             it.productId === newItem.productId &&
             (it.note || '') === (newItem.note || '') &&
-            (it.toppingIds || []).slice().sort((a,b)=>a-b).join(',') === newTKey
+            (it.toppingIds || []).slice().sort((a, b) => a - b).join(',') === newTKey
         );
         if (existing) {
             existing.quantity += newItem.quantity;

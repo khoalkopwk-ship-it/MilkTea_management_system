@@ -16,37 +16,52 @@
         <nav class="navbar navbar-expand-lg navbar-milktea sticky-top">
             <div class="container-fluid px-lg-4">
                 <!-- Brand / Logo -->
-                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/admin}" sec:authorize="hasRole('ADMIN')">
-                    <span class="brand-badge"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
-                    <span class="brand-font fs-5 d-none d-sm-inline" th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/admin}"
+                    sec:authorize="hasRole('ADMIN')">
+                    <img th:if="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()}" th:src="${settings.logoUrl}" alt="Logo" class="rounded-circle shadow-sm navbar-shop-logo" style="width: 38px; height: 38px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+                    <span class="brand-badge navbar-brand-badge" th:style="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()} ? 'display: none !important;' : ''"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
+                    <span class="brand-font fs-5 d-none d-sm-inline navbar-shop-name"
+                        th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
                     <span class="badge bg-danger rounded-pill fw-semibold small">Quản trị viên</span>
                 </a>
 
-                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/cashier}" sec:authorize="hasRole('CASHIER')">
-                    <span class="brand-badge"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
-                    <span class="brand-font fs-5 d-none d-sm-inline" th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/cashier}"
+                    sec:authorize="hasRole('CASHIER')">
+                    <img th:if="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()}" th:src="${settings.logoUrl}" alt="Logo" class="rounded-circle shadow-sm navbar-shop-logo" style="width: 38px; height: 38px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+                    <span class="brand-badge navbar-brand-badge" th:style="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()} ? 'display: none !important;' : ''"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
+                    <span class="brand-font fs-5 d-none d-sm-inline navbar-shop-name"
+                        th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
                 </a>
 
-                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/kitchen}" sec:authorize="hasAnyRole('KITCHEN', 'CHEF')">
-                    <span class="brand-badge"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
-                    <span class="brand-font fs-5 d-none d-sm-inline" th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/kitchen}"
+                    sec:authorize="hasAnyRole('KITCHEN', 'CHEF')">
+                    <img th:if="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()}" th:src="${settings.logoUrl}" alt="Logo" class="rounded-circle shadow-sm navbar-shop-logo" style="width: 38px; height: 38px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+                    <span class="brand-badge navbar-brand-badge" th:style="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()} ? 'display: none !important;' : ''"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
+                    <span class="brand-font fs-5 d-none d-sm-inline navbar-shop-name"
+                        th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
                 </a>
 
-                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/}" sec:authorize="!hasAnyRole('ADMIN', 'CASHIER', 'KITCHEN', 'CHEF')">
-                    <span class="brand-badge"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
-                    <span class="brand-font fs-5 d-none d-sm-inline" th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/}"
+                    sec:authorize="!hasAnyRole('ADMIN', 'CASHIER', 'KITCHEN', 'CHEF')">
+                    <img th:if="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()}" th:src="${settings.logoUrl}" alt="Logo" class="rounded-circle shadow-sm navbar-shop-logo" style="width: 38px; height: 38px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+                    <span class="brand-badge navbar-brand-badge" th:style="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()} ? 'display: none !important;' : ''"><i class="bi bi-cup-hot-fill me-1"></i>MilkTea</span>
+                    <span class="brand-font fs-5 d-none d-sm-inline navbar-shop-name"
+                        th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
                 </a>
 
                 <!-- Nhãn Bàn Cho Khách Hàng (Nếu có context bàn) -->
-                <div id="navbarTableBadgeContainer" class="d-flex align-items-center ms-2" th:style="${currentTable != null ? '' : 'display: none;'}">
+                <div id="navbarTableBadgeContainer" class="d-flex align-items-center ms-2"
+                    th:style="${currentTable != null ? '' : 'display: none;'}">
                     <span class="table-badge" id="navbarTableBadge">
                         <i class="bi bi-geo-alt-fill"></i>
-                        <span id="navbarTableName" th:text="${currentTable != null ? currentTable.name : ''}">Bàn 01</span>
+                        <span id="navbarTableName" th:text="${currentTable != null ? currentTable.name : ''}">Bàn
+                            01</span>
                     </span>
                 </div>
 
                 <!-- Toggler for Mobile -->
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#navbarContent">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
@@ -61,35 +76,43 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link fw-semibold" th:href="@{/orders}">
-                                <i class="bi bi-receipt me-1"></i> Đơn Hàng <span id="pendingOrdersBadge" class="badge rounded-pill bg-danger ms-1 d-none" aria-live="polite" title="Công việc cần xử lý"></span>
+                                <i class="bi bi-receipt me-1"></i> Đơn Hàng <span id="pendingOrdersBadge"
+                                    class="badge rounded-pill bg-danger ms-1 d-none" aria-live="polite"
+                                    title="Công việc cần xử lý"></span>
                             </a>
                         </li>
                     </ul>
 
                     <!-- KITCHEN: 1 hàng cùng Bếp Pha Chế (KDS), Hàng Đợi Pha Chế, Kho Bếp & Sơ Chế, Lịch Sử Sơ Chế, Kiểm Kê & Hao Hụt Cuối Ca -->
-                    <ul sec:authorize="hasAnyRole('KITCHEN', 'CHEF')" class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-2 flex-row flex-wrap gap-1 align-items-center" id="kitchenHeaderNav">
+                    <ul sec:authorize="hasAnyRole('KITCHEN', 'CHEF')"
+                        class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-2 flex-row flex-wrap gap-1 align-items-center"
+                        id="kitchenHeaderNav">
                         <li class="nav-item">
                             <a class="nav-link fw-bold text-success py-1 px-2 text-nowrap" th:href="@{/kitchen}">
                                 <i class="bi bi-fire me-1"></i> Bếp Pha Chế (KDS)
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap active" th:href="@{/kitchen#tabKds}" data-target="#tabKds">
+                            <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap active"
+                                th:href="@{/kitchen#tabKds}" data-target="#tabKds">
                                 <i class="bi bi-cup-straw me-1"></i> Hàng Đợi Pha Chế
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap" th:href="@{/kitchen#tabStock}" data-target="#tabStock">
+                            <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap"
+                                th:href="@{/kitchen#tabStock}" data-target="#tabStock">
                                 <i class="bi bi-box-seam me-1"></i> Kho Bếp & Sơ Chế
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap" th:href="@{/kitchen#tabPreparationHistory}" data-target="#tabPreparationHistory">
+                            <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap"
+                                th:href="@{/kitchen#tabPreparationHistory}" data-target="#tabPreparationHistory">
                                 <i class="bi bi-clock-history me-1"></i> Lịch Sử Sơ Chế
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap" th:href="@{/kitchen#tabShiftSettlement}" data-target="#tabShiftSettlement">
+                            <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap"
+                                th:href="@{/kitchen#tabShiftSettlement}" data-target="#tabShiftSettlement">
                                 <i class="bi bi-clipboard2-check me-1"></i> Kiểm Kê & Hao Hụt Cuối Ca
                             </a>
                         </li>
@@ -99,14 +122,17 @@
                     <ul sec:authorize="hasRole('ADMIN')" class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1"></ul>
 
                     <!-- GUEST / CUSTOMER -->
-                    <ul sec:authorize="!hasAnyRole('ADMIN', 'CASHIER', 'KITCHEN', 'CHEF')" class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
+                    <ul sec:authorize="!hasAnyRole('ADMIN', 'CASHIER', 'KITCHEN', 'CHEF')"
+                        class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
                         <li class="nav-item">
-                            <a class="nav-link fw-semibold" th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
+                            <a class="nav-link fw-semibold"
+                                th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
                                 <i class="bi bi-grid me-1"></i> Menu
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link fw-semibold" th:href="@{/orders(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
+                            <a class="nav-link fw-semibold"
+                                th:href="@{/orders(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
                                 <i class="bi bi-receipt me-1"></i> Đơn Hàng
                             </a>
                         </li>

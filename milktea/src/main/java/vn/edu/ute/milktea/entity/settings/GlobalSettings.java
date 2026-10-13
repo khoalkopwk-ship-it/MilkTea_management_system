@@ -26,6 +26,12 @@ public class GlobalSettings {
     @Column(name = "DiaChi", nullable = false, length = 255)
     private String address;
 
+    @Column(name = "LogoUrl", length = 1000)
+    private String logoUrl;
+
+    @Column(name = "LogoPublicId", length = 255)
+    private String logoPublicId;
+
     @Column(name = "NganHang", length = 120)
     private String bankName;
 
