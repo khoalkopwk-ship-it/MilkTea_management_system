@@ -53,7 +53,6 @@ public class SecurityConfig {
                                 "/menu",
                                 "/cart",
                                 "/orders",
-                                "/order-history",
                                 "/profile",
                                 "/login",
                                 "/error",

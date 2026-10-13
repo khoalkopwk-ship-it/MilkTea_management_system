@@ -685,10 +685,39 @@ public class InventoryService {
                 throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
                         "Tồn kho không đủ để hủy: " + material.getName() + " (Còn: " + stock.getQuantity() + ", cần hủy: " + it.getQuantity() + ")");
             }
+            
+            BigDecimal unitCost;
+
+            if (material.getType() == MaterialType.SOCHE) {
+                unitCost = calculateWeightedAverageUnitCost(
+                        material.getId(),
+                        null,
+                        null,
+                        null,
+                        null
+                );
+            } else {
+                unitCost = getMaterialCostPrice(material.getId());
+            }
+
+            if (unitCost == null || unitCost.signum() <= 0) {
+                throw BusinessException.badRequest(
+                        ErrorCode.VALIDATION_FAILED,
+                        "Chưa có giá vốn hợp lệ cho nguyên liệu: "
+                                + material.getName()
+                );
+            }
+
+            BigDecimal lossCost = it.getQuantity()
+                    .multiply(unitCost)
+                    .setScale(2, RoundingMode.HALF_UP);
+
             BigDecimal before = stock.getQuantity();
             BigDecimal after = before.subtract(it.getQuantity());
+
             stock.setQuantity(after);
             stockRepository.save(stock);
+
             movements.add(StockMovement.builder()
                     .material(material)
                     .location(request.getLocation())
@@ -701,6 +730,8 @@ public class InventoryService {
                     .createdBy(account)
                     .createdAt(Instant.now())
                     .reason(request.getReason())
+                    .unitCost(unitCost)
+                    .lossCost(lossCost)
                     .build());
         }
         movementRepository.saveAll(movements);

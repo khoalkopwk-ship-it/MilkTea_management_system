@@ -12,6 +12,7 @@ import vn.edu.ute.milktea.entity.order.OrderStatus;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -30,4 +31,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT COUNT(o) FROM Order o WHERE o.session.id = :sessionId AND o.status NOT IN ('HOAN_THANH', 'DA_HUY')")
     long countUnfinishedOrdersBySessionId(@Param("sessionId") Long sessionId);
+    
+    // Dashboard: thống kê số đơn theo trạng thái trong kỳ
+    @Query("""
+        SELECT o.status, COUNT(o)
+        FROM Order o
+        WHERE o.createdAt >= :start
+          AND o.createdAt < :end
+        GROUP BY o.status
+        """)
+    List<Object[]> countOrdersByStatusBetween(
+            @Param("start") Instant start,
+            @Param("end") Instant end
+    );
+
 }
