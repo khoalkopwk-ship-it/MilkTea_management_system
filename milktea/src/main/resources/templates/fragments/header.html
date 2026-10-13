@@ -21,6 +21,11 @@
                 min-width: 0;
             }
 
+            .navbar-milktea .navbar-brand.admin-navbar-brand {
+                margin-left: 30px;
+                gap: 16px !important;
+            }
+
             .navbar-milktea .milktea-logo-frame {
                 width: 60px;
                 height: 60px;
@@ -45,7 +50,8 @@
             }
 
             @media (max-width: 991.98px) {
-                .navbar-milktea .navbar-brand {
+                .navbar-milktea .navbar-brand,
+                .navbar-milktea .navbar-brand.admin-navbar-brand {
                     margin-left: 0;
                 }
             }
@@ -67,12 +73,17 @@
                     margin-left: 0;
                     margin-right: 6px;
                 }
+
+                .navbar-milktea .navbar-brand.admin-navbar-brand {
+                    gap: 10px !important;
+                    margin-left: 0;
+                }
             }
         </style>
 
         <nav class="navbar navbar-expand-lg navbar-milktea sticky-top">
             <div class="container-fluid px-lg-4">
-                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/admin}" sec:authorize="hasRole('ADMIN')">
+                <a class="navbar-brand admin-navbar-brand d-flex align-items-center gap-2" th:href="@{/admin}" sec:authorize="hasRole('ADMIN')">
                     <span class="milktea-logo-frame">
                         <img th:src="@{/images/MilkTea.png}" src="/images/MilkTea.png" alt="MilkTea">
                     </span>
