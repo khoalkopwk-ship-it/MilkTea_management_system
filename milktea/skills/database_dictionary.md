@@ -48,6 +48,7 @@ Giữ tên SQL không dấu trong Chương 4; map tên lớp Java tiếng Anh b�
 | HoTen / DienThoai | NVARCHAR(120) / VARCHAR(20) | Hồ sơ |
 | VaiTro | VARCHAR(16) | ADMIN / CASHIER / KITCHEN / CUSTOMER |
 | HoatDong / TokenVersion | BIT / BIGINT | Token cũ bị vô hiệu khi version thay đổi |
+| AvatarUrl / AvatarPublicId | NVARCHAR(1000) / NVARCHAR(255) | Nullable; Cloudinary secure URL và public_id |
 | TaoLuc | DATETIME2 | UTC; NOT NULL |
 
 ## TokenKhoiPhuc
@@ -311,6 +312,7 @@ Giữ tên SQL không dấu trong Chương 4; map tên lớp Java tiếng Anh b�
 | --- | --- | --- |
 | MaCauHinh | INT | PK; cố định 1 |
 | TenQuan / DiaChi | NVARCHAR(120) / NVARCHAR(255) | Thông tin duy nhất tại quán |
+| LogoUrl / LogoPublicId | NVARCHAR(1000) / NVARCHAR(255) | Nullable; Cloudinary secure URL và public_id |
 | NganHang / SoTaiKhoan / ChuTK | NVARCHAR(120) | Thông tin nhận chuyển khoản chung |
 | TyLeGiam | DECIMAL(5,2) | 0..100; áp dụng mọi khách |
 | NguoiSua / SuaLuc | BIGINT / DATETIME2 | FK TaiKhoan; UTC |

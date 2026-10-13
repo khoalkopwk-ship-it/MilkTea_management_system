@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+
 <head>
     <title>Xác Thực - MilkTea</title>
 </head>
+
 <body>
     <div th:fragment="content" class="container py-5">
         <div class="row justify-content-center">
@@ -11,8 +12,16 @@
                 <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
                     <!-- Card Header -->
                     <div class="card-header bg-white text-center pt-4 pb-2 border-0">
-                        <div class="d-inline-block brand-badge fs-5 mb-2">
-                            <i class="bi bi-cup-hot-fill me-1"></i>MilkTea
+                        <div class="mb-2">
+                            <img th:if="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()}" 
+                                 th:src="${settings.logoUrl}" 
+                                 alt="Logo" 
+                                 class="rounded-circle shadow-sm" 
+                                 style="width: 72px; height: 72px; object-fit: cover;" 
+                                 onerror="this.style.display='none'; document.getElementById('loginFallbackBadge').style.display='inline-block';">
+                            <div id="loginFallbackBadge" class="d-inline-block brand-badge fs-5" th:style="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()} ? 'display: none !important;' : ''">
+                                <i class="bi bi-cup-hot-fill me-1"></i>MilkTea
+                            </div>
                         </div>
                         <h4 class="brand-font mb-1">Cổng Xác Thực Hệ Thống</h4>
                         <p class="text-muted small mb-0">Quản trị, Vận hành & Dành cho Khách hàng</p>
@@ -22,12 +31,14 @@
                     <div class="px-4 pt-2">
                         <ul class="nav nav-pills nav-fill bg-light p-1 rounded-3" id="authTab" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active rounded-3 py-2 fw-semibold" id="login-tab" data-bs-toggle="tab" data-bs-target="#loginTabContent" type="button" role="tab">
+                                <button class="nav-link active rounded-3 py-2 fw-semibold" id="login-tab"
+                                    data-bs-toggle="tab" data-bs-target="#loginTabContent" type="button" role="tab">
                                     <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link rounded-3 py-2 fw-semibold" id="register-tab" data-bs-toggle="tab" data-bs-target="#registerTabContent" type="button" role="tab">
+                                <button class="nav-link rounded-3 py-2 fw-semibold" id="register-tab"
+                                    data-bs-toggle="tab" data-bs-target="#registerTabContent" type="button" role="tab">
                                     <i class="bi bi-person-plus me-1"></i> Đăng Ký
                                 </button>
                             </li>
@@ -46,48 +57,63 @@
                                     <div class="mb-3">
                                         <label for="email" class="form-label small fw-semibold">Email tài khoản</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
-                                            <input type="email" class="form-control border-start-0" id="email" required placeholder="name@milktea.vn">
+                                            <span class="input-group-text bg-light border-end-0"><i
+                                                    class="bi bi-envelope text-muted"></i></span>
+                                            <input type="email" class="form-control border-start-0" id="email" required
+                                                placeholder="name@milktea.vn">
                                         </div>
                                     </div>
 
                                     <div class="mb-2">
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <label for="password" class="form-label small fw-semibold mb-0">Mật khẩu</label>
-                                            <a href="javascript:void(0)" class="text-primary small text-decoration-none fw-semibold" onclick="openForgotPasswordModal()">
+                                            <label for="password" class="form-label small fw-semibold mb-0">Mật
+                                                khẩu</label>
+                                            <a href="javascript:void(0)"
+                                                class="text-primary small text-decoration-none fw-semibold"
+                                                onclick="openForgotPasswordModal()">
                                                 Quên mật khẩu?
                                             </a>
                                         </div>
                                         <div class="input-group mt-1">
-                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
-                                            <input type="password" class="form-control border-start-0" id="password" required placeholder="••••••••">
+                                            <span class="input-group-text bg-light border-end-0"><i
+                                                    class="bi bi-lock text-muted"></i></span>
+                                            <input type="password" class="form-control border-start-0" id="password"
+                                                required placeholder="••••••••">
                                         </div>
                                     </div>
 
-                                    <button type="submit" id="loginBtn" class="btn btn-primary-custom w-100 py-2 rounded-3 mt-3">
-                                        <span class="spinner-border spinner-border-sm me-2 d-none" id="loginSpinner"></span>
+                                    <button type="submit" id="loginBtn"
+                                        class="btn btn-primary-custom w-100 py-2 rounded-3 mt-3">
+                                        <span class="spinner-border spinner-border-sm me-2 d-none"
+                                            id="loginSpinner"></span>
                                         Đăng Nhập
                                     </button>
                                 </form>
 
                                 <!-- Tài Khoản Mẫu Nhanh -->
                                 <div class="mt-4 pt-3 border-top">
-                                    <p class="text-center text-muted small fw-semibold mb-2">Chọn nhanh tài khoản thử nghiệm:</p>
+                                    <p class="text-center text-muted small fw-semibold mb-2">Chọn nhanh tài khoản thử
+                                        nghiệm:</p>
                                     <div class="d-grid gap-2">
-                                        <button type="button" class="btn btn-sm btn-outline-danger text-start py-2 px-3 rounded-3"
-                                                onclick="fillDemo('admin@milktea.vn', 'Password@123')">
-                                            <i class="bi bi-shield-lock-fill me-2"></i><strong>Quản Trị Viên (ADMIN)</strong>
+                                        <button type="button"
+                                            class="btn btn-sm btn-outline-danger text-start py-2 px-3 rounded-3"
+                                            onclick="fillDemo('admin@milktea.vn', 'Password@123')">
+                                            <i class="bi bi-shield-lock-fill me-2"></i><strong>Quản Trị Viên
+                                                (ADMIN)</strong>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-primary text-start py-2 px-3 rounded-3"
-                                                onclick="fillDemo('cashier@milktea.vn', 'Password@123')">
+                                        <button type="button"
+                                            class="btn btn-sm btn-outline-primary text-start py-2 px-3 rounded-3"
+                                            onclick="fillDemo('cashier@milktea.vn', 'Password@123')">
                                             <i class="bi bi-calculator me-2"></i><strong>Thu Ngân (CASHIER)</strong>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-success text-start py-2 px-3 rounded-3"
-                                                onclick="fillDemo('kitchen@milktea.vn', 'Password@123')">
+                                        <button type="button"
+                                            class="btn btn-sm btn-outline-success text-start py-2 px-3 rounded-3"
+                                            onclick="fillDemo('kitchen@milktea.vn', 'Password@123')">
                                             <i class="bi bi-fire me-2"></i><strong>Bếp Trưởng (KITCHEN)</strong>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary text-start py-2 px-3 rounded-3"
-                                                onclick="fillDemo('customer@milktea.vn', 'Password@123')">
+                                        <button type="button"
+                                            class="btn btn-sm btn-outline-secondary text-start py-2 px-3 rounded-3"
+                                            onclick="fillDemo('customer@milktea.vn', 'Password@123')">
                                             <i class="bi bi-person me-2"></i><strong>Khách Hàng (CUSTOMER)</strong>
                                         </button>
                                     </div>
@@ -100,45 +126,59 @@
                                     <div class="mb-3">
                                         <label for="regFullName" class="form-label small fw-semibold">Họ và tên</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                                            <input type="text" class="form-control border-start-0" id="regFullName" required placeholder="Nguyễn Văn A">
+                                            <span class="input-group-text bg-light border-end-0"><i
+                                                    class="bi bi-person text-muted"></i></span>
+                                            <input type="text" class="form-control border-start-0" id="regFullName"
+                                                required placeholder="Nguyễn Văn A">
                                         </div>
                                     </div>
 
                                     <div class="mb-3">
                                         <label for="regEmail" class="form-label small fw-semibold">Email đăng ký</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
-                                            <input type="email" class="form-control border-start-0" id="regEmail" required placeholder="example@email.com">
+                                            <span class="input-group-text bg-light border-end-0"><i
+                                                    class="bi bi-envelope text-muted"></i></span>
+                                            <input type="email" class="form-control border-start-0" id="regEmail"
+                                                required placeholder="example@email.com">
                                         </div>
                                     </div>
 
                                     <div class="mb-3">
                                         <label for="regPhone" class="form-label small fw-semibold">Số điện thoại</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-telephone text-muted"></i></span>
-                                            <input type="tel" class="form-control border-start-0" id="regPhone" placeholder="0901234567">
+                                            <span class="input-group-text bg-light border-end-0"><i
+                                                    class="bi bi-telephone text-muted"></i></span>
+                                            <input type="tel" class="form-control border-start-0" id="regPhone"
+                                                placeholder="0901234567">
                                         </div>
                                     </div>
 
                                     <div class="mb-3">
                                         <label for="regPassword" class="form-label small fw-semibold">Mật khẩu</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
-                                            <input type="password" class="form-control border-start-0" id="regPassword" required minlength="6" placeholder="Tối thiểu 6 ký tự">
+                                            <span class="input-group-text bg-light border-end-0"><i
+                                                    class="bi bi-lock text-muted"></i></span>
+                                            <input type="password" class="form-control border-start-0" id="regPassword"
+                                                required minlength="6" placeholder="Tối thiểu 6 ký tự">
                                         </div>
                                     </div>
 
                                     <div class="mb-3">
-                                        <label for="regConfirmPassword" class="form-label small fw-semibold">Xác nhận mật khẩu</label>
+                                        <label for="regConfirmPassword" class="form-label small fw-semibold">Xác nhận
+                                            mật khẩu</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-shield-check text-muted"></i></span>
-                                            <input type="password" class="form-control border-start-0" id="regConfirmPassword" required minlength="6" placeholder="Nhập lại mật khẩu">
+                                            <span class="input-group-text bg-light border-end-0"><i
+                                                    class="bi bi-shield-check text-muted"></i></span>
+                                            <input type="password" class="form-control border-start-0"
+                                                id="regConfirmPassword" required minlength="6"
+                                                placeholder="Nhập lại mật khẩu">
                                         </div>
                                     </div>
 
-                                    <button type="submit" id="registerBtn" class="btn btn-success w-100 py-2 rounded-3 mt-2">
-                                        <span class="spinner-border spinner-border-sm me-2 d-none" id="registerSpinner"></span>
+                                    <button type="submit" id="registerBtn"
+                                        class="btn btn-success w-100 py-2 rounded-3 mt-2">
+                                        <span class="spinner-border spinner-border-sm me-2 d-none"
+                                            id="registerSpinner"></span>
                                         Đăng Ký Tài Khoản
                                     </button>
                                 </form>
@@ -166,13 +206,16 @@
 
                     <!-- BƯỚC 1: NHẬP EMAIL NHẬN MÃ KHÔI PHỤC -->
                     <div id="forgotStep1">
-                        <p class="text-muted small">Nhập địa chỉ email đăng ký để nhận mã xác thực khôi phục mật khẩu.</p>
+                        <p class="text-muted small">Nhập địa chỉ email đăng ký để nhận mã xác thực khôi phục mật khẩu.
+                        </p>
                         <form id="step1Form" onsubmit="handleRequestReset(event)">
                             <div class="mb-3">
                                 <label for="forgotEmail" class="form-label small fw-semibold">Email tài khoản</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-light"><i class="bi bi-envelope text-muted"></i></span>
-                                    <input type="email" class="form-control" id="forgotEmail" required placeholder="name@milktea.vn">
+                                    <span class="input-group-text bg-light"><i
+                                            class="bi bi-envelope text-muted"></i></span>
+                                    <input type="email" class="form-control" id="forgotEmail" required
+                                        placeholder="name@milktea.vn">
                                 </div>
                             </div>
                             <button type="submit" id="btnSendReset" class="btn btn-primary-custom w-100 py-2 rounded-3">
@@ -185,26 +228,33 @@
                     <!-- BƯỚC 2: NHẬP MÃ TOKEN/OTP & MẬT KHẨU MỚI -->
                     <div id="forgotStep2" class="d-none">
                         <div class="alert alert-info py-2 small rounded-3 mb-3">
-                            <i class="bi bi-info-circle me-1"></i> Mã khôi phục đã được tạo! Bạn có thể sử dụng mã bên dưới để đổi mật khẩu.
+                            <i class="bi bi-info-circle me-1"></i> Mã khôi phục đã được tạo! Bạn có thể sử dụng mã bên
+                            dưới để đổi mật khẩu.
                         </div>
                         <form id="step2Form" onsubmit="handleConfirmReset(event)">
                             <div class="mb-3">
                                 <label for="resetTokenInput" class="form-label small fw-semibold">Mã token / OTP</label>
-                                <input type="text" class="form-control font-monospace" id="resetTokenInput" required placeholder="Nhập mã token nhận được">
+                                <input type="text" class="form-control font-monospace" id="resetTokenInput" required
+                                    placeholder="Nhập mã token nhận được">
                             </div>
                             <div class="mb-3">
                                 <label for="resetNewPassword" class="form-label small fw-semibold">Mật khẩu mới</label>
-                                <input type="password" class="form-control" id="resetNewPassword" required minlength="6" placeholder="Tối thiểu 6 ký tự">
+                                <input type="password" class="form-control" id="resetNewPassword" required minlength="6"
+                                    placeholder="Tối thiểu 6 ký tự">
                             </div>
                             <div class="mb-3">
-                                <label for="resetConfirmNewPassword" class="form-label small fw-semibold">Xác nhận mật khẩu mới</label>
-                                <input type="password" class="form-control" id="resetConfirmNewPassword" required minlength="6" placeholder="Nhập lại mật khẩu mới">
+                                <label for="resetConfirmNewPassword" class="form-label small fw-semibold">Xác nhận mật
+                                    khẩu mới</label>
+                                <input type="password" class="form-control" id="resetConfirmNewPassword" required
+                                    minlength="6" placeholder="Nhập lại mật khẩu mới">
                             </div>
                             <button type="submit" id="btnConfirmReset" class="btn btn-success w-100 py-2 rounded-3">
-                                <span class="spinner-border spinner-border-sm me-2 d-none" id="confirmResetSpinner"></span>
+                                <span class="spinner-border spinner-border-sm me-2 d-none"
+                                    id="confirmResetSpinner"></span>
                                 Xác Nhận Đặt Lại Mật Khẩu
                             </button>
-                            <button type="button" class="btn btn-link w-100 text-muted small mt-2" onclick="backToStep1()">
+                            <button type="button" class="btn btn-link w-100 text-muted small mt-2"
+                                onclick="backToStep1()">
                                 <i class="bi bi-arrow-left me-1"></i> Gửi lại mã khác
                             </button>
                         </form>
@@ -430,4 +480,5 @@
         </script>
     </th:block>
 </body>
+
 </html>

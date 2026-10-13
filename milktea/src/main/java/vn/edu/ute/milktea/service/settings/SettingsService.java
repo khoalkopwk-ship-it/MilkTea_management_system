@@ -19,6 +19,7 @@ public class SettingsService {
 
     private final GlobalSettingsRepository settingsRepository;
     private final AccountRepository accountRepository;
+    private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
 
     @Transactional(readOnly = true)
     public SettingsDto.ShopInfoResponse getShopInfo() {
@@ -32,7 +33,8 @@ public class SettingsService {
                         .build());
 
         String discountType = settings.getDiscountType() != null ? settings.getDiscountType() : "PERCENT";
-        BigDecimal discountValue = settings.getDiscountValue() != null ? settings.getDiscountValue() : settings.getDiscountPercent();
+        BigDecimal discountValue = settings.getDiscountValue() != null ? settings.getDiscountValue()
+                : settings.getDiscountPercent();
 
         return SettingsDto.ShopInfoResponse.builder()
                 .shopName(settings.getShopName())
@@ -43,6 +45,8 @@ public class SettingsService {
                 .discountPercent(settings.getDiscountPercent())
                 .discountType(discountType)
                 .discountValue(discountValue)
+                .logoUrl(settings.getLogoUrl())
+                .logoPublicId(settings.getLogoPublicId())
                 .build();
     }
 
@@ -78,7 +82,8 @@ public class SettingsService {
         if ("PERCENT".equals(type)) {
             if (val.compareTo(BigDecimal.ZERO) < 0 || val.compareTo(new BigDecimal("100")) > 0) {
                 throw vn.edu.ute.milktea.common.BusinessException.badRequest(
-                        vn.edu.ute.milktea.common.ErrorCode.VALIDATION_FAILED, "Phần trăm giảm giá phải từ 0% đến 100%");
+                        vn.edu.ute.milktea.common.ErrorCode.VALIDATION_FAILED,
+                        "Phần trăm giảm giá phải từ 0% đến 100%");
             }
             settings.setDiscountType("PERCENT");
             settings.setDiscountPercent(val);
@@ -97,5 +102,10 @@ public class SettingsService {
         settings.setModifiedAt(Instant.now());
 
         settingsRepository.save(settings);
+
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "SETTINGS_CHANGED", "1", null, "1",
+                java.util.Map.of("shopName", settings.getShopName()));
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "SETTINGS_CHANGED", "1", null, "1",
+                java.util.Map.of("shopName", settings.getShopName()));
     }
 }

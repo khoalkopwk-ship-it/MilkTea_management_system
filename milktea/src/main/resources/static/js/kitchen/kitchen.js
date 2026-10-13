@@ -95,6 +95,10 @@ const KitchenApp = (() => {
     }
 
     function setupRealtime() {
+        MilkTeaRealtime.on('ORDER_CREATED', () => {
+            loadOrders();
+        });
+
         MilkTeaRealtime.on('ORDER_STATUS_CHANGED', () => {
             loadOrders();
         });
@@ -103,6 +107,42 @@ const KitchenApp = (() => {
             loadStock();
             loadPreparationHistory();
             loadPastSettlements();
+        });
+
+        MilkTeaRealtime.on('BATCH_RECORDED', () => {
+            loadStock();
+            loadPreparationHistory();
+        });
+
+        MilkTeaRealtime.on('RECIPE_CHANGED', () => {
+            loadStock();
+        });
+
+        MilkTeaRealtime.on('SETTINGS_CHANGED', async () => {
+            try {
+                const info = await MilkTeaApi.get('/api/v1/public/shop-info');
+                if (info && info.logoUrl) {
+                    document.querySelectorAll('.navbar-milktea .navbar-brand').forEach(brand => {
+                        let img = brand.querySelector('img.navbar-shop-logo');
+                        const badge = brand.querySelector('.navbar-brand-badge');
+                        if (!img) {
+                            img = document.createElement('img');
+                            img.alt = 'Logo';
+                            img.className = 'rounded-circle shadow-sm navbar-shop-logo';
+                            img.style = 'width: 38px; height: 38px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);';
+                            brand.prepend(img);
+                        }
+                        img.src = info.logoUrl;
+                        img.style.display = 'inline-block';
+                        if (badge) badge.style.setProperty('display', 'none', 'important');
+                    });
+                }
+                if (info && info.shopName) {
+                    document.querySelectorAll('.navbar-shop-name').forEach(el => el.textContent = info.shopName);
+                }
+            } catch (e) {
+                console.debug('Error refreshing shop info on SETTINGS_CHANGED:', e);
+            }
         });
 
         MilkTeaRealtime.onReconnect(() => {
@@ -382,8 +422,8 @@ const KitchenApp = (() => {
                         <td class="text-muted">${formatQty(s.threshold)} ${escapeHtml(s.unit)}</td>
                         <td>
                             ${isAlert
-                                ? '<span class="badge bg-danger">Sắp hết hàng!</span>'
-                                : '<span class="badge bg-success">Đủ dùng</span>'}
+                        ? '<span class="badge bg-danger">Sắp hết hàng!</span>'
+                        : '<span class="badge bg-success">Đủ dùng</span>'}
                         </td>
                     </tr>
                 `;

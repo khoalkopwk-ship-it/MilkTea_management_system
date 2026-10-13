@@ -46,6 +46,12 @@ public class Account {
     @Column(name = "TaoLuc", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "AvatarUrl", length = 1000)
+    private String avatarUrl;
+
+    @Column(name = "AvatarPublicId", length = 255)
+    private String avatarPublicId;
+
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {

@@ -37,6 +37,8 @@ CREATE TABLE dbo.TaiKhoan (
     HoatDong BIT NOT NULL CONSTRAINT DF_TaiKhoan_HoatDong DEFAULT 1,
     TokenVersion BIGINT NOT NULL CONSTRAINT DF_TaiKhoan_TokenVersion DEFAULT 1,
     TaoLuc DATETIME2 NOT NULL,
+    AvatarUrl NVARCHAR(1000) NULL,
+    AvatarPublicId NVARCHAR(255) NULL,
     CONSTRAINT UQ_TaiKhoan_Email UNIQUE (Email)
 );
 CREATE TABLE dbo.TokenKhoiPhuc (
@@ -54,6 +56,8 @@ CREATE TABLE dbo.CauHinhChung (
     MaCauHinh INT PRIMARY KEY,
     TenQuan NVARCHAR(120) NOT NULL,
     DiaChi NVARCHAR(255) NOT NULL,
+    LogoUrl NVARCHAR(1000) NULL,
+    LogoPublicId NVARCHAR(255) NULL,
     NganHang NVARCHAR(120) NULL,
     SoTaiKhoan NVARCHAR(120) NULL,
     ChuTK NVARCHAR(120) NULL,
