@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
@@ -6,10 +7,481 @@
 </head>
 <body>
     <div th:fragment="content" class="container py-4">
+        <style>
+            .container:has(#cartContainer) {
+                --cart-primary: #b86b35;
+                --cart-primary-hover: #9e5524;
+                --cart-primary-light: #fbeee4;
+                --cart-secondary: #775D4A;
+                --cart-secondary-hover: #604735;
+                --cart-secondary-light: #F3EBE4;
+                --cart-accent: #D9B99B;
+                --cart-cream: #F8F4EF;
+                --cart-ink: #1e293b;
+                --cart-muted: #786F68;
+                --cart-border: #E8DED5;
+                color: var(--cart-ink);
+                font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+            }
+
+            @keyframes cartZoomFade {
+                from {
+                    opacity: 0;
+                    transform: scale(.97);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+
+            @keyframes cartStaggerSlide {
+                from {
+                    opacity: 0;
+                    transform: translateX(-15px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            @keyframes cartQuantityHighlight {
+                0% {
+                    background-color: #FBE4D1;
+                    color: #9e5524;
+                }
+                65% {
+                    background-color: #FBE4D1;
+                    color: #9e5524;
+                }
+                100% {
+                    background-color: #FFFDFB;
+                    color: #604735;
+                }
+            }
+
+            .container:has(#cartContainer) .cart-zoom-fade {
+                animation: cartZoomFade .7s cubic-bezier(.22, 1, .36, 1) both;
+            }
+
+            .container:has(#cartContainer) #cartSummary.cart-zoom-fade {
+                animation-delay: .12s;
+            }
+
+            .container:has(#cartContainer) #cartList .cart-stagger-slide {
+                animation: cartStaggerSlide .52s cubic-bezier(.22, 1, .36, 1) both;
+                animation-delay: calc(var(--cart-item-index, 0) * 70ms);
+            }
+
+            .container:has(#cartContainer) #cartList .cart-quantity-highlight {
+                animation: cartQuantityHighlight .3s ease-out both;
+            }
+
+            .container:has(#cartContainer) .brand-font {
+                color: var(--cart-secondary-hover);
+                font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+                font-weight: 700;
+                letter-spacing: 0;
+            }
+
+            .container:has(#cartContainer) h3.brand-font {
+                font-size: 24px;
+                line-height: 1.4;
+            }
+
+            .container:has(#cartContainer) .btn-outline-secondary.rounded-circle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 39px;
+                height: 39px;
+                min-width: 39px;
+                padding: 0 !important;
+                background: #FFFDFB;
+                color: var(--cart-secondary);
+                border: 1px solid #DCC7B5;
+                border-radius: 11px !important;
+                box-shadow: 0 2px 8px rgba(96, 71, 53, .05);
+            }
+
+            .container:has(#cartContainer) .btn-outline-secondary.rounded-circle:hover {
+                background: var(--cart-primary-light);
+                color: var(--cart-primary-hover);
+                border-color: var(--cart-primary);
+            }
+
+            .container:has(#cartContainer) .table-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                background: var(--cart-secondary-light);
+                color: var(--cart-secondary-hover);
+                border: 1px solid #E3D2C3;
+                border-radius: 11px;
+                padding: 8px 13px;
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .container:has(#cartContainer) .table-badge i {
+                color: var(--cart-primary);
+            }
+
+            .container:has(#cartContainer) .card {
+                background: #FFFDFB;
+                border: 1px solid var(--cart-border) !important;
+                border-radius: 20px !important;
+                box-shadow: 0 5px 20px rgba(96, 71, 53, .055) !important;
+                overflow: hidden;
+            }
+
+            .container:has(#cartContainer) #cartContainer {
+                background: #FFFDFB;
+                border-radius: 20px;
+                padding: 25px !important;
+            }
+
+            .container:has(#cartContainer) #cartLoading {
+                color: var(--cart-muted);
+            }
+
+            .container:has(#cartContainer) #cartLoading .spinner-custom {
+                color: var(--cart-primary);
+            }
+
+            .container:has(#cartContainer) #cartLoading p {
+                color: var(--cart-muted) !important;
+                font-size: 13px;
+            }
+
+            .container:has(#cartContainer) #cartEmpty {
+                padding: 45px 20px;
+                text-align: center;
+            }
+
+            .container:has(#cartContainer) #cartEmpty > i {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 76px;
+                height: 76px;
+                margin-bottom: 17px;
+                background: var(--cart-primary-light);
+                color: var(--cart-primary) !important;
+                border: 1px solid #EAD6C4;
+                border-radius: 20px;
+                font-size: 34px;
+                opacity: 1;
+            }
+
+            .container:has(#cartContainer) #cartEmpty h5 {
+                color: var(--cart-secondary-hover);
+                font-size: 18px;
+                font-weight: 700;
+                line-height: 1.4;
+            }
+
+            .container:has(#cartContainer) #cartEmpty p {
+                color: var(--cart-muted) !important;
+                font-size: 13px;
+                line-height: 1.7;
+            }
+
+            .container:has(#cartContainer) .btn-primary-custom {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                background: var(--cart-primary);
+                color: #ffffff;
+                border: 1px solid var(--cart-primary);
+                border-radius: 11px !important;
+                font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+                font-weight: 700;
+                box-shadow: 0 4px 12px rgba(184, 107, 53, .13);
+            }
+
+            .container:has(#cartContainer) .btn-primary-custom:hover {
+                background: var(--cart-primary-hover);
+                border-color: var(--cart-primary-hover);
+                color: #ffffff;
+            }
+
+            .container:has(#cartContainer) #cartEmpty .btn-primary-custom {
+                min-height: 41px;
+                padding: 10px 18px !important;
+                font-size: 13px !important;
+            }
+
+            .container:has(#cartContainer) #cartList {
+                color: var(--cart-ink);
+            }
+
+            .container:has(#cartContainer) #cartList > .d-flex {
+                gap: 14px;
+                padding-top: 18px !important;
+                padding-bottom: 18px !important;
+            }
+
+            .container:has(#cartContainer) #cartList > .d-flex:first-child {
+                padding-top: 4px !important;
+            }
+
+            .container:has(#cartContainer) #cartList > .d-flex:last-child {
+                padding-bottom: 4px !important;
+            }
+
+            .container:has(#cartContainer) #cartList .border-top {
+                border-color: #EDE1D5 !important;
+            }
+
+            .container:has(#cartContainer) #cartList h6 {
+                color: var(--cart-secondary-hover);
+                font-size: 14px;
+                font-weight: 700;
+                line-height: 1.5;
+                overflow-wrap: anywhere;
+            }
+
+            .container:has(#cartContainer) #cartList .text-muted {
+                color: var(--cart-muted) !important;
+                font-size: 12px;
+                line-height: 1.6;
+            }
+
+            .container:has(#cartContainer) #cartList .badge.bg-light {
+                background: var(--cart-secondary-light) !important;
+                color: var(--cart-secondary-hover) !important;
+                border: 1px solid #E3D2C3 !important;
+                border-radius: 8px;
+                padding: 5px 9px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+
+            .container:has(#cartContainer) #cartList .product-price {
+                color: var(--cart-primary);
+                font-size: 14px;
+                font-weight: 750;
+                white-space: nowrap;
+            }
+
+            .container:has(#cartContainer) #cartList .input-group {
+                border: 1px solid #DED0C3;
+                border-radius: 10px;
+                overflow: hidden;
+                flex-wrap: nowrap;
+            }
+
+            .container:has(#cartContainer) #cartList .input-group .btn-outline-secondary {
+                min-width: 30px;
+                background: #F8F4EF;
+                color: var(--cart-secondary-hover);
+                border: none;
+                border-radius: 0;
+                font-size: 15px;
+                font-weight: 700;
+                padding: 6px 8px;
+            }
+
+            .container:has(#cartContainer) #cartList .input-group .btn-outline-secondary:hover {
+                background: var(--cart-primary-light);
+                color: var(--cart-primary-hover);
+            }
+
+            .container:has(#cartContainer) #cartList .input-group .input-group-text {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 30px;
+                background: #FFFDFB !important;
+                color: var(--cart-secondary-hover);
+                border: none;
+                border-left: 1px solid #E8DED5;
+                border-right: 1px solid #E8DED5;
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .container:has(#cartContainer) #cartList .btn-outline-danger {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 30px;
+                min-height: 30px;
+                background: #FFF4F2;
+                color: #B94B43;
+                border: 1px solid #F0D2CD !important;
+                border-radius: 9px;
+                font-size: 14px;
+            }
+
+            .container:has(#cartContainer) #cartList .btn-outline-danger:hover {
+                background: #FBE6E2;
+                color: #A43B34;
+                border-color: #E9BAB2 !important;
+            }
+
+            .container:has(#cartContainer) #cartSummary {
+                background: linear-gradient(115deg, #FFFDFB, #F8F4EF);
+                border: 1px solid #E8D7C8 !important;
+                border-radius: 20px !important;
+                padding: 26px !important;
+                color: var(--cart-secondary-hover);
+            }
+
+            .container:has(#cartContainer) #cartSummary .text-muted {
+                color: var(--cart-muted) !important;
+                font-size: 13px;
+                line-height: 1.6;
+            }
+
+            .container:has(#cartContainer) #cartSummary #subtotalVal {
+                color: var(--cart-secondary-hover);
+                font-size: 14px;
+                font-weight: 650;
+            }
+
+            .container:has(#cartContainer) #cartSummary #discountVal {
+                color: #B94B43 !important;
+                font-size: 14px;
+                font-weight: 650;
+            }
+
+            .container:has(#cartContainer) #cartSummary hr {
+                border-color: #DCC7B5;
+                opacity: 1;
+            }
+
+            .container:has(#cartContainer) #cartSummary .fs-5.fw-bold {
+                color: var(--cart-secondary-hover);
+                font-size: 17px !important;
+                font-weight: 750;
+            }
+
+            .container:has(#cartContainer) #cartSummary #totalVal {
+                color: var(--cart-primary);
+                font-size: 25px !important;
+                font-weight: 800;
+                letter-spacing: 0;
+            }
+
+            .container:has(#cartContainer) #checkoutBtn {
+                min-height: 49px;
+                padding: 12px 18px !important;
+                background: var(--cart-primary);
+                color: #ffffff;
+                border: 1px solid var(--cart-primary);
+                border-radius: 11px !important;
+                font-size: 14px !important;
+                font-weight: 700;
+                box-shadow: 0 4px 12px rgba(184, 107, 53, .14);
+            }
+
+            .container:has(#cartContainer) #checkoutBtn:hover {
+                background: var(--cart-primary-hover);
+                border-color: var(--cart-primary-hover);
+                color: #ffffff;
+            }
+
+            .container:has(#cartContainer) #checkoutBtn:disabled {
+                opacity: .65;
+                cursor: not-allowed;
+                box-shadow: none;
+            }
+
+            .container:has(#cartContainer) #cartSummary > p {
+                color: var(--cart-muted) !important;
+                font-size: 12px;
+                line-height: 1.7;
+                margin-top: 12px !important;
+            }
+
+            .container:has(#cartContainer) .btn:focus-visible {
+                outline: 3px solid #EAC4A4;
+                outline-offset: 2px;
+                box-shadow: none;
+            }
+
+            @media (max-width: 767.98px) {
+                .container:has(#cartContainer) h3.brand-font {
+                    font-size: 21px;
+                }
+
+                .container:has(#cartContainer) #cartContainer {
+                    padding: 19px !important;
+                }
+
+                .container:has(#cartContainer) #cartSummary {
+                    padding: 20px !important;
+                }
+
+                .container:has(#cartContainer) #cartList > .d-flex {
+                    flex-wrap: wrap;
+                    gap: 10px;
+                }
+
+                .container:has(#cartContainer) #cartList > .d-flex > .flex-grow-1 {
+                    flex-basis: 100%;
+                    margin-right: 0 !important;
+                }
+
+                .container:has(#cartContainer) #cartList > .d-flex > .d-flex {
+                    width: 100%;
+                    justify-content: space-between;
+                }
+            }
+
+            @media (max-width: 575.98px) {
+                .container:has(#cartContainer) h3.brand-font {
+                    font-size: 18px;
+                }
+
+                .container:has(#cartContainer) .table-badge {
+                    padding: 7px 9px;
+                    font-size: 11px;
+                }
+
+                .container:has(#cartContainer) .card {
+                    border-radius: 16px !important;
+                }
+
+                .container:has(#cartContainer) #cartContainer {
+                    padding: 16px !important;
+                }
+
+                .container:has(#cartContainer) #cartSummary {
+                    padding: 18px !important;
+                }
+
+                .container:has(#cartContainer) #cartList .product-price {
+                    font-size: 13px;
+                }
+
+                .container:has(#cartContainer) #cartSummary #totalVal {
+                    font-size: 21px !important;
+                }
+
+                .container:has(#cartContainer) #checkoutBtn {
+                    font-size: 13px !important;
+                    min-height: 45px;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .container:has(#cartContainer) .cart-zoom-fade,
+                .container:has(#cartContainer) #cartList .cart-stagger-slide,
+                .container:has(#cartContainer) #cartList .cart-quantity-highlight {
+                    animation: none !important;
+                    opacity: 1 !important;
+                    transform: none !important;
+                }
+            }
+        </style>
+
         <div class="row justify-content-center">
             <div class="col-lg-8">
-
-                <!-- Header Giỏ Hàng -->
                 <div class="d-flex align-items-center justify-content-between mb-4">
                     <div class="d-flex align-items-center gap-2">
                         <a th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="btn btn-outline-secondary btn-sm rounded-circle p-2">
@@ -22,10 +494,8 @@
                     </div>
                 </div>
 
-                <!-- Danh Sách Các Món Trong Giỏ -->
-                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card border-0 shadow-sm rounded-4 mb-4 cart-zoom-fade">
                     <div class="card-body p-4" id="cartContainer">
-                        <!-- Danh sách render động bằng JS -->
                         <div id="cartLoading" class="text-center py-5">
                             <div class="spinner-border spinner-custom mb-2"></div>
                             <p class="text-muted small">Đang nạp giỏ hàng...</p>
@@ -36,19 +506,16 @@
                             <h5 class="fw-bold mb-1">Giỏ hàng đang trống</h5>
                             <p class="text-muted small mb-3">Hãy chọn những món trà sữa thơm ngon để thêm vào giỏ nhé!</p>
                             <a th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}"
-                                class="btn btn-primary-custom rounded-pill px-3 py-1"
-                                style="font-size: 14px;">
-                                <i class="bi bi-cup-hot me-1"style="font-size: 16px;"></i> Xem Thực Đơn
+                               class="btn btn-primary-custom rounded-pill px-3 py-1"
+                               style="font-size: 14px;">
+                                <i class="bi bi-cup-hot me-1" style="font-size: 16px;"></i> Xem Thực Đơn
                             </a>
                         </div>
 
-                        <div id="cartList" class="d-none">
-                            <!-- Items inserted by JS -->
-                        </div>
+                        <div id="cartList" class="d-none"></div>
                     </div>
                 </div>
 
-                <!-- Tổng Kết Tiền & Nút Đặt Đơn -->
                 <div class="card border-0 shadow-sm rounded-4 p-4" id="cartSummary" style="display: none;">
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Tạm tính:</span>
@@ -69,7 +536,6 @@
                     </button>
                     <p class="text-center text-muted small mt-2 mb-0">Đơn hàng sẽ được chuyển tới Bếp ngay sau khi Thu ngân xác nhận.</p>
                 </div>
-
             </div>
         </div>
     </div>
@@ -80,12 +546,14 @@
             const discountType = /*[[${settings != null && settings.discountType != null ? settings.discountType : 'PERCENT'}]]*/ 'PERCENT';
             const discountValue = /*[[${settings != null && settings.discountValue != null ? settings.discountValue : (settings != null && settings.discountPercent != null ? settings.discountPercent : 0)}]]*/ 0;
 
+            let cartEntranceShown = false;
+            let previousCartQuantities = null;
+
             document.addEventListener('DOMContentLoaded', async () => {
                 const qr = /*[[${tableQr}]]*/ null;
                 const tableId = /*[[${currentTable != null ? currentTable.id : null}]]*/ null;
                 await CustomerApp.initContext(qr, tableId);
 
-                // Render giỏ hàng ban đầu
                 const items = window.MilkTeaContext.sessionId ? CustomerApp.getServerCart() : CustomerApp.getLocalCart();
                 const total = items.reduce((acc, it) => acc + (it.lineTotal || ((it.price || it.unitPrice || 0) + (it.toppings ? it.toppings.reduce((s,t)=>s+(t.price||0),0) : 0)) * it.quantity), 0);
                 renderCartItems(items, total);
@@ -103,12 +571,20 @@
                     if (empty) empty.classList.remove('d-none');
                     if (list) list.classList.add('d-none');
                     if (summary) summary.style.display = 'none';
+                    previousCartQuantities = null;
                     return;
                 }
 
                 if (empty) empty.classList.add('d-none');
                 if (list) list.classList.remove('d-none');
                 if (summary) summary.style.display = 'block';
+
+                const playEntrance = !cartEntranceShown;
+                const currentQuantities = items.map(it => ({
+                    productName: it.productName,
+                    size: it.size,
+                    quantity: it.quantity
+                }));
 
                 let html = '';
                 items.forEach((it, idx) => {
@@ -124,8 +600,15 @@
                             `).join('')}
                         </div>`
                         : '';
+
+                    const previousItem = previousCartQuantities && previousCartQuantities[idx];
+                    const quantityChanged = previousItem
+                        && previousItem.productName === it.productName
+                        && previousItem.size === it.size
+                        && previousItem.quantity !== it.quantity;
+
                     html += `
-                        <div class="d-flex align-items-center justify-content-between py-3 ${idx > 0 ? 'border-top' : ''}">
+                        <div class="d-flex align-items-center justify-content-between py-3 ${idx > 0 ? 'border-top' : ''} ${playEntrance ? 'cart-stagger-slide' : ''}" ${playEntrance ? `style="--cart-item-index: ${Math.min(idx, 12)}"` : ''}>
                             <div class="flex-grow-1 me-3">
                                 <h6 class="fw-bold mb-1">${it.productName}</h6>
                                 <div class="d-flex align-items-center gap-2 mb-1">
@@ -139,7 +622,7 @@
                             <div class="d-flex align-items-center gap-2">
                                 <div class="input-group input-group-sm" style="width: 100px;">
                                     <button class="btn btn-outline-secondary" type="button" onclick="CustomerApp.updateQuantity(${idx}, -1)">-</button>
-                                    <span class="input-group-text bg-white fw-bold px-2">${it.quantity}</span>
+                                    <span class="input-group-text bg-white fw-bold px-2 ${quantityChanged ? 'cart-quantity-highlight' : ''}">${it.quantity}</span>
                                     <button class="btn btn-outline-secondary" type="button" onclick="CustomerApp.updateQuantity(${idx}, 1)">+</button>
                                 </div>
                                 <span class="fw-bold product-price ms-2" style="min-width: 85px; text-align: right;">${MilkTeaApi.formatVND(lineTotal)}</span>
@@ -153,7 +636,13 @@
 
                 list.innerHTML = html;
 
-                // Tính toán giảm giá và tổng tiền
+                if (playEntrance) {
+                    summary.classList.add('cart-zoom-fade');
+                    cartEntranceShown = true;
+                }
+
+                previousCartQuantities = currentQuantities;
+
                 const sub = parseFloat(subtotal) || 0;
                 let discountAmount = 0;
                 if (discountType === 'FIXED_AMOUNT') {
