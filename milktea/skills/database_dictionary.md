@@ -24,8 +24,6 @@ Giữ tên SQL không dấu trong Chương 4; map tên lớp Java tiếng Anh b�
 - ChiTietCTSoChe
 - PhieuNhap
 - ChiTietNhap
-- PhieuXuat
-- ChiTietXuat
 - MeSoChe
 - ChiTietMeSoChe
 - LichSuKho
@@ -245,24 +243,6 @@ Giữ tên SQL không dấu trong Chương 4; map tên lớp Java tiếng Anh b�
 | SoLuong | DECIMAL(18,3) | CHECK > 0 |
 | DonGiaNhap | DECIMAL(18,2) | CHECK >= 0 |
 
-## PhieuXuat
-
-| Trường | Kiểu | Ràng buộc |
-| --- | --- | --- |
-| MaPhieu | BIGINT | PK |
-| NguoiLap | BIGINT | FK TaiKhoan |
-| LyDo | NVARCHAR(500) | Bắt buộc lý do xuất |
-| TrangThai | VARCHAR(12) | NHAP / DA_GHI_SO; trạng thái chứng từ |
-| LapLuc / GhiSoLuc | DATETIME2 | GhiSoLuc nullable khi nháp |
-| MaYeuCau | VARCHAR(64) | UNIQUE |
-
-## ChiTietXuat
-
-| Trường | Kiểu | Ràng buộc |
-| --- | --- | --- |
-| MaPhieu / MaNL | BIGINT | PK kép; FK phiếu tương ứng / NguyenLieu |
-| SoLuong | DECIMAL(18,3) | CHECK > 0 |
-
 ## MeSoChe
 
 | Trường | Kiểu | Ràng buộc |
@@ -288,7 +268,7 @@ Giữ tên SQL không dấu trong Chương 4; map tên lớp Java tiếng Anh b�
 | --- | --- | --- |
 | MaBienDong | BIGINT | PK |
 | MaNL / ViTri | BIGINT / VARCHAR(8) | Tham chiếu khóa tồn |
-| Loai | VARCHAR(16) | NHAP / XUAT_DI / NHAN_BEP / SOCHE_VAO / SOCHE_RA / TIEU_HAO / HAO_HUT |
+| Loai | VARCHAR(16) | NHAP / SOCHE_VAO / SOCHE_RA / TIEU_HAO / HAO_HUT / DIEU_CHINH |
 | LuongBienDong / TonTruoc / TonSau | DECIMAL(18,3) | Có dấu cho biến động; tồn trước/sau không âm |
 | NguonLoai / NguonMa / NguonDong | VARCHAR(16) / BIGINT / BIGINT | Khóa chứng từ nguồn |
 | NguoiLap / TaoLuc | BIGINT / DATETIME2 | FK TaiKhoan; NOT NULL |

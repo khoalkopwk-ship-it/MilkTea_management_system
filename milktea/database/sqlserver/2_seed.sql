@@ -1021,65 +1021,8 @@ PRINT N'-- [10/16] Mẻ sơ chế: Đã nạp 12 mẻ sơ chế có ghi nhận c
 GO
 
 -- ============================================================================
--- 11. PHIẾU XUẤT KHO (PhieuXuat, ChiTietXuat) - >= 10 Phiếu xuất
+-- 11. ĐÃ BỎ PHIẾU XUẤT KHO (Thay thế bằng sơ chế mẻ tại bếp)
 -- ============================================================================
-DECLARE @adminId BIGINT = (SELECT TOP 1 MaTK FROM dbo.TaiKhoan WHERE VaiTro = 'ADMIN');
-
-DECLARE @Exports TABLE (
-    MaYeuCau VARCHAR(64), LyDo NVARCHAR(500), TrangThai VARCHAR(12),
-    TenNL NVARCHAR(120), SoLuong DECIMAL(18,3)
-);
-
-INSERT INTO @Exports VALUES
-    ('PX_SEED_01', N'Xuất nguyên liệu trà đen cấp quầy pha chế đầu ca', 'DA_GHI_SO', N'Trà Đen Cổ Thụ', 5.000),
-    ('PX_SEED_02', N'Xuất trà ô long và trà lài sang bếp', 'DA_GHI_SO', N'Trà Ô Long Kim Tuyên', 4.000),
-    ('PX_SEED_02', N'Xuất trà ô long và trà lài sang bếp', 'DA_GHI_SO', N'Trà Lài Thượng Hạng', 4.000),
-    ('PX_SEED_03', N'Xuất sữa đặc và đường cát trắng phục vụ ca sáng', 'DA_GHI_SO', N'Sữa Đặc Có Đường', 10.000),
-    ('PX_SEED_03', N'Xuất sữa đặc và đường cát trắng phục vụ ca sáng', 'DA_GHI_SO', N'Đường Cát Trắng', 15.000),
-    ('PX_SEED_04', N'Xuất đường đen và sữa tươi cho quầy sữa tươi trân châu', 'DA_GHI_SO', N'Đường Đen Nữ Hoàng', 8.000),
-    ('PX_SEED_04', N'Xuất đường đen và sữa tươi cho quầy sữa tươi trân châu', 'DA_GHI_SO', N'Sữa Tươi Thanh Trùng', 12.000),
-    ('PX_SEED_05', N'Xuất trân châu thô cho bếp nấu mẻ sáng', 'DA_GHI_SO', N'Trân Châu Thô Đen', 10.000),
-    ('PX_SEED_06', N'Xuất bột kem cheese Anchor làm xốt váng sữa', 'DA_GHI_SO', N'Bột Kem Cheese Anchor', 3.000),
-    ('PX_SEED_07', N'Xuất đào ngâm và cam vàng tươi cho quầy trà trái cây', 'DA_GHI_SO', N'Đào Ngâm Đóng Hộp', 6.000),
-    ('PX_SEED_07', N'Xuất đào ngâm và cam vàng tươi cho quầy trà trái cây', 'DA_GHI_SO', N'Cam Vàng Tươi', 5.000),
-    ('PX_SEED_08', N'Xuất sả cây tươi và dâu tây tươi', 'DA_GHI_SO', N'Sả Cây Tươi', 3.000),
-    ('PX_SEED_08', N'Xuất sả cây tươi và dâu tây tươi', 'DA_GHI_SO', N'Dâu Tây Đà Lạt', 2.000),
-    ('PX_SEED_09', N'Xuất ly nhựa và ống hút cấp quầy bar', 'DA_GHI_SO', N'Ly Nhựa PP 500ml', 300.000),
-    ('PX_SEED_09', N'Xuất ly nhựa và ống hút cấp quầy bar', 'DA_GHI_SO', N'Ly Nhựa PP 700ml', 300.000),
-    ('PX_SEED_10', N'Phiếu xuất bổ sung nguyên liệu chiều (đang duyệt)', 'NHAP', N'Trà Đen Cổ Thụ', 3.000),
-    ('PX_SEED_10', N'Phiếu xuất bổ sung nguyên liệu chiều (đang duyệt)', 'NHAP', N'Sữa Đặc Có Đường', 5.000);
-
-DECLARE curPX CURSOR FOR 
-    SELECT DISTINCT MaYeuCau, LyDo, TrangThai FROM @Exports;
-DECLARE @xYeuCau VARCHAR(64), @xLyDo NVARCHAR(500), @xTrangThai VARCHAR(12);
-
-OPEN curPX;
-FETCH NEXT FROM curPX INTO @xYeuCau, @xLyDo, @xTrangThai;
-WHILE @@FETCH_STATUS = 0
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM dbo.PhieuXuat WHERE MaYeuCau = @xYeuCau)
-    BEGIN
-        INSERT INTO dbo.PhieuXuat (NguoiLap, LyDo, TrangThai, LapLuc, GhiSoLuc, MaYeuCau)
-        VALUES (@adminId, @xLyDo, @xTrangThai, DATEADD(DAY, -4, SYSUTCDATETIME()),
-                CASE WHEN @xTrangThai = 'DA_GHI_SO' THEN DATEADD(DAY, -4, SYSUTCDATETIME()) ELSE NULL END, @xYeuCau);
-    END
-
-    DECLARE @maPX BIGINT = (SELECT MaPhieu FROM dbo.PhieuXuat WHERE MaYeuCau = @xYeuCau);
-    DELETE FROM dbo.ChiTietXuat WHERE MaPhieu = @maPX;
-
-    INSERT INTO dbo.ChiTietXuat (MaPhieu, MaNL, SoLuong)
-    SELECT @maPX, nl.MaNL, exp.SoLuong
-    FROM @Exports exp
-    JOIN dbo.NguyenLieu nl ON nl.TenNL = exp.TenNL
-    WHERE exp.MaYeuCau = @xYeuCau;
-
-    FETCH NEXT FROM curPX INTO @xYeuCau, @xLyDo, @xTrangThai;
-END
-CLOSE curPX;
-DEALLOCATE curPX;
-
-PRINT N'-- [11/16] Phiếu xuất kho: Đã nạp 10 phiếu xuất kho phục vụ vận hành.';
-GO
 
 -- ============================================================================
 -- 12. BÀN ĂN & PHIÊN BÀN & GIỎ HÀNG PHIÊN (Ban, PhienBan, GioPhien, ChiTietGioPhien)
@@ -1536,8 +1479,6 @@ BEGIN
     INSERT INTO dbo.LichSuKho (MaNL, ViTri, Loai, LuongBienDong, TonTruoc, TonSau, NguonLoai, NguonMa, NguoiLap, TaoLuc, LyDo)
     VALUES
         (@nlTraDen, 'KHO', 'NHAP', 100.000, 0.000, 100.000, 'IMPORT', 1, @adminId, DATEADD(DAY, -5, SYSUTCDATETIME()), N'Nhập kho đầu kỳ'),
-        (@nlTraDen, 'KHO', 'XUAT_DI', -5.000, 100.000, 95.000, 'ISSUE', 1, @adminId, DATEADD(DAY, -4, SYSUTCDATETIME()), N'Xuất sang quầy bar'),
-        (@nlTraDen, 'BEP', 'NHAN_BEP', 5.000, 0.000, 5.000, 'ISSUE', 1, @kitchenId, DATEADD(DAY, -4, SYSUTCDATETIME()), N'Nhận từ kho tổng'),
         (@nlTraDen, 'BEP', 'SOCHE_VAO', -1.000, 5.000, 4.000, 'BATCH', 1, @kitchenId, DATEADD(HOUR, -6, SYSUTCDATETIME()), N'Ủ mẻ nước cốt trà 01'),
         (@nlCotTra, 'BEP', 'SOCHE_RA', 3000.000, 0.000, 3000.000, 'BATCH', 1, @kitchenId, DATEADD(HOUR, -6, SYSUTCDATETIME()), N'Thu được 3000ml cốt trà'),
         (@nlCotTra, 'BEP', 'TIEU_HAO', -150.000, 3000.000, 2850.000, 'ORDER', 1, @kitchenId, DATEADD(MINUTE, -30, SYSUTCDATETIME()), N'Pha chế đơn DH_SEED_01'),
@@ -1547,8 +1488,6 @@ BEGIN
         (@nlCotTra, 'BEP', 'SOCHE_RA', 3000.000, 2600.000, 5600.000, 'BATCH', 2, @kitchenId, DATEADD(HOUR, -1, SYSUTCDATETIME()), N'Thu mẻ trà mới'),
         (@nlCotTra, 'BEP', 'TIEU_HAO', -150.000, 5600.000, 5450.000, 'ORDER', 3, @kitchenId, DATEADD(MINUTE, -10, SYSUTCDATETIME()), N'Pha chế đơn ca trưa'),
         (@nlCotTra, 'BEP', 'TIEU_HAO', -200.000, 5450.000, 5250.000, 'ORDER', 4, @kitchenId, DATEADD(MINUTE, -5, SYSUTCDATETIME()), N'Pha chế đơn ca chiều'),
-        (@nlTraDen, 'KHO', 'XUAT_DI', -10.000, 145.000, 135.000, 'ISSUE', 2, @adminId, DATEADD(HOUR, -2, SYSUTCDATETIME()), N'Xuất bổ sung quầy phụ'),
-        (@nlTraDen, 'BEP', 'NHAN_BEP', 10.000, 4.000, 14.000, 'ISSUE', 2, @kitchenId, DATEADD(HOUR, -2, SYSUTCDATETIME()), N'Bếp nhận hàng bổ sung'),
         (@nlCotTra, 'BEP', 'HAO_HUT', -100.000, 5250.000, 5150.000, 'WASTE', 2, @kitchenId, DATEADD(MINUTE, -2, SYSUTCDATETIME()), N'Hao hụt kiểm kê cuối ca');
 END
 
