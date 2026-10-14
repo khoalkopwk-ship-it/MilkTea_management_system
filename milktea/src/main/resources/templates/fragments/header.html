@@ -1,6 +1,6 @@
+
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-
 <body>
     <div th:fragment="navbar">
         <style sec:authorize="hasAnyRole('ADMIN', 'CHEF', 'KITCHEN')">
@@ -9,16 +9,35 @@
                 flex-basis: auto;
             }
 
-            .navbar-milktea #navbarContent>.d-flex {
+            .navbar-milktea #navbarContent > .d-flex {
                 margin-left: auto;
             }
         </style>
+
         <style>
+            .navbar-milktea {
+                --header-primary: #b86b35;
+                --header-primary-hover: #9e5524;
+                --header-primary-light: #fbeee4;
+                --header-secondary: #775D4A;
+                --header-secondary-hover: #604735;
+                --header-secondary-light: #F3EBE4;
+                --header-cream: #F8F4EF;
+                --header-border: #E8DED5;
+                --header-muted: #786F68;
+                background: rgba(255, 253, 250, .97);
+                border-bottom: 1px solid var(--header-border);
+                box-shadow: 0 3px 16px rgba(96, 71, 53, .055);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+
             .navbar-milktea .navbar-brand {
                 gap: 8px !important;
                 margin-left: 64px;
                 margin-right: 12px;
                 min-width: 0;
+                text-decoration: none;
             }
 
             .navbar-milktea .navbar-brand.admin-navbar-brand {
@@ -49,11 +68,278 @@
                 transform: translate(-50%, -50%);
             }
 
-            @media (max-width: 991.98px) {
+            .navbar-milktea .navbar-shop-name {
+                color: var(--header-secondary-hover);
+                font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+                font-weight: 700;
+                letter-spacing: 0;
+                transition: color .2s ease;
+            }
 
+            .navbar-milktea .navbar-brand:hover .navbar-shop-name {
+                color: var(--header-primary);
+            }
+
+            .navbar-milktea .navbar-brand .badge.bg-danger {
+                background: var(--header-primary-light) !important;
+                color: var(--header-primary-hover);
+                border: 1px solid #E7C9AD;
+                border-radius: 9px !important;
+                padding: 6px 10px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+
+            .navbar-milktea .table-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: var(--header-secondary-light);
+                color: var(--header-secondary-hover);
+                border: 1px solid #E3D2C3;
+                border-radius: 10px;
+                padding: 7px 12px;
+                font-weight: 700;
+            }
+
+            .navbar-milktea .table-badge i {
+                color: var(--header-primary);
+            }
+
+            .navbar-milktea .navbar-nav .nav-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 3px;
+                color: var(--header-secondary);
+                border-radius: 10px;
+                padding: 9px 12px;
+                font-size: 13px;
+                font-weight: 600;
+                text-decoration: none;
+                transition:
+                    background-color .2s ease,
+                    color .2s ease,
+                    transform .2s ease;
+            }
+
+            .navbar-milktea .navbar-nav .nav-link:hover {
+                color: var(--header-primary-hover) !important;
+                background: var(--header-primary-light);
+            }
+
+            .navbar-milktea .navbar-nav .nav-link:focus-visible {
+                outline: 2px solid var(--header-primary);
+                outline-offset: 2px;
+            }
+
+            .navbar-milktea .navbar-nav .nav-link.text-primary,
+            .navbar-milktea .navbar-nav .nav-link.text-success,
+            .navbar-milktea .navbar-nav .nav-link.active {
+                color: var(--header-primary) !important;
+            }
+
+            .navbar-milktea .navbar-nav .nav-link.active {
+                background: var(--header-primary-light);
+            }
+
+            .navbar-milktea .navbar-nav .nav-link i {
+                font-size: 15px;
+            }
+
+            .navbar-milktea #kitchenHeaderNav .nav-link {
+                padding: 7px 10px !important;
+                font-size: 12px;
+            }
+
+            .navbar-milktea .header-cart-btn,
+            .navbar-milktea .header-login-btn,
+            .navbar-milktea .header-account-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 7px;
+                min-height: 39px;
+                border-radius: 11px !important;
+                padding: 8px 15px !important;
+                font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+                font-size: 12px;
+                font-weight: 650;
+                line-height: 1.4;
+                text-decoration: none;
+                white-space: nowrap;
+                transition:
+                    background-color .2s ease,
+                    border-color .2s ease,
+                    color .2s ease,
+                    box-shadow .2s ease,
+                    transform .16s ease;
+            }
+
+            .navbar-milktea .header-cart-btn {
+                background: #FFFDFB;
+                color: var(--header-primary);
+                border: 1px solid #DDB99B;
+                box-shadow: 0 2px 7px rgba(184, 107, 53, .045);
+            }
+
+            .navbar-milktea .header-cart-btn i {
+                color: var(--header-primary) !important;
+                font-size: 16px;
+            }
+
+            .navbar-milktea .header-cart-btn:hover {
+                background: var(--header-primary-light);
+                color: var(--header-primary-hover);
+                border-color: var(--header-primary);
+                box-shadow: 0 4px 12px rgba(184, 107, 53, .10);
+                transform: translateY(-1px);
+            }
+
+            .navbar-milktea .header-cart-btn:hover i {
+                color: var(--header-primary-hover) !important;
+            }
+
+            .navbar-milktea .header-login-btn {
+                background: var(--header-primary);
+                color: #fff;
+                border: 1px solid var(--header-primary);
+                box-shadow: 0 3px 9px rgba(184, 107, 53, .14);
+            }
+
+            .navbar-milktea .header-login-btn:hover {
+                background: var(--header-primary-hover);
+                border-color: var(--header-primary-hover);
+                color: #fff;
+                box-shadow: 0 5px 13px rgba(158, 85, 36, .18);
+                transform: translateY(-1px);
+            }
+
+            .navbar-milktea .header-account-btn {
+                background: var(--header-secondary-light);
+                color: var(--header-secondary-hover);
+                border: 1px solid #E3D2C3 !important;
+                box-shadow: 0 2px 7px rgba(96, 71, 53, .045);
+            }
+
+            .navbar-milktea .header-account-btn i {
+                color: var(--header-primary) !important;
+            }
+
+            .navbar-milktea .header-account-btn:hover,
+            .navbar-milktea .header-account-btn.show {
+                background: #EDE1D5;
+                color: var(--header-secondary-hover);
+                border-color: #D9B99B !important;
+                box-shadow: 0 4px 12px rgba(96, 71, 53, .10);
+            }
+
+            .navbar-milktea .header-cart-btn:active,
+            .navbar-milktea .header-login-btn:active,
+            .navbar-milktea .header-account-btn:active {
+                transform: scale(.97);
+            }
+
+            .navbar-milktea .header-cart-btn:focus-visible,
+            .navbar-milktea .header-login-btn:focus-visible,
+            .navbar-milktea .header-account-btn:focus-visible {
+                outline: 3px solid #EAC4A4;
+                outline-offset: 2px;
+            }
+
+            .navbar-milktea #cartCountBadge {
+                background: var(--header-primary) !important;
+                color: #fff;
+                border: 2px solid #fff;
+                border-radius: 999px !important;
+                font-size: 10px;
+                font-weight: 700;
+                min-width: 21px;
+                padding: 3px 5px;
+            }
+
+            .navbar-milktea #pendingOrdersBadge {
+                background: var(--header-primary) !important;
+            }
+
+            .navbar-milktea .header-account-dropdown {
+                min-width: 210px;
+                padding: 8px;
+                background: #FFFDFB;
+                border: 1px solid var(--header-border) !important;
+                border-radius: 14px !important;
+                box-shadow: 0 12px 32px rgba(96, 71, 53, .13) !important;
+            }
+
+            .navbar-milktea .header-account-dropdown .dropdown-header {
+                color: var(--header-muted);
+                font-size: 11px;
+                font-weight: 700;
+                padding: 9px 12px;
+            }
+
+            .navbar-milktea .header-account-dropdown .dropdown-item {
+                display: flex;
+                align-items: center;
+                padding: 10px 12px;
+                border-radius: 9px;
+                color: var(--header-secondary-hover);
+                font-size: 12px;
+                font-weight: 550;
+                transition:
+                    background-color .2s ease,
+                    color .2s ease;
+            }
+
+            .navbar-milktea .header-account-dropdown .dropdown-item:hover,
+            .navbar-milktea .header-account-dropdown .dropdown-item:focus {
+                background: var(--header-primary-light);
+                color: var(--header-primary-hover);
+            }
+
+            .navbar-milktea .header-account-dropdown .dropdown-item i.text-primary {
+                color: var(--header-primary) !important;
+            }
+
+            .navbar-milktea .header-account-dropdown .dropdown-item.text-danger {
+                color: #B94B43 !important;
+            }
+
+            .navbar-milktea .header-account-dropdown .dropdown-item.text-danger:hover {
+                background: #FFF0ED;
+                color: #A43B34 !important;
+            }
+
+            .navbar-milktea .header-account-dropdown .dropdown-divider {
+                border-color: var(--header-border);
+                margin: 6px 4px;
+            }
+
+            .navbar-milktea .navbar-toggler {
+                border-radius: 10px;
+                padding: 7px 9px;
+            }
+
+            .navbar-milktea .navbar-toggler:focus {
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .15);
+            }
+
+            @media (max-width: 991.98px) {
                 .navbar-milktea .navbar-brand,
                 .navbar-milktea .navbar-brand.admin-navbar-brand {
                     margin-left: 0;
+                }
+
+                .navbar-milktea #navbarContent {
+                    padding-top: 10px;
+                }
+
+                .navbar-milktea .navbar-nav .nav-link {
+                    width: 100%;
+                }
+
+                .navbar-milktea #navbarContent > .d-flex {
+                    padding: 10px 0;
+                    flex-wrap: wrap;
                 }
             }
 
@@ -79,74 +365,111 @@
                     gap: 10px !important;
                     margin-left: 0;
                 }
+
+                .navbar-milktea .header-cart-btn,
+                .navbar-milktea .header-login-btn,
+                .navbar-milktea .header-account-btn {
+                    min-height: 37px;
+                    padding: 7px 11px !important;
+                    font-size: 11px;
+                    border-radius: 10px !important;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .navbar-milktea *,
+                .navbar-milktea *::before,
+                .navbar-milktea *::after {
+                    transition-duration: .01ms !important;
+                    animation-duration: .01ms !important;
+                }
+
+                .navbar-milktea .header-cart-btn:hover,
+                .navbar-milktea .header-login-btn:hover {
+                    transform: none;
+                }
             }
         </style>
 
         <nav class="navbar navbar-expand-lg navbar-milktea sticky-top">
             <div class="container-fluid px-lg-4">
-                <a class="navbar-brand admin-navbar-brand d-flex align-items-center gap-2" th:href="@{/admin}"
-                    sec:authorize="hasRole('ADMIN')">
+                <a class="navbar-brand admin-navbar-brand d-flex align-items-center gap-2"
+                   th:href="@{/admin}"
+                   sec:authorize="hasRole('ADMIN')">
                     <span class="milktea-logo-frame">
                         <img th:src="${settings?.logoUrl != null and !settings.logoUrl.isEmpty() ? settings.logoUrl : '/images/MilkTea.png'}"
-                            src="/images/MilkTea.png" alt="MilkTea" class="navbar-shop-logo"
-                            onerror="this.src='/images/MilkTea.png'">
+                             src="/images/MilkTea.png"
+                             alt="MilkTea"
+                             class="navbar-shop-logo"
+                             onerror="this.src='/images/MilkTea.png'">
                     </span>
                     <span class="brand-font fs-5 d-none d-sm-inline navbar-shop-name"
-                        th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                          th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
                     <span class="badge bg-danger rounded-pill fw-semibold small">Quản trị viên</span>
                 </a>
 
-                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/cashier}"
-                    sec:authorize="hasRole('CASHIER')">
+                <a class="navbar-brand d-flex align-items-center gap-2"
+                   th:href="@{/cashier}"
+                   sec:authorize="hasRole('CASHIER')">
                     <span class="milktea-logo-frame">
                         <img th:src="${settings?.logoUrl != null and !settings.logoUrl.isEmpty() ? settings.logoUrl : '/images/MilkTea.png'}"
-                            src="/images/MilkTea.png" alt="MilkTea" class="navbar-shop-logo"
-                            onerror="this.src='/images/MilkTea.png'">
+                             src="/images/MilkTea.png"
+                             alt="MilkTea"
+                             class="navbar-shop-logo"
+                             onerror="this.src='/images/MilkTea.png'">
                     </span>
                     <span class="brand-font fs-5 d-none d-sm-inline navbar-shop-name"
-                        th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                          th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
                 </a>
 
-                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/kitchen}"
-                    sec:authorize="hasAnyRole('KITCHEN', 'CHEF')">
+                <a class="navbar-brand d-flex align-items-center gap-2"
+                   th:href="@{/kitchen}"
+                   sec:authorize="hasAnyRole('KITCHEN', 'CHEF')">
                     <span class="milktea-logo-frame">
                         <img th:src="${settings?.logoUrl != null and !settings.logoUrl.isEmpty() ? settings.logoUrl : '/images/MilkTea.png'}"
-                            src="/images/MilkTea.png" alt="MilkTea" class="navbar-shop-logo"
-                            onerror="this.src='/images/MilkTea.png'">
+                             src="/images/MilkTea.png"
+                             alt="MilkTea"
+                             class="navbar-shop-logo"
+                             onerror="this.src='/images/MilkTea.png'">
                     </span>
                     <span class="brand-font fs-5 d-none d-sm-inline navbar-shop-name"
-                        th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                          th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
                 </a>
 
-                <a class="navbar-brand d-flex align-items-center gap-2" th:href="@{/}"
-                    sec:authorize="!hasAnyRole('ADMIN', 'CASHIER', 'KITCHEN', 'CHEF')">
+                <a class="navbar-brand d-flex align-items-center gap-2"
+                   th:href="@{/}"
+                   sec:authorize="!hasAnyRole('ADMIN', 'CASHIER', 'KITCHEN', 'CHEF')">
                     <span class="milktea-logo-frame">
                         <img th:src="${settings?.logoUrl != null and !settings.logoUrl.isEmpty() ? settings.logoUrl : '/images/MilkTea.png'}"
-                            src="/images/MilkTea.png" alt="MilkTea" class="navbar-shop-logo"
-                            onerror="this.src='/images/MilkTea.png'">
+                             src="/images/MilkTea.png"
+                             alt="MilkTea"
+                             class="navbar-shop-logo"
+                             onerror="this.src='/images/MilkTea.png'">
                     </span>
                     <span class="brand-font fs-5 d-none d-sm-inline navbar-shop-name"
-                        th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
+                          th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea Quán</span>
                 </a>
 
-                <!-- Nhãn Bàn Cho Khách Hàng (Nếu có context bàn) -->
-                <div id="navbarTableBadgeContainer" class="d-flex align-items-center ms-2"
-                    th:style="${currentTable != null ? '' : 'display: none;'}">
+                <div id="navbarTableBadgeContainer"
+                     class="d-flex align-items-center ms-2"
+                     th:style="${currentTable != null ? '' : 'display: none;'}">
                     <span class="table-badge" id="navbarTableBadge">
                         <i class="bi bi-geo-alt-fill"></i>
-                        <span id="navbarTableName" th:text="${currentTable != null ? currentTable.name : ''}">Bàn
-                            01</span>
+                        <span id="navbarTableName"
+                              th:text="${currentTable != null ? currentTable.name : ''}">Bàn 01</span>
                     </span>
                 </div>
 
-                <!-- Toggler for Mobile -->
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse"
-                    data-bs-target="#navbarContent">
+                <button class="navbar-toggler border-0"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#navbarContent">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
                 <div class="collapse navbar-collapse" id="navbarContent">
-                    <ul sec:authorize="hasRole('CASHIER')" class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
+                    <ul sec:authorize="hasRole('CASHIER')"
+                        class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
                         <li class="nav-item">
                             <a class="nav-link fw-bold text-primary" th:href="@{/cashier}">
                                 <i class="bi bi-calculator me-1"></i> Thu Ngân (POS)
@@ -154,62 +477,68 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link fw-semibold" th:href="@{/orders}">
-                                <i class="bi bi-receipt me-1"></i> Đơn Hàng <span id="pendingOrdersBadge"
-                                    class="badge rounded-pill bg-danger ms-1 d-none" aria-live="polite"
-                                    title="Công việc cần xử lý"></span>
+                                <i class="bi bi-receipt me-1"></i> Đơn Hàng
+                                <span id="pendingOrdersBadge"
+                                      class="badge rounded-pill bg-danger ms-1 d-none"
+                                      aria-live="polite"
+                                      title="Công việc cần xử lý"></span>
                             </a>
                         </li>
                     </ul>
 
-                    <!-- KITCHEN: 1 hàng cùng Bếp Pha Chế (KDS), Hàng Đợi Pha Chế, Kho Bếp & Sơ Chế, Lịch Sử Sơ Chế, Kiểm Kê & Hao Hụt Cuối Ca -->
                     <ul sec:authorize="hasAnyRole('KITCHEN', 'CHEF')"
                         class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-2 flex-row flex-wrap gap-1 align-items-center"
                         id="kitchenHeaderNav">
                         <li class="nav-item">
-                            <a class="nav-link fw-bold text-success py-1 px-2 text-nowrap" th:href="@{/kitchen}">
+                            <a class="nav-link fw-bold text-success py-1 px-2 text-nowrap"
+                               th:href="@{/kitchen}">
                                 <i class="bi bi-fire me-1"></i> Bếp Pha Chế (KDS)
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap active"
-                                th:href="@{/kitchen#tabKds}" data-target="#tabKds">
+                               th:href="@{/kitchen#tabKds}"
+                               data-target="#tabKds">
                                 <i class="bi bi-cup-straw me-1"></i> Hàng Đợi Pha Chế
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap"
-                                th:href="@{/kitchen#tabStock}" data-target="#tabStock">
+                               th:href="@{/kitchen#tabStock}"
+                               data-target="#tabStock">
                                 <i class="bi bi-box-seam me-1"></i> Kho Bếp & Sơ Chế
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap"
-                                th:href="@{/kitchen#tabPreparationHistory}" data-target="#tabPreparationHistory">
+                               th:href="@{/kitchen#tabPreparationHistory}"
+                               data-target="#tabPreparationHistory">
                                 <i class="bi bi-clock-history me-1"></i> Lịch Sử Sơ Chế
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link fw-semibold kitchen-header-link py-1 px-2 text-nowrap"
-                                th:href="@{/kitchen#tabShiftSettlement}" data-target="#tabShiftSettlement">
+                               th:href="@{/kitchen#tabShiftSettlement}"
+                               data-target="#tabShiftSettlement">
                                 <i class="bi bi-clipboard2-check me-1"></i> Kiểm Kê & Hao Hụt Cuối Ca
                             </a>
                         </li>
                     </ul>
 
-                    <ul sec:authorize="hasRole('ADMIN')" class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1"></ul>
+                    <ul sec:authorize="hasRole('ADMIN')"
+                        class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1"></ul>
 
-                    <!-- GUEST / CUSTOMER -->
                     <ul sec:authorize="!hasAnyRole('ADMIN', 'CASHIER', 'KITCHEN', 'CHEF')"
                         class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
                         <li class="nav-item">
                             <a class="nav-link fw-semibold"
-                                th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
+                               th:href="@{/(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
                                 <i class="bi bi-grid me-1"></i> Menu
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link fw-semibold"
-                                th:href="@{/orders(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
+                               th:href="@{/orders(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}">
                                 <i class="bi bi-receipt me-1"></i> Đơn Hàng
                             </a>
                         </li>
@@ -217,30 +546,32 @@
 
                     <div class="d-flex align-items-center gap-2">
                         <a sec:authorize="!hasAnyRole('CASHIER', 'ADMIN', 'CHEF', 'KITCHEN')"
-                            th:href="@{/cart(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}"
-                            class="btn btn-outline-secondary position-relative rounded-pill px-3 py-1">
-                            <i class="bi bi-bag-heart-fill text-danger me-1"></i> Giỏ Hàng
+                           th:href="@{/cart(table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}"
+                           class="btn btn-outline-secondary position-relative header-cart-btn">
+                            <i class="bi bi-bag-heart-fill me-1"></i>
+                            Giỏ Hàng
                             <span id="cartCountBadge"
-                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                                style="display: none;">
-                                0
-                            </span>
+                                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                  style="display: none;">0</span>
                         </a>
 
                         <div sec:authorize="isAuthenticated()" class="dropdown ms-2">
-                            <button
-                                class="btn btn-light rounded-pill dropdown-toggle d-flex align-items-center gap-2 px-3 py-1 border"
-                                type="button" data-bs-toggle="dropdown">
+                            <button class="btn btn-light dropdown-toggle d-flex align-items-center gap-2 border header-account-btn"
+                                    type="button"
+                                    data-bs-toggle="dropdown">
                                 <i class="bi bi-person-circle fs-5 text-muted"></i>
-                                <span sec:authentication="principal.email" class="fw-semibold small">Tài khoản</span>
+                                <span sec:authentication="principal.email"
+                                      class="fw-semibold small">Tài khoản</span>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 header-account-dropdown">
                                 <li>
                                     <h6 class="dropdown-header">Tài khoản</h6>
                                 </li>
                                 <li>
                                     <a class="dropdown-item" th:href="@{/profile}">
-                                        <i class="bi bi-person-lines-fill me-2 text-primary"></i> Hồ sơ cá nhân
+                                        <i class="bi bi-person-lines-fill me-2 text-primary"></i>
+                                        Hồ sơ cá nhân
                                     </a>
                                 </li>
                                 <li>
@@ -248,7 +579,8 @@
                                 </li>
                                 <li>
                                     <button class="dropdown-item text-danger" onclick="logoutAccount()">
-                                        <i class="bi bi-box-arrow-right me-1"></i> Đăng xuất
+                                        <i class="bi bi-box-arrow-right me-1"></i>
+                                        Đăng xuất
                                     </button>
                                 </li>
                             </ul>
@@ -256,8 +588,9 @@
 
                         <div sec:authorize="isAnonymous()">
                             <a th:href="@{/login(redirect=${currentTable != null ? '/?table=' + currentTable.id + '&qr=' + (tableQr != null ? tableQr : currentTable.qrCode) : (tableQr != null ? '/?qr=' + tableQr : '/')})}"
-                                class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold">
-                                <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+                               class="btn btn-sm btn-outline-primary fw-semibold header-login-btn">
+                                <i class="bi bi-box-arrow-in-right me-1"></i>
+                                Đăng nhập
                             </a>
                         </div>
                     </div>
@@ -277,5 +610,4 @@
         </script>
     </div>
 </body>
-
 </html>

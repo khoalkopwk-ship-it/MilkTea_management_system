@@ -5,27 +5,454 @@
     <title>Hồ Sơ Cá Nhân - MilkTea</title>
 </head>
 <body>
-    <div th:fragment="content" class="container py-4">
+    <div th:fragment="content" class="container py-4 milk-profile-page">
+        <style>
+            .milk-profile-page {
+                --profile-primary: #b86b35;
+                --profile-primary-hover: #9e5524;
+                --profile-primary-light: #fbeee4;
+                --profile-secondary: #775D4A;
+                --profile-secondary-hover: #604735;
+                --profile-secondary-light: #F3EBE4;
+                --profile-accent: #D9B99B;
+                --profile-cream: #F8F4EF;
+                --profile-border: #E8DED5;
+                --profile-muted: #786F68;
+                --profile-ink: #1e293b;
+                color: var(--profile-ink);
+                font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+            }
+
+            @keyframes profileZoomFade {
+                from {
+                    opacity: 0;
+                    transform: scale(.95);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+
+            @keyframes profileAvatarPulse {
+                0% {
+                    transform: scale(1);
+                    box-shadow: 0 3px 12px rgba(184, 107, 53, .08);
+                }
+                45% {
+                    transform: scale(1.06);
+                    box-shadow: 0 10px 24px rgba(184, 107, 53, .18);
+                }
+                100% {
+                    transform: scale(1);
+                    box-shadow: 0 3px 12px rgba(184, 107, 53, .08);
+                }
+            }
+
+            @keyframes profileAlertSlideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-12px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .milk-profile-page .profile-anim {
+                opacity: 0;
+                animation: profileZoomFade .68s cubic-bezier(.22, 1, .36, 1) forwards;
+                will-change: transform, opacity;
+            }
+
+            .milk-profile-page .profile-delay-0 {
+                animation-delay: 0s;
+            }
+
+            .milk-profile-page .profile-delay-1 {
+                animation-delay: .12s;
+            }
+
+            .milk-profile-page .profile-delay-2 {
+                animation-delay: .24s;
+            }
+
+            .milk-profile-page .profile-back-bar {
+                gap: 12px;
+            }
+
+            .milk-profile-page .profile-back-bar > span {
+                color: var(--profile-muted) !important;
+                font-size: 12px;
+            }
+
+            .milk-profile-page #profileBackBtn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 5px;
+                min-height: 37px;
+                background: #FFFDFB;
+                color: var(--profile-secondary);
+                border: 1px solid #DCC7B5;
+                border-radius: 11px !important;
+                padding: 8px 15px !important;
+                font-size: 12px;
+                font-weight: 650;
+                transition:
+                    background-color .2s ease,
+                    border-color .2s ease,
+                    color .2s ease,
+                    transform .2s ease,
+                    box-shadow .2s ease;
+            }
+
+            .milk-profile-page #profileBackBtn:hover {
+                background: var(--profile-primary-light);
+                color: var(--profile-primary-hover);
+                border-color: var(--profile-primary);
+                transform: translateX(-2px);
+                box-shadow: 0 4px 12px rgba(184, 107, 53, .1);
+            }
+
+            .milk-profile-page #profileBackBtn:active {
+                transform: scale(.97);
+            }
+
+            .milk-profile-page .card {
+                background: #FFFDFB;
+                border: 1px solid var(--profile-border) !important;
+                border-radius: 20px !important;
+                box-shadow: 0 5px 20px rgba(96, 71, 53, .055) !important;
+                overflow: hidden;
+                transition:
+                    border-color .25s ease,
+                    box-shadow .25s ease,
+                    transform .25s ease;
+            }
+
+            .milk-profile-page .card:hover {
+                border-color: #DFCBB9 !important;
+                box-shadow: 0 8px 26px rgba(96, 71, 53, .085) !important;
+                transform: translateY(-2px);
+            }
+
+            .milk-profile-page .profile-summary-card {
+                background: linear-gradient(110deg, #FFFDFB, #F8F4EF);
+                border: 1px solid #E8D7C8 !important;
+            }
+
+            .milk-profile-page .profile-summary-card .card-body {
+                background: transparent !important;
+                padding: 25px !important;
+            }
+
+            .milk-profile-page .profile-avatar {
+                width: 72px;
+                height: 72px;
+                min-width: 72px;
+                background: var(--profile-primary-light) !important;
+                color: var(--profile-primary) !important;
+                border: 1px solid #EAD6C4;
+                border-radius: 18px !important;
+                font-size: 2rem;
+                box-shadow: 0 3px 12px rgba(184, 107, 53, .08);
+                transition:
+                    background-color .25s ease,
+                    color .25s ease;
+                will-change: transform, box-shadow;
+            }
+
+            .milk-profile-page .profile-avatar:hover {
+                animation: profileAvatarPulse .42s ease-out 1;
+                background: #F8E7D8 !important;
+                color: var(--profile-primary-hover) !important;
+            }
+
+            .milk-profile-page #profileDisplayFullName {
+                color: var(--profile-secondary-hover);
+                font-size: 20px;
+                font-weight: 750;
+                line-height: 1.4;
+                letter-spacing: 0;
+                overflow-wrap: anywhere;
+            }
+
+            .milk-profile-page #profileDisplayEmail {
+                color: var(--profile-muted) !important;
+                font-size: 13px;
+                line-height: 1.6;
+                overflow-wrap: anywhere;
+            }
+
+            .milk-profile-page #profileRoleBadge {
+                background: var(--profile-primary-light) !important;
+                color: var(--profile-primary-hover) !important;
+                border: 1px solid #E8C7A8;
+                border-radius: 9px !important;
+                padding: 6px 10px;
+                font-size: 11px;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+
+            .milk-profile-page .card-header {
+                background: #FFFDFB !important;
+                border-bottom: 1px solid #F0E6DC !important;
+                padding: 19px 24px !important;
+            }
+
+            .milk-profile-page .card-header h6 {
+                color: var(--profile-secondary-hover) !important;
+                font-size: 15px;
+                font-weight: 750;
+                letter-spacing: 0;
+            }
+
+            .milk-profile-page .card-header h6 i {
+                color: var(--profile-primary) !important;
+                font-size: 18px;
+            }
+
+            .milk-profile-page .card-body {
+                background: #FFFDFB;
+            }
+
+            .milk-profile-page .card-body form {
+                height: 100%;
+            }
+
+            .milk-profile-page .form-label {
+                color: var(--profile-secondary-hover);
+                font-size: 12px;
+                font-weight: 650;
+                margin-bottom: 7px;
+            }
+
+            .milk-profile-page .form-control {
+                min-height: 43px;
+                background: #fff;
+                color: var(--profile-ink);
+                border: 1px solid #DED0C3;
+                border-radius: 11px !important;
+                padding: 10px 13px;
+                font-size: 13px;
+                box-shadow: none;
+                transition:
+                    border-color .22s ease,
+                    box-shadow .22s ease,
+                    background-color .22s ease;
+            }
+
+            .milk-profile-page .form-control::placeholder {
+                color: #A49385;
+                opacity: 1;
+            }
+
+            .milk-profile-page .form-control:hover:not(:read-only) {
+                border-color: #CDA98B;
+            }
+
+            .milk-profile-page .form-control:focus {
+                background: #FFFDFB;
+                border-color: var(--profile-primary);
+                box-shadow: 0 0 0 4px rgba(184, 107, 53, .12);
+                outline: none;
+            }
+
+            .milk-profile-page .form-control:read-only {
+                background: #F5EFE9 !important;
+                color: var(--profile-muted);
+                border-color: #E8DED5;
+                cursor: not-allowed;
+            }
+
+            .milk-profile-page #btnSaveProfile,
+            .milk-profile-page #btnChangePass {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 7px;
+                min-height: 44px;
+                border-radius: 11px !important;
+                padding: 11px 16px;
+                font-size: 13px;
+                font-weight: 700;
+                line-height: 1.4;
+                transition:
+                    background-color .2s ease,
+                    border-color .2s ease,
+                    color .2s ease,
+                    transform .16s ease,
+                    box-shadow .2s ease;
+            }
+
+            .milk-profile-page #btnSaveProfile {
+                background: var(--profile-primary);
+                color: #fff;
+                border: 1px solid var(--profile-primary);
+                box-shadow: 0 4px 12px rgba(184, 107, 53, .14);
+            }
+
+            .milk-profile-page #btnSaveProfile:hover {
+                background: var(--profile-primary-hover);
+                border-color: var(--profile-primary-hover);
+                color: #fff;
+                box-shadow: 0 6px 16px rgba(158, 85, 36, .2);
+                transform: translateY(-1px);
+            }
+
+            .milk-profile-page #btnChangePass {
+                background: var(--profile-secondary-light);
+                color: var(--profile-secondary-hover);
+                border: 1px solid #DCC7B5;
+                box-shadow: 0 3px 10px rgba(96, 71, 53, .055);
+            }
+
+            .milk-profile-page #btnChangePass:hover {
+                background: var(--profile-secondary);
+                color: #fff;
+                border-color: var(--profile-secondary);
+                box-shadow: 0 5px 14px rgba(96, 71, 53, .16);
+                transform: translateY(-1px);
+            }
+
+            .milk-profile-page #btnSaveProfile:active,
+            .milk-profile-page #btnChangePass:active {
+                transform: scale(.98);
+            }
+
+            .milk-profile-page #btnSaveProfile:focus-visible,
+            .milk-profile-page #btnChangePass:focus-visible {
+                outline: 3px solid #EAC4A4;
+                outline-offset: 2px;
+            }
+
+            .milk-profile-page #btnSaveProfile:disabled,
+            .milk-profile-page #btnChangePass:disabled {
+                opacity: .65;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+
+            .milk-profile-page #profileAlert {
+                border-radius: 11px !important;
+                padding: 12px 16px !important;
+                font-size: 13px;
+                font-weight: 550;
+                line-height: 1.6;
+            }
+
+            .milk-profile-page #profileAlert.profile-alert-show {
+                animation: profileAlertSlideDown .35s ease both;
+            }
+
+            .milk-profile-page #profileAlert.alert-success {
+                background: #E9F7EF;
+                color: #19734B;
+                border: 1px solid #BDE6CD;
+            }
+
+            .milk-profile-page #profileAlert.alert-danger {
+                background: #FFF0ED;
+                color: #B94B43;
+                border: 1px solid #F0C8C2;
+            }
+
+            @media (max-width: 767.98px) {
+                .milk-profile-page .profile-back-bar {
+                    flex-wrap: wrap;
+                }
+
+                .milk-profile-page .profile-summary-card .card-body {
+                    padding: 20px !important;
+                }
+
+                .milk-profile-page .card {
+                    border-radius: 16px !important;
+                }
+
+                .milk-profile-page .card-header {
+                    padding: 17px 20px !important;
+                }
+
+                .milk-profile-page #profileDisplayFullName {
+                    font-size: 17px;
+                }
+            }
+
+            @media (max-width: 575.98px) {
+                .milk-profile-page .profile-avatar {
+                    width: 58px;
+                    height: 58px;
+                    min-width: 58px;
+                    border-radius: 15px !important;
+                    font-size: 1.6rem;
+                }
+
+                .milk-profile-page .profile-summary-card .card-body > .d-flex {
+                    gap: 12px !important;
+                }
+
+                .milk-profile-page #profileDisplayFullName {
+                    font-size: 15px;
+                }
+
+                .milk-profile-page .card-body {
+                    padding: 18px !important;
+                }
+
+                .milk-profile-page .profile-summary-card .card-body {
+                    padding: 18px !important;
+                }
+
+                .milk-profile-page #btnSaveProfile,
+                .milk-profile-page #btnChangePass {
+                    min-height: 42px;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .milk-profile-page *,
+                .milk-profile-page *::before,
+                .milk-profile-page *::after {
+                    transition-duration: .01ms !important;
+                    animation-duration: .01ms !important;
+                    animation-iteration-count: 1 !important;
+                }
+
+                .milk-profile-page .profile-anim {
+                    opacity: 1;
+                }
+
+                .milk-profile-page .profile-avatar:hover {
+                    animation: none !important;
+                }
+            }
+        </style>
+
         <div class="row justify-content-center">
             <div class="col-lg-8 col-md-10">
-                <!-- Nút điều hướng quay lại -->
-                <div class="mb-3 d-flex justify-content-between align-items-center">
-                    <a id="profileBackBtn" th:href="${backUrl != null ? backUrl : '/'}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <div class="mb-3 d-flex justify-content-between align-items-center profile-back-bar">
+                    <a id="profileBackBtn"
+                       th:href="${backUrl != null ? backUrl : '/'}"
+                       class="btn btn-outline-secondary btn-sm rounded-pill px-3">
                         <i class="bi bi-arrow-left me-1"></i> Quay Lại
                     </a>
                     <span class="text-muted small">Hồ sơ người dùng hệ thống MilkTea</span>
                 </div>
 
-                <!-- Card Tổng Quan Tài Khoản -->
-                <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+                <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden profile-summary-card profile-anim profile-delay-0">
                     <div class="card-body p-4 bg-white">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center"
+                            <div class="profile-avatar rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center"
                                  style="width: 72px; height: 72px; font-size: 2rem;">
                                 <i class="bi bi-person-circle"></i>
                             </div>
                             <div class="flex-grow-1">
-                                <div class="d-flex align-items-center gap-2 mb-1">
+                                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                                     <h4 class="mb-0 fw-bold" id="profileDisplayFullName">Đang tải...</h4>
                                     <span class="badge rounded-pill bg-primary" id="profileRoleBadge">Tài khoản</span>
                                 </div>
@@ -35,13 +462,13 @@
                     </div>
                 </div>
 
-                <!-- Thông báo trạng thái -->
-                <div id="profileAlert" class="alert alert-success d-none py-2 small rounded-3 mb-3" role="alert"></div>
+                <div id="profileAlert"
+                     class="alert alert-success d-none py-2 small rounded-3 mb-3"
+                     role="alert"></div>
 
                 <div class="row g-4">
-                    <!-- Cột Cập Nhật Thông Tin -->
                     <div class="col-md-6">
-                        <div class="card border-0 shadow-sm rounded-4 h-100">
+                        <div class="card border-0 shadow-sm rounded-4 h-100 profile-anim profile-delay-1">
                             <div class="card-header bg-white py-3 border-bottom-0">
                                 <h6 class="fw-bold mb-0 text-dark">
                                     <i class="bi bi-person-lines-fill text-primary me-2"></i>Thông Tin Cá Nhân
@@ -51,17 +478,29 @@
                                 <form id="updateProfileForm" onsubmit="handleUpdateProfile(event)">
                                     <div class="mb-3">
                                         <label for="profileFullName" class="form-label small fw-semibold">Họ và tên</label>
-                                        <input type="text" class="form-control rounded-3" id="profileFullName" required placeholder="Nguyễn Văn A">
+                                        <input type="text"
+                                               class="form-control rounded-3"
+                                               id="profileFullName"
+                                               required
+                                               placeholder="Nguyễn Văn A">
                                     </div>
                                     <div class="mb-3">
                                         <label for="profilePhone" class="form-label small fw-semibold">Số điện thoại</label>
-                                        <input type="tel" class="form-control rounded-3" id="profilePhone" placeholder="0901234567">
+                                        <input type="tel"
+                                               class="form-control rounded-3"
+                                               id="profilePhone"
+                                               placeholder="0901234567">
                                     </div>
                                     <div class="mb-3">
                                         <label for="profileEmail" class="form-label small fw-semibold">Email (Không thể đổi)</label>
-                                        <input type="email" class="form-control rounded-3 bg-light" id="profileEmail" readonly>
+                                        <input type="email"
+                                               class="form-control rounded-3 bg-light"
+                                               id="profileEmail"
+                                               readonly>
                                     </div>
-                                    <button type="submit" id="btnSaveProfile" class="btn btn-primary-custom w-100 py-2 rounded-3 mt-2">
+                                    <button type="submit"
+                                            id="btnSaveProfile"
+                                            class="btn btn-primary-custom w-100 py-2 rounded-3 mt-2">
                                         <i class="bi bi-check2-circle me-1"></i> Lưu Thay Đổi
                                     </button>
                                 </form>
@@ -69,9 +508,8 @@
                         </div>
                     </div>
 
-                    <!-- Cột Đổi Mật Khẩu -->
                     <div class="col-md-6">
-                        <div class="card border-0 shadow-sm rounded-4 h-100">
+                        <div class="card border-0 shadow-sm rounded-4 h-100 profile-anim profile-delay-2">
                             <div class="card-header bg-white py-3 border-bottom-0">
                                 <h6 class="fw-bold mb-0 text-dark">
                                     <i class="bi bi-shield-lock-fill text-danger me-2"></i>Đổi Mật Khẩu
@@ -81,17 +519,33 @@
                                 <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
                                     <div class="mb-3">
                                         <label for="oldPassword" class="form-label small fw-semibold">Mật khẩu hiện tại</label>
-                                        <input type="password" class="form-control rounded-3" id="oldPassword" required placeholder="••••••••">
+                                        <input type="password"
+                                               class="form-control rounded-3"
+                                               id="oldPassword"
+                                               required
+                                               placeholder="••••••••">
                                     </div>
                                     <div class="mb-3">
                                         <label for="newPassword" class="form-label small fw-semibold">Mật khẩu mới</label>
-                                        <input type="password" class="form-control rounded-3" id="newPassword" required minlength="6" placeholder="Tối thiểu 6 ký tự">
+                                        <input type="password"
+                                               class="form-control rounded-3"
+                                               id="newPassword"
+                                               required
+                                               minlength="6"
+                                               placeholder="Tối thiểu 6 ký tự">
                                     </div>
                                     <div class="mb-3">
                                         <label for="confirmNewPassword" class="form-label small fw-semibold">Xác nhận mật khẩu mới</label>
-                                        <input type="password" class="form-control rounded-3" id="confirmNewPassword" required minlength="6" placeholder="Nhập lại mật khẩu mới">
+                                        <input type="password"
+                                               class="form-control rounded-3"
+                                               id="confirmNewPassword"
+                                               required
+                                               minlength="6"
+                                               placeholder="Nhập lại mật khẩu mới">
                                     </div>
-                                    <button type="submit" id="btnChangePass" class="btn btn-outline-danger w-100 py-2 rounded-3 mt-2">
+                                    <button type="submit"
+                                            id="btnChangePass"
+                                            class="btn btn-outline-danger w-100 py-2 rounded-3 mt-2">
                                         <i class="bi bi-key-fill me-1"></i> Cập Nhật Mật Khẩu
                                     </button>
                                 </form>
@@ -99,9 +553,9 @@
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
+
     </div>
 
     <th:block th:fragment="scripts">
@@ -135,7 +589,6 @@
                 const fullName = document.getElementById('profileFullName').value.trim();
                 const phone = document.getElementById('profilePhone').value.trim();
                 const btn = document.getElementById('btnSaveProfile');
-                const alertEl = document.getElementById('profileAlert');
 
                 btn.disabled = true;
                 try {
@@ -180,6 +633,9 @@
                 alertEl.textContent = msg;
                 alertEl.className = `alert alert-${type} py-2 small rounded-3 mb-3`;
                 alertEl.classList.remove('d-none');
+                alertEl.classList.remove('profile-alert-show');
+                void alertEl.offsetWidth;
+                alertEl.classList.add('profile-alert-show');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
 

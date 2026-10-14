@@ -1,16 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
 :root {
     --primary-color: #b86b35;
     --primary-hover: #9e5524;
     --primary-light: #fbeee4;
-    --secondary-color: #2d6a4f;
-    --secondary-hover: #1b4332;
-    --secondary-light: #e8f5ed;
-    --accent-color: #d97706;
+    --secondary-color: #775D4A;
+    --secondary-hover: #604735;
+    --secondary-light: #F3EBE4;
+    --accent-color: #D9B99B;
     --dark-color: #1e293b;
-    --light-bg: #f8fafc;
+    --light-bg: #F8F4EF;
     --card-bg: #ffffff;
-    --border-color: #e2e8f0;
-    --text-muted: #64748b;
+    --border-color: #E8DED5;
+    --text-muted: #786F68;
     --radius-sm: 8px;
     --radius-md: 14px;
     --radius-lg: 20px;
@@ -20,7 +21,7 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Be Vietnam Pro', sans-serif;
     background-color: var(--light-bg);
     color: var(--dark-color);
     min-height: 100vh;
@@ -29,7 +30,7 @@ body {
 }
 
 h1, h2, h3, h4, .brand-font {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Be Vietnam Pro', sans-serif;
     font-weight: 700;
 }
 
@@ -84,7 +85,7 @@ h1, h2, h3, h4, .brand-font {
     width: 100%;
     padding-top: 75%;
     overflow: hidden;
-    background-color: #f1f5f9;
+    background-color: #F3EBE4;
 }
 
 .product-img {
@@ -143,9 +144,9 @@ h1, h2, h3, h4, .brand-font {
 }
 
 .badge-DA_HUY {
-    background-color: #f1f5f9;
-    color: #64748b;
-    border: 1px solid #cbd5e1;
+    background-color: #F3EBE4;
+    color: #786F68;
+    border: 1px solid #DCCFC2;
 }
 
 @keyframes pulse {
@@ -239,8 +240,8 @@ h1, h2, h3, h4, .brand-font {
 }
 
 .table-card.TRONG {
-    border-color: #cbd5e1;
-    background: #f8fafc;
+    border-color: #DCCFC2;
+    background: #F8F4EF;
 }
 
 .table-card.CO_KHACH {
@@ -501,4 +502,45 @@ h1, h2, h3, h4, .brand-font {
         padding: 9px 12px;
         font-size: 11px;
     }
+}
+
+
+html,
+body,
+button,
+input,
+select,
+textarea,
+table,
+th,
+td,
+label,
+.navbar,
+.nav-link,
+.dropdown-menu,
+.modal,
+.card,
+.btn,
+.badge,
+.form-control,
+.form-select,
+.brand-font,
+.dashboard-page,
+.pos-workspace,
+.milk-receipt,
+.milk-menu-page {
+    font-family: 'Be Vietnam Pro', sans-serif !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Be Vietnam Pro', sans-serif !important;
+    letter-spacing: 0;
+}
+
+button,
+.btn,
+input,
+select,
+textarea {
+    font-family: inherit;
 }

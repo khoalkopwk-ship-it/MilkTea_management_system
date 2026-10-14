@@ -1,89 +1,599 @@
+
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
-<body><div th:fragment="content" class="container py-4">
-<div id="ordersPage" th:attr="data-qr=${tableQr},data-table=${currentTable != null ? currentTable.id : ''}">
-<span id="staffOrders" th:attr="data-role=${actor != null ? actor.role : ''}" sec:authorize="hasAnyRole('CASHIER','ADMIN')" hidden></span>
-<link rel="stylesheet" th:href="@{/css/staff-ui.css}">
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <h3 class="brand-font mb-0">Đơn hàng <span class="table-badge" th:if="${currentTable != null}" th:text="${currentTable.name}"></span></h3>
+<body>
+<div th:fragment="content" class="container py-4 milk-orders-page">
+    <link rel="stylesheet" th:href="@{/css/staff-ui.css}">
+
+    <style>
+        .milk-orders-page {
+            --orders-primary: #b86b35;
+            --orders-primary-hover: #9e5524;
+            --orders-primary-light: #fbeee4;
+            --orders-secondary: #775D4A;
+            --orders-secondary-hover: #604735;
+            --orders-secondary-light: #F3EBE4;
+            --orders-accent: #D9B99B;
+            --orders-cream: #F8F4EF;
+            --orders-ink: #1e293b;
+            --orders-muted: #786F68;
+            --orders-border: #E8DED5;
+            color: var(--orders-ink);
+            font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+        }
+
+        .milk-orders-page .orders-heading {
+            padding: 20px 24px;
+            background: linear-gradient(110deg, #ffffff, #F8F4EF);
+            border: 1px solid var(--orders-border);
+            border-radius: 20px;
+            box-shadow: 0 4px 16px rgba(96, 71, 53, .05);
+        }
+
+        .milk-orders-page .orders-heading h3 {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            color: var(--orders-secondary-hover);
+            font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+            font-size: 23px;
+            font-weight: 700;
+            letter-spacing: 0;
+            line-height: 1.4;
+        }
+
+        .milk-orders-page .orders-heading .table-badge {
+            background: var(--orders-secondary-light);
+            color: var(--orders-secondary-hover);
+            border: 1px solid #E3D2C3;
+            border-radius: 10px;
+            padding: 7px 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .milk-orders-page .order-tabs-scroll-container {
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #D9B99B #F3EBE4;
+            padding: 4px 2px 8px;
+        }
+
+        .milk-orders-page .order-tabs-scroll-container::-webkit-scrollbar {
+            height: 5px;
+        }
+
+        .milk-orders-page .order-tabs-scroll-container::-webkit-scrollbar-track {
+            background: #F3EBE4;
+            border-radius: 8px;
+        }
+
+        .milk-orders-page .order-tabs-scroll-container::-webkit-scrollbar-thumb {
+            background: #D9B99B;
+            border-radius: 8px;
+        }
+
+        .milk-orders-page .order-tabs-nav {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 9px;
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            min-height: 40px;
+            background: #FFFDFB;
+            color: var(--orders-secondary);
+            border: 1px solid #E3D2C3;
+            border-radius: 11px;
+            padding: 9px 15px;
+            font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 650;
+            white-space: nowrap;
+            box-shadow: 0 2px 7px rgba(96, 71, 53, .035);
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link:hover {
+            background: var(--orders-primary-light);
+            color: var(--orders-primary-hover);
+            border-color: #D9B99B;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link.active {
+            background: var(--orders-primary);
+            color: #ffffff;
+            border-color: var(--orders-primary);
+            box-shadow: 0 3px 9px rgba(184, 107, 53, .14);
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link.active:hover {
+            background: var(--orders-primary-hover);
+            color: #ffffff;
+            border-color: var(--orders-primary-hover);
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link:focus-visible {
+            outline: 3px solid #EAC4A4;
+            outline-offset: 2px;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            min-height: 20px;
+            margin-left: 3px;
+            padding: 3px 6px;
+            border-radius: 7px !important;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link:not(.active) .badge.bg-secondary {
+            background: #EDE1D5 !important;
+            color: #604735;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link:not(.active) .badge.bg-primary {
+            background: #FBE4D1 !important;
+            color: #9e5524;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link:not(.active) .badge.bg-info {
+            background: #E6F1F5 !important;
+            color: #24647B !important;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link:not(.active) .badge.bg-success {
+            background: #E9F7EF !important;
+            color: #19734B;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link:not(.active) .badge.bg-warning {
+            background: #FFF4DC !important;
+            color: #966313 !important;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link:not(.active) .badge.bg-danger {
+            background: #FFF0ED !important;
+            color: #B94B43;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-link.active .badge {
+            background: rgba(255, 255, 255, .2) !important;
+            color: #ffffff !important;
+        }
+
+        .milk-orders-page #orderFiltersRow {
+            padding: 16px;
+            background: #FFFDFB;
+            border: 1px solid var(--orders-border);
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(96, 71, 53, .045);
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        .milk-orders-page #orderFiltersRow .form-control,
+        .milk-orders-page #orderFiltersRow .form-select {
+            min-height: 43px;
+            background-color: #ffffff;
+            color: var(--orders-secondary-hover);
+            border: 1px solid #DED0C3;
+            border-radius: 11px;
+            padding: 10px 13px;
+            font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            box-shadow: none;
+        }
+
+        .milk-orders-page #orderFiltersRow .form-control::placeholder {
+            color: #A49385;
+            opacity: 1;
+        }
+
+        .milk-orders-page #orderFiltersRow .form-control:hover,
+        .milk-orders-page #orderFiltersRow .form-select:hover {
+            border-color: #CDA98B;
+        }
+
+        .milk-orders-page #orderFiltersRow .form-control:focus,
+        .milk-orders-page #orderFiltersRow .form-select:focus {
+            background-color: #FFFDFB;
+            border-color: var(--orders-primary);
+            box-shadow: 0 0 0 3px rgba(184, 107, 53, .12);
+            outline: none;
+        }
+
+        .milk-orders-page #orderFiltersRow .form-select {
+            cursor: pointer;
+            padding-right: 34px;
+        }
+
+        .milk-orders-page #ordersError {
+            background: #FFF0ED;
+            color: #B94B43;
+            border: 1px solid #F0C8C2;
+            border-radius: 11px;
+            padding: 12px 16px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .milk-orders-page #ordersList {
+            color: var(--orders-muted);
+            font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+            font-size: 13px;
+        }
+
+        .milk-orders-page #ordersList .card,
+        .milk-orders-page #ordersList .orders-panel {
+            background: #FFFDFB;
+            border: 1px solid var(--orders-border) !important;
+            border-radius: 17px !important;
+            box-shadow: 0 4px 16px rgba(96, 71, 53, .05) !important;
+            overflow: hidden;
+        }
+
+        .milk-orders-page #ordersList .card-header,
+        .milk-orders-page #ordersList .card-footer {
+            background: #FCF8F4;
+            border-color: var(--orders-border);
+        }
+
+        .milk-orders-page #ordersList .card-title,
+        .milk-orders-page #ordersList h4,
+        .milk-orders-page #ordersList h5,
+        .milk-orders-page #ordersList h6 {
+            color: var(--orders-secondary-hover);
+            letter-spacing: 0;
+        }
+
+        .milk-orders-page #ordersList .text-muted {
+            color: var(--orders-muted) !important;
+        }
+
+        .milk-orders-page #ordersList .text-primary {
+            color: var(--orders-primary) !important;
+        }
+
+        .milk-orders-page #ordersList .btn-primary,
+        .milk-orders-page #ordersList .btn-primary-custom {
+            background: var(--orders-primary);
+            border-color: var(--orders-primary);
+            color: #ffffff;
+        }
+
+        .milk-orders-page #ordersList .btn-primary:hover,
+        .milk-orders-page #ordersList .btn-primary-custom:hover {
+            background: var(--orders-primary-hover);
+            border-color: var(--orders-primary-hover);
+            color: #ffffff;
+        }
+
+        .milk-orders-page #ordersList .btn-outline-primary {
+            background: #FFFDFB;
+            color: var(--orders-primary);
+            border-color: #D9B99B;
+        }
+
+        .milk-orders-page #ordersList .btn-outline-primary:hover {
+            background: var(--orders-primary-light);
+            color: var(--orders-primary-hover);
+            border-color: var(--orders-primary);
+        }
+
+        .milk-orders-page #ordersList .btn-outline-secondary {
+            background: #FFFDFB;
+            color: var(--orders-secondary);
+            border-color: #DCC7B5;
+        }
+
+        .milk-orders-page #ordersList .btn-outline-secondary:hover {
+            background: var(--orders-secondary-light);
+            color: var(--orders-secondary-hover);
+            border-color: var(--orders-secondary);
+        }
+
+        .milk-orders-page #ordersList .btn {
+            border-radius: 10px;
+            font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .milk-orders-page #ordersList .badge-status,
+        .milk-orders-page #ordersList .payment-pill {
+            font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+
+        .milk-orders-page #ordersList .payment-done {
+            color: #198754;
+        }
+
+        .milk-orders-page #ordersList .payment-wait {
+            color: #B7791F;
+        }
+
+        .milk-orders-page #ordersList .payment-danger {
+            color: #DC3545;
+        }
+
+        .milk-orders-page #ordersList .payment-muted {
+            color: var(--orders-muted);
+        }
+
+        .milk-orders-page #ordersList .orders-table {
+            background: #FFFDFB;
+        }
+
+        .milk-orders-page #ordersList .orders-table thead th {
+            background: #F8F4EF;
+            color: var(--orders-secondary-hover);
+            border-color: var(--orders-border);
+        }
+
+        .milk-orders-page #ordersList .orders-table tbody td {
+            background: #FFFDFB;
+            border-color: #F0E6DC;
+            color: var(--orders-ink);
+        }
+
+        .milk-orders-page #ordersList .orders-table tbody tr:hover td {
+            background: #FCF8F4;
+        }
+
+        .milk-orders-page #ordersPagination {
+            margin-top: 18px;
+        }
+
+        .milk-orders-page #ordersPagination .page-link {
+            background: #FFFDFB;
+            color: var(--orders-secondary);
+            border: 1px solid var(--orders-border);
+            border-radius: 9px;
+            margin: 0 3px;
+            font-size: 12px;
+        }
+
+        .milk-orders-page #ordersPagination .page-link:hover {
+            background: var(--orders-primary-light);
+            color: var(--orders-primary-hover);
+            border-color: #D9B99B;
+        }
+
+        .milk-orders-page #ordersPagination .page-item.active .page-link {
+            background: var(--orders-primary);
+            color: #ffffff;
+            border-color: var(--orders-primary);
+        }
+
+        .milk-orders-page #ordersPagination .page-item.disabled .page-link {
+            background: #F5EFE9;
+            color: #A49385;
+            border-color: var(--orders-border);
+        }
+
+        .milk-orders-page #ordersPagination .page-link:focus {
+            box-shadow: 0 0 0 3px rgba(184, 107, 53, .12);
+        }
+
+        @media (max-width: 767.98px) {
+            .milk-orders-page .orders-heading {
+                padding: 17px 19px;
+                border-radius: 16px;
+            }
+
+            .milk-orders-page .orders-heading h3 {
+                font-size: 20px;
+            }
+
+            .milk-orders-page #orderFiltersRow {
+                padding: 13px;
+                border-radius: 14px;
+            }
+
+            .milk-orders-page .order-tabs-nav .nav-link {
+                min-height: 38px;
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .milk-orders-page .orders-heading {
+                padding: 15px 16px;
+            }
+
+            .milk-orders-page .orders-heading h3 {
+                font-size: 18px;
+            }
+
+            .milk-orders-page #orderFiltersRow {
+                padding: 12px;
+            }
+
+            .milk-orders-page #orderFiltersRow .form-control,
+            .milk-orders-page #orderFiltersRow .form-select {
+                font-size: 12px;
+                min-height: 41px;
+            }
+
+            .milk-orders-page #ordersList .card,
+            .milk-orders-page #ordersList .orders-panel {
+                border-radius: 14px !important;
+            }
+        }
+    </style>
+
+    <div id="ordersPage"
+         th:attr="data-qr=${tableQr},data-table=${currentTable != null ? currentTable.id : ''}">
+
+        <span id="staffOrders"
+              th:attr="data-role=${actor != null ? actor.role : ''}"
+              sec:authorize="hasAnyRole('CASHIER','ADMIN')"
+              hidden></span>
+
+        <div class="d-flex align-items-center justify-content-between mb-3 orders-heading">
+            <h3 class="brand-font mb-0">
+                Đơn hàng
+                <span class="table-badge"
+                      th:if="${currentTable != null}"
+                      th:text="${currentTable.name}"></span>
+            </h3>
+        </div>
+
+        <div sec:authorize="hasAnyRole('CASHIER','ADMIN')"
+             class="order-tabs-scroll-container mb-3"
+             id="staffTabsWrapper">
+
+            <ul class="nav nav-pills order-tabs-nav"
+                id="orderStaffTabs"
+                role="tablist">
+
+                <li class="nav-item">
+                    <button class="nav-link active"
+                            data-tab="all"
+                            type="button">
+                        Tất cả
+                        <span class="badge rounded-pill bg-secondary d-none"
+                              id="tabBadge_all">0</span>
+                    </button>
+                </li>
+
+                <li class="nav-item">
+                    <button class="nav-link"
+                            data-tab="confirm"
+                            type="button">
+                        Xác nhận đơn
+                        <span class="badge rounded-pill bg-danger d-none"
+                              id="tabBadge_confirm">0</span>
+                    </button>
+                </li>
+
+                <li class="nav-item">
+                    <button class="nav-link"
+                            data-tab="cooking"
+                            type="button">
+                        Chờ chế biến
+                        <span class="badge rounded-pill bg-primary d-none"
+                              id="tabBadge_cooking">0</span>
+                    </button>
+                </li>
+
+                <li class="nav-item">
+                    <button class="nav-link"
+                            data-tab="transfer"
+                            type="button">
+                        Xác nhận chuyển khoản
+                        <span class="badge rounded-pill bg-info text-dark d-none"
+                              id="tabBadge_transfer">0</span>
+                    </button>
+                </li>
+
+                <li class="nav-item">
+                    <button class="nav-link"
+                            data-tab="completed"
+                            type="button">
+                        Hoàn thành
+                        <span class="badge rounded-pill bg-success d-none"
+                              id="tabBadge_completed">0</span>
+                    </button>
+                </li>
+
+                <li class="nav-item">
+                    <button class="nav-link"
+                            data-tab="cancel"
+                            type="button">
+                        Yêu cầu hủy
+                        <span class="badge rounded-pill bg-danger d-none"
+                              id="tabBadge_cancel">0</span>
+                    </button>
+                </li>
+
+                <li class="nav-item">
+                    <button class="nav-link"
+                            data-tab="refund"
+                            type="button">
+                        Hoàn tiền
+                        <span class="badge rounded-pill bg-warning text-dark d-none"
+                              id="tabBadge_refund">0</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="row g-2 mb-3" id="orderFiltersRow">
+            <div class="col-md-5" id="colOrderSearch">
+                <input id="orderSearch"
+                       class="form-control"
+                       placeholder="Tìm mã đơn, tên bàn, khách hàng..."
+                       aria-label="Tìm mã đơn">
+            </div>
+
+            <div class="col-md-3" id="colOrderStatus">
+                <select id="orderStatus"
+                        class="form-select"
+                        aria-label="Lọc trạng thái">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="CHO_XAC_NHAN">Chờ xác nhận</option>
+                    <option value="CHO_CHE_BIEN">Chờ chế biến</option>
+                    <option value="DANG_CHE_BIEN">Đang chế biến</option>
+                    <option value="HOAN_THANH">Hoàn thành</option>
+                    <option value="DA_HUY">Đã hủy</option>
+                </select>
+            </div>
+
+            <div class="col-md-3" id="colPaymentStatus">
+                <select id="orderPaymentStatus"
+                        class="form-select"
+                        aria-label="Lọc thanh toán">
+                    <option value="">Tất cả thanh toán</option>
+                    <option value="UNPAID">Chưa thu tiền</option>
+                    <option value="TRANSFER_PENDING">Khách báo đã CK</option>
+                    <option value="PAID">Đã thu tiền</option>
+                </select>
+            </div>
+
+            <div class="col-md-3 d-none" id="colRefundStatus">
+                <select id="orderRefundStatus"
+                        class="form-select"
+                        aria-label="Lọc trạng thái hoàn">
+                    <option value="CAN_GUI_YEU_CAU">Cần gửi yêu cầu / Cần hoàn</option>
+                    <option value="CHO_XAC_NHAN">Chờ xác nhận</option>
+                    <option value="HOAN_TAT">Hoàn tất</option>
+                    <option value="TAT_CA">Tất cả</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="ordersError"
+             class="alert alert-danger d-none"
+             role="alert"></div>
+
+        <div id="ordersList"
+             class="d-grid gap-3">
+            Đang tải đơn hàng...
+        </div>
+
+        <div id="ordersPagination"></div>
+    </div>
 </div>
 
-<div sec:authorize="hasAnyRole('CASHIER','ADMIN')" class="order-tabs-scroll-container mb-3" id="staffTabsWrapper">
-    <ul class="nav nav-pills order-tabs-nav" id="orderStaffTabs" role="tablist">
-        <li class="nav-item">
-            <button class="nav-link active" data-tab="all" type="button">
-                Tất cả <span class="badge rounded-pill bg-secondary d-none" id="tabBadge_all">0</span>
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-tab="confirm" type="button">
-                Xác nhận đơn <span class="badge rounded-pill bg-danger d-none" id="tabBadge_confirm">0</span>
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-tab="cooking" type="button">
-                Chờ chế biến <span class="badge rounded-pill bg-primary d-none" id="tabBadge_cooking">0</span>
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-tab="transfer" type="button">
-                Xác nhận chuyển khoản <span class="badge rounded-pill bg-info text-dark d-none" id="tabBadge_transfer">0</span>
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-tab="completed" type="button">
-                Hoàn thành <span class="badge rounded-pill bg-success d-none" id="tabBadge_completed">0</span>
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-tab="cancel" type="button">
-                Yêu cầu hủy <span class="badge rounded-pill bg-danger d-none" id="tabBadge_cancel">0</span>
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-tab="refund" type="button">
-                Hoàn tiền <span class="badge rounded-pill bg-warning text-dark d-none" id="tabBadge_refund">0</span>
-            </button>
-        </li>
-    </ul>
-</div>
-
-<div class="row g-2 mb-3" id="orderFiltersRow">
-    <div class="col-md-5" id="colOrderSearch">
-        <input id="orderSearch" class="form-control" placeholder="Tìm mã đơn, tên bàn, khách hàng..." aria-label="Tìm mã đơn">
-    </div>
-    <div class="col-md-3" id="colOrderStatus">
-        <select id="orderStatus" class="form-select" aria-label="Lọc trạng thái">
-            <option value="">Tất cả trạng thái</option>
-            <option value="CHO_XAC_NHAN">Chờ xác nhận</option>
-            <option value="CHO_CHE_BIEN">Chờ chế biến</option>
-            <option value="DANG_CHE_BIEN">Đang chế biến</option>
-            <option value="HOAN_THANH">Hoàn thành</option>
-            <option value="DA_HUY">Đã hủy</option>
-        </select>
-    </div>
-    <div class="col-md-3" id="colPaymentStatus">
-        <select id="orderPaymentStatus" class="form-select" aria-label="Lọc thanh toán">
-            <option value="">Tất cả thanh toán</option>
-            <option value="UNPAID">Chưa thu tiền</option>
-            <option value="TRANSFER_PENDING">Khách báo đã CK</option>
-            <option value="PAID">Đã thu tiền</option>
-        </select>
-    </div>
-    <div class="col-md-3 d-none" id="colRefundStatus">
-        <select id="orderRefundStatus" class="form-select" aria-label="Lọc trạng thái hoàn">
-            <option value="CAN_GUI_YEU_CAU">Cần gửi yêu cầu / Cần hoàn</option>
-            <option value="CHO_XAC_NHAN">Chờ xác nhận</option>
-            <option value="HOAN_TAT">Hoàn tất</option>
-            <option value="TAT_CA">Tất cả</option>
-        </select>
-    </div>
-    
-</div>
-
-<div id="ordersError" class="alert alert-danger d-none" role="alert"></div>
-<div id="ordersList" class="d-grid gap-3">Đang tải đơn hàng...</div>
-<div id="ordersPagination"></div>
-</div></div>
-<th:block th:fragment="scripts"><script th:src="@{/js/customer/customer.js}"></script><script th:src="@{/js/order/orders.js}"></script></th:block>
-</body></html>
+<th:block th:fragment="scripts">
+    <script th:src="@{/js/customer/customer.js}"></script>
+    <script th:src="@{/js/order/orders.js}"></script>
+</th:block>
+</body>
+</html>
