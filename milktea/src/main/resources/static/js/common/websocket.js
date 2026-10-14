@@ -45,6 +45,7 @@ const MilkTeaRealtime = (() => {
         reconnectAttempts = 0;
 
         // Tự động subscribe theo vai trò / ngữ cảnh
+        activeSubscriptions.length = 0;
         setupContextSubscriptions();
 
         // Chạy các callback khi reconnect để re-fetch snapshot chuẩn từ server
