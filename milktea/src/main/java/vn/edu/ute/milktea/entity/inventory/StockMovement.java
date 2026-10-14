@@ -43,7 +43,7 @@ public class StockMovement {
     private BigDecimal afterQuantity;
 
     @Column(name = "NguonLoai", nullable = false, length = 16)
-    private String sourceType; // ORDER, IMPORT, ISSUE, BATCH, WASTE, REMAKE
+    private String sourceType; // ORDER, IMPORT, BATCH, WASTE, REMAKE, ADJUST
 
     @Column(name = "NguonMa", nullable = false)
     private Long sourceId;

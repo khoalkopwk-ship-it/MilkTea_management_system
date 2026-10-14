@@ -169,8 +169,6 @@ IF OBJECT_ID('dbo.ChiTietMeSoChe', 'U') IS NOT NULL DROP TABLE dbo.ChiTietMeSoCh
 IF OBJECT_ID('dbo.MeSoChe', 'U') IS NOT NULL DROP TABLE dbo.MeSoChe;
 IF OBJECT_ID('dbo.ChiTietCTSoChe', 'U') IS NOT NULL DROP TABLE dbo.ChiTietCTSoChe;
 IF OBJECT_ID('dbo.CongThucSoChe', 'U') IS NOT NULL DROP TABLE dbo.CongThucSoChe;
-IF OBJECT_ID('dbo.ChiTietXuat', 'U') IS NOT NULL DROP TABLE dbo.ChiTietXuat;
-IF OBJECT_ID('dbo.PhieuXuat', 'U') IS NOT NULL DROP TABLE dbo.PhieuXuat;
 IF OBJECT_ID('dbo.ChiTietNhap', 'U') IS NOT NULL DROP TABLE dbo.ChiTietNhap;
 IF OBJECT_ID('dbo.PhieuNhap', 'U') IS NOT NULL DROP TABLE dbo.PhieuNhap;
 IF OBJECT_ID('dbo.TonNguyenLieu', 'U') IS NOT NULL DROP TABLE dbo.TonNguyenLieu;
@@ -254,27 +252,6 @@ CREATE TABLE dbo.ChiTietNhap (
     CONSTRAINT FK_ChiTietNhap_Phieu FOREIGN KEY (MaPhieu) REFERENCES dbo.PhieuNhap(MaPhieu),
     CONSTRAINT FK_ChiTietNhap_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL)
 );
-CREATE TABLE dbo.PhieuXuat (
-    MaPhieu BIGINT IDENTITY(1, 1) PRIMARY KEY,
-    NguoiLap BIGINT NOT NULL,
-    LyDo NVARCHAR(500) NOT NULL,
-    TrangThai VARCHAR(12) NOT NULL CONSTRAINT DF_PhieuXuat_TrangThai DEFAULT 'NHAP',
-    -- NHAP, DA_GHI_SO
-    LapLuc DATETIME2 NOT NULL,
-    GhiSoLuc DATETIME2 NULL,
-    MaYeuCau VARCHAR(64) NULL,
-    CONSTRAINT UQ_PhieuXuat_MaYeuCau UNIQUE (MaYeuCau),
-    CONSTRAINT FK_PhieuXuat_NguoiLap FOREIGN KEY (NguoiLap) REFERENCES dbo.TaiKhoan(MaTK)
-);
-CREATE TABLE dbo.ChiTietXuat (
-    MaPhieu BIGINT NOT NULL,
-    MaNL BIGINT NOT NULL,
-    SoLuong DECIMAL(18, 3) NOT NULL,
-    CONSTRAINT PK_ChiTietXuat PRIMARY KEY (MaPhieu, MaNL),
-    CONSTRAINT CK_ChiTietXuat_SoLuong CHECK (SoLuong > 0),
-    CONSTRAINT FK_ChiTietXuat_Phieu FOREIGN KEY (MaPhieu) REFERENCES dbo.PhieuXuat(MaPhieu),
-    CONSTRAINT FK_ChiTietXuat_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL)
-);
 CREATE TABLE dbo.MeSoChe (
     MaMe BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaCTSC BIGINT NOT NULL,
@@ -352,12 +329,12 @@ CREATE TABLE dbo.LichSuKho (
     ViTri VARCHAR(8) NOT NULL,
     -- KHO, BEP
     Loai VARCHAR(16) NOT NULL,
-    -- NHAP, XUAT_DI, NHAN_BEP, SOCHE_VAO, SOCHE_RA, TIEU_HAO, HAO_HUT
+    -- NHAP, SOCHE_VAO, SOCHE_RA, TIEU_HAO, HAO_HUT, DIEU_CHINH
     LuongBienDong DECIMAL(18, 3) NOT NULL,
     TonTruoc DECIMAL(18, 3) NOT NULL,
     TonSau DECIMAL(18, 3) NOT NULL,
     NguonLoai VARCHAR(16) NOT NULL,
-    -- ORDER, IMPORT, ISSUE, BATCH, WASTE, REMAKE
+    -- ORDER, IMPORT, BATCH, WASTE, REMAKE
     NguonMa BIGINT NOT NULL,
     NguonDong BIGINT NULL,
     NguoiLap BIGINT NOT NULL,
