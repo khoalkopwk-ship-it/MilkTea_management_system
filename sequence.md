@@ -56,3 +56,39 @@
 | 8 | Đăng nhập và đăng ký tài khoản |	 UC01–02 | Thể hiện xác thực và phân vai. Đăng ký hiện dành cho CUSTOMER; không thêm bước OTP nếu đang mô tả đúng code hiện tại. |
 | 9 | Khôi phục mật khẩu | UC03 | Có thể vẽ riêng để thể hiện yêu cầu token và xác nhận mật khẩu mới. Lưu ý hiện tại đây là token khôi phục, không phải luồng OTP gửi mã độc lập. |
 | 10 | Quản trị xem báo cáo/dashboard | UC36 | Có thể vẽ nếu cần thể hiện luồng đọc dữ liệu và tổng hợp báo cáo; độ phức tạp thấp hơn các luồng nghiệp vụ ghi dữ liệu.|
+
+## Mẫu sơ đồ tuần tự số 8 — Đăng nhập và đăng ký tài khoản
+
+Sơ đồ theo dạng form như hình mẫu. Luồng đăng ký có xác thực OTP theo yêu cầu; code hiện tại chưa triển khai OTP.
+
+<!-- mermaid-checked: every participant uses `participant Id as "Label"`, no \n in aliases/messages/notes, every alt/opt/loop closed by end, no `:` inside any alias -->
+```mermaid
+sequenceDiagram
+    participant User as "User"
+    participant Login as "frmDangnhap"
+    participant DB as "CSDL"
+    participant Register as "frmDangky"
+    participant OTP as "frmOTP"
+    participant Home as "frmChinh"
+
+    User->>Login: Enter email + password
+    Login->>DB: getAccount(email)
+    DB-->>Login: account
+    Login->>Login: checkPass()
+    alt Đăng nhập thành công
+        Login-->>User: informResult(success)
+        Login-->>Home: Tao form()
+    else Chưa có tài khoản
+        User->>Register: Chọn tạo tài khoản
+        User->>Register: Nhập thông tin đăng ký
+        Register->>DB: createAccount()
+        DB-->>Register: Yêu cầu xác thực OTP
+        Register-->>OTP: Tao form()
+        User->>OTP: Enter OTP
+        OTP->>DB: checkOTP()
+        DB-->>OTP: Kết quả xác thực
+        OTP-->>User: informResult(success)
+        OTP-->>Home: Tao form()
+    end
+    Home-->>User: Hiển thị trang khách hàng
+```
