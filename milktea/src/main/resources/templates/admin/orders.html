@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<head>
+    <title>Quản Lý Đơn Hàng - Admin</title>
+</head>
+<body>
+<div th:fragment="content" class="container-fluid py-4 px-lg-4">
+    <div class="row">
+        <div class="col-lg-auto mb-4 admin-sidebar-column">
+            <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
+                <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">
+                    Quản Trị Hệ Thống
+                </h6>
+
+                <a th:href="@{/admin/catalog}" class="admin-nav-link">
+                    <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
+                </a>
+
+                <a th:href="@{/admin/tables}" class="admin-nav-link">
+                    <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
+                </a>
+
+                <a th:href="@{/admin/orders}" class="admin-nav-link active"
+                   aria-current="page">
+                    <i class="bi bi-receipt"></i> Quản Lý Đơn Hàng
+                </a>
+
+                <a th:href="@{/admin/staff}" class="admin-nav-link">
+                    <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
+                </a>
+
+                <a th:href="@{/admin/inventory}" class="admin-nav-link">
+                    <i class="bi bi-box-seam-fill"></i> Kho Hàng
+                </a>
+
+                <a th:href="@{/admin/documents}"
+                   class="admin-nav-link d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-files me-1"></i> Chứng Từ</span>
+                    <span class="admin-refund-badge badge rounded-pill bg-danger d-none">
+                        0
+                    </span>
+                </a>
+
+                <a th:href="@{/admin/reports}" class="admin-nav-link">
+                    <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
+                </a>
+
+                <a th:href="@{/admin/settings}" class="admin-nav-link">
+                    <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
+                </a>
+            </div>
+        </div>
+
+        <div class="col admin-content-column">
+            <div class="mb-4">
+                <h3 class="brand-font mb-1">Quản Lý Đơn Hàng</h3>
+                <p class="text-muted mb-0">
+                    Lịch sử tất cả đơn hàng đã được tạo tại quán
+                </p>
+            </div>
+
+            <form id="adminOrderFilters"
+                  class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+                <div class="row g-3 align-items-end">
+                    <div class="col-xl-6 col-md-12">
+                        
+                        <input id="adminOrderSearch" type="search"
+                               class="form-control rounded-3"
+                               placeholder="Mã đơn, tên bàn hoặc tên khách hàng">
+                    </div>
+
+                    <div class="col-xl-3 col-md-6">
+                        
+                        <select id="adminOrderStatus" class="form-select rounded-3">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="CHO_THANH_TOAN">Chờ thanh toán</option>
+                            <option value="CHO_XAC_NHAN">Chờ xác nhận</option>
+                            <option value="CHO_CHE_BIEN">Chờ chế biến</option>
+                            <option value="DANG_CHE_BIEN">Đang chế biến</option>
+                            <option value="HOAN_THANH">Hoàn thành</option>
+                            <option value="DA_HUY">Đã hủy</option>
+                        </select>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6">
+                        
+                        <select id="adminOrderPayment" class="form-select rounded-3">
+                            <option value="">Tất cả tình trạng</option>
+                            <option value="PAID">Đã thu tiền</option>
+                            <option value="UNPAID">Chưa thu tiền</option>
+                            <option value="TRANSFER_PENDING">Khách báo đã chuyển khoản</option>
+                        </select>
+                    </div>
+
+                </div>
+            </form>
+
+            <div id="adminOrderError" class="alert alert-danger d-none"
+                 role="alert"></div>
+
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th class="text-start text-nowrap">Mã đơn</th>
+                            <th class="text-start text-nowrap">Thời gian tạo</th>
+                            <th class="text-start text-nowrap">Bàn</th>
+                            <th class="text-start text-nowrap">Khách hàng</th>
+                            <th class="text-start text-nowrap">Tổng tiền</th>
+                            <th class="text-start text-nowrap">Trạng thái đơn</th>
+                            <th class="text-start text-nowrap">Thanh toán</th>
+                            <th class="text-start text-nowrap">Chi tiết</th>
+                        </tr>
+                        </thead>
+                        <tbody id="adminOrderRows" aria-live="polite">
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                Đang tải đơn hàng...
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center
+                            gap-3 flex-wrap p-3 border-top">
+                    <span id="adminOrderSummary" class="small text-muted"></span>
+                    <div class="d-flex align-items-center gap-2">
+                        <button id="adminOrderPrevious" type="button"
+                                class="btn btn-sm btn-outline-secondary rounded-pill"
+                                disabled>
+                            Trước
+                        </button>
+                        <span id="adminOrderPage" class="small">Trang 1 / 1</span>
+                        <button id="adminOrderNext" type="button"
+                                class="btn btn-sm btn-outline-secondary rounded-pill"
+                                disabled>
+                            Sau
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:fragment="scripts">
+    <script>
+        (() => {
+            const form = document.getElementById('adminOrderFilters');
+            const rows = document.getElementById('adminOrderRows');
+            const errorBox = document.getElementById('adminOrderError');
+            const summary = document.getElementById('adminOrderSummary');
+            const pageLabel = document.getElementById('adminOrderPage');
+            const previous = document.getElementById('adminOrderPrevious');
+            const next = document.getElementById('adminOrderNext');
+            const esc = MilkTeaReceipts.esc;
+            const pageSize = 10;
+
+            const statusLabels = {
+                CHO_THANH_TOAN: 'Chờ thanh toán',
+                CHO_XAC_NHAN: 'Chờ xác nhận',
+                CHO_CHE_BIEN: 'Chờ chế biến',
+                DANG_CHE_BIEN: 'Đang chế biến',
+                HOAN_THANH: 'Hoàn thành',
+                DA_HUY: 'Đã hủy'
+            };
+
+            const refundLabels = {
+                CHO_DUYET: 'Chờ duyệt hoàn',
+                DA_DUYET: 'Chờ chi hoàn',
+                DA_HOAN: 'Đã hoàn tiền',
+                TU_CHOI: 'Hoàn tiền bị từ chối'
+            };
+
+            let orders = [];
+            let page = 1;
+            let loading = false;
+            let pendingRefresh = false;
+            let refreshTimer = null;
+            function paymentLabel(order) {
+                if (order.status === 'DA_HUY' && order.refund) {
+                    const label = refundLabels[order.refund.status];
+                    if (label) return label;
+                }
+                if (order.paid) return 'Đã thu tiền';
+                if (order.status === 'DA_HUY') return 'Không cần thu tiền';
+                if (order.transferNotified) return 'Khách báo đã chuyển khoản';
+                return 'Chưa thu tiền';
+            }
+
+            function render() {
+                const pageCount = Math.max(1, Math.ceil(orders.length / pageSize));
+                page = Math.min(Math.max(1, page), pageCount);
+                const start = (page - 1) * pageSize;
+                const visibleOrders = orders.slice(start, start + pageSize);
+
+                rows.innerHTML = visibleOrders.length
+                    ? visibleOrders.map(order => `
+                        <tr>
+                            <td class="text-start text-nowrap">
+                                ${esc(MilkTeaReceipts.code(order.orderId))}
+                            </td>
+                            <td class="text-start text-nowrap">
+                                ${esc(MilkTeaReceipts.date(order.createdAt))}
+                            </td>
+                            <td class="text-start">
+                                ${esc(order.tableName || 'Quầy / mang về')}
+                            </td>
+                            <td class="text-start">
+                                ${esc(order.customerName || 'Khách vãng lai')}
+                            </td>
+                            <td class="text-start text-nowrap">
+                                ${esc(MilkTeaApi.formatVND(order.totalAmount))}
+                            </td>
+                            <td class="text-start">
+                                ${esc(statusLabels[order.status] || order.status)}
+                            </td>
+                            <td class="text-start">
+                                ${esc(paymentLabel(order))}
+                            </td>
+                            <td class="text-start text-nowrap">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary rounded-pill"
+                                        data-order-id="${esc(order.orderId)}">
+                                    Xem hóa đơn
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')
+                    : `<tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            Không có đơn hàng phù hợp
+                        </td>
+                    </tr>`;
+
+                summary.textContent = orders.length
+                    ? `Hiển thị ${start + 1}–${Math.min(start + pageSize, orders.length)} / ${orders.length} đơn`
+                    : '0 đơn hàng';
+
+                pageLabel.textContent = `Trang ${page} / ${pageCount}`;
+                previous.disabled = page <= 1;
+                next.disabled = page >= pageCount;
+            }
+
+            function scheduleRefresh() {
+                clearTimeout(refreshTimer);
+                refreshTimer = setTimeout(() => {
+                    loadOrders(false, true);
+                }, 300);
+            }
+
+            async function loadOrders(resetPage = true, silent = false) {
+                if (loading) {
+                    pendingRefresh = true;
+
+                    if (resetPage) {
+                        page = 1;
+                    }
+
+                    return;
+                }
+
+                loading = true;
+                errorBox.classList.add('d-none');
+
+                if (!silent) {
+                    previous.disabled = true;
+                    next.disabled = true;
+                    rows.innerHTML = `<tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            Đang tải đơn hàng...
+                        </td>
+                    </tr>`;
+                    summary.textContent = '';
+                    pageLabel.textContent = '';
+                }
+
+                const params = new URLSearchParams({tab: 'all'});
+                const query = document.getElementById('adminOrderSearch').value.trim();
+                const status = document.getElementById('adminOrderStatus').value;
+                const payment = document.getElementById('adminOrderPayment').value;
+
+                if (query) params.set('query', query);
+                if (status) params.set('status', status);
+                if (payment) params.set('paymentStatus', payment);
+
+                try {
+                    const data = await MilkTeaApi.get(
+                        `/api/v1/cashier/orders?${params.toString()}`
+                    );
+
+                    if (!Array.isArray(data)) {
+                        throw new Error('Dữ liệu đơn hàng trả về không hợp lệ');
+                    }
+
+                    orders = data;
+
+                    if (resetPage) {
+                        page = 1;
+                    }
+
+                    render();
+                } catch (error) {
+                    if (!silent) {
+                        orders = [];
+                        page = 1;
+                        render();
+
+                        rows.innerHTML = `<tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                Không thể tải đơn hàng. Vui lòng tải lại trang.
+                            </td>
+                        </tr>`;
+                    }
+
+                    errorBox.textContent = silent
+                        ? 'Chưa cập nhật được dữ liệu mới. ' +
+                        (error.message || 'Vui lòng thử lại')
+                        : (error.message || 'Không thể tải đơn hàng');
+
+                    errorBox.classList.remove('d-none');
+                } finally {
+                    loading = false;
+                    if (pendingRefresh) {
+                        pendingRefresh = false;
+                        scheduleRefresh();
+                    }
+                }
+            }
+
+            let filterTimer = null;
+
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                clearTimeout(filterTimer);
+                loadOrders();
+            });
+
+            document.getElementById('adminOrderSearch').addEventListener('input', () => {
+                clearTimeout(filterTimer);
+                filterTimer = setTimeout(() => {
+                    loadOrders();
+                }, 300);
+            });
+
+            ['adminOrderStatus', 'adminOrderPayment'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    clearTimeout(filterTimer);
+                    loadOrders();
+                });
+            });
+
+            previous.addEventListener('click', () => {
+                page--;
+                render();
+            });
+
+            next.addEventListener('click', () => {
+                page++;
+                render();
+            });
+
+            rows.addEventListener('click', event => {
+                const button = event.target.closest('button[data-order-id]');
+                if (button) MilkTeaReceipts.open(button.dataset.orderId);
+            });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                window.MilkTeaContext = {
+                    ...(window.MilkTeaContext || {}),
+                    role: 'ADMIN'
+                };
+
+                [
+                    'ORDER_CREATED',
+                    'ORDER_ASSIGNED_TO_TABLE',
+                    'ORDER_STATUS_CHANGED',
+                    'PAYMENT_NOTICE_CREATED',
+                    'PAYMENT_RECORDED',
+                    'REFUND_CHANGED'
+                ].forEach(eventType => {
+                    MilkTeaRealtime.on(eventType, scheduleRefresh);
+                });
+
+                MilkTeaRealtime.onReconnect(scheduleRefresh);
+                MilkTeaRealtime.connect();
+                loadOrders();
+            });
+        })();
+    </script>
+</th:block>
+</body>
+</html>

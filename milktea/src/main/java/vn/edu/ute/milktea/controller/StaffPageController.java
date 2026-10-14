@@ -73,6 +73,8 @@ public class StaffPageController {
         }
         if ("tables".equalsIgnoreCase(section)) {
             return adminTablesPage(actor, model);
+        } else if ("orders".equalsIgnoreCase(section)) {
+            return adminOrdersPage(actor, model);
         } else if ("staff".equalsIgnoreCase(section)) {
             return adminStaffPage(actor, model);
         } else if ("inventory".equalsIgnoreCase(section)) {
@@ -115,6 +117,16 @@ public class StaffPageController {
         model.addAttribute("baseUrl", baseUrl);
         model.addAttribute("tables", tableRepository.findAll());
         return "admin/tables";
+    }
+    @GetMapping("/admin/orders")
+    public String adminOrdersPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
+        if (actor == null || actor.getRole() != Role.ADMIN) {
+            return "redirect:/login?redirect=/admin/orders";
+        }
+        model.addAttribute("settings", settingsRepository.findById(1).orElse(null));
+        model.addAttribute("actor", actor);
+        model.addAttribute("pageTitle", "Quản lý đơn hàng");
+        return "admin/orders";
     }
 
     @GetMapping("/admin/staff")
