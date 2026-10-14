@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
 <body>
@@ -20,6 +19,17 @@
             --orders-border: #E8DED5;
             color: var(--orders-ink);
             font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+        }
+
+        @keyframes ordersSlideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-26px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .milk-orders-page .orders-heading {
@@ -75,14 +85,40 @@
         }
 
         .milk-orders-page .order-tabs-nav {
+            position: relative;
             display: flex;
             flex-wrap: nowrap;
             gap: 9px;
             margin-bottom: 0;
             white-space: nowrap;
+            padding: 3px;
+        }
+
+        .milk-orders-page .order-tabs-nav .tab-sliding-indicator {
+            position: absolute;
+            z-index: 0;
+            top: 3px;
+            left: 0;
+            height: calc(100% - 6px);
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--orders-primary), var(--orders-primary-hover));
+            box-shadow: 0 5px 14px rgba(184, 107, 53, .18);
+            opacity: 0;
+            pointer-events: none;
+            transition:
+                left .28s ease,
+                width .28s ease,
+                opacity .22s ease;
+        }
+
+        .milk-orders-page .order-tabs-nav .nav-item {
+            position: relative;
+            z-index: 1;
         }
 
         .milk-orders-page .order-tabs-nav .nav-link {
+            position: relative;
+            z-index: 1;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -98,6 +134,10 @@
             font-weight: 650;
             white-space: nowrap;
             box-shadow: 0 2px 7px rgba(96, 71, 53, .035);
+            transition:
+                color .2s ease,
+                border-color .2s ease,
+                background-color .2s ease;
         }
 
         .milk-orders-page .order-tabs-nav .nav-link:hover {
@@ -107,16 +147,16 @@
         }
 
         .milk-orders-page .order-tabs-nav .nav-link.active {
-            background: var(--orders-primary);
+            background: transparent;
             color: #ffffff;
-            border-color: var(--orders-primary);
-            box-shadow: 0 3px 9px rgba(184, 107, 53, .14);
+            border-color: transparent;
+            box-shadow: none;
         }
 
         .milk-orders-page .order-tabs-nav .nav-link.active:hover {
-            background: var(--orders-primary-hover);
+            background: transparent;
             color: #ffffff;
-            border-color: var(--orders-primary-hover);
+            border-color: transparent;
         }
 
         .milk-orders-page .order-tabs-nav .nav-link:focus-visible {
@@ -334,24 +374,37 @@
             color: var(--orders-muted);
         }
 
-        .milk-orders-page #ordersList .orders-table {
+        .milk-orders-page #ordersList .orders-table,
+        .milk-orders-page #ordersList table {
             background: #FFFDFB;
+            overflow: hidden;
+            border-radius: 16px;
         }
 
-        .milk-orders-page #ordersList .orders-table thead th {
+        .milk-orders-page #ordersList .orders-table thead th,
+        .milk-orders-page #ordersList table thead th {
             background: #F8F4EF;
             color: var(--orders-secondary-hover);
             border-color: var(--orders-border);
         }
 
-        .milk-orders-page #ordersList .orders-table tbody td {
+        .milk-orders-page #ordersList .orders-table tbody td,
+        .milk-orders-page #ordersList table tbody td {
             background: #FFFDFB;
             border-color: #F0E6DC;
             color: var(--orders-ink);
         }
 
-        .milk-orders-page #ordersList .orders-table tbody tr:hover td {
+        .milk-orders-page #ordersList .orders-table tbody tr:hover td,
+        .milk-orders-page #ordersList table tbody tr:hover td {
             background: #FCF8F4;
+        }
+
+        .milk-orders-page #ordersList .orders-stagger-item {
+            opacity: 0;
+            animation: ordersSlideInLeft .52s cubic-bezier(.22, 1, .36, 1) forwards;
+            animation-delay: calc(var(--orders-stagger-index, 0) * 70ms);
+            will-change: transform, opacity;
         }
 
         .milk-orders-page #ordersPagination {
@@ -433,6 +486,16 @@
             .milk-orders-page #ordersList .card,
             .milk-orders-page #ordersList .orders-panel {
                 border-radius: 14px !important;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .milk-orders-page .order-tabs-nav .tab-sliding-indicator,
+            .milk-orders-page #ordersList .orders-stagger-item {
+                transition: none !important;
+                animation: none !important;
+                opacity: 1 !important;
+                transform: none !important;
             }
         }
     </style>
@@ -594,6 +657,121 @@
 <th:block th:fragment="scripts">
     <script th:src="@{/js/customer/customer.js}"></script>
     <script th:src="@{/js/order/orders.js}"></script>
+    <script>
+        function applyOrdersStaggerAnimation() {
+            const list = document.getElementById('ordersList');
+            if (!list) return;
+
+            const tableRows = list.querySelectorAll('table tbody tr');
+            const cardRows = list.querySelectorAll(':scope > .card, :scope > .orders-panel, :scope > .order-card, :scope > .list-group-item');
+
+            if (tableRows.length > 0) {
+                tableRows.forEach((row, index) => {
+                    row.classList.remove('orders-stagger-item');
+                    void row.offsetWidth;
+                    row.classList.add('orders-stagger-item');
+                    row.style.setProperty('--orders-stagger-index', Math.min(index, 12));
+                });
+                return;
+            }
+
+            if (cardRows.length > 0) {
+                cardRows.forEach((item, index) => {
+                    item.classList.remove('orders-stagger-item');
+                    void item.offsetWidth;
+                    item.classList.add('orders-stagger-item');
+                    item.style.setProperty('--orders-stagger-index', Math.min(index, 12));
+                });
+            }
+        }
+
+        function ensureOrdersTabIndicator() {
+            const nav = document.getElementById('orderStaffTabs');
+            if (!nav) return null;
+
+            let indicator = nav.querySelector('.tab-sliding-indicator');
+            if (!indicator) {
+                indicator = document.createElement('span');
+                indicator.className = 'tab-sliding-indicator';
+                nav.appendChild(indicator);
+            }
+            return indicator;
+        }
+
+        function updateOrdersTabIndicator() {
+            const nav = document.getElementById('orderStaffTabs');
+            if (!nav) return;
+
+            const indicator = ensureOrdersTabIndicator();
+            const activeTab = nav.querySelector('.nav-link.active');
+
+            if (!indicator || !activeTab) {
+                if (indicator) indicator.style.opacity = '0';
+                return;
+            }
+
+            const navRect = nav.getBoundingClientRect();
+            const tabRect = activeTab.getBoundingClientRect();
+
+            indicator.style.width = tabRect.width + 'px';
+            indicator.style.left = (tabRect.left - navRect.left) + 'px';
+            indicator.style.opacity = '1';
+        }
+
+        function initOrdersTabIndicator() {
+            const nav = document.getElementById('orderStaffTabs');
+            if (!nav) return;
+
+            ensureOrdersTabIndicator();
+            updateOrdersTabIndicator();
+
+            nav.querySelectorAll('.nav-link').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    requestAnimationFrame(() => {
+                        updateOrdersTabIndicator();
+                        setTimeout(updateOrdersTabIndicator, 40);
+                    });
+                });
+            });
+
+            const navObserver = new MutationObserver(() => {
+                updateOrdersTabIndicator();
+            });
+
+            navObserver.observe(nav, {
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class']
+            });
+
+            window.addEventListener('resize', updateOrdersTabIndicator);
+        }
+
+        function initOrdersListObserver() {
+            const list = document.getElementById('ordersList');
+            if (!list) return;
+
+            applyOrdersStaggerAnimation();
+
+            const observer = new MutationObserver(() => {
+                applyOrdersStaggerAnimation();
+            });
+
+            observer.observe(list, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initOrdersTabIndicator();
+            initOrdersListObserver();
+            setTimeout(() => {
+                updateOrdersTabIndicator();
+                applyOrdersStaggerAnimation();
+            }, 120);
+        });
+    </script>
 </th:block>
 </body>
 </html>
