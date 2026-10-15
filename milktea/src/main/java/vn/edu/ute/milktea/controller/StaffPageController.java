@@ -71,7 +71,9 @@ public class StaffPageController {
         if (actor == null || actor.getRole() != Role.ADMIN) {
             return "redirect:/login?redirect=/admin";
         }
-        if ("tables".equalsIgnoreCase(section)) {
+        if ("catalog".equalsIgnoreCase(section)) {
+            return adminCatalogPage(actor, model);
+        } else if ("tables".equalsIgnoreCase(section)) {
             return adminTablesPage(actor, model);
         } else if ("orders".equalsIgnoreCase(section)) {
             return adminOrdersPage(actor, model);
@@ -86,7 +88,7 @@ public class StaffPageController {
         } else if ("settings".equalsIgnoreCase(section)) {
             return adminSettingsPage(actor, model);
         }
-        return adminCatalogPage(actor, model);
+        return adminReportsPage(actor, model);
     }
 
     @GetMapping("/admin/catalog")

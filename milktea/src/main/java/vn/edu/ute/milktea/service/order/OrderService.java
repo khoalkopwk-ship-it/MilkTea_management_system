@@ -747,6 +747,10 @@ public class OrderService {
                 String ps = paymentStatus.trim().toUpperCase();
                 if ("PAID".equals(ps)) {
                     stream = stream.filter(OrderDto.OrderResponse::isPaid);
+                } else if ("PAID_TM".equals(ps) || "PAID_CASH".equals(ps)) {
+                    stream = stream.filter(o -> o.isPaid() && (!"BANK_TRANSFER".equalsIgnoreCase(o.getPaymentMethod()) && !o.isTransferNotified()));
+                } else if ("PAID_CK".equals(ps) || "PAID_TRANSFER".equals(ps) || "PAID_BANK_TRANSFER".equals(ps)) {
+                    stream = stream.filter(o -> o.isPaid() && ("BANK_TRANSFER".equalsIgnoreCase(o.getPaymentMethod()) || o.isTransferNotified()));
                 } else if ("UNPAID".equals(ps)) {
                     stream = stream.filter(o -> !o.isPaid() && o.getStatus() != OrderStatus.DA_HUY);
                 } else if ("TRANSFER_PENDING".equals(ps)) {

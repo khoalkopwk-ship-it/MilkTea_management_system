@@ -37,7 +37,13 @@ const OrdersApp = (() => {
             if (o.refund.status === 'CHO_DUYET') return { label: 'Chờ duyệt hoàn', css: 'payment-wait' };
             if (o.refund.status === 'TU_CHOI') return { label: 'Hoàn tiền bị từ chối', css: 'payment-danger' };
         }
-        if (o.paid) return { label: 'Đã thu tiền', css: 'payment-done' };
+        if (o.paid) {
+            const method = (o.paymentMethod || '').toUpperCase();
+            if (method === 'BANK_TRANSFER' || method === 'CK' || method === 'TRANSFER' || o.transferNotified) {
+                return { label: 'Đã thu tiền - CK', css: 'payment-done payment-bank' };
+            }
+            return { label: 'Đã thu tiền - TM', css: 'payment-done payment-cash' };
+        }
         if (o.status === 'DA_HUY') return { label: 'Không cần thu tiền', css: 'payment-muted' };
         if (o.transferNotified) return { label: 'Khách báo đã CK', css: 'payment-wait' };
         if (o.paymentRequestMethod === 'CASH') return { label: 'Chờ thu · Tiền mặt', css: 'payment-wait' };
@@ -87,8 +93,14 @@ const OrdersApp = (() => {
 
             let matchPayment = true;
             if (currentTab === 'all' && paymentStatus) {
+                const method = (o.paymentMethod || '').toUpperCase();
+                const isBank = (method === 'BANK_TRANSFER' || method === 'CK' || method === 'TRANSFER' || o.transferNotified);
                 if (paymentStatus === 'PAID') {
                     matchPayment = o.paid;
+                } else if (paymentStatus === 'PAID_TM' || paymentStatus === 'PAID_CASH') {
+                    matchPayment = o.paid && !isBank;
+                } else if (paymentStatus === 'PAID_CK' || paymentStatus === 'PAID_TRANSFER') {
+                    matchPayment = o.paid && isBank;
                 } else if (paymentStatus === 'UNPAID') {
                     matchPayment = !o.paid && o.status !== 'DA_HUY';
                 } else if (paymentStatus === 'TRANSFER_PENDING') {
