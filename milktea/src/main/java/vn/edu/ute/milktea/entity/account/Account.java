@@ -39,6 +39,10 @@ public class Account {
     @Builder.Default
     private Boolean active = true;
 
+    @Column(name = "EmailXacThuc", nullable = false)
+    @Builder.Default
+    private Boolean emailVerified = true;
+
     @Column(name = "TokenVersion", nullable = false)
     @Builder.Default
     private Long tokenVersion = 1L;
@@ -59,6 +63,9 @@ public class Account {
         }
         if (active == null) {
             active = true;
+        }
+        if (emailVerified == null) {
+            emailVerified = true;
         }
         if (tokenVersion == null) {
             tokenVersion = 1L;

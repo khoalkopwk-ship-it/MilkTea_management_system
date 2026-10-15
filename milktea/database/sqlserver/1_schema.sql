@@ -35,6 +35,7 @@ CREATE TABLE dbo.TaiKhoan (
     VaiTro VARCHAR(16) NOT NULL,
     -- ADMIN, CASHIER, KITCHEN, CUSTOMER
     HoatDong BIT NOT NULL CONSTRAINT DF_TaiKhoan_HoatDong DEFAULT 1,
+    EmailXacThuc BIT NOT NULL CONSTRAINT DF_TaiKhoan_EmailXacThuc DEFAULT 1,
     TokenVersion BIGINT NOT NULL CONSTRAINT DF_TaiKhoan_TokenVersion DEFAULT 1,
     TaoLuc DATETIME2 NOT NULL,
     AvatarUrl NVARCHAR(1000) NULL,
@@ -50,6 +51,22 @@ CREATE TABLE dbo.TokenKhoiPhuc (
     CONSTRAINT FK_TokenKhoiPhuc_TaiKhoan FOREIGN KEY (MaTK) REFERENCES dbo.TaiKhoan(MaTK),
     CONSTRAINT UQ_TokenKhoiPhuc_Hash UNIQUE (TokenHash)
 );
+IF OBJECT_ID('dbo.XacThucEmail', 'U') IS NOT NULL DROP TABLE dbo.XacThucEmail;
+CREATE TABLE dbo.XacThucEmail (
+    MaOTP BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    Email VARCHAR(254) NOT NULL,
+    OtpHash VARCHAR(255) NOT NULL,
+    Salt VARCHAR(64) NOT NULL,
+    MucDich VARCHAR(32) NOT NULL, -- REGISTER_VERIFY, PASSWORD_RESET
+    HetHanLuc DATETIME2 NOT NULL,
+    SoLanThu INT NOT NULL CONSTRAINT DF_XacThucEmail_SoLanThu DEFAULT 0,
+    ToiDaThu INT NOT NULL CONSTRAINT DF_XacThucEmail_ToiDaThu DEFAULT 5,
+    DaDungLuc DATETIME2 NULL,
+    VoHieuLuc DATETIME2 NULL,
+    GuiCuoiLuc DATETIME2 NOT NULL,
+    TaoLuc DATETIME2 NOT NULL
+);
+CREATE INDEX IX_XacThucEmail_Email_MucDich ON dbo.XacThucEmail(Email, MucDich);
 -- 2. Cấu hình chung
 IF OBJECT_ID('dbo.CauHinhChung', 'U') IS NOT NULL DROP TABLE dbo.CauHinhChung;
 CREATE TABLE dbo.CauHinhChung (

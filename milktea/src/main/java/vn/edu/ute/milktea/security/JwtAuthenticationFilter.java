@@ -49,7 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Optional<Account> accountOpt = accountRepository.findById(accountId);
                 if (accountOpt.isPresent()) {
                     Account account = accountOpt.get();
-                    if (Boolean.TRUE.equals(account.getActive()) && account.getTokenVersion().equals(claimVersion)) {
+                    if (Boolean.TRUE.equals(account.getActive()) && Boolean.TRUE.equals(account.getEmailVerified()) && account.getTokenVersion().equals(claimVersion)) {
                         Role role = account.getRole();
                         SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.name());
 

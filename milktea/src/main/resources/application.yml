@@ -9,7 +9,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:validate}
+      ddl-auto: ${JPA_DDL_AUTO:update}
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     properties:
@@ -31,6 +31,9 @@ spring:
           auth: true
           starttls:
             enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
   thymeleaf:
     cache: false
   servlet:
@@ -39,7 +42,7 @@ spring:
       max-request-size: 6MB
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT:8083}
   forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:framework}
 
 management:
@@ -69,3 +72,11 @@ app:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:}
     api-key: ${CLOUDINARY_API_KEY:}
     api-secret: ${CLOUDINARY_API_SECRET:}
+  mail:
+    from: ${MAIL_FROM:${MAIL_USERNAME:khoalkopwk@gmail.com}}
+    sender-name: ${MAIL_SENDER_NAME:MilkTea Cafe}
+  otp:
+    secret: ${OTP_SECRET:milktea_secure_otp_secret_key_2026_very_long_and_safe}
+    expiry-minutes: 10
+    cooldown-seconds: 60
+    max-attempts: 5
