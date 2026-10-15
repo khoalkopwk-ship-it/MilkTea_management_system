@@ -65,6 +65,40 @@ public class AuthDto {
     }
 
     @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RegisterResponse {
+        private String email;
+        private String maskedEmail;
+        private String message;
+        private boolean emailVerified;
+        private int cooldownSeconds;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class VerifyEmailRequest {
+        @NotBlank(message = "Email không được để trống")
+        @Email(message = "Email không đúng định dạng")
+        private String email;
+
+        @NotBlank(message = "Mã xác thực không được để trống")
+        @Pattern(regexp = "^[0-9]{6}$", message = "Mã xác thực phải gồm đúng 6 chữ số")
+        private String otp;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ResendOtpRequest {
+        @NotBlank(message = "Email không được để trống")
+        @Email(message = "Email không đúng định dạng")
+        private String email;
+    }
+
+    @Data
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PasswordResetRequest {
@@ -77,12 +111,21 @@ public class AuthDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PasswordResetConfirmRequest {
-        @NotBlank(message = "Mã token không được để trống")
+        private String email;
+
+        // Cho phép nhận 'code' hoặc 'token' (mã OTP 6 số hoặc token hash)
+        private String code;
         private String token;
 
         @NotBlank(message = "Mật khẩu mới không được để trống")
         @Size(min = 6, message = "Mật khẩu tối thiểu 6 ký tự")
         private String newPassword;
+
+        public String getEffectiveToken() {
+            if (code != null && !code.isBlank()) return code.trim();
+            if (token != null && !token.isBlank()) return token.trim();
+            return "";
+        }
     }
 
     @Data

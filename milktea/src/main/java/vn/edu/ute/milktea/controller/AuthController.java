@@ -43,19 +43,26 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<AuthDto.AuthResponse>> register(
-            @Valid @RequestBody AuthDto.RegisterRequest request,
-            HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<AuthDto.RegisterResponse>> register(
+            @Valid @RequestBody AuthDto.RegisterRequest request) {
 
-        AuthDto.AuthResponse authResponse = authService.register(request);
+        AuthDto.RegisterResponse registerResponse = authService.register(request);
+        // KHÔNG cấp cookie JWT khi chưa xác thực email
+        return ResponseEntity.status(201).body(ApiResponse.ok(registerResponse));
+    }
 
-        Cookie cookie = new Cookie(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, authResponse.getToken());
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(60 * 60);
-        response.addCookie(cookie);
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Map<String, String>>> verifyEmail(
+            @Valid @RequestBody AuthDto.VerifyEmailRequest request) {
+        String message = authService.verifyEmail(request);
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("message", message)));
+    }
 
-        return ResponseEntity.status(201).body(ApiResponse.ok(authResponse));
+    @PostMapping("/resend-otp")
+    public ResponseEntity<ApiResponse<Map<String, String>>> resendOtp(
+            @Valid @RequestBody AuthDto.ResendOtpRequest request) {
+        String message = authService.resendRegisterOtp(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("message", message)));
     }
 
     @PostMapping("/logout")
@@ -80,15 +87,26 @@ public class AuthController {
     @PostMapping("/password-reset")
     public ResponseEntity<ApiResponse<Map<String, String>>> requestReset(
             @Valid @RequestBody AuthDto.PasswordResetRequest request) {
-        String resetToken = authService.requestPasswordReset(request);
-        return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Yêu cầu đặt lại mật khẩu đã được tiếp nhận", "tokenPreview", resetToken)));
+        String message = authService.requestPasswordReset(request);
+        // Response an toàn: Không trả token thô ra ngoài API
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("message", message)));
+    }
+
+    @PostMapping("/password-reset/verify-otp")
+    public ResponseEntity<ApiResponse<Map<String, String>>> verifyPasswordResetOtp(
+            @Valid @RequestBody AuthDto.VerifyEmailRequest request) {
+        String resetToken = authService.verifyPasswordResetOtp(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok(ApiResponse.ok(Map.of(
+                "resetToken", resetToken,
+                "message", "Xác thực mã OTP thành công. Vui lòng nhập mật khẩu mới."
+        )));
     }
 
     @PostMapping("/password-reset/confirm")
     public ResponseEntity<ApiResponse<Map<String, String>>> confirmReset(
             @Valid @RequestBody AuthDto.PasswordResetConfirmRequest request) {
         authService.confirmPasswordReset(request);
-        return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Đặt lại mật khẩu thành công")));
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("message", "Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới.")));
     }
 
     @GetMapping("/csrf")
