@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+
 :root {
     --primary-color: #b86b35;
     --primary-hover: #9e5524;
@@ -15,9 +16,9 @@
     --radius-sm: 8px;
     --radius-md: 14px;
     --radius-lg: 20px;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-    --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.12);
 }
 
 body {
@@ -29,7 +30,11 @@ body {
     flex-direction: column;
 }
 
-h1, h2, h3, h4, .brand-font {
+h1,
+h2,
+h3,
+h4,
+.brand-font {
     font-family: 'Be Vietnam Pro', sans-serif;
     font-weight: 700;
 }
@@ -150,8 +155,15 @@ h1, h2, h3, h4, .brand-font {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
 .btn-primary-custom {
@@ -198,7 +210,8 @@ h1, h2, h3, h4, .brand-font {
     white-space: nowrap;
 }
 
-.category-chip:hover, .category-chip.active {
+.category-chip:hover,
+.category-chip.active {
     background-color: var(--primary-color);
     color: white;
     border-color: var(--primary-color);
@@ -309,7 +322,8 @@ h1, h2, h3, h4, .brand-font {
     }
 }
 
-.admin-nav-link:hover, .admin-nav-link.active {
+.admin-nav-link:hover,
+.admin-nav-link.active {
     background-color: var(--primary-light);
     color: var(--primary-color);
     font-weight: 600;
@@ -337,7 +351,7 @@ h1, h2, h3, h4, .brand-font {
         --bs-gutter-y: 14px;
     }
 
-    #productsGrid.row-cols-1 > * {
+    #productsGrid.row-cols-1>* {
         width: 50%;
         flex: 0 0 auto;
     }
@@ -363,7 +377,7 @@ h1, h2, h3, h4, .brand-font {
         margin: 6px !important;
     }
 
-    #productsGrid .product-card > .p-3 {
+    #productsGrid .product-card>.p-3 {
         padding: 10px !important;
         min-width: 0;
     }
@@ -460,12 +474,12 @@ h1, h2, h3, h4, .brand-font {
         --bs-gutter-y: 10px;
     }
 
-    #productsGrid.row-cols-1 > * {
+    #productsGrid.row-cols-1>* {
         width: 50%;
         flex: 0 0 auto;
     }
 
-    #productsGrid .product-card > .p-3 {
+    #productsGrid .product-card>.p-3 {
         padding: 8px !important;
     }
 
@@ -532,7 +546,12 @@ label,
     font-family: 'Be Vietnam Pro', sans-serif !important;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-family: 'Be Vietnam Pro', sans-serif !important;
     letter-spacing: 0;
 }

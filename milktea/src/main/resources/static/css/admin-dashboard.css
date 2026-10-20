@@ -19,8 +19,8 @@
     align-items: start;
 }
 
-.dashboard-page .admin-report-layout > .admin-sidebar-column,
-.dashboard-page .admin-report-layout > .dashboard-content {
+.dashboard-page .admin-report-layout>.admin-sidebar-column,
+.dashboard-page .admin-report-layout>.dashboard-content {
     width: auto;
     max-width: none;
     min-width: 0;
@@ -71,7 +71,7 @@
     gap: 16px;
 }
 
-.dashboard-page .dashboard-heading > div:first-child {
+.dashboard-page .dashboard-heading>div:first-child {
     flex: 1 1 360px;
     min-width: 0;
 }
@@ -264,7 +264,7 @@
     gap: 16px;
 }
 
-.dashboard-page .dashboard-chart-grid > .dashboard-panel {
+.dashboard-page .dashboard-chart-grid>.dashboard-panel {
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -272,7 +272,7 @@
     padding: 16px;
 }
 
-.dashboard-page .dashboard-chart-grid > .dashboard-panel:first-child {
+.dashboard-page .dashboard-chart-grid>.dashboard-panel:first-child {
     grid-column: 1 / -1;
 }
 
@@ -284,7 +284,7 @@
     margin-bottom: 14px;
 }
 
-.dashboard-page .dashboard-panel-heading > div {
+.dashboard-page .dashboard-panel-heading>div {
     min-width: 0;
 }
 
@@ -302,7 +302,7 @@
     margin: 0;
 }
 
-.dashboard-page .dashboard-panel-heading > i {
+.dashboard-page .dashboard-panel-heading>i {
     flex-shrink: 0;
     font-size: 1.25rem;
     color: #A58A74;
@@ -426,7 +426,7 @@
     font-size: 12px;
 }
 
-.dashboard-page .dashboard-status-row > span {
+.dashboard-page .dashboard-status-row>span {
     display: flex;
     align-items: center;
     min-width: 0;
@@ -730,14 +730,14 @@
     margin-top: 0 !important;
 }
 
-body:has(.dashboard-page) > div:has(> nav.navbar-milktea) {
+body:has(.dashboard-page)>div:has(> nav.navbar-milktea) {
     position: sticky;
     top: 0;
     z-index: 1040;
     background: #fff;
 }
 
-body:has(.dashboard-page) > div > nav.navbar-milktea {
+body:has(.dashboard-page)>div>nav.navbar-milktea {
     position: relative;
     top: auto;
 }
@@ -764,8 +764,7 @@ body:has(.dashboard-page) > div > nav.navbar-milktea {
         grid-template-rows: 380px 420px;
     }
 
-    .dashboard-page .dashboard-chart-grid > .dashboard-panel:first-child
-    .dashboard-chart-lg {
+    .dashboard-page .dashboard-chart-grid>.dashboard-panel:first-child .dashboard-chart-lg {
         flex: 1;
         height: auto;
         min-height: 0;
@@ -781,15 +780,11 @@ body:has(.dashboard-page) > div > nav.navbar-milktea {
         box-sizing: border-box;
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows:
-            auto
-            minmax(0, 1fr)
-            minmax(0, 1fr)
-            auto
-            auto;
+            auto minmax(0, 1fr) minmax(0, 1fr) auto auto;
         align-content: normal;
     }
 
-    .dashboard-page .dashboard-side-alerts > * {
+    .dashboard-page .dashboard-side-alerts>* {
         min-width: 0;
         min-height: 0;
     }
@@ -821,7 +816,7 @@ body:has(.dashboard-page) > div > nav.navbar-milktea {
 }
 
 @media (max-width: 1199.98px) {
-    .dashboard-page .dashboard-chart-grid > .dashboard-panel:last-child {
+    .dashboard-page .dashboard-chart-grid>.dashboard-panel:last-child {
         grid-column: 1 / -1;
     }
 }
@@ -842,15 +837,16 @@ body:has(.dashboard-page) > div > nav.navbar-milktea {
 }
 
 @media (max-width: 767.98px) {
+
     .dashboard-page .dashboard-chart-grid,
     .dashboard-page .dashboard-side-alerts,
     .dashboard-page .dashboard-ops-grid {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .dashboard-page .dashboard-chart-grid > .dashboard-panel,
-    .dashboard-page .dashboard-chart-grid > .dashboard-panel:first-child,
-    .dashboard-page .dashboard-chart-grid > .dashboard-panel:last-child {
+    .dashboard-page .dashboard-chart-grid>.dashboard-panel,
+    .dashboard-page .dashboard-chart-grid>.dashboard-panel:first-child,
+    .dashboard-page .dashboard-chart-grid>.dashboard-panel:last-child {
         grid-column: 1;
     }
 }
@@ -880,5 +876,171 @@ body:has(.dashboard-page) > div > nav.navbar-milktea {
     .dashboard-page .dashboard-date-field {
         flex: 1 1 130px;
         width: auto;
+    }
+}
+
+.dashboard-page .dashboard-kpi {
+    border: 1px solid #E4E8EE;
+    border-radius: 20px;
+    box-shadow: 0 6px 20px rgba(30, 41, 59, 0.04);
+    padding: 22px 24px;
+    min-height: 182px;
+}
+
+.dashboard-page .kpi-orders {
+    background: linear-gradient(120deg,
+            #FFFFFF 0%,
+            #EDF5FF 100%);
+}
+
+.dashboard-page .kpi-net {
+    background: linear-gradient(120deg,
+            #FFFFFF 0%,
+            #E4F9F0 100%);
+}
+
+.dashboard-page .kpi-unpaid {
+    background: linear-gradient(120deg,
+            #FFFFFF 0%,
+            #FFF0F1 100%);
+}
+
+.dashboard-page .kpi-waste {
+    background: linear-gradient(120deg,
+            #FFFFFF 0%,
+            #FFF3E3 100%);
+}
+
+.dashboard-page .kpi-head {
+    color: #667587;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.dashboard-page .kpi-head i {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    font-size: 23px;
+}
+
+.dashboard-page .kpi-orders .kpi-head i {
+    color: #4F80CE;
+}
+
+.dashboard-page .kpi-net .kpi-head i {
+    color: #26AF93;
+}
+
+.dashboard-page .kpi-unpaid .kpi-head i {
+    color: #D9687B;
+}
+
+.dashboard-page .kpi-waste .kpi-head i {
+    color: #E3A13D;
+}
+
+.dashboard-page .kpi-number,
+.dashboard-page .kpi-orders .kpi-number,
+.dashboard-page .kpi-net .kpi-number,
+.dashboard-page .kpi-unpaid .kpi-number,
+.dashboard-page .kpi-waste .kpi-number {
+    color: #172D4B;
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 12px 0 10px;
+}
+
+.dashboard-page .kpi-detail {
+    color: #7B8794;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+@media (max-width: 575.98px) {
+    .dashboard-page .dashboard-kpi {
+        min-height: 155px;
+        padding: 16px;
+    }
+
+    .dashboard-page .kpi-number,
+    .dashboard-page .kpi-orders .kpi-number,
+    .dashboard-page .kpi-net .kpi-number,
+    .dashboard-page .kpi-unpaid .kpi-number,
+    .dashboard-page .kpi-waste .kpi-number {
+        font-size: 28px;
+    }
+}
+
+@property --dashboard-donut-reveal {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 360deg;
+}
+
+@keyframes dashboard-revenue-draw {
+    from { stroke-dashoffset: var(--dashboard-line-length); }
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes dashboard-waste-grow {
+    from { transform: scaleY(0); opacity: .55; }
+    to { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes dashboard-donut-wipe {
+    from { --dashboard-donut-reveal: 0deg; }
+    to { --dashboard-donut-reveal: 360deg; }
+}
+
+@keyframes dashboard-rank-grow {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+.dashboard-page #dashboardRevenueChart path.dashboard-animate-line {
+    stroke-dasharray: var(--dashboard-line-length);
+    stroke-dashoffset: 0;
+    animation: dashboard-revenue-draw 850ms ease-out both;
+}
+
+.dashboard-page #dashboardTopWaste rect.dashboard-animate-bar {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    animation: dashboard-waste-grow 620ms cubic-bezier(.22, 1, .36, 1) both;
+    animation-delay: var(--dashboard-delay, 0ms);
+}
+
+.dashboard-page #dashboardStatusDonut.dashboard-animate-donut {
+    -webkit-mask-image: conic-gradient(from -90deg, #000 0deg var(--dashboard-donut-reveal), transparent var(--dashboard-donut-reveal) 360deg);
+    mask-image: conic-gradient(from -90deg, #000 0deg var(--dashboard-donut-reveal), transparent var(--dashboard-donut-reveal) 360deg);
+    animation: dashboard-donut-wipe 750ms ease-out both;
+}
+
+.dashboard-page #dashboardTopProducts .dashboard-rank-fill.dashboard-animate-rank {
+    transform-origin: left center;
+    animation: dashboard-rank-grow 650ms cubic-bezier(.22, 1, .36, 1) both;
+    animation-delay: var(--dashboard-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-page #dashboardRevenueChart path.dashboard-animate-line,
+    .dashboard-page #dashboardTopWaste rect.dashboard-animate-bar,
+    .dashboard-page #dashboardStatusDonut.dashboard-animate-donut,
+    .dashboard-page #dashboardTopProducts .dashboard-rank-fill.dashboard-animate-rank {
+        animation: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+    }
+
+    .dashboard-page #dashboardRevenueChart path.dashboard-animate-line {
+        stroke-dashoffset: 0 !important;
+    }
+
+    .dashboard-page #dashboardStatusDonut.dashboard-animate-donut {
+        -webkit-mask-image: none !important;
+        mask-image: none !important;
     }
 }

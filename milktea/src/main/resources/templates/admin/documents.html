@@ -1,207 +1,1052 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+
 <head>
     <title>Chứng Từ Kho & Nghiệp Vụ - Admin</title>
 </head>
+
 <body>
-<div th:fragment="content" class="container-fluid py-4 px-lg-4">
-    <link rel="stylesheet" th:href="@{/css/staff-ui.css}">
-    
+    <div th:fragment="content" class="container-fluid py-4 px-lg-4 admin-documents-page">
+        <link rel="stylesheet" th:href="@{/css/staff-ui.css}">
+
         <style>
-            .document-fold {
-                border: 1px solid #e5e7eb;
+            .admin-documents-page {
+                --doc-primary: #b86b35;
+                --doc-primary-hover: #9e5524;
+                --doc-primary-light: #fbeee4;
+                --doc-secondary: #775D4A;
+                --doc-secondary-hover: #604735;
+                --doc-secondary-light: #F3EBE4;
+                --doc-accent: #D9B99B;
+                --doc-border: #E8DED5;
+                --doc-text: #1e293b;
+                --doc-muted: #786F68;
+                --doc-background: #fffdfa;
+                --doc-surface: #ffffff;
+                background: var(--doc-background);
+                color: var(--doc-text);
+                min-height: calc(100vh - 76px);
+                font-family: 'Be Vietnam Pro', sans-serif;
+            }
+
+            .admin-documents-page *,
+            .admin-documents-page *::before,
+            .admin-documents-page *::after {
+                box-sizing: border-box;
+            }
+
+            .admin-documents-page .admin-sidebar {
+                background: #ffffff;
+                border: 1px solid var(--doc-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 4px 18px rgba(96, 71, 53, .045) !important;
+            }
+
+            .admin-documents-page .admin-sidebar h6 {
+                color: var(--doc-muted) !important;
+                font-size: 11px;
+                letter-spacing: .07em;
+            }
+
+            .admin-documents-page .admin-nav-link {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 16px;
+                border-radius: 10px;
+                color: var(--doc-secondary);
+                font-size: 13px;
+                font-weight: 500;
+                text-decoration: none;
+            }
+
+            .admin-documents-page .admin-nav-link i {
+                color: var(--doc-primary);
+                font-size: 16px;
+            }
+
+            .admin-documents-page .admin-nav-link:hover,
+            .admin-documents-page .admin-nav-link.active {
+                background: var(--doc-primary-light);
+                color: var(--doc-primary);
+            }
+
+            .admin-documents-page .admin-nav-link.active {
+                font-weight: 700;
+            }
+
+            .admin-documents-page .admin-content-column {
+                min-width: 0;
+            }
+
+            .admin-documents-page .brand-font {
+                color: var(--doc-secondary-hover);
+                font-weight: 700;
+            }
+
+            .admin-documents-page h3.brand-font {
+                font-size: 25px;
+                line-height: 1.4;
+            }
+
+            .admin-documents-page h5 {
+                color: var(--doc-secondary-hover);
+                font-size: 16px;
+                font-weight: 700;
+            }
+
+            .admin-documents-page .text-muted {
+                color: var(--doc-muted) !important;
+            }
+
+            .admin-documents-page .text-primary {
+                color: var(--doc-primary) !important;
+            }
+
+            .admin-documents-page .admin-content-column>.card {
+                background: #ffffff;
+                border: 1px solid var(--doc-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 4px 18px rgba(96, 71, 53, .05) !important;
+            }
+
+            .admin-documents-page .documents-filter-card {
+                padding: 20px !important;
+            }
+
+            .admin-documents-page .form-label {
+                color: var(--doc-secondary-hover);
+                font-size: 12px;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+
+            .admin-documents-page .form-control,
+            .admin-documents-page .form-select {
+                min-height: 43px;
+                background-color: #ffffff;
+                border: 1px solid var(--doc-border);
+                border-radius: 12px !important;
+                color: var(--doc-text);
+                font-family: inherit;
+                font-size: 13px;
+                padding: 10px 14px;
+                box-shadow: none;
+            }
+
+            .admin-documents-page .form-control:focus,
+            .admin-documents-page .form-select:focus {
+                border-color: var(--doc-primary);
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .1);
+                outline: none;
+            }
+
+            .admin-documents-page .form-control:disabled,
+            .admin-documents-page .form-select:disabled {
+                background: #F8F4EF;
+                color: #AAA096;
+            }
+
+            .admin-documents-page input[type="date"] {
+                color-scheme: light;
+                cursor: pointer;
+            }
+
+            .admin-documents-page .btn {
+                font-family: inherit;
+                font-size: 12px;
+                font-weight: 600;
+                border-radius: 10px;
+                box-shadow: none !important;
+                transition:
+                    background-color .18s ease,
+                    border-color .18s ease,
+                    color .18s ease,
+                    transform .12s ease;
+            }
+
+            .admin-documents-page .btn:active:not(:disabled) {
+                transform: scale(.97);
+            }
+
+            .admin-documents-page .btn-primary-custom,
+            .admin-documents-page .btn-primary {
+                background: var(--doc-primary) !important;
+                border: 1px solid var(--doc-primary) !important;
+                color: #ffffff !important;
+            }
+
+            .admin-documents-page .btn-primary-custom:hover,
+            .admin-documents-page .btn-primary:hover {
+                background: var(--doc-primary-hover) !important;
+                border-color: var(--doc-primary-hover) !important;
+            }
+
+            .admin-documents-page #applyDocumentDateFilter {
+                min-height: 43px;
+                padding: 10px 22px !important;
+                border-radius: 12px !important;
+            }
+
+            .admin-documents-page .btn-outline-primary {
+                background: #ffffff;
+                border: 1px solid #D9B99B;
+                color: var(--doc-primary);
+            }
+
+            .admin-documents-page .btn-outline-primary:hover {
+                background: var(--doc-primary-light);
+                border-color: var(--doc-primary);
+                color: var(--doc-primary-hover);
+            }
+
+            .admin-documents-page .btn-outline-secondary {
+                background: #ffffff;
+                border: 1px solid #D9CABC;
+                color: var(--doc-secondary);
+            }
+
+            .admin-documents-page .btn-outline-secondary:hover {
+                background: var(--doc-secondary-light);
+                border-color: var(--doc-primary);
+                color: var(--doc-secondary-hover);
+            }
+
+            .admin-documents-page .btn-outline-danger {
+                background: #ffffff;
+                border: 1px solid #E8B7B2;
+                color: #B85045;
+            }
+
+            .admin-documents-page .btn-outline-danger:hover {
+                background: #FBEDE8;
+                border-color: #B85045;
+                color: #A54239;
+            }
+
+            .admin-documents-page .btn-outline-success {
+                background: #ffffff;
+                border: 1px solid #B8D9C4;
+                color: #27865B;
+            }
+
+            .admin-documents-page .btn-outline-success:hover {
+                background: #E8F5ED;
+                border-color: #27865B;
+                color: #1B6B46;
+            }
+
+            .admin-documents-page .btn-success {
+                background: #27865B;
+                border-color: #27865B;
+                color: #ffffff;
+            }
+
+            .admin-documents-page .btn-success:hover {
+                background: #1B6B46;
+                border-color: #1B6B46;
+                color: #ffffff;
+            }
+
+            .admin-documents-page .btn-danger {
+                background: #B85045;
+                border-color: #B85045;
+                color: #ffffff;
+            }
+
+            .admin-documents-page .btn-danger:hover {
+                background: #A54239;
+                border-color: #A54239;
+                color: #ffffff;
+            }
+
+            .admin-documents-page #documentError {
+                background: #FFF1EE;
+                border: 1px solid #EFC9C3;
                 border-radius: 12px;
-                background: #fff;
+                color: #B85045;
+                padding: 13px 16px;
+                font-size: 13px;
+            }
+
+            .admin-documents-page .documents-tabs {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 9px !important;
+                width: fit-content;
+                max-width: 100%;
+                padding: 5px;
+                background: #F8F4EF;
+                border: 1px solid var(--doc-border);
+                border-radius: 14px;
+            }
+
+            .admin-documents-page .documents-tabs .nav-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 5px;
+                min-height: 40px;
+                padding: 9px 16px;
+                background: transparent;
+                border: 1px solid transparent;
+                border-radius: 10px !important;
+                color: var(--doc-secondary);
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            .admin-documents-page .documents-tabs .nav-link:hover:not(.active) {
+                background: var(--doc-primary-light);
+                color: var(--doc-primary);
+            }
+
+            .admin-documents-page .documents-tabs .nav-link.active {
+                background: var(--doc-primary) !important;
+                border-color: var(--doc-primary) !important;
+                color: #ffffff !important;
+                box-shadow: 0 2px 8px rgba(184, 107, 53, .14);
+            }
+
+            .admin-documents-page .documents-tabs .badge {
+                padding: 4px 7px;
+                background: #B85045 !important;
+                border-radius: 20px;
+                color: #ffffff !important;
+                font-size: 10px;
+            }
+
+            .admin-documents-page .documents-content-card {
+                padding: 24px !important;
+            }
+
+            .admin-documents-page .documents-content-card .tab-pane>h5 {
+                margin-bottom: 20px !important;
+                padding-bottom: 13px;
+                border-bottom: 1px solid var(--doc-border);
+            }
+
+            .admin-documents-page #movementTypeFilter {
+                max-width: 360px;
+                margin-bottom: 20px !important;
+            }
+
+            .admin-documents-page .document-fold {
+                background: #ffffff;
+                border: 1px solid var(--doc-border);
+                border-radius: 14px;
                 overflow: hidden;
-                transition: border-color .2s ease;
+                box-shadow: 0 3px 12px rgba(96, 71, 53, .035);
+                transition:
+                    border-color .18s ease,
+                    box-shadow .18s ease;
             }
 
-            .document-fold[open] {
-                border-color: #d1d5db;
+            .admin-documents-page .document-fold:hover {
+                border-color: #D9B99B;
+                box-shadow: 0 4px 15px rgba(96, 71, 53, .075);
             }
 
-            .document-fold-header {
+            .admin-documents-page .document-fold[open] {
+                border-color: #D2A77F;
+                box-shadow: 0 5px 18px rgba(184, 107, 53, .07);
+            }
+
+            .admin-documents-page .document-fold-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 gap: 12px;
-                padding: 16px 18px;
+                padding: 17px 20px;
                 cursor: pointer;
                 list-style: none;
+                background: #ffffff;
+                transition: background-color .18s ease;
             }
 
-            .document-fold-header::-webkit-details-marker {
+            .admin-documents-page .document-fold-header::-webkit-details-marker {
                 display: none;
             }
 
-            .document-fold-header:hover {
-                background: #faf9f7;
+            .admin-documents-page .document-fold-header::marker {
+                content: "";
             }
 
-            .document-fold-title {
-                font-size: 15px;
-                font-weight: 600;
-                margin: 0 0 5px;
+            .admin-documents-page .document-fold-header:hover,
+            .admin-documents-page .document-fold[open]>.document-fold-header {
+                background: #FFF8F2;
             }
 
-            .document-fold-summary {
-                font-size: 13px;
-                color: #6b7280;
+            .admin-documents-page .document-fold-header:focus-visible {
+                outline: 2px solid var(--doc-primary);
+                outline-offset: -3px;
+                border-radius: 12px;
             }
 
-            .document-fold-arrow {
-                color: #9ca3af;
+            .admin-documents-page .document-fold-title {
+                margin: 0 0 6px;
+                color: var(--doc-secondary-hover);
+                font-size: 14px;
+                font-weight: 700;
+                line-height: 1.5;
+            }
+
+            .admin-documents-page .document-fold-summary {
+                color: var(--doc-muted);
+                font-size: 12px;
+                line-height: 1.6;
+            }
+
+            .admin-documents-page .document-fold-arrow {
+                flex-shrink: 0;
+                color: var(--doc-primary);
                 font-size: 18px;
                 transition: transform .2s ease;
             }
 
-            .document-fold[open] .document-fold-arrow {
+            .admin-documents-page .document-fold[open] .document-fold-arrow {
                 transform: rotate(180deg);
             }
 
-            .document-fold-body {
-                border-top: 1px solid #f0f0f0;
-                padding: 16px 18px;
+            .admin-documents-page .document-fold-body {
+                border-top: 1px solid var(--doc-border);
+                padding: 19px 20px;
+                background: #FFFCF9;
             }
 
-            .document-fold-body p {
-                margin-bottom: 10px;
+            .admin-documents-page .document-fold-body p {
+                margin-bottom: 11px;
+                color: var(--doc-text);
+                font-size: 12px;
+                line-height: 1.7;
             }
 
-            .document-fold-body p:last-child {
+            .admin-documents-page .document-fold-body p:last-child {
                 margin-bottom: 0;
             }
 
-            .document-fold-body .table {
-                font-size: 13px;
+            .admin-documents-page .document-fold-body .table {
+                font-size: 12px;
                 margin-bottom: 8px;
+            }
+
+            .admin-documents-page .table-responsive {
+                scrollbar-width: thin;
+                scrollbar-color: #D9CABC transparent;
+            }
+
+            .admin-documents-page .table {
+                margin-bottom: 0;
+                --bs-table-bg: transparent;
+                --bs-table-hover-bg: #FFF8F2;
+                border-color: #F0E7DF;
+            }
+
+            .admin-documents-page .table thead th {
+                background: #F8F4EF !important;
+                border-bottom: 1px solid var(--doc-border);
+                padding: 12px 14px;
+                color: var(--doc-secondary-hover);
+                font-size: 12px;
+                font-weight: 700;
+                white-space: nowrap;
+                vertical-align: middle;
+            }
+
+            .admin-documents-page .table tbody td {
+                padding: 12px 14px;
+                border-bottom: 1px solid #F0E7DF;
+                background: transparent;
+                color: var(--doc-text);
+                font-size: 12px;
+                vertical-align: middle;
+                transition: background-color .18s ease;
+            }
+
+            .admin-documents-page .table-hover tbody tr:hover>* {
+                background: #FFF1E5 !important;
+            }
+
+            .admin-documents-page .table tbody tr:last-child td {
+                border-bottom: none;
+            }
+
+            .admin-documents-page .badge:not(.admin-refund-badge) {
+                border-radius: 20px;
+                padding: 6px 10px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+
+            .admin-documents-page .badge.bg-success {
+                background: #E8F5ED !important;
+                border: 1px solid #C6E8D0;
+                color: #27865B !important;
+            }
+
+            .admin-documents-page .badge.bg-danger:not(.admin-refund-badge) {
+                background: #FBEDE8 !important;
+                border: 1px solid #EFC9C3;
+                color: #B85045 !important;
+            }
+
+            .admin-documents-page .badge.bg-warning {
+                background: #FFF3E3 !important;
+                border: 1px solid #F3D5A3;
+                color: #A86A18 !important;
+            }
+
+            .admin-documents-page .badge.bg-info {
+                background: #EAF5FD !important;
+                border: 1px solid #C9E2F5;
+                color: #397BA9 !important;
+            }
+
+            .admin-documents-page .badge.bg-secondary {
+                background: #F3EBE4 !important;
+                border: 1px solid #E2D5C9;
+                color: #775D4A !important;
+            }
+
+            .admin-documents-page .badge.bg-light {
+                background: #FFF9F4 !important;
+                border: 1px solid var(--doc-border) !important;
+                color: var(--doc-secondary-hover) !important;
+            }
+
+            .admin-documents-page .text-success {
+                color: #27865B !important;
+            }
+
+            .admin-documents-page .text-danger {
+                color: #B85045 !important;
+            }
+
+            .admin-documents-page .modal-content {
+                background: #ffffff;
+                border: 1px solid var(--doc-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 12px 32px rgba(96, 71, 53, .12) !important;
+                overflow: hidden;
+            }
+
+            .admin-documents-page .modal-header {
+                background: #ffffff;
+                border-bottom: 1px solid var(--doc-border);
+                padding: 20px 24px;
+            }
+
+            .admin-documents-page .modal-title {
+                color: var(--doc-secondary-hover);
+                font-size: 17px;
+                font-weight: 700;
+            }
+
+            .admin-documents-page .modal-body {
+                background: #ffffff;
+            }
+
+            @keyframes docStaggerSlide {
+                from {
+                    opacity: 0;
+                    transform: translateX(-18px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            @keyframes docFilterSlide {
+                from {
+                    opacity: 0;
+                    transform: translateX(-20px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            @keyframes docTabReveal {
+                from {
+                    opacity: 0;
+                    transform: translateX(-20px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            @keyframes docStatusHighlight {
+                0% {
+                    background-color: #F6DECA;
+                }
+
+                45% {
+                    background-color: #FFF0DF;
+                }
+
+                100% {
+                    background-color: transparent;
+                }
+            }
+
+            @keyframes docFoldZoomFade {
+                from {
+                    opacity: 0;
+                    transform: translateY(9px) scale(.985);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            @keyframes docModalZoomFade {
+                from {
+                    opacity: 0;
+                    transform: translateY(12px) scale(.96);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            .admin-documents-page .doc-stagger-enter {
+                animation: docStaggerSlide .3s ease-out both;
+                animation-delay: var(--doc-delay, 0ms);
+            }
+
+            .admin-documents-page .doc-filter-enter {
+                animation: docFilterSlide .3s ease-out both;
+                animation-delay: var(--doc-delay, 0ms);
+            }
+
+            .admin-documents-page .doc-status-changed {
+                animation: docStatusHighlight .65s ease-out;
+            }
+
+            .admin-documents-page .document-fold[open]>.document-fold-body {
+                animation: docFoldZoomFade .22s ease-out both;
+            }
+
+            .admin-documents-page .documents-content-card .tab-pane.doc-tab-reveal {
+                animation: docTabReveal .24s ease-out both;
+            }
+
+            .admin-documents-page .modal.show .modal-dialog {
+                animation: docModalZoomFade .22s ease-out both;
+            }
+
+            @media (max-width: 991.98px) {
+
+                .admin-documents-page .admin-sidebar-column,
+                .admin-documents-page .admin-content-column {
+                    width: 100%;
+                }
+
+                .admin-documents-page h3.brand-font {
+                    font-size: 21px;
+                }
+
+                .admin-documents-page .documents-tabs {
+                    width: 100%;
+                }
+            }
+
+            @media (max-width: 575.98px) {
+                .admin-documents-page {
+                    padding-left: 12px !important;
+                    padding-right: 12px !important;
+                }
+
+                .admin-documents-page .documents-filter-card,
+                .admin-documents-page .documents-content-card {
+                    padding: 16px !important;
+                }
+
+                .admin-documents-page .documents-tabs {
+                    flex-direction: column;
+                }
+
+                .admin-documents-page .documents-tabs .nav-item {
+                    width: 100%;
+                }
+
+                .admin-documents-page .documents-tabs .nav-link {
+                    width: 100%;
+                    justify-content: flex-start;
+                }
+
+                .admin-documents-page #applyDocumentDateFilter {
+                    width: 100%;
+                }
+
+                .admin-documents-page .document-fold-header {
+                    padding: 14px;
+                }
+
+                .admin-documents-page .document-fold-body {
+                    padding: 14px;
+                }
+
+                .admin-documents-page .table thead th,
+                .admin-documents-page .table tbody td {
+                    padding: 10px 12px;
+                    font-size: 11px;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+
+                .admin-documents-page *,
+                .admin-documents-page *::before,
+                .admin-documents-page *::after {
+                    animation: none !important;
+                    transition: none !important;
+                    scroll-behavior: auto !important;
+                }
+
+                .admin-documents-page .btn:active {
+                    transform: none !important;
+                }
             }
         </style>
 
+        <div class="row">
+            <div class="col-lg-auto mb-4 admin-sidebar-column">
+                <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản Trị Hệ Thống</h6>
 
-    <div class="row">
-        <!-- Sidebar -->
-        <div class="col-lg-auto mb-4 admin-sidebar-column">
-            <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
-                <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản Trị Hệ Thống</h6>
-                <a th:href="@{/admin/reports}" class="admin-nav-link">
-                    <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
-                </a>
-                <a th:href="@{/admin/catalog}" class="admin-nav-link">
-                    <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
-                </a>
-                <a th:href="@{/admin/tables}" class="admin-nav-link">
-                    <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
-                </a>
-                <a th:href="@{/admin/orders}" class="admin-nav-link">
-                    <i class="bi bi-receipt"></i> Quản Lý Đơn Hàng
-                </a>
-                <a th:href="@{/admin/staff}" class="admin-nav-link">
-                    <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
-                </a>
-                <a th:href="@{/admin/inventory}" class="admin-nav-link">
-                    <i class="bi bi-box-seam-fill"></i> Kho Hàng
-                </a>
-                <a th:href="@{/admin/documents}" class="admin-nav-link active d-flex align-items-center justify-content-between">
-                    <span><i class="bi bi-files me-1"></i> Chứng Từ</span>
-                    <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
-                </a>
-                <a th:href="@{/admin/settings}" class="admin-nav-link">
-                    <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
-                </a>
-            </div>
-        </div>
+                    <a th:href="@{/admin/reports}" class="admin-nav-link">
+                        <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
+                    </a>
 
-        <!-- Main Content -->
-        <div class="col admin-content-column">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-                <div>
-                    <h3 class="brand-font mb-1">Chứng Từ</h3>
-                    <p class="text-muted small mb-0">
-                        Tra cứu chứng từ nhập kho, biến động kho, phiếu hủy đơn và phiếu hoàn tiền
-                    </p>
+                    <a th:href="@{/admin/catalog}" class="admin-nav-link">
+                        <i class="bi bi-cup-hot-fill"></i> Món &amp; Danh Mục
+                    </a>
+
+                    <a th:href="@{/admin/tables}" class="admin-nav-link">
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn &amp; QR
+                    </a>
+
+                    <a th:href="@{/admin/orders}" class="admin-nav-link">
+                        <i class="bi bi-receipt"></i> Quản Lý Đơn Hàng
+                    </a>
+
+                    <a th:href="@{/admin/staff}" class="admin-nav-link">
+                        <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
+                    </a>
+
+                    <a th:href="@{/admin/inventory}" class="admin-nav-link">
+                        <i class="bi bi-box-seam-fill"></i> Kho Hàng
+                    </a>
+
+                    <a th:href="@{/admin/documents}"
+                        class="admin-nav-link active d-flex align-items-center justify-content-between">
+                        <span><i class="bi bi-files me-1"></i> Chứng Từ</span>
+                        <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
+                    </a>
+
+                    <a th:href="@{/admin/settings}" class="admin-nav-link">
+                        <i class="bi bi-gear-fill"></i> Cài Đặt &amp; Giảm Giá
+                    </a>
                 </div>
             </div>
 
-            <div id="documentError" class="alert alert-danger d-none" role="alert"></div>
+            <div class="col admin-content-column">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                    <div>
+                        <h3 class="brand-font mb-1">Chứng Từ</h3>
+                        <p class="text-muted small mb-0">
+                            Tra cứu chứng từ nhập kho, biến động kho, phiếu hủy đơn và phiếu hoàn tiền
+                        </p>
+                    </div>
+                </div>
 
-            <div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
-                <div class="row g-2 align-items-end">
-                    <div class="col-12 col-md-4 col-lg-3">
-                        <label for="documentDateFrom" class="form-label small fw-semibold">Từ ngày</label>
-                        <input type="date" id="documentDateFrom" class="form-control rounded-3">
+                <div id="documentError" class="alert alert-danger d-none" role="alert"></div>
+
+                <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 documents-filter-card">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-md-4 col-lg-3">
+                            <label for="documentDateFrom" class="form-label small fw-semibold">
+                                Từ ngày
+                            </label>
+                            <input type="date" id="documentDateFrom" class="form-control rounded-3">
+                        </div>
+
+                        <div class="col-12 col-md-4 col-lg-3">
+                            <label for="documentDateTo" class="form-label small fw-semibold">
+                                Đến ngày
+                            </label>
+                            <input type="date" id="documentDateTo" class="form-control rounded-3">
+                        </div>
+
+                        <div class="col-12 col-md-auto">
+                            <button type="button" class="btn btn-primary-custom rounded-pill px-3"
+                                id="applyDocumentDateFilter">
+                                <i class="bi bi-funnel me-1"></i> Lọc
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-12 col-md-4 col-lg-3">
-                        <label for="documentDateTo" class="form-label small fw-semibold">Đến ngày</label>
-                        <input type="date" id="documentDateTo" class="form-control rounded-3">
-                    </div>
-                    <div class="col-12 col-md-auto">
-                        <button type="button" class="btn btn-primary-custom rounded-pill px-3" id="applyDocumentDateFilter">
-                            <i class="bi bi-funnel me-1"></i> Lọc
+                </div>
+
+                <ul class="nav nav-pills documents-tabs gap-2 mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active rounded-pill" data-bs-toggle="pill" data-bs-target="#docImports"
+                            type="button" role="tab">
+                            Phiếu nhập kho
                         </button>
+                    </li>
+
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#docMovements"
+                            type="button" role="tab">
+                            Biến động &amp; hao hụt
+                        </button>
+                    </li>
+
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#docCancellations"
+                            type="button" role="tab">
+                            Phiếu hủy đơn
+                        </button>
+                    </li>
+
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#docRefunds"
+                            type="button" role="tab">
+                            Phiếu hoàn
+                            <span class="admin-refund-badge badge rounded-pill bg-danger ms-1 d-none">0</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content card border-0 shadow-sm rounded-4 p-4 documents-content-card">
+                    <div class="tab-pane fade show active" id="docImports" role="tabpanel">
+                        <h5 class="fw-bold mb-3">Phiếu nhập kho</h5>
+                        <div id="importDocuments" class="d-grid gap-3"></div>
                     </div>
-                </div>
-            </div>
 
-            <ul class="nav nav-pills documents-tabs gap-2 mb-3" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active rounded-pill" data-bs-toggle="pill" data-bs-target="#docImports" type="button" role="tab">
-                        Phiếu nhập kho
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#docMovements" type="button" role="tab">
-                        Biến động &amp; hao hụt
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#docCancellations" type="button" role="tab">
-                        Phiếu hủy đơn
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link rounded-pill" data-bs-toggle="pill" data-bs-target="#docRefunds" type="button" role="tab">
-                        Phiếu hoàn <span class="admin-refund-badge badge rounded-pill bg-danger ms-1 d-none">0</span>
-                    </button>
-                </li>
-            </ul>
+                    <div class="tab-pane fade" id="docMovements" role="tabpanel">
+                        <h5 class="fw-bold mb-3">Lịch sử biến động kho</h5>
+                        <select id="movementTypeFilter" class="form-select rounded-3 mb-3"
+                            aria-label="Lọc chứng từ biến động">
+                            <option value="">Tất cả nghiệp vụ</option>
+                            <option value="IMPORT">Nhập kho</option>
+                            <option value="ORDER">Tiêu hao đơn hàng</option>
+                            <option value="BATCH">Sơ chế</option>
+                            <option value="WASTE">Hao hụt</option>
+                            <option value="REMAKE">Pha bù</option>
+                        </select>
+                        <div id="movementDocuments"></div>
+                    </div>
 
-            <div class="tab-content card border-0 shadow-sm rounded-4 p-4">
-                <div class="tab-pane fade show active" id="docImports" role="tabpanel">
-                    <h5 class="fw-bold mb-3">Phiếu nhập kho</h5>
-                    <div id="importDocuments" class="d-grid gap-3"></div>
-                </div>
+                    <div class="tab-pane fade" id="docCancellations" role="tabpanel">
+                        <h5 class="fw-bold mb-3">Phiếu hủy đơn</h5>
+                        <div id="cancellationDocuments" class="d-grid gap-3"></div>
+                    </div>
 
-                <div class="tab-pane fade" id="docMovements" role="tabpanel">
-                    <h5 class="fw-bold mb-3">Lịch sử biến động kho</h5>
-                    <select id="movementTypeFilter" class="form-select rounded-3 mb-3" aria-label="Lọc chứng từ biến động">
-                        <option value="">Tất cả nghiệp vụ</option>
-                        <option value="IMPORT">Nhập kho</option>
-                        <option value="ORDER">Tiêu hao đơn hàng</option>
-                        <option value="BATCH">Sơ chế</option>
-                        <option value="WASTE">Hao hụt</option>
-                        <option value="REMAKE">Pha bù</option>
-                    </select>
-                    <div id="movementDocuments"></div>
-                </div>
-
-                <div class="tab-pane fade" id="docCancellations" role="tabpanel">
-                    <h5 class="fw-bold mb-3">Phiếu hủy đơn</h5>
-                    <div id="cancellationDocuments" class="d-grid gap-3"></div>
-                </div>
-
-                <div class="tab-pane fade" id="docRefunds" role="tabpanel">
-                    <h5 class="fw-bold mb-3">Phiếu hoàn</h5>
-                    <div id="refundDocuments" class="d-grid gap-3"></div>
+                    <div class="tab-pane fade" id="docRefunds" role="tabpanel">
+                        <h5 class="fw-bold mb-3">Phiếu hoàn</h5>
+                        <div id="refundDocuments" class="d-grid gap-3"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<th:block th:fragment="scripts">
-    <script th:src="@{/js/admin/documents.js}"></script>
-</th:block>
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/admin/documents.js}"></script>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const page = document.querySelector('.admin-documents-page');
+                if (!page) return;
+
+                const reducedMotion = window.matchMedia(
+                    '(prefers-reduced-motion: reduce)'
+                );
+
+                const containers = [
+                    document.getElementById('importDocuments'),
+                    document.getElementById('movementDocuments'),
+                    document.getElementById('cancellationDocuments'),
+                    document.getElementById('refundDocuments')
+                ].filter(Boolean);
+
+                const previousSnapshots = new WeakMap();
+                const initialized = new WeakSet();
+                const filterPending = new WeakSet();
+
+                const getEntries = container => {
+                    const folds = Array.from(
+                        container.querySelectorAll('.document-fold')
+                    );
+
+                    if (folds.length) return folds;
+
+                    const tbody = container.querySelector('tbody');
+                    if (tbody) {
+                        return Array.from(tbody.children).filter(
+                            element => element.tagName === 'TR'
+                        );
+                    }
+
+                    return Array.from(container.children).filter(
+                        element => element.nodeType === 1
+                    );
+                };
+
+                const getEntryKey = (entry, index) => {
+                    const explicitId =
+                        entry.dataset.documentId ||
+                        entry.dataset.id ||
+                        entry.getAttribute('data-key');
+
+                    if (explicitId) return explicitId;
+
+                    if (entry.matches('.document-fold')) {
+                        const title = entry.querySelector('.document-fold-title');
+                        if (title) return title.textContent.trim();
+                    }
+
+                    const firstCell = entry.querySelector('td');
+                    if (firstCell) return firstCell.textContent.trim();
+
+                    return String(index);
+                };
+
+                const getEntrySignature = entry => {
+                    return entry.textContent.replace(/\s+/g, ' ').trim();
+                };
+
+                const updateEntries = container => {
+                    const entries = getEntries(container);
+                    const previous = previousSnapshots.get(container) || new Map();
+                    const current = new Map();
+                    const firstLoad = !initialized.has(container);
+                    const isFiltering = filterPending.has(container);
+
+                    entries.forEach((entry, index) => {
+                        current.set(
+                            getEntryKey(entry, index),
+                            getEntrySignature(entry)
+                        );
+                    });
+
+                    entries.forEach((entry, index) => {
+                        const key = getEntryKey(entry, index);
+
+                        if (entry.matches('.document-fold')) {
+                            if (entry.open) {
+                                entry.dataset.docWasOpen = 'true';
+                            }
+                        }
+
+                        if (reducedMotion.matches || index >= 15) return;
+
+                        entry.classList.remove(
+                            'doc-stagger-enter',
+                            'doc-filter-enter',
+                            'doc-status-changed'
+                        );
+
+                        entry.style.setProperty(
+                            '--doc-delay',
+                            `${Math.min(index, 12) * 40}ms`
+                        );
+
+                        if (firstLoad) {
+                            entry.classList.add('doc-stagger-enter');
+                        } else if (isFiltering) {
+                            entry.classList.add('doc-filter-enter');
+                        } else if (
+                            previous.has(key) &&
+                            previous.get(key) !== current.get(key)
+                        ) {
+                            entry.classList.add('doc-status-changed');
+                        }
+                    });
+
+                    previousSnapshots.set(container, current);
+                    initialized.add(container);
+                    filterPending.delete(container);
+                };
+
+                containers.forEach(container => {
+                    const observer = new MutationObserver(mutations => {
+                        const contentChanged = mutations.some(mutation =>
+                            mutation.type === 'childList' &&
+                            (mutation.addedNodes.length > 0 ||
+                                mutation.removedNodes.length > 0)
+                        );
+
+                        if (contentChanged) {
+                            updateEntries(container);
+                        }
+                    });
+
+                    observer.observe(container, {
+                        childList: true,
+                        subtree: true
+                    });
+
+                    if (container.children.length > 0) {
+                        updateEntries(container);
+                    }
+                });
+
+                const markAllFilters = () => {
+                    containers.forEach(container => {
+                        filterPending.add(container);
+                    });
+                };
+
+                document.getElementById('applyDocumentDateFilter')
+                    ?.addEventListener('click', markAllFilters, true);
+
+                document.getElementById('movementTypeFilter')
+                    ?.addEventListener('change', () => {
+                        const container = document.getElementById(
+                            'movementDocuments'
+                        );
+
+                        if (container) filterPending.add(container);
+                    }, true);
+
+                document.querySelectorAll(
+                    '.admin-documents-page .documents-tabs button[data-bs-toggle="pill"]'
+                ).forEach(button => {
+                    button.addEventListener('shown.bs.tab', event => {
+                        if (reducedMotion.matches) return;
+
+                        const selector = event.target.getAttribute(
+                            'data-bs-target'
+                        );
+
+                        const pane = selector
+                            ? document.querySelector(selector)
+                            : null;
+
+                        if (!pane) return;
+
+                        pane.classList.remove('doc-tab-reveal');
+                        void pane.offsetWidth;
+                        pane.classList.add('doc-tab-reveal');
+                    });
+                });
+            });
+        </script>
+    </th:block>
 </body>
+
 </html>

@@ -1,89 +1,530 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+
 <head>
     <title>Quản Lý Bàn & QR - Admin</title>
 </head>
+
 <body>
-    <div th:fragment="content" class="container-fluid py-4 px-lg-4">
+    <div th:fragment="content" class="container-fluid py-4 px-lg-4 admin-tables-page">
+
+        <style>
+            .admin-tables-page {
+                --tables-primary: #b86b35;
+                --tables-primary-hover: #9e5524;
+                --tables-primary-light: #fbeee4;
+                --tables-secondary: #775D4A;
+                --tables-secondary-hover: #604735;
+                --tables-secondary-light: #F3EBE4;
+                --tables-accent: #D9B99B;
+                --tables-text: #1e293b;
+                --tables-muted: #786F68;
+                --tables-border: #E8DED5;
+                --tables-background: #fffdfa;
+                --tables-surface: #ffffff;
+                color: var(--tables-text);
+                background: var(--tables-background);
+                min-height: calc(100vh - 76px);
+                font-family: 'Be Vietnam Pro', sans-serif;
+            }
+
+            .admin-tables-page *,
+            .admin-tables-page *::before,
+            .admin-tables-page *::after {
+                box-sizing: border-box;
+                animation: none !important;
+                transition: none !important;
+            }
+
+            .admin-tables-page .admin-sidebar {
+                background: #fff;
+                border: 1px solid var(--tables-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 4px 18px rgba(96, 71, 53, .045) !important;
+            }
+
+            .admin-tables-page .admin-sidebar h6 {
+                color: var(--tables-muted) !important;
+                font-size: 11px;
+                letter-spacing: .07em;
+            }
+
+            .admin-tables-page .admin-nav-link {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 16px;
+                border-radius: 10px;
+                color: var(--tables-secondary);
+                font-size: 13px;
+                font-weight: 500;
+                text-decoration: none;
+            }
+
+            .admin-tables-page .admin-nav-link i {
+                color: var(--tables-primary);
+                font-size: 16px;
+            }
+
+            .admin-tables-page .admin-nav-link:hover,
+            .admin-tables-page .admin-nav-link.active {
+                background: var(--tables-primary-light);
+                color: var(--tables-primary);
+            }
+
+            .admin-tables-page .admin-nav-link.active {
+                font-weight: 700;
+            }
+
+            .admin-tables-page .admin-content-column {
+                min-width: 0;
+            }
+
+            .admin-tables-page .admin-content-column>.d-flex:first-child {
+                gap: 16px;
+                flex-wrap: wrap;
+            }
+
+            .admin-tables-page .brand-font {
+                color: var(--tables-secondary-hover);
+                font-weight: 700;
+            }
+
+            .admin-tables-page h3.brand-font {
+                font-size: 25px;
+                line-height: 1.4;
+            }
+
+            .admin-tables-page .text-muted {
+                color: var(--tables-muted) !important;
+            }
+
+            .admin-tables-page .btn {
+                font-family: 'Be Vietnam Pro', sans-serif;
+                font-size: 12px;
+                font-weight: 600;
+                border-radius: 10px;
+                box-shadow: none !important;
+            }
+
+            .admin-tables-page .btn-primary-custom,
+            .admin-tables-page .btn-primary {
+                background: var(--tables-primary) !important;
+                border: 1px solid var(--tables-primary) !important;
+                color: #fff !important;
+            }
+
+            .admin-tables-page .btn-primary-custom:hover,
+            .admin-tables-page .btn-primary:hover {
+                background: var(--tables-primary-hover) !important;
+                border-color: var(--tables-primary-hover) !important;
+                color: #fff !important;
+            }
+
+            .admin-tables-page .btn-outline-primary {
+                background: var(--tables-primary-light);
+                border: 1px solid #D9B99B;
+                color: var(--tables-primary-hover);
+            }
+
+            .admin-tables-page .btn-outline-primary:hover {
+                background: var(--tables-primary);
+                border-color: var(--tables-primary);
+                color: #fff;
+            }
+
+            .admin-tables-page .form-control {
+                background: #fff;
+                border: 1px solid var(--tables-border);
+                border-radius: 12px;
+                color: var(--tables-text);
+                font-size: 13px;
+                min-height: 45px;
+                padding: 11px 14px;
+                box-shadow: none;
+            }
+
+            .admin-tables-page .form-control:focus {
+                border-color: var(--tables-primary);
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .1);
+                outline: none;
+            }
+
+            .admin-tables-page .form-control::placeholder {
+                color: #A58A74;
+            }
+
+            .admin-tables-page .form-label {
+                color: var(--tables-secondary-hover);
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            .admin-tables-page .admin-table-card {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                padding: 20px !important;
+                background: var(--tables-surface);
+                border: 1px solid var(--tables-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 5px 18px rgba(96, 71, 53, .055) !important;
+            }
+
+            .admin-tables-page .admin-table-card.table-status-empty {
+                border: 2px solid #7DBA90 !important;
+                background: #FFFFFF;
+                box-shadow: 0 4px 16px rgba(39, 134, 91, .06) !important;
+            }
+
+            .admin-tables-page .admin-table-card.table-status-occupied {
+                border: 2px solid #D97E74 !important;
+                background: #FFFFFF;
+                box-shadow: 0 4px 16px rgba(184, 80, 69, .06) !important;
+            }
+
+            .admin-tables-page .admin-table-card.table-status-maintenance {
+                border-color: #D9D3CC !important;
+                background: #FFFFFF;
+                box-shadow: 0 4px 16px rgba(119, 93, 74, .035) !important;
+            }
+
+            .admin-tables-page .admin-table-card h5 {
+                color: var(--tables-secondary-hover);
+                font-size: 17px;
+                line-height: 1.4;
+                font-weight: 700;
+            }
+
+            .admin-tables-page .admin-table-card>.d-flex:first-child {
+                gap: 12px;
+            }
+
+            .admin-tables-page .admin-table-card .badge {
+                display: inline-flex;
+                align-items: center;
+                max-width: 100%;
+                border-radius: 20px !important;
+                padding: 6px 11px;
+                font-size: 11px;
+                line-height: 1.4;
+                font-weight: 600;
+                white-space: normal;
+            }
+
+            .admin-tables-page .admin-table-card .table-status-badge {
+                gap: 7px;
+            }
+
+            .admin-tables-page .admin-table-card .table-status-badge::before {
+                content: "";
+                display: inline-block;
+                width: 7px;
+                height: 7px;
+                min-width: 7px;
+                border-radius: 50%;
+                background: currentColor;
+            }
+
+            .admin-tables-page .admin-table-card .badge.bg-success {
+                background: #E8F5ED !important;
+                border: 1px solid #C6E8D0;
+                color: #27865B !important;
+            }
+
+            .admin-tables-page .admin-table-card .badge.bg-danger {
+                background: #FBEDE8 !important;
+                border: 1px solid #EFC9C3;
+                color: #B85045 !important;
+            }
+
+            .admin-tables-page .admin-table-card .badge.bg-secondary {
+                background: var(--tables-secondary-light) !important;
+                border: 1px solid #E2D5C9;
+                color: var(--tables-secondary) !important;
+            }
+
+            .admin-tables-page .admin-table-card .badge.bg-light {
+                flex-shrink: 0;
+                background: #FFF9F4 !important;
+                border: 1px solid var(--tables-border) !important;
+                color: var(--tables-secondary) !important;
+                font-size: 10px;
+                padding: 6px 10px;
+            }
+
+            .admin-tables-page .admin-table-qr {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-width: 0;
+                padding: 22px 16px !important;
+                background: #FFF9F4 !important;
+                border: 1px solid var(--tables-border) !important;
+                border-radius: 15px !important;
+            }
+
+            .admin-tables-page .admin-table-qr-frame {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 164px;
+                height: 164px;
+                max-width: 100%;
+                padding: 11px;
+                border: 1px solid #E8DED5;
+                border-radius: 14px;
+                background: #FFFFFF;
+            }
+
+            .admin-tables-page .admin-table-qr-frame img {
+                display: block;
+                width: 140px;
+                height: 140px;
+                max-width: 100%;
+                border-radius: 6px !important;
+                object-fit: contain;
+            }
+
+            .admin-tables-page .admin-table-qr-code {
+                display: block;
+                width: 100%;
+                max-width: 100%;
+                margin-top: 12px;
+                color: var(--tables-muted) !important;
+                font-family: monospace;
+                font-size: 11px;
+                line-height: 1.5;
+                text-align: center;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .admin-tables-page .admin-table-actions {
+                margin-top: auto !important;
+            }
+
+            .admin-tables-page .admin-table-open-btn {
+                min-height: 42px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 5px;
+                padding: 10px 14px;
+                background: var(--tables-primary-light);
+                border: 1px solid #D9B99B;
+                border-radius: 12px !important;
+                color: var(--tables-primary-hover);
+                font-size: 12px;
+                font-weight: 600;
+                text-decoration: none;
+            }
+
+            .admin-tables-page .admin-table-open-btn:hover {
+                background: var(--tables-primary);
+                border-color: var(--tables-primary);
+                color: #fff;
+            }
+
+            .admin-tables-page .modal-content {
+                background: #fff;
+                border: 1px solid var(--tables-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 12px 32px rgba(96, 71, 53, .12) !important;
+                overflow: hidden;
+            }
+
+            .admin-tables-page .modal-header {
+                background: #fff;
+                border-bottom: 1px solid var(--tables-border) !important;
+                padding: 20px 24px;
+            }
+
+            .admin-tables-page .modal-title {
+                color: var(--tables-secondary-hover);
+                font-size: 17px;
+                font-weight: 700;
+            }
+
+            .admin-tables-page .modal-body {
+                background: #fff;
+                padding: 24px !important;
+            }
+
+            .admin-tables-page .modal .form-label {
+                display: block;
+                margin-bottom: 9px;
+            }
+
+            .admin-tables-page .modal .btn-primary-custom {
+                min-height: 44px;
+                border-radius: 12px !important;
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+            .admin-tables-page .modal .btn-close:focus {
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .1);
+            }
+
+            @media (max-width: 991.98px) {
+
+                .admin-tables-page .admin-sidebar-column,
+                .admin-tables-page .admin-content-column {
+                    width: 100%;
+                }
+
+                .admin-tables-page h3.brand-font {
+                    font-size: 21px;
+                }
+            }
+
+            @media (max-width: 575.98px) {
+                .admin-tables-page {
+                    padding-left: 12px !important;
+                    padding-right: 12px !important;
+                }
+
+                .admin-tables-page .admin-content-column>.d-flex:first-child {
+                    align-items: flex-start !important;
+                }
+
+                .admin-tables-page .admin-content-column>.d-flex:first-child .btn {
+                    width: 100%;
+                    min-height: 43px;
+                }
+
+                .admin-tables-page .admin-table-card {
+                    padding: 16px !important;
+                }
+
+                .admin-tables-page .admin-table-qr {
+                    padding: 18px 12px !important;
+                }
+
+                .admin-tables-page .modal-header {
+                    padding: 16px;
+                }
+
+                .admin-tables-page .modal-body {
+                    padding: 18px !important;
+                }
+            }
+        </style>
+
         <div class="row">
-            <!-- Sidebar -->
             <div class="col-lg-auto mb-4 admin-sidebar-column">
                 <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
                     <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản Trị Hệ Thống</h6>
+
                     <a th:href="@{/admin/reports}" class="admin-nav-link">
                         <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
                     </a>
+
                     <a th:href="@{/admin/catalog}" class="admin-nav-link">
                         <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
                     </a>
+
                     <a th:href="@{/admin/tables}" class="admin-nav-link active">
                         <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
                     </a>
+
                     <a th:href="@{/admin/orders}" class="admin-nav-link">
                         <i class="bi bi-receipt"></i> Quản Lý Đơn Hàng
                     </a>
+
                     <a th:href="@{/admin/staff}" class="admin-nav-link">
                         <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
                     </a>
+
                     <a th:href="@{/admin/inventory}" class="admin-nav-link">
                         <i class="bi bi-box-seam-fill"></i> Kho Hàng
                     </a>
-                    <a th:href="@{/admin/documents}" class="admin-nav-link d-flex align-items-center justify-content-between">
+
+                    <a th:href="@{/admin/documents}"
+                        class="admin-nav-link d-flex align-items-center justify-content-between">
                         <span><i class="bi bi-files me-1"></i> Chứng Từ</span>
                         <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
                     </a>
+
                     <a th:href="@{/admin/settings}" class="admin-nav-link">
                         <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
                     </a>
                 </div>
             </div>
 
-            <!-- Main Content -->
             <div class="col admin-content-column">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h3 class="brand-font mb-1">Quản Lý Sơ Đồ Bàn & Mã QR</h3>
-                        <p class="text-muted small mb-0">Tạo bàn mới, tra cứu mã QR gắn bàn cho khách quét truy cập thực đơn</p>
+                        <p class="text-muted small mb-0">
+                            Tạo bàn mới, tra cứu mã QR gắn bàn cho khách quét truy cập thực đơn
+                        </p>
                     </div>
-                    <button type="button" class="btn btn-primary-custom rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createTableModal">
+
+                    <button type="button" class="btn btn-primary-custom rounded-pill px-3" data-bs-toggle="modal"
+                        data-bs-target="#createTableModal">
                         <i class="bi bi-plus-circle me-1"></i> Thêm Bàn Mới
                     </button>
                 </div>
 
                 <div class="row g-4">
                     <div th:each="t : ${tables}" class="col-md-6 col-xl-4">
-                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 h-100 admin-table-card"
+                            th:classappend="${t.status.name() == 'TRONG' ? 'table-status-empty' : (t.status.name() == 'CO_KHACH' ? 'table-status-occupied' : (t.status.name() == 'BAO_TRI' ? 'table-status-maintenance' : ''))}">
+
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div>
                                     <h5 class="fw-bold mb-1" th:text="${t.name}">Bàn 01</h5>
-                                    <span th:if="${t.status.name() == 'CO_KHACH'}" class="badge bg-danger rounded-pill">Có Khách (Phiên #<span th:text="${t.activeSessionId}"></span>)</span>
-                                    <span th:if="${t.status.name() == 'TRONG'}" class="badge bg-success rounded-pill">Trống</span>
-                                    <span th:if="${t.status.name() == 'BAO_TRI'}" class="badge bg-secondary rounded-pill">Bảo Trì</span>
+
+                                    <span th:if="${t.status.name() == 'CO_KHACH'}"
+                                        class="badge bg-danger rounded-pill table-status-badge">
+                                        Có Khách (Phiên #<span th:text="${t.activeSessionId}"></span>)
+                                    </span>
+
+                                    <span th:if="${t.status.name() == 'TRONG'}"
+                                        class="badge bg-success rounded-pill table-status-badge">
+                                        Trống
+                                    </span>
+
+                                    <span th:if="${t.status.name() == 'BAO_TRI'}"
+                                        class="badge bg-secondary rounded-pill table-status-badge">
+                                        Bảo Trì
+                                    </span>
                                 </div>
-                                <span class="badge bg-light text-dark border small" th:text="'ID: ' + ${t.id}">ID: 1</span>
+
+                                <span class="badge bg-light text-dark border small" th:text="'ID: ' + ${t.id}">
+                                    ID: 1
+                                </span>
                             </div>
 
-                            <!-- QR Code Preview Image -->
-                            <div class="text-center p-3 bg-light rounded-4 mb-3 border">
-                                <img th:src="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + ${baseUrl != null ? baseUrl : 'http://localhost:8080'} + '/?qr=' + ${t.qrCode}"
-                                     class="img-fluid rounded-3" style="width: 140px; height: 140px;" alt="Mã QR Bàn">
-                                <div class="mt-2 text-truncate font-monospace small text-muted" th:text="${t.qrCode}">QR_CODE_XYZ</div>
+                            <div class="text-center p-3 bg-light rounded-4 mb-3 border admin-table-qr">
+                                <div class="admin-table-qr-frame">
+                                    <img th:src="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + ${baseUrl != null ? baseUrl : 'http://localhost:8080'} + '/?qr=' + ${t.qrCode}"
+                                        class="img-fluid rounded-3" style="width: 140px; height: 140px;"
+                                        alt="Mã QR Bàn">
+                                </div>
+
+                                <div class="mt-2 text-truncate font-monospace small text-muted admin-table-qr-code"
+                                    th:text="${t.qrCode}">
+                                    QR_CODE_XYZ
+                                </div>
                             </div>
 
-                            <div class="d-flex gap-2 mt-auto">
-                                <a th:href="@{/(qr=${t.qrCode})}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill w-100">
+                            <div class="d-flex gap-2 mt-auto admin-table-actions">
+                                <a th:href="@{/(qr=${t.qrCode})}" target="_blank"
+                                    class="btn btn-sm btn-outline-primary rounded-pill w-100 admin-table-open-btn">
                                     <i class="bi bi-box-arrow-up-right me-1"></i> Mở Menu Bàn Này
                                 </a>
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
 
-        <!-- Modal Thêm Bàn -->
         <div class="modal fade" id="createTableModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -91,14 +532,19 @@
                         <h5 class="modal-title brand-font">Thêm Bàn Mới</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
+
                     <div class="modal-body p-4">
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold">Tên bàn (ví dụ: Bàn 06):</label>
-                            <input type="text" id="newTableName" class="form-control rounded-3" placeholder="Nhập tên bàn..." required>
+                            <label class="form-label small fw-semibold">
+                                Tên bàn (ví dụ: Bàn 06):
+                            </label>
+                            <input type="text" id="newTableName" class="form-control rounded-3"
+                                placeholder="Nhập tên bàn..." required>
                         </div>
+
                         <div class="d-grid gap-2">
                             <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold"
-                                    onclick="AdminApp.createTable(document.getElementById('newTableName').value)">
+                                onclick="AdminApp.createTable(document.getElementById('newTableName').value)">
                                 Tạo Bàn Mới
                             </button>
                         </div>
@@ -106,7 +552,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <th:block th:fragment="scripts">
@@ -118,4 +563,5 @@
         </script>
     </th:block>
 </body>
+
 </html>

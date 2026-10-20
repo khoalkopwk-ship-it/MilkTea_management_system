@@ -1,3 +1,4 @@
+
 (() => {
     'use strict';
 
@@ -524,6 +525,73 @@
         renderGroup(lowEl, lowItems, 'low');
     }
 
+    const dashboardMotionOff = () =>
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function animateDashboardCharts() {
+        if (dashboardMotionOff()) return;
+
+        const revenue = $('dashboardRevenueChart');
+
+        if (revenue) {
+            revenue.querySelectorAll('path[fill="none"]').forEach(path => {
+                if (typeof path.getTotalLength !== 'function') return;
+
+                const length = path.getTotalLength();
+
+                if (!Number.isFinite(length) || length <= 0) return;
+
+                path.style.setProperty(
+                    '--dashboard-line-length',
+                    `${length}px`
+                );
+
+                path.classList.add('dashboard-animate-line');
+            });
+        }
+
+        const waste = $('dashboardTopWaste');
+
+        if (waste) {
+            waste.querySelectorAll('rect').forEach((bar, index) => {
+                bar.style.setProperty(
+                    '--dashboard-delay',
+                    `${Math.min(index, 4) * 80}ms`
+                );
+
+                bar.classList.add('dashboard-animate-bar');
+            });
+        }
+
+        const donut = $('dashboardStatusDonut');
+        const statusTotalText =
+            $('dashboardStatusTotal')?.textContent || '';
+
+        if (
+            donut &&
+            Number(statusTotalText.replace(/\D/g, '')) > 0
+        ) {
+            donut.classList.remove('dashboard-animate-donut');
+            void donut.offsetWidth;
+            donut.classList.add('dashboard-animate-donut');
+        }
+
+        const rankings = $('dashboardTopProducts');
+
+        if (rankings) {
+            rankings.querySelectorAll('.dashboard-rank-fill').forEach(
+                (bar, index) => {
+                    bar.style.setProperty(
+                        '--dashboard-delay',
+                        `${Math.min(index, 4) * 80}ms`
+                    );
+
+                    bar.classList.add('dashboard-animate-rank');
+                }
+            );
+        }
+    }
+
     function render(data) {
         const summary = data.summary || {};
         const alerts = data.alerts || {};
@@ -562,6 +630,8 @@
         renderStatuses(data.ordersByStatus || []);
         renderRankings('dashboardTopProducts', data.topProducts || []);
         renderWaste(data.topWasteMaterials || []);
+
+        animateDashboardCharts();
     }
 
     async function load() {
