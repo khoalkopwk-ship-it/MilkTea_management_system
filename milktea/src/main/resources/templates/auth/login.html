@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
 
 <head>
-    <title>Xác Thực - MilkTea</title>
+    <title>Đăng nhập - MilkTea</title>
 </head>
 
 <body>
@@ -25,7 +25,7 @@
                         <!-- Tiêu đề trên Desktop -->
                         <div class="d-none d-lg-block mb-3">
                             <h2 class="auth-hero-title brand-font mb-1">
-                                Chào Mừng Đến <span class="text-primary-custom">MilkTea</span>
+                                Chào mừng đến <span class="text-primary-custom">MilkTea</span>
                             </h2>
                             <p class="text-muted small mb-0">Thương hiệu trà sữa thơm ngon đậm vị</p>
                         </div>
@@ -230,7 +230,7 @@
                         <div class="auth-modern-card" id="authCard">
                             <!-- TIÊU ĐỀ THẺ -->
                             <div class="text-center mb-4">
-                                <h1 class="auth-card-title mb-0" id="authHeaderTitle">Đăng Nhập</h1>
+                                <h1 class="auth-card-title mb-0" id="authHeaderTitle">Đăng nhập</h1>
                             </div>
 
                             <!-- TAB CONTENT (CHUYỂN ĐỔI BẰNG LIÊN KẾT ĐĂNG KÝ / ĐĂNG NHẬP) -->
@@ -284,7 +284,7 @@
                                                 class="auth-main-submit-btn cta cta-dodge" aria-disabled="true">
                                                 <span class="spinner-border spinner-border-sm me-2 d-none"
                                                     id="loginSpinner"></span>
-                                                <span>Đăng Nhập</span>
+                                                <span>Đăng nhập</span>
                                             </button>
                                         </div>
 
@@ -368,7 +368,7 @@
                                                     class="auth-main-submit-btn cta cta-dodge" aria-disabled="true">
                                                     <span class="spinner-border spinner-border-sm me-2 d-none"
                                                         id="registerSpinner"></span>
-                                                    <span>Tạo Tài Khoản &amp; Nhận OTP</span>
+                                                    <span>Nhận OTP</span>
                                                 </button>
                                             </div>
 
@@ -394,7 +394,7 @@
                                                     <path d="M10.5 18.5h3" />
                                                 </svg>
                                             </span>
-                                            <p class="u026-t">Xác Thực Địa Chỉ Email</p>
+                                            <p class="u026-t">Xác thực địa chỉ email</p>
                                             <p class="u026-s">Mã xác thực gồm 6 chữ số đã được gửi tới <b
                                                     id="verifyTargetEmail">email@example.com</b></p>
 
@@ -418,7 +418,7 @@
                                                     class="auth-main-submit-btn w-100 mt-2">
                                                     <span class="spinner-border spinner-border-sm me-2 d-none"
                                                         id="verifySpinner"></span>
-                                                    <span>Xác Thực &amp; Kích Hoạt Tài Khoản</span>
+                                                    <span>Xác thực &amp; kích hoạt tài khoản</span>
                                                 </button>
                                             </form>
 
@@ -468,7 +468,7 @@
 
                     <!-- Modal Header Tiêu Đề & Phụ Đề -->
                     <div class="text-center mb-3">
-                        <h2 class="auth-card-title mb-1" id="forgotPasswordModalLabel">Khôi Phục Mật Khẩu</h2>
+                        <h2 class="auth-card-title mb-1" id="forgotPasswordModalLabel">Khôi phục mật khẩu</h2>
                         <p class="auth-card-subtitle mb-0" id="forgotModalSubtitle">Nhập địa chỉ email tài khoản để nhận
                             mã OTP xác thực.</p>
                     </div>
@@ -495,7 +495,7 @@
                                     aria-disabled="true">
                                     <span class="spinner-border spinner-border-sm me-2 d-none"
                                         id="sendResetSpinner"></span>
-                                    <span>Gửi Mã Khôi Phục</span>
+                                    <span>Gửi mã khôi phục</span>
                                 </button>
                             </div>
                         </form>
@@ -550,7 +550,7 @@
                                 <button type="submit" id="btnVerifyResetOtp" class="auth-main-submit-btn w-100 mt-2">
                                     <span class="spinner-border spinner-border-sm me-2 d-none"
                                         id="verifyResetOtpSpinner"></span>
-                                    <span>Xác Thực Mã OTP &amp; Tiếp Tục</span>
+                                    <span>Xác thực mã OTP</span>
                                 </button>
                             </form>
 
@@ -605,7 +605,7 @@
                                     aria-disabled="true">
                                     <span class="spinner-border spinner-border-sm me-2 d-none"
                                         id="confirmResetSpinner"></span>
-                                    <span>Đặt Lại Mật Khẩu</span>
+                                    <span>Đặt lại mật khẩu</span>
                                 </button>
                             </div>
                         </form>
@@ -2890,11 +2890,11 @@
                 if (mode === 'register') {
                     if (loginPane) loginPane.classList.remove('show', 'active');
                     if (regPane) regPane.classList.add('show', 'active');
-                    if (titleEl) titleEl.textContent = 'Đăng Ký';
+                    if (titleEl) titleEl.textContent = 'Đăng ký';
                 } else {
                     if (regPane) regPane.classList.remove('show', 'active');
                     if (loginPane) loginPane.classList.add('show', 'active');
-                    if (titleEl) titleEl.textContent = 'Đăng Nhập';
+                    if (titleEl) titleEl.textContent = 'Đăng nhập';
                 }
             }
             window.updateAuthHeader = switchToTab;
