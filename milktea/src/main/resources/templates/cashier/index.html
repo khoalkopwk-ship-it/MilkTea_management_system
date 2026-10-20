@@ -1,28 +1,1226 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
-<head><title>Thu ngân POS</title></head><body>
-<div th:fragment="content" class="container-fluid pos-workspace py-3 px-lg-4">
-<link rel="stylesheet" th:href="@{/css/staff-ui.css}">
-<span id="posRole" hidden th:attr="data-role=${actor.role}"></span>
-<div id="posProductsData" hidden><span th:each="p : ${products}" th:attr="data-id=${p.id},data-name=${p.name},data-size=${p.size},data-price=${p.price},data-image=${p.imageUrl},data-category=${p.category.id},data-category-name=${p.category.name},data-category-allow-topping=${p.category.allowTopping}"></span></div>
-<div class="pos-layout">
-<section class="pos-panel pos-checkout"><h4><i class="bi bi-cart3"></i> Tạo đơn tại quầy / bàn</h4>
-<label class="pos-search"><i class="bi bi-search"></i><input id="quickProductSearch" placeholder="Tìm món nhanh..." aria-label="Tìm món nhanh"></label>
-<div class="d-flex justify-content-between align-items-center my-3"><b class="small">MÓN ĐÃ CHỌN <span id="counterItemCount">(0)</span></b><button class="btn btn-sm text-danger" onclick="CashierApp.clearCart()"><i class="bi bi-trash3"></i> Xóa tất cả</button></div>
-<div id="counterCartList" class="pos-cart-list"><div class="text-muted text-center py-5">Chưa chọn món nào</div></div>
-<div class="pos-checkout-bottom"><div class="d-flex justify-content-between py-3"><span class="text-muted">Tạm tính</span><strong class="pos-total" id="counterCartTotal">0 ₫</strong></div>
-<label for="counterTableId" class="small text-muted mb-1">Phục vụ tại</label><select id="counterTableId" class="form-select mb-3"><option value="">Quầy / mang về</option><option th:each="t : ${tables}" th:value="${t.id}" th:text="${t.name}"></option></select>
-<label for="counterPayMethod" class="small text-muted mb-1">Phương thức thanh toán</label><select id="counterPayMethod" class="form-select mb-3"><option value="CASH">Tiền mặt</option><option value="BANK_TRANSFER">Chuyển khoản</option></select>
-<button id="counterSubmitBtn" type="button" class="pos-submit" onclick="CashierApp.submitCounterOrder()"><i class="bi bi-check-circle-fill me-2"></i>Thanh toán</button>
-<small class="d-block text-muted text-center mt-2">Giá và giảm giá được tính lại khi lập hóa đơn.</small></div></section>
-<section class="pos-panel pos-menu"><div class="d-flex justify-content-between gap-3 align-items-center mb-3"><h4 class="mb-0"><i class="bi bi-cup-hot"></i> Chọn món</h4><label class="pos-search mb-0"><i class="bi bi-search"></i><input id="posProductSearch" placeholder="Tìm trà sữa, cà phê..." aria-label="Tìm món"></label></div>
-<div class="pos-categories" id="posCategories"><button class="active" data-category="">Tất cả</button><button th:each="c : ${categories}" th:attr="data-category=${c.id}" th:text="${c.name}"></button></div>
-<div id="posToppingModeBanner" class="alert alert-info d-none d-flex justify-content-between align-items-center py-2 px-3 mb-3 rounded-3 shadow-sm border-0"><div><i class="bi bi-pin-angle-fill me-1 text-primary"></i><span class="small fw-semibold">Đang gắn Topping cho dòng: <strong id="toppingTargetLineName">Trà Sữa</strong></span></div><button type="button" class="btn btn-sm btn-primary-custom rounded-pill px-3 py-1" onclick="CashierApp.exitToppingMode()"><i class="bi bi-check-lg me-1"></i> Xong Topping</button></div>
-<div id="posProductGrid" class="pos-product-grid"></div></section>
-<section class="pos-panel pos-tables"><div class="d-flex justify-content-between align-items-center mb-3"><h4 class="mb-0"><i class="bi bi-map"></i> Sơ đồ bàn</h4></div>
-<div class="d-flex gap-3 text-muted small mb-3"><span><i class="bi bi-circle-fill text-success"></i> Trống</span><span><i class="bi bi-circle-fill text-danger"></i> Có khách</span></div><div id="tablesGrid" class="pos-tables-grid"></div></section>
-</div>
-<div class="modal fade" id="tableBlockersModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content rounded-4"><div class="modal-header"><h5 id="tableBlockersTitle">Chưa thể đóng phiên</h5><button class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div><div class="modal-body" id="tableBlockersBody"></div><div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Quay lại kiểm tra</button></div></div></div></div>
-</div>
-<th:block th:fragment="scripts"><script th:src="@{/js/cashier/cashier.js}"></script><script>document.addEventListener('DOMContentLoaded',()=>CashierApp.init());</script></th:block>
-</body></html>
+
+<head>
+    <title>Thu ngân POS - MilkTea</title>
+</head>
+
+<body>
+    <div th:fragment="content" class="container-fluid pos-workspace py-3 px-lg-4">
+
+        <link rel="stylesheet" th:href="@{/css/staff-ui.css}">
+
+        <style>
+            .pos-workspace {
+                --pos-primary: #b86b35;
+                --pos-primary-hover: #9e5524;
+                --pos-primary-light: #fbeee4;
+                --pos-secondary: #775D4A;
+                --pos-secondary-hover: #604735;
+                --pos-secondary-light: #F3EBE4;
+                --pos-accent: #D9B99B;
+                --pos-border: #E8DED5;
+                --pos-muted: #786F68;
+                --pos-background: #fffdfa;
+                --pos-surface: #ffffff;
+                --pos-surface-soft: #F8F4EF;
+                --pos-text: #1e293b;
+                background: var(--pos-background);
+                color: var(--pos-text);
+                font-family: 'Be Vietnam Pro', sans-serif;
+                min-height: calc(100vh - 76px);
+            }
+
+            .pos-workspace *,
+            .pos-workspace *::before,
+            .pos-workspace *::after {
+                box-sizing: border-box;
+            }
+
+            @keyframes posFadeUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(18px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes posCartSlide {
+                from {
+                    opacity: 0;
+                    transform: translateX(-18px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            @keyframes posTotalHighlight {
+                0% {
+                    background-color: transparent;
+                    box-shadow: 0 0 0 0 rgba(184, 107, 53, 0);
+                }
+
+                45% {
+                    background-color: #fbeee4;
+                    box-shadow: 0 0 0 7px rgba(184, 107, 53, .08);
+                }
+
+                100% {
+                    background-color: transparent;
+                    box-shadow: 0 0 0 0 rgba(184, 107, 53, 0);
+                }
+            }
+
+            @keyframes posTableSelect {
+                0% {
+                    transform: scale(.975);
+                }
+
+                60% {
+                    transform: scale(1.018);
+                }
+
+                100% {
+                    transform: scale(1);
+                }
+            }
+
+            @keyframes posPaymentSuccess {
+                0% {
+                    opacity: 0;
+                    transform: scale(.88);
+                }
+
+                65% {
+                    opacity: 1;
+                    transform: scale(1.06);
+                }
+
+                100% {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+
+            .pos-workspace .pos-layout {
+                display: grid;
+                grid-template-columns: minmax(280px, 1.05fr) minmax(380px, 1.9fr) minmax(280px, 1fr);
+                gap: 18px;
+                align-items: start;
+            }
+
+            .pos-workspace .pos-panel {
+                min-width: 0;
+                background: var(--pos-surface);
+                border: 1px solid var(--pos-border);
+                border-radius: 18px;
+                box-shadow: 0 4px 18px rgba(96, 71, 53, .045);
+                padding: 20px;
+            }
+
+            .pos-workspace .pos-panel h4 {
+                font-size: 17px;
+                font-weight: 700;
+                line-height: 1.5;
+                color: var(--pos-secondary-hover);
+                margin-bottom: 20px;
+            }
+
+            .pos-workspace .pos-panel h4 i {
+                color: var(--pos-primary);
+                font-size: 19px;
+                margin-right: 8px;
+            }
+
+            .pos-workspace .text-muted {
+                color: var(--pos-muted) !important;
+            }
+
+            .pos-workspace .text-danger {
+                color: #B85045 !important;
+            }
+
+            .pos-workspace .text-success {
+                color: #198754 !important;
+            }
+
+            .pos-workspace .text-primary {
+                color: var(--pos-primary) !important;
+            }
+
+            .pos-workspace .pos-search {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                width: 100%;
+                max-width: 100%;
+                min-height: 42px;
+                padding: 10px 13px;
+                border: 1px solid var(--pos-border);
+                border-radius: 12px;
+                background: #fff;
+                color: #A58A74;
+            }
+
+            .pos-workspace .pos-search:focus-within {
+                border-color: var(--pos-primary);
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .1);
+            }
+
+            .pos-workspace .pos-search i {
+                flex-shrink: 0;
+                color: var(--pos-primary);
+                font-size: 15px;
+            }
+
+            .pos-workspace .pos-search input {
+                width: 100%;
+                min-width: 0;
+                border: none;
+                outline: none;
+                background: transparent;
+                color: var(--pos-text);
+                font-size: 13px;
+                padding: 0;
+            }
+
+            .pos-workspace .pos-search input::placeholder {
+                color: #A58A74;
+                opacity: .85;
+            }
+
+            .pos-workspace .form-control,
+            .pos-workspace .form-select {
+                min-height: 42px;
+                padding: 10px 13px;
+                background-color: #fff;
+                border: 1px solid var(--pos-border);
+                border-radius: 10px;
+                color: var(--pos-text);
+                font-size: 13px;
+                box-shadow: none;
+            }
+
+            .pos-workspace .form-control:focus,
+            .pos-workspace .form-select:focus {
+                border-color: var(--pos-primary);
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .1);
+                outline: none;
+            }
+
+            .pos-workspace label.small {
+                display: inline-block;
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--pos-secondary) !important;
+            }
+
+            .pos-workspace .btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 5px;
+                border-radius: 10px;
+                padding: 9px 15px;
+                font-size: 13px;
+                font-weight: 600;
+                box-shadow: none !important;
+                transition: background-color .15s ease,
+                    border-color .15s ease,
+                    color .15s ease,
+                    transform .14s ease;
+            }
+
+            .pos-workspace .btn:active:not(:disabled),
+            .pos-workspace .pos-submit:active:not(:disabled),
+            .pos-workspace .pos-sizes button:active:not(:disabled),
+            .pos-workspace .pos-categories button:active:not(:disabled),
+            .pos-workspace .pos-qty button:active:not(:disabled) {
+                transform: scale(.97);
+            }
+
+            .pos-workspace .btn-primary,
+            .pos-workspace .btn-primary-custom {
+                background: var(--pos-primary) !important;
+                border: 1px solid var(--pos-primary) !important;
+                color: #fff !important;
+            }
+
+            .pos-workspace .btn-primary:hover,
+            .pos-workspace .btn-primary-custom:hover {
+                background: var(--pos-primary-hover) !important;
+                border-color: var(--pos-primary-hover) !important;
+                color: #fff !important;
+            }
+
+            .pos-workspace .btn-outline-secondary {
+                background: #fff;
+                border: 1px solid #D9CABC;
+                color: var(--pos-secondary);
+            }
+
+            .pos-workspace .btn-outline-secondary:hover {
+                background: var(--pos-secondary-light);
+                border-color: #C99261;
+                color: var(--pos-secondary-hover);
+            }
+
+            .pos-workspace .btn.text-danger {
+                color: #B85045 !important;
+                border: 1px solid transparent;
+                background: transparent;
+            }
+
+            .pos-workspace .btn.text-danger:hover {
+                background: #FBEDE8;
+                color: #A54239 !important;
+            }
+
+            .pos-workspace .pos-checkout>.d-flex b {
+                color: var(--pos-secondary-hover);
+                font-size: 12px;
+                font-weight: 700;
+                letter-spacing: .02em;
+            }
+
+            .pos-workspace #counterItemCount {
+                color: var(--pos-primary);
+                font-weight: 700;
+            }
+
+            .pos-workspace .pos-cart-list {
+                min-height: 220px;
+                max-height: 38vh;
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding-right: 3px;
+                scrollbar-width: thin;
+                scrollbar-color: #D9CABC transparent;
+            }
+
+            .pos-workspace .pos-cart-item {
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+                padding: 12px;
+                margin-bottom: 10px;
+                background: #fff;
+                border: 1px solid var(--pos-border);
+                border-radius: 13px;
+                transition: background-color .18s ease,
+                    border-color .18s ease;
+            }
+
+            .pos-workspace .pos-cart-item.pos-cart-enter {
+                animation: posCartSlide .26s ease-out both;
+            }
+
+            .pos-workspace .pos-cart-item:hover {
+                background: var(--pos-primary-light);
+                border-color: #E6CDB4;
+            }
+
+            .pos-workspace .pos-cart-item img {
+                width: 54px;
+                height: 64px;
+                flex-shrink: 0;
+                object-fit: cover;
+                border-radius: 9px;
+                background: var(--pos-surface-soft);
+            }
+
+            .pos-workspace .pos-cart-info {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .pos-workspace .pos-cart-info strong {
+                display: block;
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--pos-text);
+            }
+
+            .pos-workspace .pos-cart-price {
+                color: var(--pos-primary);
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+            .pos-workspace .pos-qty {
+                display: inline-flex;
+                align-items: center;
+                overflow: hidden;
+                border: 1px solid #D9CABC;
+                border-radius: 9px;
+                background: #fff;
+            }
+
+            .pos-workspace .pos-qty button {
+                background: transparent;
+                border: none;
+                color: var(--pos-secondary);
+                padding: 5px 10px;
+                transition: background-color .15s ease,
+                    color .15s ease,
+                    transform .14s ease;
+            }
+
+            .pos-workspace .pos-qty button:hover {
+                background: var(--pos-primary-light);
+                color: var(--pos-primary);
+            }
+
+            .pos-workspace .pos-qty span {
+                min-width: 22px;
+                text-align: center;
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--pos-text);
+            }
+
+            .pos-workspace .pos-checkout-bottom {
+                border-top: 1px solid var(--pos-border);
+                margin-top: 15px;
+            }
+
+            .pos-workspace .pos-total {
+                display: inline-block;
+                color: var(--pos-primary);
+                font-size: 21px;
+                font-weight: 800;
+                letter-spacing: -.02em;
+                border-radius: 8px;
+            }
+
+            .pos-workspace .pos-total.pos-total-updated {
+                animation: posTotalHighlight .48s ease-out both;
+            }
+
+            .pos-workspace .pos-submit {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                min-height: 46px;
+                padding: 13px 16px;
+                background: var(--pos-primary);
+                border: 1px solid var(--pos-primary);
+                border-radius: 14px;
+                color: #fff;
+                font-size: 14px;
+                font-weight: 700;
+                box-shadow: none;
+                cursor: pointer;
+                transition: background-color .15s ease,
+                    border-color .15s ease,
+                    transform .14s ease;
+            }
+
+            .pos-workspace .pos-submit:hover {
+                background: var(--pos-primary-hover);
+                border-color: var(--pos-primary-hover);
+                color: #fff;
+            }
+
+            .pos-workspace .pos-submit:disabled {
+                opacity: .55;
+                cursor: not-allowed;
+            }
+
+            .pos-workspace .pos-categories {
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 3px 0 14px;
+                margin-bottom: 5px;
+                scrollbar-width: thin;
+                scrollbar-color: #D9CABC transparent;
+            }
+
+            .pos-workspace .pos-categories button {
+                flex-shrink: 0;
+                white-space: nowrap;
+                padding: 9px 16px;
+                background: var(--pos-secondary-light);
+                border: 1px solid var(--pos-border);
+                border-radius: 24px;
+                color: var(--pos-secondary);
+                font-size: 12px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: background-color .16s ease,
+                    border-color .16s ease,
+                    color .16s ease,
+                    transform .14s ease;
+            }
+
+            .pos-workspace .pos-categories button:hover {
+                background: var(--pos-primary-light);
+                border-color: #E6CDB4;
+                color: var(--pos-primary-hover);
+            }
+
+            .pos-workspace .pos-categories button.active {
+                background: var(--pos-primary);
+                border-color: var(--pos-primary);
+                color: #fff;
+            }
+
+            .pos-workspace #posToppingModeBanner {
+                background: var(--pos-primary-light);
+                border: 1px solid #E6CDB4 !important;
+                border-radius: 12px !important;
+                color: var(--pos-secondary-hover);
+                box-shadow: none !important;
+                gap: 12px;
+            }
+
+            .pos-workspace #posToppingModeBanner strong {
+                color: var(--pos-primary);
+            }
+
+            .pos-workspace #posToppingModeBanner .btn {
+                flex-shrink: 0;
+            }
+
+            .pos-workspace .pos-product-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 13px;
+                max-height: calc(100vh - 235px);
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding: 3px;
+                scrollbar-width: thin;
+                scrollbar-color: #D9CABC transparent;
+            }
+
+            .pos-workspace .pos-product {
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+                background: #fff;
+                border: 1px solid var(--pos-border);
+                border-radius: 14px;
+                overflow: hidden;
+                box-shadow: 0 3px 12px rgba(96, 71, 53, .04);
+            }
+
+            .pos-workspace .pos-product.pos-product-enter {
+                animation: posFadeUp .35s ease-out both;
+            }
+
+            .pos-workspace .pos-product img {
+                display: block;
+                width: 100%;
+                aspect-ratio: 1.15;
+                object-fit: cover;
+                background: var(--pos-surface-soft);
+            }
+
+            .pos-workspace .pos-product-body {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                min-width: 0;
+                padding: 12px;
+            }
+
+            .pos-workspace .pos-product h6 {
+                min-height: 2.6em;
+                margin: 0 0 7px;
+                color: var(--pos-text);
+                font-size: 13px;
+                line-height: 1.4;
+                font-weight: 700;
+                overflow-wrap: anywhere;
+            }
+
+            .pos-workspace .pos-product-price {
+                color: var(--pos-primary);
+                font-size: 14px;
+                font-weight: 700;
+                margin-bottom: 10px;
+            }
+
+            .pos-workspace .pos-sizes {
+                display: flex;
+                gap: 6px;
+                margin-top: auto;
+            }
+
+            .pos-workspace .pos-sizes button {
+                flex: 1;
+                min-width: 0;
+                padding: 8px 4px;
+                background: var(--pos-secondary-light);
+                border: 1px solid var(--pos-border);
+                border-radius: 9px;
+                color: var(--pos-secondary-hover);
+                font-size: 12px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: background-color .15s ease,
+                    border-color .15s ease,
+                    color .15s ease,
+                    transform .14s ease;
+            }
+
+            .pos-workspace .pos-sizes button:hover {
+                background: var(--pos-primary-hover);
+                border-color: var(--pos-primary-hover);
+                color: #fff;
+            }
+
+            .pos-workspace .pos-tables-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .pos-workspace .pos-table-card {
+                min-width: 0;
+                background: var(--pos-surface-soft);
+                border: 1px solid var(--pos-border);
+                border-radius: 14px;
+                padding: 14px 12px;
+            }
+
+            .pos-workspace .pos-table-card.TRONG {
+                background: #F8F4EF;
+                border-color: var(--pos-border);
+            }
+
+            .pos-workspace .pos-table-card.CO_KHACH {
+                background: var(--pos-primary-light);
+                border-color: #E6CDB4;
+            }
+
+            .pos-workspace .pos-table-card.selected {
+                outline: 2px solid var(--pos-primary);
+                outline-offset: 0;
+                animation: posTableSelect .26s ease-out;
+            }
+
+            .pos-workspace .pos-table-card h6 {
+                color: var(--pos-secondary-hover);
+                font-size: 13px;
+                font-weight: 700;
+                margin-bottom: 8px;
+            }
+
+            .pos-workspace .pos-table-card .small {
+                font-size: 12px;
+                color: var(--pos-muted);
+            }
+
+            .pos-workspace .pos-table-card .badge {
+                border-radius: 20px;
+                font-size: 10px;
+                font-weight: 600;
+                padding: 5px 9px;
+            }
+
+            .pos-workspace .pos-table-card .btn {
+                border-radius: 9px;
+                font-size: 11px;
+                padding: 7px 10px;
+            }
+
+            .pos-workspace .pos-tables .bi-circle-fill {
+                font-size: 10px;
+                margin-right: 4px;
+            }
+
+            .pos-workspace .alert-info {
+                background: var(--pos-primary-light);
+                border-color: #E6CDB4;
+                color: var(--pos-secondary-hover);
+            }
+
+            .pos-workspace .modal-content {
+                background: #fff;
+                border: 1px solid var(--pos-border);
+                border-radius: 18px !important;
+                box-shadow: 0 12px 32px rgba(96, 71, 53, .12);
+                overflow: hidden;
+            }
+
+            .pos-workspace .modal-header {
+                padding: 20px 24px;
+                border-bottom: 1px solid var(--pos-border);
+            }
+
+            .pos-workspace .modal-header h5 {
+                margin: 0;
+                color: var(--pos-secondary-hover);
+                font-size: 17px;
+                font-weight: 700;
+            }
+
+            .pos-workspace .modal-body {
+                padding: 22px 24px;
+                color: var(--pos-text);
+                font-size: 13px;
+            }
+
+            .pos-workspace .modal-footer {
+                padding: 14px 24px;
+                border-top: 1px solid var(--pos-border);
+            }
+
+            .pos-workspace .modal .btn-close:focus {
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .15);
+            }
+
+            .pos-payment-success {
+                animation: posPaymentSuccess .42s ease-out both;
+            }
+
+            .pos-payment-success .bi-check-circle-fill,
+            .pos-payment-success .bi-check-circle {
+                color: #198754;
+            }
+
+            @media (min-width: 1600px) {
+                .pos-workspace .pos-product-grid {
+                    grid-template-columns: repeat(4, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 1199.98px) {
+                .pos-workspace .pos-layout {
+                    grid-template-columns: minmax(280px, 1fr) minmax(400px, 1.6fr);
+                }
+
+                .pos-workspace .pos-tables {
+                    grid-column: 1 / -1;
+                }
+
+                .pos-workspace .pos-tables-grid {
+                    grid-template-columns: repeat(4, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 767.98px) {
+                .pos-workspace {
+                    padding-left: 12px !important;
+                    padding-right: 12px !important;
+                }
+
+                .pos-workspace .pos-layout {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+
+                .pos-workspace .pos-panel {
+                    width: 100%;
+                    padding: 16px;
+                    border-radius: 16px;
+                }
+
+                .pos-workspace .pos-menu {
+                    order: 0;
+                }
+
+                .pos-workspace .pos-checkout {
+                    order: 1;
+                }
+
+                .pos-workspace .pos-tables {
+                    order: 2;
+                }
+
+                .pos-workspace .pos-product-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    max-height: none;
+                }
+
+                .pos-workspace .pos-tables-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+
+                .pos-workspace .pos-menu>div:first-child {
+                    flex-wrap: wrap;
+                }
+
+                .pos-workspace .pos-menu .pos-search {
+                    flex: 1 1 100%;
+                }
+
+                .pos-workspace .pos-panel h4 {
+                    font-size: 16px;
+                }
+
+                .pos-workspace #posToppingModeBanner {
+                    flex-wrap: wrap;
+                }
+            }
+
+            @media (max-width: 359.98px) {
+                .pos-workspace .pos-panel {
+                    padding: 12px;
+                }
+
+                .pos-workspace .pos-product-grid {
+                    gap: 9px;
+                }
+
+                .pos-workspace .pos-product-body {
+                    padding: 9px;
+                }
+
+                .pos-workspace .pos-product h6 {
+                    font-size: 12px;
+                }
+
+                .pos-workspace .pos-product-price {
+                    font-size: 13px;
+                }
+
+                .pos-workspace .pos-sizes button {
+                    font-size: 11px;
+                    padding: 7px 3px;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+
+                .pos-workspace *,
+                .pos-workspace *::before,
+                .pos-workspace *::after {
+                    animation: none !important;
+                    transition: none !important;
+                    scroll-behavior: auto !important;
+                }
+
+                .pos-workspace .btn:active,
+                .pos-workspace .pos-submit:active,
+                .pos-workspace .pos-sizes button:active,
+                .pos-workspace .pos-categories button:active,
+                .pos-workspace .pos-qty button:active {
+                    transform: none !important;
+                }
+            }
+        </style>
+
+        <span id="posRole" hidden th:attr="data-role=${actor.role}"></span>
+
+        <div id="posProductsData" hidden>
+            <span th:each="p : ${products}" th:attr="data-id=${p.id},
+                       data-name=${p.name},
+                       data-size=${p.size},
+                       data-price=${p.price},
+                       data-image=${p.imageUrl},
+                       data-category=${p.category.id},
+                       data-category-name=${p.category.name},
+                       data-category-allow-topping=${p.category.allowTopping}">
+            </span>
+        </div>
+
+        <div class="pos-layout">
+
+            <section class="pos-panel pos-checkout">
+
+                <h4>
+                    <i class="bi bi-cart3"></i>
+                    Tạo đơn tại quầy / bàn
+                </h4>
+
+                <label class="pos-search">
+                    <i class="bi bi-search"></i>
+                    <input id="quickProductSearch" placeholder="Tìm món nhanh..." aria-label="Tìm món nhanh">
+                </label>
+
+                <div class="d-flex justify-content-between align-items-center my-3">
+                    <b class="small">
+                        MÓN ĐÃ CHỌN
+                        <span id="counterItemCount">(0)</span>
+                    </b>
+
+                    <button class="btn btn-sm text-danger" onclick="CashierApp.clearCart()">
+                        <i class="bi bi-trash3"></i>
+                        Xóa tất cả
+                    </button>
+                </div>
+
+                <div id="counterCartList" class="pos-cart-list">
+                    <div class="text-muted text-center py-5">
+                        Chưa chọn món nào
+                    </div>
+                </div>
+
+                <div class="pos-checkout-bottom">
+
+                    <div class="d-flex justify-content-between align-items-center py-3">
+                        <span class="text-muted">Tạm tính</span>
+                        <strong class="pos-total" id="counterCartTotal">0 ₫</strong>
+                    </div>
+
+                    <label for="counterTableId" class="small text-muted mb-1">
+                        Phục vụ tại
+                    </label>
+
+                    <select id="counterTableId" class="form-select mb-3">
+                        <option value="">Quầy / mang về</option>
+                        <option th:each="t : ${tables}" th:value="${t.id}" th:text="${t.name}"></option>
+                    </select>
+
+                    <label for="counterPayMethod" class="small text-muted mb-1">
+                        Phương thức thanh toán
+                    </label>
+
+                    <select id="counterPayMethod" class="form-select mb-3">
+                        <option value="CASH">Tiền mặt</option>
+                        <option value="BANK_TRANSFER">Chuyển khoản</option>
+                    </select>
+
+                    <button id="counterSubmitBtn" type="button" class="pos-submit"
+                        onclick="CashierApp.submitCounterOrder()">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        Thanh toán
+                    </button>
+
+                    <small class="d-block text-muted text-center mt-2">
+                        Giá và giảm giá được tính lại khi lập hóa đơn.
+                    </small>
+
+                </div>
+
+            </section>
+
+            <section class="pos-panel pos-menu">
+
+                <div class="d-flex justify-content-between gap-3 align-items-center mb-3">
+                    <h4 class="mb-0">
+                        <i class="bi bi-cup-hot"></i>
+                        Chọn món
+                    </h4>
+
+                    <label class="pos-search mb-0">
+                        <i class="bi bi-search"></i>
+                        <input id="posProductSearch" placeholder="Tìm trà sữa, cà phê..." aria-label="Tìm món">
+                    </label>
+                </div>
+
+                <div class="pos-categories" id="posCategories">
+                    <button class="active" data-category="">Tất cả</button>
+
+                    <button th:each="c : ${categories}" th:attr="data-category=${c.id}" th:text="${c.name}">
+                    </button>
+                </div>
+
+                <div id="posToppingModeBanner"
+                    class="alert alert-info d-none d-flex justify-content-between align-items-center py-2 px-3 mb-3 rounded-3 shadow-sm border-0">
+
+                    <div>
+                        <i class="bi bi-pin-angle-fill me-1 text-primary"></i>
+                        <span class="small fw-semibold">
+                            Đang gắn Topping cho dòng:
+                            <strong id="toppingTargetLineName">Trà Sữa</strong>
+                        </span>
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-primary-custom rounded-pill px-3 py-1"
+                        onclick="CashierApp.exitToppingMode()">
+                        <i class="bi bi-check-lg me-1"></i>
+                        Xong Topping
+                    </button>
+
+                </div>
+
+                <div id="posProductGrid" class="pos-product-grid"></div>
+
+            </section>
+
+            <section class="pos-panel pos-tables">
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0">
+                        <i class="bi bi-map"></i>
+                        Sơ đồ bàn
+                    </h4>
+                </div>
+
+                <div class="d-flex gap-3 text-muted small mb-3">
+                    <span>
+                        <i class="bi bi-circle-fill text-success"></i>
+                        Trống
+                    </span>
+                    <span>
+                        <i class="bi bi-circle-fill text-danger"></i>
+                        Có khách
+                    </span>
+                </div>
+
+                <div id="tablesGrid" class="pos-tables-grid"></div>
+
+            </section>
+
+        </div>
+
+        <div class="modal fade" id="tableBlockersModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content rounded-4">
+
+                    <div class="modal-header">
+                        <h5 id="tableBlockersTitle">
+                            Chưa thể đóng phiên
+                        </h5>
+
+                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                    </div>
+
+                    <div class="modal-body" id="tableBlockersBody"></div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                            Quay lại kiểm tra
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/cashier/cashier.js}"></script>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                CashierApp.init();
+
+                const workspace = document.querySelector('.pos-workspace');
+                const productGrid = document.getElementById('posProductGrid');
+                const cartList = document.getElementById('counterCartList');
+                const totalElement = document.getElementById('counterCartTotal');
+
+                if (!workspace) return;
+
+                const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+                const restartAnimation = (element, className) => {
+                    if (!element || reducedMotion.matches) return;
+
+                    element.classList.remove(className);
+                    void element.offsetWidth;
+                    element.classList.add(className);
+                };
+
+                const animateProducts = () => {
+                    if (!productGrid || reducedMotion.matches) return;
+
+                    const products = Array.from(
+                        productGrid.querySelectorAll('.pos-product')
+                    );
+
+                    products.forEach((product, index) => {
+                        product.classList.remove('pos-product-enter');
+                        product.style.animationDelay = '';
+
+                        if (index < 12) {
+                            product.style.animationDelay = `${index * 45}ms`;
+                            void product.offsetWidth;
+                            product.classList.add('pos-product-enter');
+                        }
+                    });
+                };
+
+                const animateNewCartItems = (nodes) => {
+                    if (reducedMotion.matches) return;
+
+                    nodes.forEach(node => {
+                        if (!(node instanceof Element)) return;
+
+                        const items = [];
+
+                        if (node.matches('.pos-cart-item')) {
+                            items.push(node);
+                        }
+
+                        node.querySelectorAll('.pos-cart-item').forEach(item => {
+                            items.push(item);
+                        });
+
+                        items.forEach(item => {
+                            restartAnimation(item, 'pos-cart-enter');
+                        });
+                    });
+                };
+
+                if (productGrid) {
+                    const productObserver = new MutationObserver(mutations => {
+                        if (mutations.some(mutation =>
+                            mutation.type === 'childList'
+                        )) {
+                            animateProducts();
+                        }
+                    });
+
+                    productObserver.observe(productGrid, {
+                        childList: true
+                    });
+
+                    animateProducts();
+                }
+
+                if (cartList) {
+                    const cartObserver = new MutationObserver(mutations => {
+                        const addedNodes = [];
+
+                        mutations.forEach(mutation => {
+                            if (mutation.type === 'childList') {
+                                mutation.addedNodes.forEach(node => {
+                                    addedNodes.push(node);
+                                });
+                            }
+                        });
+
+                        if (addedNodes.length) {
+                            animateNewCartItems(addedNodes);
+                        }
+                    });
+
+                    cartObserver.observe(cartList, {
+                        childList: true,
+                        subtree: true
+                    });
+                }
+
+                if (totalElement) {
+                    let previousTotal = totalElement.textContent.trim();
+
+                    const totalObserver = new MutationObserver(() => {
+                        const currentTotal = totalElement.textContent.trim();
+
+                        if (currentTotal !== previousTotal) {
+                            previousTotal = currentTotal;
+                            restartAnimation(
+                                totalElement,
+                                'pos-total-updated'
+                            );
+                        }
+                    });
+
+                    totalObserver.observe(totalElement, {
+                        childList: true,
+                        characterData: true,
+                        subtree: true
+                    });
+                }
+
+                const tablesGrid = document.getElementById('tablesGrid');
+
+                if (tablesGrid) {
+                    const animateSelectedTable = () => {
+                        if (reducedMotion.matches) return;
+
+                        tablesGrid.querySelectorAll(
+                            '.pos-table-card.selected'
+                        ).forEach(card => {
+                            restartAnimation(card, 'pos-table-selected');
+                        });
+                    };
+
+                    const tableObserver = new MutationObserver(mutations => {
+                        mutations.forEach(mutation => {
+                            if (
+                                mutation.type === 'attributes' &&
+                                mutation.attributeName === 'class' &&
+                                mutation.target.classList.contains('selected')
+                            ) {
+                                const card = mutation.target;
+
+                                if (!reducedMotion.matches) {
+                                    card.style.animation = 'none';
+                                    void card.offsetWidth;
+                                    card.style.animation = '';
+                                }
+                            }
+                        });
+                    });
+
+                    tableObserver.observe(tablesGrid, {
+                        subtree: true,
+                        attributes: true,
+                        attributeFilter: ['class']
+                    });
+                }
+
+                const successSelector = [
+                    '.toast.show.text-bg-success',
+                    '.toast.show.bg-success',
+                    '.alert-success:not(.d-none)',
+                    '[role="alert"].text-bg-success'
+                ].join(',');
+
+                const animatedSuccessElements = new WeakSet();
+
+                const checkPaymentSuccess = () => {
+                    document.querySelectorAll(successSelector).forEach(element => {
+                        const isVisible = element.getClientRects().length > 0;
+
+                        if (!isVisible || animatedSuccessElements.has(element)) {
+                            return;
+                        }
+
+                        const text = (element.textContent || '').toLowerCase();
+
+                        const refersToPayment = [
+                            'thanh toán thành công',
+                            'thanh toan thanh cong',
+                            'đã thanh toán',
+                            'da thanh toan'
+                        ].some(value => text.includes(value));
+
+                        if (!refersToPayment) return;
+
+                        animatedSuccessElements.add(element);
+
+                        if (!reducedMotion.matches) {
+                            element.classList.add('pos-payment-success');
+                        }
+                    });
+                };
+
+                const successObserver = new MutationObserver(checkPaymentSuccess);
+
+                successObserver.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['class', 'style']
+                });
+
+                checkPaymentSuccess();
+            });
+        </script>
+
+        <style>
+            .pos-workspace .pos-table-card.pos-table-selected {
+                animation: posTableSelect .26s ease-out;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .pos-workspace .pos-table-card.pos-table-selected {
+                    animation: none !important;
+                }
+            }
+        </style>
+    </th:block>
+
+</body>
+
+</html>

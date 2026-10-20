@@ -1,78 +1,688 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+
 <head>
     <title>Quản Lý Thực Đơn - Admin</title>
 </head>
+
 <body>
-    <div th:fragment="content" class="container-fluid py-4 px-lg-4">
+    <div th:fragment="content" class="container-fluid py-4 px-lg-4 catalog-page">
+
+        <style>
+            .catalog-page {
+                --catalog-primary: #b86b35;
+                --catalog-primary-hover: #9e5524;
+                --catalog-primary-light: #fbeee4;
+                --catalog-secondary: #775D4A;
+                --catalog-secondary-hover: #604735;
+                --catalog-secondary-light: #F3EBE4;
+                --catalog-border: #E8DED5;
+                --catalog-muted: #786F68;
+                --catalog-text: #1e293b;
+                color: var(--catalog-text);
+                font-family: 'Be Vietnam Pro', sans-serif;
+            }
+
+            .catalog-page .admin-sidebar {
+                background: #fff;
+                border: 1px solid var(--catalog-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 4px 18px rgba(96, 71, 53, .045) !important;
+            }
+
+            .catalog-page .admin-sidebar h6 {
+                color: var(--catalog-muted) !important;
+                font-size: 11px;
+                letter-spacing: .07em;
+            }
+
+            .catalog-page .admin-nav-link {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 16px;
+                border-radius: 10px;
+                color: var(--catalog-secondary);
+                font-size: 13px;
+                font-weight: 500;
+                text-decoration: none;
+            }
+
+            .catalog-page .admin-nav-link i {
+                color: var(--catalog-primary);
+                font-size: 16px;
+            }
+
+            .catalog-page .admin-nav-link:hover,
+            .catalog-page .admin-nav-link.active {
+                background: var(--catalog-primary-light);
+                color: var(--catalog-primary);
+            }
+
+            .catalog-page .admin-nav-link.active {
+                font-weight: 700;
+            }
+
+            .catalog-page .admin-content-column {
+                min-width: 0;
+            }
+
+            .catalog-page .admin-content-column>.d-flex:first-child {
+                gap: 16px;
+                flex-wrap: wrap;
+            }
+
+            .catalog-page .brand-font {
+                color: var(--catalog-secondary-hover);
+                font-weight: 700;
+            }
+
+            .catalog-page h3.brand-font {
+                font-size: 25px;
+                line-height: 1.4;
+            }
+
+            .catalog-page h5.brand-font {
+                font-size: 17px;
+            }
+
+            .catalog-page .text-muted {
+                color: var(--catalog-muted) !important;
+            }
+
+            .catalog-page .text-primary {
+                color: var(--catalog-primary) !important;
+            }
+
+            .catalog-page .admin-content-column>.card {
+                background: #fff;
+                border: 1px solid var(--catalog-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 4px 18px rgba(96, 71, 53, .05) !important;
+            }
+
+            .catalog-page .card-header {
+                background: #fff !important;
+                border-bottom: 1px solid var(--catalog-border) !important;
+                padding: 18px 20px !important;
+            }
+
+            .catalog-page .card-footer {
+                background: #fff !important;
+                border-top: 1px solid var(--catalog-border) !important;
+            }
+
+            .catalog-page .btn {
+                font-family: 'Be Vietnam Pro', sans-serif;
+                font-size: 12px;
+                font-weight: 600;
+                border-radius: 10px;
+                box-shadow: none !important;
+                transition: background-color .18s ease,
+                    border-color .18s ease,
+                    color .18s ease,
+                    transform .14s ease;
+            }
+
+            .catalog-page .btn:active:not(:disabled) {
+                transform: scale(.97);
+            }
+
+            .catalog-page .btn-primary-custom,
+            .catalog-page .btn-primary {
+                background: var(--catalog-primary) !important;
+                border: 1px solid var(--catalog-primary) !important;
+                color: #fff !important;
+            }
+
+            .catalog-page .btn-primary-custom:hover,
+            .catalog-page .btn-primary:hover {
+                background: var(--catalog-primary-hover) !important;
+                border-color: var(--catalog-primary-hover) !important;
+                color: #fff !important;
+            }
+
+            .catalog-page .btn-outline-primary {
+                background: #fff;
+                border: 1px solid #D9B99B;
+                color: var(--catalog-primary);
+            }
+
+            .catalog-page .btn-outline-primary:hover {
+                background: var(--catalog-primary-light);
+                border-color: var(--catalog-primary);
+                color: var(--catalog-primary-hover);
+            }
+
+            .catalog-page .btn-outline-secondary {
+                background: #fff;
+                border: 1px solid #D9CABC;
+                color: var(--catalog-secondary);
+            }
+
+            .catalog-page .btn-outline-secondary:hover {
+                background: var(--catalog-secondary-light);
+                border-color: #C99261;
+                color: var(--catalog-secondary-hover);
+            }
+
+            .catalog-page .btn-outline-info {
+                background: #fff;
+                border: 1px solid #D9B99B;
+                color: var(--catalog-primary);
+            }
+
+            .catalog-page .btn-outline-info:hover {
+                background: var(--catalog-primary-light);
+                border-color: var(--catalog-primary);
+                color: var(--catalog-primary-hover);
+            }
+
+            .catalog-page .btn-outline-danger {
+                background: #fff;
+                border: 1px solid #E8B7B2;
+                color: #B85045;
+            }
+
+            .catalog-page .btn-outline-danger:hover {
+                background: #FBEDE8;
+                border-color: #B85045;
+                color: #A54239;
+            }
+
+            .catalog-page .btn-outline-success {
+                background: #fff;
+                border: 1px solid #B8D9C4;
+                color: #27865B;
+            }
+
+            .catalog-page .btn-outline-success:hover {
+                background: #E8F5ED;
+                border-color: #27865B;
+                color: #1B6B46;
+            }
+
+            .catalog-page .form-control,
+            .catalog-page .form-select {
+                border: 1px solid var(--catalog-border);
+                background-color: #fff;
+                color: var(--catalog-text);
+                border-radius: 12px;
+                box-shadow: none;
+                font-size: 13px;
+                min-height: 40px;
+            }
+
+            .catalog-page .form-control:focus,
+            .catalog-page .form-select:focus {
+                border-color: var(--catalog-primary);
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .1);
+                outline: none;
+            }
+
+            .catalog-page .form-control::placeholder {
+                color: #A58A74;
+            }
+
+            .catalog-page .form-label {
+                color: var(--catalog-secondary-hover);
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            .catalog-page .form-check-input {
+                border-color: #D9CABC;
+            }
+
+            .catalog-page .form-check-input:checked {
+                background-color: var(--catalog-primary);
+                border-color: var(--catalog-primary);
+            }
+
+            .catalog-page .form-check-input:focus {
+                border-color: var(--catalog-primary);
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .1);
+            }
+
+            .catalog-page .input-group>.form-control {
+                border-radius: 24px 0 0 24px !important;
+            }
+
+            .catalog-page .input-group>.btn {
+                border-radius: 0 24px 24px 0 !important;
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .catalog-page .table-responsive {
+                scrollbar-width: thin;
+                scrollbar-color: #D9CABC transparent;
+            }
+
+            .catalog-page .table {
+                margin-bottom: 0;
+                --bs-table-bg: transparent;
+                --bs-table-hover-bg: #FBEFE5;
+                border-color: #F0E7DF;
+            }
+
+            .catalog-page .table thead th {
+                background: #F8F4EF !important;
+                border-bottom: 1px solid var(--catalog-border);
+                color: var(--catalog-secondary-hover);
+                font-size: 12px;
+                font-weight: 700;
+                padding: 14px 16px;
+                white-space: nowrap;
+                vertical-align: middle;
+            }
+
+            .catalog-page .table tbody td {
+                padding: 13px 16px;
+                color: var(--catalog-text);
+                font-size: 12px;
+                vertical-align: middle;
+                border-bottom: 1px solid #F0E7DF;
+                transition: background-color .18s ease;
+            }
+
+            .catalog-page .table tbody tr:last-child td {
+                border-bottom: none;
+            }
+
+            .catalog-page .table-hover tbody tr:hover>* {
+                background: #FBEFE5 !important;
+            }
+
+            .catalog-page .table td strong {
+                color: var(--catalog-secondary-hover);
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .catalog-page .table .product-price {
+                color: var(--catalog-primary);
+                font-size: 13px;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+
+            .catalog-page .table img {
+                border-radius: 10px !important;
+                border: 1px solid var(--catalog-border) !important;
+                background: var(--catalog-secondary-light);
+            }
+
+            .catalog-page .table .badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 3px;
+                border-radius: 20px;
+                padding: 6px 10px;
+                font-size: 11px;
+                font-weight: 600;
+                line-height: 1.2;
+            }
+
+            .catalog-page .badge.bg-info {
+                background: #FBEFE5 !important;
+                border: 1px solid #E6CDB4;
+                color: var(--catalog-primary-hover) !important;
+            }
+
+            .catalog-page .badge.bg-success {
+                background: #E8F5ED !important;
+                border: 1px solid #C6E8D0;
+                color: #27865B !important;
+            }
+
+            .catalog-page .badge.bg-secondary {
+                background: #F3EBE4 !important;
+                border: 1px solid #E2D5C9;
+                color: #775D4A !important;
+            }
+
+            .catalog-page .badge.bg-light {
+                background: #FFF9F4 !important;
+                border: 1px solid var(--catalog-border) !important;
+                color: var(--catalog-secondary-hover) !important;
+            }
+
+            .catalog-page .table .btn-sm {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                min-height: 30px;
+                padding: 6px 11px !important;
+                border-radius: 9px !important;
+                white-space: nowrap;
+            }
+
+            .catalog-page .table label.btn {
+                margin-bottom: 0;
+                cursor: pointer;
+            }
+
+            .catalog-page #productPaginationContainer .page-link {
+                border-color: var(--catalog-border);
+                background: #fff;
+                color: var(--catalog-secondary);
+                font-size: 12px;
+                border-radius: 8px;
+                margin: 0 3px;
+                box-shadow: none;
+            }
+
+            .catalog-page #productPaginationContainer .page-link:hover {
+                background: var(--catalog-primary-light);
+                color: var(--catalog-primary);
+            }
+
+            .catalog-page #productPaginationContainer .page-item.active .page-link {
+                background: var(--catalog-primary);
+                border-color: var(--catalog-primary);
+                color: #fff;
+            }
+
+            .catalog-page .modal-content {
+                background: #fff;
+                border: 1px solid var(--catalog-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 12px 32px rgba(96, 71, 53, .12) !important;
+                overflow: hidden;
+            }
+
+            .catalog-page .modal-header {
+                background: #fff;
+                border-bottom: 1px solid var(--catalog-border) !important;
+                padding: 20px 24px;
+            }
+
+            .catalog-page .modal-title {
+                color: var(--catalog-secondary-hover);
+                font-size: 17px;
+                font-weight: 700;
+            }
+
+            .catalog-page .modal-body {
+                background: #fff;
+                color: var(--catalog-text);
+            }
+
+            .catalog-page .modal-footer {
+                background: #fff;
+                border-top: 1px solid var(--catalog-border);
+            }
+
+            .catalog-page .modal .card {
+                background: #FFFCF9 !important;
+                border: 1px solid var(--catalog-border) !important;
+                border-radius: 14px !important;
+                box-shadow: none !important;
+            }
+
+            .catalog-page .modal .card h6 {
+                color: var(--catalog-primary) !important;
+                font-size: 14px;
+            }
+
+            .catalog-page .modal .table thead th {
+                padding: 11px 12px;
+            }
+
+            .catalog-page .modal .table tbody td {
+                padding: 10px 12px;
+            }
+
+            .catalog-page .modal .btn-close:focus {
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .1);
+            }
+
+            .catalog-page #cfgProdImgPreview {
+                border-radius: 12px !important;
+                border: 1px solid var(--catalog-border) !important;
+            }
+
+            .catalog-page .modal .text-primary {
+                color: var(--catalog-primary) !important;
+            }
+
+            @keyframes catalogStaggerSlide {
+                from {
+                    opacity: 0;
+                    transform: translateX(-20px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            @keyframes catalogFilterReveal {
+                from {
+                    opacity: 0;
+                    transform: translateY(12px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes catalogModalZoom {
+                from {
+                    opacity: 0;
+                    transform: translateY(12px) scale(.96);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            @keyframes catalogImageReveal {
+                from {
+                    opacity: 0;
+                }
+
+                to {
+                    opacity: 1;
+                }
+            }
+
+            @keyframes catalogSuccessReveal {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px) scale(.98);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            .catalog-page .table tbody tr.catalog-row-enter {
+                animation: catalogStaggerSlide .32s ease-out both;
+                animation-delay: var(--catalog-row-delay, 0ms);
+            }
+
+            .catalog-page #productTableBody tr.catalog-filter-enter {
+                animation: catalogFilterReveal .3s ease-out both;
+                animation-delay: var(--catalog-row-delay, 0ms);
+            }
+
+            .catalog-page .modal.show .modal-dialog {
+                animation: catalogModalZoom .24s ease-out both;
+            }
+
+            .catalog-page img.catalog-image-reveal {
+                animation: catalogImageReveal .3s ease-out both;
+            }
+
+            .catalog-success-reveal {
+                animation: catalogSuccessReveal .35s ease-out both;
+            }
+
+            @media (max-width: 991.98px) {
+
+                .catalog-page .admin-sidebar-column,
+                .catalog-page .admin-content-column {
+                    width: 100%;
+                }
+
+                .catalog-page h3.brand-font {
+                    font-size: 21px;
+                }
+            }
+
+            @media (max-width: 575.98px) {
+                .catalog-page {
+                    padding-left: 12px !important;
+                    padding-right: 12px !important;
+                }
+
+                .catalog-page .admin-content-column>.d-flex:first-child>.d-flex {
+                    width: 100%;
+                    flex-wrap: wrap;
+                }
+
+                .catalog-page .admin-content-column>.d-flex:first-child>.d-flex .btn {
+                    flex: 1;
+                }
+
+                .catalog-page .card-header {
+                    padding: 15px !important;
+                    flex-wrap: wrap;
+                    gap: 12px;
+                }
+
+                .catalog-page .table thead th {
+                    padding: 11px 12px;
+                    font-size: 11px;
+                }
+
+                .catalog-page .table tbody td {
+                    padding: 10px 12px;
+                    font-size: 11px;
+                }
+
+                .catalog-page .modal-header {
+                    padding: 16px;
+                }
+
+                .catalog-page .modal-body {
+                    padding: 16px !important;
+                }
+
+                .catalog-page #cfgAddQuantityInput {
+                    width: 100px !important;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+
+                .catalog-page *,
+                .catalog-page *::before,
+                .catalog-page *::after,
+                .catalog-success-reveal {
+                    animation: none !important;
+                    transition: none !important;
+                    scroll-behavior: auto !important;
+                }
+
+                .catalog-page .btn:active {
+                    transform: none !important;
+                }
+            }
+        </style>
+
         <div class="row">
-            <!-- Sidebar -->
             <div class="col-lg-auto mb-4 admin-sidebar-column">
                 <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
-                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản Trị Hệ Thống</h6>
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">
+                        Quản Trị Hệ Thống
+                    </h6>
+
                     <a th:href="@{/admin/reports}" class="admin-nav-link">
                         <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
                     </a>
+
                     <a th:href="@{/admin/catalog}" class="admin-nav-link active">
-                        <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
+                        <i class="bi bi-cup-hot-fill"></i> Món &amp; Danh Mục
                     </a>
+
                     <a th:href="@{/admin/tables}" class="admin-nav-link">
-                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn &amp; QR
                     </a>
+
                     <a th:href="@{/admin/orders}" class="admin-nav-link">
                         <i class="bi bi-receipt"></i> Quản Lý Đơn Hàng
                     </a>
+
                     <a th:href="@{/admin/staff}" class="admin-nav-link">
                         <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
                     </a>
+
                     <a th:href="@{/admin/inventory}" class="admin-nav-link">
                         <i class="bi bi-box-seam-fill"></i> Kho Hàng
                     </a>
-                    <a th:href="@{/admin/documents}" class="admin-nav-link d-flex align-items-center justify-content-between">
+
+                    <a th:href="@{/admin/documents}"
+                        class="admin-nav-link d-flex align-items-center justify-content-between">
                         <span><i class="bi bi-files me-1"></i> Chứng Từ</span>
                         <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
                     </a>
+
                     <a th:href="@{/admin/settings}" class="admin-nav-link">
-                        <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
+                        <i class="bi bi-gear-fill"></i> Cài Đặt &amp; Giảm Giá
                     </a>
                 </div>
             </div>
 
-            <!-- Main Content -->
             <div class="col admin-content-column">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h3 class="brand-font mb-1">Quản Lý Danh Mục & Món Uống</h3>
+                        <h3 class="brand-font mb-1">
+                            Quản Lý Danh Mục &amp; Món Uống
+                        </h3>
                         <p class="text-muted small mb-0">
                             Quản lý danh mục, món uống, kích thước, giá bán và hình ảnh sản phẩm
                         </p>
                     </div>
+
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-3" data-bs-toggle="modal"
+                            data-bs-target="#createCategoryModal">
                             <i class="bi bi-folder-plus me-1"></i> Thêm Danh Mục
                         </button>
-                        <button type="button" class="btn btn-primary-custom rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createProductModal">
+
+                        <button type="button" class="btn btn-primary-custom rounded-pill px-3" data-bs-toggle="modal"
+                            data-bs-target="#createProductModal">
                             <i class="bi bi-plus-circle me-1"></i> Thêm Món Mới
                         </button>
-
                     </div>
                 </div>
 
-                <!-- Bảng Danh Mục -->
                 <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
                     <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                         <div>
                             <h5 class="brand-font mb-1">Danh Mục</h5>
-                            <p class="text-muted small mb-0">Thêm, sửa và bật/tắt danh mục món uống</p>
+                            <p class="text-muted small mb-0">
+                                Thêm, sửa và bật/tắt danh mục món uống
+                            </p>
                         </div>
-                        <button type="button"
-                                class="btn btn-outline-primary rounded-pill px-3"
-                                data-bs-toggle="modal"
-                                data-bs-target="#createCategoryModal">
+
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-3" data-bs-toggle="modal"
+                            data-bs-target="#createCategoryModal">
                             <i class="bi bi-folder-plus me-1"></i> Thêm Danh Mục
                         </button>
                     </div>
+
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
@@ -84,15 +694,18 @@
                                     <th style="width: 180px;">Thao Tác</th>
                                 </tr>
                             </thead>
+
                             <tbody>
                                 <tr th:each="cat : ${categories}">
                                     <td class="fw-semibold text-muted" th:text="'#' + ${cat.id}">#1</td>
+                                    <td><strong th:text="${cat.name}">Trà Sữa Truyền Thống</strong></td>
                                     <td>
-                                        <strong th:text="${cat.name}">Trà Sữa Truyền Thống</strong>
-                                    </td>
-                                    <td>
-                                        <span th:if="${cat.allowTopping}" class="badge bg-info text-dark"><i class="bi bi-check-circle-fill me-1"></i>Cho phép</span>
-                                        <span th:unless="${cat.allowTopping}" class="badge bg-secondary"><i class="bi bi-dash-circle me-1"></i>Không cho</span>
+                                        <span th:if="${cat.allowTopping}" class="badge bg-info text-dark">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Cho phép
+                                        </span>
+                                        <span th:unless="${cat.allowTopping}" class="badge bg-secondary">
+                                            <i class="bi bi-dash-circle me-1"></i>Không cho
+                                        </span>
                                     </td>
                                     <td>
                                         <span th:if="${cat.active}" class="badge bg-success">Đang dùng</span>
@@ -101,45 +714,41 @@
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
                                             <button type="button"
-                                                    class="btn btn-sm btn-outline-primary rounded-pill px-2"
-                                                    th:attr="data-category-id=${cat.id},
-                                                             data-category-name=${cat.name},
-                                                             data-category-active=${cat.active},
-                                                             data-category-allow-topping=${cat.allowTopping}"
-                                                    onclick="openEditCategoryModal(this)"
-                                                    title="Sửa danh mục">
+                                                class="btn btn-sm btn-outline-primary rounded-pill px-2" th:attr="data-category-id=${cat.id},
+                                                     data-category-name=${cat.name},
+                                                     data-category-active=${cat.active},
+                                                     data-category-allow-topping=${cat.allowTopping}"
+                                                onclick="openEditCategoryModal(this)" title="Sửa danh mục">
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
-                                            <button th:if="${cat.active}"
-                                                    type="button"
-                                                    class="btn btn-sm btn-outline-danger rounded-pill px-2"
-                                                    th:attr="data-category-id=${cat.id},
-                                                             data-category-name=${cat.name}"
-                                                    onclick="deactivateCategory(this)"
-                                                    title="Ẩn danh mục">
+
+                                            <button th:if="${cat.active}" type="button"
+                                                class="btn btn-sm btn-outline-danger rounded-pill px-2" th:attr="data-category-id=${cat.id},
+                                                     data-category-name=${cat.name}" onclick="deactivateCategory(this)"
+                                                title="Ẩn danh mục">
                                                 <i class="bi bi-trash"></i>
                                             </button>
-                                            <button th:unless="${cat.active}"
-                                                    type="button"
-                                                    class="btn btn-sm btn-outline-success rounded-pill px-2"
-                                                    th:attr="data-category-id=${cat.id},
-                                                             data-category-name=${cat.name}"
-                                                    onclick="restoreCategory(this)"
-                                                    title="Bật lại danh mục">
+
+                                            <button th:unless="${cat.active}" type="button"
+                                                class="btn btn-sm btn-outline-success rounded-pill px-2" th:attr="data-category-id=${cat.id},
+                                                     data-category-name=${cat.name}" onclick="restoreCategory(this)"
+                                                title="Bật lại danh mục">
                                                 <i class="bi bi-arrow-counterclockwise"></i>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
+
                                 <tr th:if="${#lists.isEmpty(categories)}">
-                                    <td colspan="5" class="text-center text-muted py-4">Chưa có danh mục nào.</td>
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        Chưa có danh mục nào.
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Bảng Danh Sách Món -->
                 <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
                     <div class="card-header bg-white border-0 py-3">
                         <div class="mb-3">
@@ -152,38 +761,28 @@
                         <div class="row g-3 align-items-center">
                             <div class="col-12 col-lg">
                                 <div class="input-group">
-                                    <input id="productSearchInput"
-                                        type="text"
-                                        class="form-control rounded-start-pill"
+                                    <input id="productSearchInput" type="text" class="form-control rounded-start-pill"
                                         placeholder="Tìm tên món..."
                                         onkeydown="if(event.key==='Enter') AdminApp.loadProducts(1)">
-                                    <button class="btn btn-outline-secondary rounded-end-pill"
-                                            type="button"
-                                            onclick="AdminApp.loadProducts(1)"
-                                            title="Tìm kiếm">
+
+                                    <button class="btn btn-outline-secondary rounded-end-pill" type="button"
+                                        onclick="AdminApp.loadProducts(1)" title="Tìm kiếm">
                                         <i class="bi bi-search"></i>
                                     </button>
                                 </div>
                             </div>
 
                             <div class="col-12 col-md-6 col-lg-3">
-                                <select id="productFilterCat"
-                                        class="form-select rounded-pill"
-                                        aria-label="Lọc theo danh mục"
-                                        onchange="AdminApp.loadProducts(1)">
+                                <select id="productFilterCat" class="form-select rounded-pill"
+                                    aria-label="Lọc theo danh mục" onchange="AdminApp.loadProducts(1)">
                                     <option value="">Tất cả</option>
-                                    <option th:each="c : ${categories}"
-                                            th:value="${c.id}"
-                                            th:text="${c.name}">
-                                    </option>
+                                    <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.name}"></option>
                                 </select>
                             </div>
 
                             <div class="col-12 col-md-6 col-lg-3">
-                                <select id="productFilterActive"
-                                        class="form-select rounded-pill"
-                                        aria-label="Lọc theo trạng thái"
-                                        onchange="AdminApp.loadProducts(1)">
+                                <select id="productFilterActive" class="form-select rounded-pill"
+                                    aria-label="Lọc theo trạng thái" onchange="AdminApp.loadProducts(1)">
                                     <option value="">Tất cả trạng thái</option>
                                     <option value="true">Đang bán</option>
                                     <option value="false">Ngừng bán</option>
@@ -192,15 +791,15 @@
 
                             <div class="col-auto">
                                 <button type="button"
-                                        class="btn btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
-                                        style="width: 38px; height: 38px;"
-                                        onclick="AdminApp.resetProductFilters()"
-                                        title="Đặt lại bộ lọc">
+                                    class="btn btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center"
+                                    style="width: 38px; height: 38px;" onclick="AdminApp.resetProductFilters()"
+                                    title="Đặt lại bộ lọc">
                                     <i class="bi bi-arrow-clockwise"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
+
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
@@ -214,23 +813,37 @@
                                     <th style="width: 210px;">Thao Tác</th>
                                 </tr>
                             </thead>
+
                             <tbody id="productTableBody">
                                 <tr th:each="p : ${products}">
                                     <td>
                                         <div class="position-relative" style="width: 50px; height: 50px;">
-                                            <img th:id="'productImg_' + ${p.id}" 
-                                                 th:src="${p.imageUrl != null and !p.imageUrl.isEmpty() ? p.imageUrl : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=100&q=80'}" 
-                                                 class="rounded-3 w-100 h-100 object-fit-cover border" alt="Ảnh">
-                                            <div th:id="'uploadSpinner_' + ${p.id}" class="spinner-border spinner-border-sm text-primary position-absolute top-50 start-50 translate-middle d-none"></div>
+                                            <img th:id="'productImg_' + ${p.id}"
+                                                th:src="${p.imageUrl != null and !p.imageUrl.isEmpty() ? p.imageUrl : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=100&q=80'}"
+                                                class="rounded-3 w-100 h-100 object-fit-cover border" alt="Ảnh">
+
+                                            <div th:id="'uploadSpinner_' + ${p.id}"
+                                                class="spinner-border spinner-border-sm text-primary position-absolute top-50 start-50 translate-middle d-none">
+                                            </div>
                                         </div>
                                     </td>
                                     <td>
                                         <strong class="d-block" th:text="${p.name}">Trà Sữa</strong>
                                         <small class="text-muted" th:text="${p.description}">Mô tả</small>
                                     </td>
-                                    <td><span class="badge bg-light text-dark border" th:text="${p.category != null ? p.category.name : 'Chưa phân loại'}">Danh mục</span></td>
-                                    <td><span class="badge bg-secondary" th:text="${p.size}">M</span></td>
-                                    <td class="fw-bold product-price" th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA') + ' ₫'}">25.000 ₫</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border"
+                                            th:text="${p.category != null ? p.category.name : 'Chưa phân loại'}">
+                                            Danh mục
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary" th:text="${p.size}">M</span>
+                                    </td>
+                                    <td class="fw-bold product-price"
+                                        th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA') + ' ₫'}">
+                                        25.000 ₫
+                                    </td>
                                     <td>
                                         <span th:if="${p.active}" class="badge bg-success">Đang bán</span>
                                         <span th:unless="${p.active}" class="badge bg-secondary">Ngừng bán</span>
@@ -238,18 +851,17 @@
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
                                             <button type="button"
-                                                    class="btn btn-sm btn-outline-primary rounded-pill px-2"
-                                                    th:attr="data-product-id=${p.id}"
-                                                    onclick="AdminApp.openProductFullConfig(this.dataset.productId)"
-                                                    title="Cấu hình & Công thức">
+                                                class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                                th:attr="data-product-id=${p.id}"
+                                                onclick="AdminApp.openProductFullConfig(this.dataset.productId)"
+                                                title="Cấu hình &amp; Công thức">
                                                 <i class="bi bi-sliders me-1"></i> Cấu hình
                                             </button>
 
                                             <label class="btn btn-sm btn-outline-info rounded-pill px-2 mb-0"
                                                 title="Đổi ảnh Cloudinary">
                                                 <i class="bi bi-cloud-arrow-up"></i>
-                                                <input type="file"
-                                                    class="d-none"
+                                                <input type="file" class="d-none"
                                                     accept="image/jpeg,image/png,image/webp"
                                                     th:attr="onchange=|AdminApp.uploadProductImage(${p.id}, this)|">
                                             </label>
@@ -259,15 +871,12 @@
                             </tbody>
                         </table>
                     </div>
+
                     <div class="card-footer bg-white border-0 py-3" id="productPaginationContainer"></div>
                 </div>
-
             </div>
         </div>
 
-        
-
-        <!-- Modal Thêm Danh Mục -->
         <div class="modal fade" id="createCategoryModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -275,18 +884,25 @@
                         <h5 class="modal-title brand-font">Thêm Danh Mục Mới</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
+
                     <div class="modal-body p-4">
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Tên danh mục:</label>
-                            <input type="text" id="newCatName" class="form-control rounded-3" placeholder="Ví dụ: Trà Trái Cây...">
+                            <input type="text" id="newCatName" class="form-control rounded-3"
+                                placeholder="Ví dụ: Trà Trái Cây...">
                         </div>
+
                         <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" role="switch" id="newCatAllowTopping" checked>
-                            <label class="form-check-label small fw-semibold" for="newCatAllowTopping">Cho phép chọn topping đi kèm</label>
+                            <input class="form-check-input" type="checkbox" role="switch" id="newCatAllowTopping"
+                                checked>
+                            <label class="form-check-label small fw-semibold" for="newCatAllowTopping">
+                                Cho phép chọn topping đi kèm
+                            </label>
                         </div>
+
                         <div class="d-grid gap-2">
                             <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold"
-                                    onclick="submitCreateCategory()">
+                                onclick="submitCreateCategory()">
                                 Tạo Danh Mục
                             </button>
                         </div>
@@ -295,7 +911,6 @@
             </div>
         </div>
 
-        <!-- Modal Sửa Danh Mục -->
         <div class="modal fade" id="editCategoryModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -303,24 +918,32 @@
                         <h5 class="modal-title brand-font">Sửa Danh Mục</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
+
                     <div class="modal-body p-4">
                         <input type="hidden" id="editCatId">
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Tên danh mục:</label>
                             <input type="text" id="editCatName" class="form-control rounded-3">
                         </div>
+
                         <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" role="switch" id="editCatActive">
-                            <label class="form-check-label small fw-semibold" for="editCatActive">Đang sử dụng</label>
+                            <label class="form-check-label small fw-semibold" for="editCatActive">
+                                Đang sử dụng
+                            </label>
                         </div>
+
                         <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" role="switch" id="editCatAllowTopping">
-                            <label class="form-check-label small fw-semibold" for="editCatAllowTopping">Cho phép chọn topping đi kèm</label>
+                            <label class="form-check-label small fw-semibold" for="editCatAllowTopping">
+                                Cho phép chọn topping đi kèm
+                            </label>
                         </div>
+
                         <div class="d-grid gap-2">
-                            <button type="button"
-                                    class="btn btn-primary-custom rounded-pill py-2 fw-bold"
-                                    onclick="submitUpdateCategory()">
+                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold"
+                                onclick="submitUpdateCategory()">
                                 Lưu Danh Mục
                             </button>
                         </div>
@@ -329,23 +952,19 @@
             </div>
         </div>
 
-        <!--Modal xem công thức món --> 
         <div class="modal fade" id="recipeModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content rounded-4 border-0 shadow">
-
                     <div class="modal-header">
-                        <h5 class="modal-title" id="recipeModalTitle">
-                            Công thức món
-                        </h5>
-                        <button type="button"
-                                class="btn-close"
-                                data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title" id="recipeModalTitle">Công thức món</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
 
                     <div class="modal-body p-4">
                         <input type="hidden" id="recipeProductId">
-                        <p class="text-muted small">Quản lý danh sách nguyên liệu sử dụng cho món uống.</p>
+                        <p class="text-muted small">
+                            Quản lý danh sách nguyên liệu sử dụng cho món uống.
+                        </p>
 
                         <div class="table-responsive mb-3">
                             <table class="table table-sm align-middle">
@@ -363,23 +982,24 @@
 
                         <div class="d-flex gap-2 mb-3">
                             <select id="addRecipeMaterialSelect" class="form-select form-select-sm">
-                                <option th:each="m : ${materials}"
-                                        th:value="${m.id}"
-                                        th:text="${m.name + ' (' + m.unit + ')'}"></option>
+                                <option th:each="m : ${materials}" th:value="${m.id}"
+                                    th:text="${m.name + ' (' + m.unit + ')'}"></option>
                             </select>
+
                             <button type="button" class="btn btn-sm btn-outline-primary text-nowrap"
-                                    onclick="addRecipeRow()">+ Thêm</button>
+                                onclick="addRecipeRow()">
+                                + Thêm
+                            </button>
                         </div>
 
-                        <button type="button" class="btn btn-primary-custom w-100"
-                                onclick="saveRecipe()">Lưu Công Thức</button>
+                        <button type="button" class="btn btn-primary-custom w-100" onclick="saveRecipe()">
+                            Lưu Công Thức
+                        </button>
                     </div>
-
                 </div>
             </div>
         </div>
 
-        <!-- Modal Thêm Món Mới -->
         <div class="modal fade" id="createProductModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -387,17 +1007,21 @@
                         <h5 class="modal-title brand-font">Thêm Món Uống Mới</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
+
                     <div class="modal-body p-4">
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Danh mục:</label>
                             <select id="newProdCategory" class="form-select rounded-3">
-                                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">Trà Sữa</option>
+                                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">Trà Sữa
+                                </option>
                             </select>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Tên món uống:</label>
                             <input type="text" id="newProdName" class="form-control rounded-3" placeholder="Tên món...">
                         </div>
+
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="form-label small fw-semibold">Size:</label>
@@ -406,18 +1030,23 @@
                                     <option value="L">Size L</option>
                                 </select>
                             </div>
+
                             <div class="col-6">
                                 <label class="form-label small fw-semibold">Giá bán (VND):</label>
-                                <input type="number" id="newProdPrice" class="form-control rounded-3" placeholder="25000">
+                                <input type="number" id="newProdPrice" class="form-control rounded-3"
+                                    placeholder="25000">
                             </div>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Mô tả món:</label>
-                            <textarea id="newProdDesc" class="form-control rounded-3" rows="2" placeholder="Mô tả hương vị..."></textarea>
+                            <textarea id="newProdDesc" class="form-control rounded-3" rows="2"
+                                placeholder="Mô tả hương vị..."></textarea>
                         </div>
+
                         <div class="d-grid gap-2">
                             <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold"
-                                    onclick="submitCreateProduct()">
+                                onclick="submitCreateProduct()">
                                 Thêm Món Vào Menu
                             </button>
                         </div>
@@ -426,88 +1055,141 @@
             </div>
         </div>
 
-        <!-- Modal Cấu Hình Gộp Món Uống (Thông tin, Size/Giá, Ảnh Cloudinary, Công thức) -->
         <div class="modal fade" id="productFullConfigModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered modal-lg">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                     <div class="modal-header border-0 pb-0">
                         <div>
-                            <h5 class="modal-title brand-font" id="fullConfigTitle">Cấu Hình Món Uống</h5>
-                            <p class="text-muted small mb-0">Cập nhật thông tin món, ảnh, size, giá bán và công thức định lượng</p>
+                            <h5 class="modal-title brand-font" id="fullConfigTitle">
+                                Cấu Hình Món Uống
+                            </h5>
+                            <p class="text-muted small mb-0">
+                                Cập nhật thông tin món, ảnh, size, giá bán và công thức định lượng
+                            </p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
+
                     <div class="modal-body p-4">
                         <input type="hidden" id="cfgProductId">
                         <input type="hidden" id="cfgProductOldImageUrl">
 
-                        <!-- PHẦN 1: THÔNG TIN MÓN & ẢNH -->
                         <div class="card border rounded-3 p-3 mb-3 bg-light bg-opacity-50">
-                            <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-info-circle me-1"></i> 1. Thông Tin Món Uống &amp; Ảnh</h6>
+                            <h6 class="fw-bold mb-3 text-primary">
+                                <i class="bi bi-info-circle me-1"></i>
+                                1. Thông Tin Món Uống &amp; Ảnh
+                            </h6>
+
                             <div class="row g-3">
                                 <div class="col-md-8">
                                     <div class="mb-3">
-                                        <label class="form-label small fw-semibold">Tên món uống <span class="text-danger">*</span></label>
-                                        <input type="text" id="cfgProdName" class="form-control rounded-3" placeholder="Tên món...">
+                                        <label class="form-label small fw-semibold">
+                                            Tên món uống <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" id="cfgProdName" class="form-control rounded-3"
+                                            placeholder="Tên món...">
                                     </div>
+
                                     <div class="row g-2 mb-3">
                                         <div class="col-md-6">
-                                            <label class="form-label small fw-semibold">Danh mục <span class="text-danger">*</span></label>
+                                            <label class="form-label small fw-semibold">
+                                                Danh mục <span class="text-danger">*</span>
+                                            </label>
                                             <select id="cfgProdCategory" class="form-select rounded-3">
-                                                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">Trà Sữa</option>
+                                                <option th:each="cat : ${categories}" th:value="${cat.id}"
+                                                    th:text="${cat.name}">Trà Sữa</option>
                                             </select>
                                         </div>
+
                                         <div class="col-md-6">
-                                            <label class="form-label small fw-semibold">Trạng thái bán</label>
+                                            <label class="form-label small fw-semibold">
+                                                Trạng thái bán
+                                            </label>
                                             <select id="cfgProdActive" class="form-select rounded-3">
                                                 <option value="true">Đang bán</option>
                                                 <option value="false">Ngừng bán</option>
                                             </select>
                                         </div>
                                     </div>
+
                                     <div>
-                                        <label class="form-label small fw-semibold">Mô tả món</label>
-                                        <textarea id="cfgProdDesc" class="form-control rounded-3" rows="2" placeholder="Hương vị, thành phần đặc trưng..."></textarea>
+                                        <label class="form-label small fw-semibold">
+                                            Mô tả món
+                                        </label>
+                                        <textarea id="cfgProdDesc" class="form-control rounded-3" rows="2"
+                                            placeholder="Hương vị, thành phần đặc trưng..."></textarea>
                                     </div>
                                 </div>
+
                                 <div class="col-md-4 text-center">
-                                    <label class="form-label small fw-semibold d-block">Ảnh món (Cloudinary)</label>
-                                    <div class="position-relative d-inline-block mx-auto mb-2" style="width: 120px; height: 120px;">
-                                        <img id="cfgProdImgPreview" src="" class="w-100 h-100 object-fit-cover rounded-3 border shadow-sm" alt="Ảnh món">
-                                        <div id="cfgProdUploadSpinner" class="spinner-border spinner-border-sm text-primary position-absolute top-50 start-50 translate-middle d-none"></div>
-                                    </div>
-                                    <label class="btn btn-sm btn-outline-info rounded-pill px-3 d-block w-100 mb-1">
-                                        <i class="bi bi-cloud-arrow-up me-1"></i> Chọn ảnh mới
-                                        <input type="file" id="cfgProdFileInput" class="d-none" accept="image/jpeg,image/png,image/webp" onchange="AdminApp.previewFullConfigImage(this)">
+                                    <label class="form-label small fw-semibold d-block">
+                                        Ảnh món (Cloudinary)
                                     </label>
-                                    <small class="text-muted d-block" style="font-size: 0.75rem;">Giữ nguyên ảnh cũ nếu không chọn file mới</small>
+
+                                    <div class="position-relative d-inline-block mx-auto mb-2"
+                                        style="width: 120px; height: 120px;">
+                                        <img id="cfgProdImgPreview" src=""
+                                            class="w-100 h-100 object-fit-cover rounded-3 border shadow-sm"
+                                            alt="Ảnh món">
+
+                                        <div id="cfgProdUploadSpinner"
+                                            class="spinner-border spinner-border-sm text-primary position-absolute top-50 start-50 translate-middle d-none">
+                                        </div>
+                                    </div>
+
+                                    <label class="btn btn-sm btn-outline-info rounded-pill px-3 d-block w-100 mb-1">
+                                        <i class="bi bi-cloud-arrow-up me-1"></i>
+                                        Chọn ảnh mới
+                                        <input type="file" id="cfgProdFileInput" class="d-none"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            onchange="AdminApp.previewFullConfigImage(this)">
+                                    </label>
+
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">
+                                        Giữ nguyên ảnh cũ nếu không chọn file mới
+                                    </small>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- PHẦN 2: SIZE & GIÁ BÁN -->
                         <div class="card border rounded-3 p-3 mb-3 bg-light bg-opacity-50">
-                            <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-tag me-1"></i> 2. Size &amp; Giá Bán</h6>
+                            <h6 class="fw-bold mb-3 text-primary">
+                                <i class="bi bi-tag me-1"></i>
+                                2. Size &amp; Giá Bán
+                            </h6>
+
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-semibold">Kích thước (Size) <span class="text-danger">*</span></label>
+                                    <label class="form-label small fw-semibold">
+                                        Kích thước (Size) <span class="text-danger">*</span>
+                                    </label>
                                     <select id="cfgProdSize" class="form-select rounded-3">
                                         <option value="M">Size M</option>
                                         <option value="L">Size L</option>
                                         <option value="ONE_SIZE">Một size (ONE_SIZE)</option>
                                     </select>
                                 </div>
+
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-semibold">Giá bán (VND) <span class="text-danger">*</span></label>
-                                    <input type="number" id="cfgProdPrice" class="form-control rounded-3" placeholder="Ví dụ: 30000" min="1000" step="500">
+                                    <label class="form-label small fw-semibold">
+                                        Giá bán (VND) <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" id="cfgProdPrice" class="form-control rounded-3"
+                                        placeholder="Ví dụ: 30000" min="1000" step="500">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- PHẦN 3: CÔNG THỨC / ĐỊNH LƯỢNG -->
                         <div class="card border rounded-3 p-3 mb-3 bg-light bg-opacity-50">
-                            <h6 class="fw-bold mb-2 text-primary"><i class="bi bi-receipt me-1"></i> 3. Công Thức &amp; Định Lượng Nguyên Liệu</h6>
-                            <p class="text-muted small mb-3">Định lượng dùng để trừ tồn trực tiếp khi Bếp hoàn tất pha chế toàn đơn.</p>
+                            <h6 class="fw-bold mb-2 text-primary">
+                                <i class="bi bi-receipt me-1"></i>
+                                3. Công Thức &amp; Định Lượng Nguyên Liệu
+                            </h6>
+
+                            <p class="text-muted small mb-3">
+                                Định lượng dùng để trừ tồn trực tiếp khi Bếp hoàn tất pha chế toàn đơn.
+                            </p>
+
                             <div class="table-responsive mb-3">
                                 <table class="table table-sm align-middle table-hover mb-0">
                                     <thead class="table-light">
@@ -518,41 +1200,218 @@
                                             <th class="text-center" style="width: 60px;">Xóa</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="cfgRecipeTableBody">
-                                        <!-- Dòng nguyên liệu -->
-                                    </tbody>
+                                    <tbody id="cfgRecipeTableBody"></tbody>
                                 </table>
                             </div>
+
                             <div class="d-flex gap-2 align-items-center">
                                 <select id="cfgAddMaterialSelect" class="form-select form-select-sm rounded-pill">
-                                    <option th:each="m : ${materials}" th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}"></option>
+                                    <option th:each="m : ${materials}" th:value="${m.id}"
+                                        th:text="${m.name + ' (' + m.unit + ')'}"></option>
                                 </select>
-                                <input type="number" id="cfgAddQuantityInput" class="form-control form-control-sm rounded-pill" style="width: 120px;" placeholder="Định lượng" value="1" min="0.001" step="0.001">
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill text-nowrap px-3" onclick="AdminApp.addFullConfigRecipeRow()">
+
+                                <input type="number" id="cfgAddQuantityInput"
+                                    class="form-control form-control-sm rounded-pill" style="width: 120px;"
+                                    placeholder="Định lượng" value="1" min="0.001" step="0.001">
+
+                                <button type="button"
+                                    class="btn btn-sm btn-outline-primary rounded-pill text-nowrap px-3"
+                                    onclick="AdminApp.addFullConfigRecipeRow()">
                                     <i class="bi bi-plus-lg me-1"></i> Thêm
                                 </button>
                             </div>
                         </div>
 
                         <div class="d-flex justify-content-end gap-2 mt-4">
-                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
-                            <button type="button" id="btnSaveFullConfig" class="btn btn-primary-custom rounded-pill px-4 fw-bold" onclick="AdminApp.saveProductFullConfig()">
-                                <i class="bi bi-check-circle me-1"></i> Lưu Cấu Hình Món
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
+                                data-bs-dismiss="modal">
+                                Đóng
+                            </button>
+
+                            <button type="button" id="btnSaveFullConfig"
+                                class="btn btn-primary-custom rounded-pill px-4 fw-bold"
+                                onclick="AdminApp.saveProductFullConfig()">
+                                <i class="bi bi-check-circle me-1"></i>
+                                Lưu Cấu Hình Món
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
 
     <th:block th:fragment="scripts">
         <script th:src="@{/js/admin/admin.js}"></script>
         <script>
-
             document.addEventListener('DOMContentLoaded', () => {
                 AdminApp.init();
+
+                const catalog = document.querySelector('.catalog-page');
+
+                if (!catalog) return;
+
+                const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+                const productTable = document.getElementById('productTableBody');
+
+                const categoryTable = Array.from(
+                    catalog.querySelectorAll('.admin-content-column > .card tbody')
+                ).find(body => body.id !== 'productTableBody');
+
+                const animateRows = (tbody, filterMode = false) => {
+                    if (!tbody || reducedMotion.matches) return;
+
+                    const rows = Array.from(tbody.children).filter(
+                        element => element.tagName === 'TR'
+                    );
+
+                    rows.forEach((row, index) => {
+                        row.classList.remove('catalog-row-enter', 'catalog-filter-enter');
+                        row.style.setProperty(
+                            '--catalog-row-delay',
+                            `${Math.min(index, 12) * 45}ms`
+                        );
+                    });
+
+                    void tbody.offsetWidth;
+
+                    rows.forEach((row, index) => {
+                        if (index >= 15) return;
+
+                        row.classList.add(
+                            filterMode ? 'catalog-filter-enter' : 'catalog-row-enter'
+                        );
+                    });
+                };
+
+                const animateImage = image => {
+                    if (!(image instanceof HTMLImageElement)) return;
+                    if (reducedMotion.matches || !image.naturalWidth) return;
+
+                    image.classList.remove('catalog-image-reveal');
+                    void image.offsetWidth;
+                    image.classList.add('catalog-image-reveal');
+                };
+
+                const registerImages = root => {
+                    if (!(root instanceof Element)) return;
+
+                    const images = root.matches('img')
+                        ? [root]
+                        : Array.from(root.querySelectorAll('img'));
+
+                    images.forEach(image => {
+                        if (image.dataset.catalogImageRegistered === 'true') return;
+
+                        image.dataset.catalogImageRegistered = 'true';
+
+                        image.addEventListener('load', () => {
+                            animateImage(image);
+                        });
+
+                        if (image.complete && image.naturalWidth) {
+                            animateImage(image);
+                        }
+                    });
+                };
+
+                if (categoryTable) {
+                    animateRows(categoryTable);
+                }
+
+                if (productTable) {
+                    const observer = new MutationObserver(mutations => {
+                        const replaced = mutations.some(mutation =>
+                            mutation.type === 'childList' &&
+                            (mutation.addedNodes.length > 0 ||
+                                mutation.removedNodes.length > 0)
+                        );
+
+                        if (!replaced) return;
+
+                        animateRows(productTable, true);
+                        registerImages(productTable);
+                    });
+
+                    observer.observe(productTable, {
+                        childList: true
+                    });
+
+                    animateRows(productTable);
+                    registerImages(productTable);
+                }
+
+                registerImages(catalog);
+
+                const imageObserver = new MutationObserver(mutations => {
+                    mutations.forEach(mutation => {
+                        mutation.addedNodes.forEach(node => {
+                            if (node instanceof Element) {
+                                registerImages(node);
+                            }
+                        });
+                    });
+                });
+
+                imageObserver.observe(catalog, {
+                    childList: true,
+                    subtree: true
+                });
+
+                const successSelector = [
+                    '.toast.bg-success',
+                    '.toast.text-bg-success',
+                    '.toast.border-success',
+                    '.alert-success'
+                ].join(',');
+
+                const animatedSuccess = new WeakSet();
+
+                const animateSuccess = element => {
+                    if (!(element instanceof Element)) return;
+                    if (reducedMotion.matches) return;
+                    if (animatedSuccess.has(element)) return;
+                    if (!element.matches(successSelector)) return;
+
+                    const visible = element.matches('.show, .showing') ||
+                        (element.matches('.alert-success') &&
+                            element.getClientRects().length > 0);
+
+                    if (!visible) return;
+
+                    animatedSuccess.add(element);
+                    element.classList.add('catalog-success-reveal');
+                };
+
+                document.addEventListener('shown.bs.toast', event => {
+                    animateSuccess(event.target);
+                }, true);
+
+                const successObserver = new MutationObserver(mutations => {
+                    mutations.forEach(mutation => {
+                        if (mutation.type === 'attributes') {
+                            animateSuccess(mutation.target);
+                            return;
+                        }
+
+                        mutation.addedNodes.forEach(node => {
+                            if (!(node instanceof Element)) return;
+
+                            animateSuccess(node);
+
+                            node.querySelectorAll(successSelector).forEach(
+                                animateSuccess
+                            );
+                        });
+                    });
+                });
+
+                successObserver.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
             });
 
             function submitCreateCategory() {
@@ -646,14 +1505,17 @@
 
                     const qtyTd = document.createElement('td');
                     const qtyInput = document.createElement('input');
+
                     qtyInput.type = 'number';
                     qtyInput.step = '0.001';
                     qtyInput.min = '0.001';
                     qtyInput.className = 'form-control form-control-sm';
                     qtyInput.value = row.quantity != null ? row.quantity : 1;
+
                     qtyInput.onchange = (e) => {
                         currentRecipeRows[index].quantity = parseFloat(e.target.value) || 0;
                     };
+
                     qtyTd.appendChild(qtyInput);
 
                     const unitTd = document.createElement('td');
@@ -667,6 +1529,7 @@
                     deleteBtn.type = 'button';
                     deleteBtn.className = 'btn btn-sm btn-outline-danger';
                     deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+
                     deleteBtn.onclick = () => {
                         currentRecipeRows.splice(index, 1);
                         renderRecipeRows();
@@ -698,7 +1561,9 @@
                 const rawText = select.options[select.selectedIndex].text;
                 let mName = rawText;
                 let mUnit = '';
+
                 const match = rawText.match(/^(.*?)\s*\((.*?)\)$/);
+
                 if (match) {
                     mName = match[1];
                     mUnit = match[2];
@@ -735,11 +1600,14 @@
                     )?.hide();
                 } catch (error) {
                     console.error(error);
-                    MilkTeaApi.showToast('Không lưu được công thức: ' + (error.message || ''), 'danger');
+                    MilkTeaApi.showToast(
+                        'Không lưu được công thức: ' + (error.message || ''),
+                        'danger'
+                    );
                 }
             }
-
         </script>
     </th:block>
 </body>
+
 </html>

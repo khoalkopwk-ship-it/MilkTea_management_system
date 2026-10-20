@@ -1,65 +1,639 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+
 <head>
     <title>Quản Lý Nhân Viên - Admin</title>
 </head>
+
 <body>
-    <div th:fragment="content" class="container-fluid py-4 px-lg-4">
+    <div th:fragment="content" class="container-fluid py-4 px-lg-4 admin-staff-page">
+        <style>
+            .admin-staff-page {
+                --staff-primary: #b86b35;
+                --staff-primary-hover: #9e5524;
+                --staff-primary-light: #fbeee4;
+                --staff-secondary: #775D4A;
+                --staff-secondary-hover: #604735;
+                --staff-secondary-light: #F3EBE4;
+                --staff-border: #E8DED5;
+                --staff-text: #1e293b;
+                --staff-muted: #786F68;
+                background: #fffdfa;
+                color: var(--staff-text);
+                min-height: calc(100vh - 76px);
+                font-family: 'Be Vietnam Pro', sans-serif;
+            }
+
+            .admin-staff-page *,
+            .admin-staff-page *::before,
+            .admin-staff-page *::after {
+                box-sizing: border-box;
+            }
+
+            .admin-staff-page .admin-sidebar {
+                background: #fff;
+                border: 1px solid var(--staff-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 4px 18px rgba(96, 71, 53, .045) !important;
+            }
+
+            .admin-staff-page .admin-sidebar h6 {
+                color: var(--staff-muted) !important;
+                font-size: 11px;
+                letter-spacing: .07em;
+            }
+
+            .admin-staff-page .admin-nav-link {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 16px;
+                border-radius: 10px;
+                color: var(--staff-secondary);
+                font-size: 13px;
+                font-weight: 500;
+                text-decoration: none;
+            }
+
+            .admin-staff-page .admin-nav-link i {
+                color: var(--staff-primary);
+                font-size: 16px;
+            }
+
+            .admin-staff-page .admin-nav-link:hover,
+            .admin-staff-page .admin-nav-link.active {
+                background: var(--staff-primary-light);
+                color: var(--staff-primary);
+            }
+
+            .admin-staff-page .admin-nav-link.active {
+                font-weight: 700;
+            }
+
+            .admin-staff-page .admin-content-column {
+                min-width: 0;
+            }
+
+            .admin-staff-page .admin-content-column>.d-flex:first-child {
+                gap: 16px;
+                flex-wrap: wrap;
+            }
+
+            .admin-staff-page .brand-font {
+                font-family: 'Be Vietnam Pro', sans-serif;
+                color: var(--staff-secondary-hover);
+                font-weight: 700;
+            }
+
+            .admin-staff-page h3.brand-font {
+                font-size: 25px;
+                line-height: 1.4;
+            }
+
+            .admin-staff-page .text-muted {
+                color: var(--staff-muted) !important;
+            }
+
+            .admin-staff-page .admin-content-column>.card {
+                background: #fff;
+                border: 1px solid var(--staff-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 4px 18px rgba(96, 71, 53, .05) !important;
+            }
+
+            .admin-staff-page .btn {
+                font-family: inherit;
+                font-size: 12px;
+                font-weight: 600;
+                border-radius: 10px;
+                box-shadow: none !important;
+                transition: background-color .18s ease,
+                    border-color .18s ease,
+                    color .18s ease,
+                    transform .12s ease;
+            }
+
+            .admin-staff-page .btn:active:not(:disabled) {
+                transform: scale(.97);
+            }
+
+            .admin-staff-page .btn-primary-custom,
+            .admin-staff-page .btn-primary {
+                background: var(--staff-primary) !important;
+                border: 1px solid var(--staff-primary) !important;
+                color: #fff !important;
+            }
+
+            .admin-staff-page .btn-primary-custom:hover,
+            .admin-staff-page .btn-primary:hover {
+                background: var(--staff-primary-hover) !important;
+                border-color: var(--staff-primary-hover) !important;
+            }
+
+            .admin-staff-page .btn-outline-primary {
+                background: #fff;
+                border: 1px solid #D9B99B;
+                color: var(--staff-primary);
+            }
+
+            .admin-staff-page .btn-outline-primary:hover {
+                background: var(--staff-primary-light);
+                border-color: var(--staff-primary);
+                color: var(--staff-primary-hover);
+            }
+
+            .admin-staff-page .btn-outline-secondary {
+                background: #fff;
+                border: 1px solid #D9CABC;
+                color: var(--staff-secondary);
+            }
+
+            .admin-staff-page .btn-outline-secondary:hover {
+                background: var(--staff-secondary-light);
+                border-color: #C99261;
+                color: var(--staff-secondary-hover);
+            }
+
+            .admin-staff-page .btn-outline-danger {
+                background: #fff;
+                border: 1px solid #E8B7B2;
+                color: #B85045;
+            }
+
+            .admin-staff-page .btn-outline-danger:hover {
+                background: #FBEDE8;
+                border-color: #B85045;
+                color: #A54239;
+            }
+
+            .admin-staff-page .btn-outline-success {
+                background: #fff;
+                border: 1px solid #B8D9C4;
+                color: #27865B;
+            }
+
+            .admin-staff-page .btn-outline-success:hover {
+                background: #E8F5ED;
+                border-color: #27865B;
+                color: #1B6B46;
+            }
+
+            .admin-staff-page .form-control,
+            .admin-staff-page .form-select {
+                min-height: 42px;
+                background-color: #fff;
+                border: 1px solid var(--staff-border);
+                border-radius: 12px;
+                color: var(--staff-text);
+                font-family: inherit;
+                font-size: 13px;
+                box-shadow: none;
+            }
+
+            .admin-staff-page .form-control:focus,
+            .admin-staff-page .form-select:focus {
+                border-color: var(--staff-primary);
+                box-shadow: 0 0 0 3px rgba(184, 107, 53, .1);
+                outline: none;
+            }
+
+            .admin-staff-page .form-control::placeholder {
+                color: #A58A74;
+            }
+
+            .admin-staff-page .input-group {
+                border-radius: 12px;
+            }
+
+            .admin-staff-page .input-group-text {
+                background: #fff !important;
+                border: 1px solid var(--staff-border);
+                border-right: none;
+                border-radius: 12px 0 0 12px;
+                color: var(--staff-primary);
+                padding-left: 15px;
+            }
+
+            .admin-staff-page .input-group .form-control {
+                border-left: none;
+                border-radius: 0 12px 12px 0;
+            }
+
+            .admin-staff-page .input-group:focus-within .input-group-text {
+                border-color: var(--staff-primary);
+            }
+
+            .admin-staff-page .input-group:focus-within .form-control {
+                border-color: var(--staff-primary);
+            }
+
+            .admin-staff-page .form-label {
+                color: var(--staff-secondary-hover);
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            .admin-staff-page .table-responsive {
+                scrollbar-width: thin;
+                scrollbar-color: #D9CABC transparent;
+            }
+
+            .admin-staff-page .table {
+                margin-bottom: 0;
+                --bs-table-bg: transparent;
+                --bs-table-hover-bg: #FFF8F2;
+                border-color: #F0E7DF;
+            }
+
+            .admin-staff-page .table thead th {
+                background: #F8F4EF !important;
+                border-bottom: 1px solid var(--staff-border);
+                color: var(--staff-secondary-hover);
+                font-size: 12px;
+                font-weight: 700;
+                padding: 15px 16px;
+                white-space: nowrap;
+                vertical-align: middle;
+            }
+
+            .admin-staff-page .table tbody td {
+                padding: 14px 16px;
+                background-color: #fff;
+                border-bottom: 1px solid #F0E7DF;
+                color: var(--staff-text);
+                font-size: 12px;
+                vertical-align: middle;
+                transition: background-color .18s ease;
+            }
+
+            .admin-staff-page .table tbody tr:last-child td {
+                border-bottom: none;
+            }
+
+            .admin-staff-page .table-hover tbody tr:hover>* {
+                background-color: #FFF8F2 !important;
+            }
+
+            .admin-staff-page #staffTableBody td:nth-child(2) {
+                color: var(--staff-secondary-hover);
+                font-weight: 700;
+            }
+
+            .admin-staff-page #staffTableBody td:nth-child(3) {
+                color: #6E625B;
+            }
+
+            .admin-staff-page #staffTableBody .badge {
+                display: inline-flex;
+                align-items: center;
+                border-radius: 20px;
+                padding: 7px 11px;
+                font-size: 11px;
+                font-weight: 600;
+                line-height: 1.2;
+            }
+
+            .admin-staff-page #staffTableBody td:nth-child(5) .badge.bg-danger {
+                background: #FBEDE8 !important;
+                border: 1px solid #EFC9C3;
+                color: #B85045 !important;
+            }
+
+            .admin-staff-page #staffTableBody td:nth-child(5) .badge.bg-primary {
+                background: #FBEFE5 !important;
+                border: 1px solid #E6CDB4;
+                color: #A65C29 !important;
+            }
+
+            .admin-staff-page #staffTableBody td:nth-child(5) .badge.bg-success {
+                background: #EAF5FD !important;
+                border: 1px solid #C9E2F5;
+                color: #397BA9 !important;
+            }
+
+            .admin-staff-page #staffTableBody td:nth-child(6) .badge.bg-success {
+                background: #E8F5ED !important;
+                border: 1px solid #C6E8D0;
+                color: #27865B !important;
+            }
+
+            .admin-staff-page #staffTableBody td:nth-child(6) .badge.bg-secondary {
+                background: #F3EBE4 !important;
+                border: 1px solid #E2D5C9;
+                color: #775D4A !important;
+            }
+
+            .admin-staff-page #staffTableBody .btn-sm {
+                min-height: 31px;
+                padding: 6px 12px !important;
+                border-radius: 9px !important;
+            }
+
+            .admin-staff-page #staffPagination {
+                gap: 12px;
+                padding: 12px 4px;
+                flex-wrap: wrap;
+            }
+
+            .admin-staff-page #staffPagination small {
+                font-size: 12px;
+                color: var(--staff-muted) !important;
+            }
+
+            .admin-staff-page #staffPagination .page-link {
+                border: 1px solid var(--staff-border);
+                background: #fff;
+                color: var(--staff-secondary);
+                border-radius: 9px;
+                margin: 0 3px;
+                font-size: 12px;
+                min-width: 33px;
+                box-shadow: none;
+            }
+
+            .admin-staff-page #staffPagination .page-item.active .page-link {
+                background: var(--staff-primary);
+                border-color: var(--staff-primary);
+                color: #fff;
+            }
+
+            .admin-staff-page #staffPagination .page-link:hover {
+                background: var(--staff-primary-light);
+                color: var(--staff-primary);
+            }
+
+            .admin-staff-page #staffPagination .page-item.disabled .page-link {
+                background: #F8F4EF;
+                color: #AAA096;
+                opacity: .7;
+            }
+
+            .admin-staff-page .modal-content {
+                background: #fff;
+                border: 1px solid var(--staff-border) !important;
+                border-radius: 18px !important;
+                box-shadow: 0 12px 32px rgba(96, 71, 53, .12) !important;
+                overflow: hidden;
+            }
+
+            .admin-staff-page .modal-header {
+                border-bottom: 1px solid var(--staff-border) !important;
+                background: #fff;
+                padding: 20px 24px;
+            }
+
+            .admin-staff-page .modal-title {
+                color: var(--staff-secondary-hover);
+                font-size: 17px;
+                font-weight: 700;
+            }
+
+            .admin-staff-page .modal-body {
+                background: #fff;
+            }
+
+            .admin-staff-page .modal .btn-primary-custom {
+                min-height: 42px;
+                border-radius: 12px !important;
+            }
+
+            .admin-staff-page .modal .alert-danger {
+                background: #FFF1EE;
+                border: 1px solid #EFC9C3;
+                border-radius: 10px;
+                color: #B85045;
+            }
+
+            @keyframes staffStaggerSlide {
+                from {
+                    opacity: 0;
+                    transform: translateX(-20px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            @keyframes staffFilterFade {
+                from {
+                    opacity: 0;
+                    transform: translateY(12px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes staffPaginationFade {
+                from {
+                    opacity: 0;
+                    transform: translateX(10px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+
+            @keyframes staffStatusHighlight {
+                0% {
+                    background-color: #F6DECA;
+                }
+
+                55% {
+                    background-color: #FFF0DF;
+                }
+
+                100% {
+                    background-color: #FFFFFF;
+                }
+            }
+
+            @keyframes staffModalZoomFade {
+                from {
+                    opacity: 0;
+                    transform: translateY(12px) scale(.96);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+
+            @keyframes staffSuccessReveal {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .admin-staff-page #staffTableBody tr.staff-stagger-enter {
+                animation: staffStaggerSlide .3s ease-out both;
+                animation-delay: var(--staff-delay, 0ms);
+            }
+
+            .admin-staff-page #staffTableBody tr.staff-filter-enter {
+                animation: staffFilterFade .25s ease-out both;
+                animation-delay: var(--staff-delay, 0ms);
+            }
+
+            .admin-staff-page #staffTableBody tr.staff-pagination-enter {
+                animation: staffPaginationFade .2s ease-out both;
+                animation-delay: var(--staff-delay, 0ms);
+            }
+
+            .admin-staff-page #staffTableBody tr.staff-status-changed>td {
+                animation: staffStatusHighlight .65s ease-out both;
+            }
+
+            .admin-staff-page .modal.show .modal-dialog {
+                animation: staffModalZoomFade .22s ease-out both;
+            }
+
+            .staff-success-reveal {
+                animation: staffSuccessReveal .35s ease-out both;
+            }
+
+            @media (max-width: 991.98px) {
+
+                .admin-staff-page .admin-sidebar-column,
+                .admin-staff-page .admin-content-column {
+                    width: 100%;
+                }
+
+                .admin-staff-page h3.brand-font {
+                    font-size: 21px;
+                }
+            }
+
+            @media (max-width: 575.98px) {
+                .admin-staff-page {
+                    padding-left: 12px !important;
+                    padding-right: 12px !important;
+                }
+
+                .admin-staff-page .admin-content-column>.d-flex:first-child {
+                    align-items: flex-start !important;
+                }
+
+                .admin-staff-page .admin-content-column>.d-flex:first-child>.btn {
+                    width: 100%;
+                }
+
+                .admin-staff-page .table thead th,
+                .admin-staff-page .table tbody td {
+                    padding: 11px 12px;
+                    font-size: 11px;
+                }
+
+                .admin-staff-page .modal-header {
+                    padding: 16px;
+                }
+
+                .admin-staff-page .modal-body {
+                    padding: 16px !important;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+
+                .admin-staff-page *,
+                .admin-staff-page *::before,
+                .admin-staff-page *::after,
+                .staff-success-reveal {
+                    animation: none !important;
+                    transition: none !important;
+                    scroll-behavior: auto !important;
+                }
+
+                .admin-staff-page .btn:active {
+                    transform: none !important;
+                }
+            }
+        </style>
+
         <div class="row">
-            <!-- Sidebar -->
             <div class="col-lg-auto mb-4 admin-sidebar-column">
                 <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
-                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản Trị Hệ Thống</h6>
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">
+                        Quản Trị Hệ Thống
+                    </h6>
+
                     <a th:href="@{/admin/reports}" class="admin-nav-link">
                         <i class="bi bi-graph-up-arrow"></i> Báo Cáo Doanh Thu
                     </a>
+
                     <a th:href="@{/admin/catalog}" class="admin-nav-link">
-                        <i class="bi bi-cup-hot-fill"></i> Món & Danh Mục
+                        <i class="bi bi-cup-hot-fill"></i> Món &amp; Danh Mục
                     </a>
+
                     <a th:href="@{/admin/tables}" class="admin-nav-link">
-                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn & QR
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ Đồ Bàn &amp; QR
                     </a>
+
                     <a th:href="@{/admin/orders}" class="admin-nav-link">
                         <i class="bi bi-receipt"></i> Quản Lý Đơn Hàng
                     </a>
+
                     <a th:href="@{/admin/staff}" class="admin-nav-link active">
                         <i class="bi bi-people-fill"></i> Tài Khoản Nhân Viên
                     </a>
+
                     <a th:href="@{/admin/inventory}" class="admin-nav-link">
                         <i class="bi bi-box-seam-fill"></i> Kho Hàng
                     </a>
-                    <a th:href="@{/admin/documents}" class="admin-nav-link d-flex align-items-center justify-content-between">
+
+                    <a th:href="@{/admin/documents}"
+                        class="admin-nav-link d-flex align-items-center justify-content-between">
                         <span><i class="bi bi-files me-1"></i> Chứng Từ</span>
                         <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
                     </a>
+
                     <a th:href="@{/admin/settings}" class="admin-nav-link">
-                        <i class="bi bi-gear-fill"></i> Cài Đặt & Giảm Giá
+                        <i class="bi bi-gear-fill"></i> Cài Đặt &amp; Giảm Giá
                     </a>
                 </div>
             </div>
 
-            <!-- Main Content -->
             <div class="col admin-content-column">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h3 class="brand-font mb-1">Tài Khoản Nhân Viên</h3>
-                        <p class="text-muted small mb-0">Quản lý nhân sự các vị trí Quản Trị, Thu Ngân, Bếp</p>
+                        <p class="text-muted small mb-0">
+                            Quản lý nhân sự các vị trí Quản Trị, Thu Ngân, Bếp
+                        </p>
                     </div>
-                    <button type="button" class="btn btn-primary-custom rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createStaffModal">
+
+                    <button type="button" class="btn btn-primary-custom rounded-pill px-3" data-bs-toggle="modal"
+                        data-bs-target="#createStaffModal">
                         <i class="bi bi-person-plus-fill me-1"></i> Thêm Nhân Viên Mới
                     </button>
                 </div>
 
-                <!-- Bộ lọc & Tìm kiếm -->
                 <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
                     <div class="row g-2 align-items-center">
                         <div class="col-md-7">
                             <div class="input-group">
-                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                                <input type="text" id="staffSearch" class="form-control border-start-0" placeholder="Tìm theo họ tên, email, số điện thoại..." oninput="filterStaffList()">
+                                <span class="input-group-text bg-white border-end-0">
+                                    <i class="bi bi-search text-muted"></i>
+                                </span>
+
+                                <input type="text" id="staffSearch" class="form-control border-start-0"
+                                    placeholder="Tìm theo họ tên, email, số điện thoại..." oninput="filterStaffList()">
                             </div>
                         </div>
+
                         <div class="col-md-5">
                             <select id="staffRoleFilter" class="form-select" onchange="filterStaffList()">
                                 <option value="">Tất cả vai trò nhân viên</option>
@@ -85,19 +659,15 @@
                                     <th style="width: 170px;" class="text-center">Thao Tác</th>
                                 </tr>
                             </thead>
-                            <tbody id="staffTableBody">
-                                <!-- Dynamic Render from API -->
-                            </tbody>
+                            <tbody id="staffTableBody"></tbody>
                         </table>
                     </div>
                 </div>
 
                 <div id="staffPagination" class="d-flex justify-content-between align-items-center"></div>
-
             </div>
         </div>
 
-        <!-- Modal Thêm Nhân Viên Mới -->
         <div class="modal fade" id="createStaffModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -105,24 +675,33 @@
                         <h5 class="modal-title brand-font">Thêm Nhân Viên Mới</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
+
                     <div class="modal-body p-4">
                         <div id="createStaffError" class="alert alert-danger d-none py-2 mb-3 small"></div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Họ và tên:</label>
-                            <input type="text" id="staffFullName" class="form-control rounded-3" placeholder="Nguyễn Văn A" required>
+                            <input type="text" id="staffFullName" class="form-control rounded-3"
+                                placeholder="Nguyễn Văn A" required>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Email:</label>
-                            <input type="email" id="staffEmail" class="form-control rounded-3" placeholder="nhanvien@milktea.vn" required>
+                            <input type="email" id="staffEmail" class="form-control rounded-3"
+                                placeholder="nhanvien@milktea.vn" required>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Mật khẩu:</label>
-                            <input type="password" id="staffPassword" class="form-control rounded-3" placeholder="••••••••" required>
+                            <input type="password" id="staffPassword" class="form-control rounded-3"
+                                placeholder="••••••••" required>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Số điện thoại:</label>
                             <input type="text" id="staffPhone" class="form-control rounded-3" placeholder="0901234567">
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Vai trò:</label>
                             <select id="staffRole" class="form-select rounded-3">
@@ -131,8 +710,10 @@
                                 <option value="ADMIN">Quản Trị Viên (ADMIN)</option>
                             </select>
                         </div>
+
                         <div class="d-grid gap-2">
-                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold" onclick="submitCreateStaff()">
+                            <button type="button" class="btn btn-primary-custom rounded-pill py-2 fw-bold"
+                                onclick="submitCreateStaff()">
                                 Tạo Tài Khoản
                             </button>
                         </div>
@@ -141,7 +722,6 @@
             </div>
         </div>
 
-        <!-- Modal Chỉnh Sửa Nhân Viên -->
         <div class="modal fade" id="editStaffModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -149,22 +729,30 @@
                         <h5 class="modal-title brand-font">Chỉnh Sửa Thông Tin Nhân Viên</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
+
                     <div class="modal-body p-4">
                         <div id="editStaffError" class="alert alert-danger d-none py-2 mb-3 small"></div>
+
                         <input type="hidden" id="editStaffId">
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Họ và tên:</label>
                             <input type="text" id="editStaffFullName" class="form-control rounded-3" required>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Email đăng nhập:</label>
                             <input type="email" id="editStaffEmail" class="form-control rounded-3" required>
-                            <small class="text-muted">Đổi email sẽ kiểm tra trùng lặp trên toàn hệ thống.</small>
+                            <small class="text-muted">
+                                Đổi email sẽ kiểm tra trùng lặp trên toàn hệ thống.
+                            </small>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Số điện thoại:</label>
                             <input type="text" id="editStaffPhone" class="form-control rounded-3">
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Vai trò:</label>
                             <select id="editStaffRole" class="form-select rounded-3">
@@ -173,9 +761,14 @@
                                 <option value="ADMIN">Quản Trị Viên (ADMIN)</option>
                             </select>
                         </div>
+
                         <div class="d-flex justify-content-end gap-2 mt-4">
-                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
-                            <button type="button" class="btn btn-primary-custom rounded-pill px-4 fw-semibold" onclick="submitEditStaff()">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
+                                data-bs-dismiss="modal">
+                                Hủy
+                            </button>
+                            <button type="button" class="btn btn-primary-custom rounded-pill px-4 fw-semibold"
+                                onclick="submitEditStaff()">
                                 Lưu Thay Đổi
                             </button>
                         </div>
@@ -183,7 +776,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <th:block th:fragment="scripts">
@@ -193,27 +785,162 @@
             let currentPage = 1;
             const pageSize = 10;
 
+            let staffAnimationMode = 'stagger';
+            let staffInitialLoadComplete = false;
+            let staffPendingHighlights = new Set();
+
+            const staffReducedMotion = window.matchMedia(
+                '(prefers-reduced-motion: reduce)'
+            );
+
+            function staffStateSignature(staff) {
+                return JSON.stringify([
+                    staff.fullName || '',
+                    staff.email || '',
+                    staff.phone || '',
+                    staff.role || '',
+                    Boolean(staff.active)
+                ]);
+            }
+
+            function staffChangedIds(previous, current) {
+                const oldStates = new Map(
+                    previous.map(staff => [
+                        String(staff.id),
+                        staffStateSignature(staff)
+                    ])
+                );
+
+                return new Set(
+                    current
+                        .filter(staff => {
+                            const id = String(staff.id);
+                            return oldStates.has(id) &&
+                                oldStates.get(id) !== staffStateSignature(staff);
+                        })
+                        .map(staff => String(staff.id))
+                );
+            }
+
+            function animateStaffRows(mode, changedIds = new Set()) {
+                if (staffReducedMotion.matches) return;
+
+                const tbody = document.getElementById('staffTableBody');
+                const rows = tbody.querySelectorAll('tr[data-staff-id]');
+
+                rows.forEach((row, index) => {
+                    if (mode === 'stagger') {
+                        row.style.setProperty('--staff-delay', `${index * 40}ms`);
+                        row.classList.add('staff-stagger-enter');
+                    } else if (mode === 'filter') {
+                        row.style.setProperty('--staff-delay', `${index * 18}ms`);
+                        row.classList.add('staff-filter-enter');
+                    } else if (mode === 'pagination') {
+                        row.style.setProperty('--staff-delay', `${index * 12}ms`);
+                        row.classList.add('staff-pagination-enter');
+                    } else if (
+                        mode === 'status' &&
+                        changedIds.has(row.dataset.staffId)
+                    ) {
+                        row.classList.add('staff-status-changed');
+                    }
+                });
+            }
+
             document.addEventListener('DOMContentLoaded', async () => {
                 AdminApp.init();
+
                 await loadStaffList();
 
-                // Realtime sync qua WebSocket STOMP
                 MilkTeaRealtime.on('STAFF_CHANGED', async () => {
-                    await loadStaffList();
+                    await loadStaffList('status');
                 });
+
                 MilkTeaRealtime.on('ACCOUNT_CHANGED', async () => {
-                    await loadStaffList();
+                    await loadStaffList('status');
                 });
+
                 MilkTeaRealtime.onReconnect(async () => {
-                    await loadStaffList();
+                    await loadStaffList('status');
+                });
+
+                const successSelector = [
+                    '.toast.bg-success',
+                    '.toast.text-bg-success',
+                    '.toast.border-success',
+                    '.alert-success'
+                ].join(',');
+
+                const animatedMessages = new WeakSet();
+
+                const animateSuccessMessage = element => {
+                    if (!(element instanceof Element)) return;
+                    if (staffReducedMotion.matches) return;
+                    if (!element.matches(successSelector)) return;
+                    if (animatedMessages.has(element)) return;
+
+                    const visible = element.matches('.show, .showing') ||
+                        (element.matches('.alert-success') &&
+                            element.getClientRects().length > 0);
+
+                    if (!visible) return;
+
+                    animatedMessages.add(element);
+                    element.classList.add('staff-success-reveal');
+                };
+
+                document.addEventListener('shown.bs.toast', event => {
+                    animateSuccessMessage(event.target);
+                }, true);
+
+                const toastObserver = new MutationObserver(mutations => {
+                    mutations.forEach(mutation => {
+                        if (mutation.type === 'attributes') {
+                            animateSuccessMessage(mutation.target);
+                            return;
+                        }
+
+                        mutation.addedNodes.forEach(node => {
+                            if (!(node instanceof Element)) return;
+
+                            animateSuccessMessage(node);
+                            node.querySelectorAll(successSelector).forEach(
+                                animateSuccessMessage
+                            );
+                        });
+                    });
+                });
+
+                toastObserver.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['class']
                 });
             });
 
-            async function loadStaffList() {
+            async function loadStaffList(reason = 'auto') {
                 try {
                     const data = await MilkTeaApi.get('/api/v1/admin/accounts');
-                    allStaff = (data || []).filter(s => s.role !== 'CUSTOMER');
+                    const nextStaff = (data || []).filter(s => s.role !== 'CUSTOMER');
+
+                    const changedIds = staffChangedIds(allStaff, nextStaff);
+
+                    allStaff = nextStaff;
+
+                    if (reason === 'status') {
+                        staffAnimationMode = 'status';
+                        staffPendingHighlights = changedIds;
+                    } else if (!staffInitialLoadComplete) {
+                        staffAnimationMode = 'stagger';
+                        staffPendingHighlights = new Set();
+                    } else {
+                        staffAnimationMode = 'filter';
+                        staffPendingHighlights = new Set();
+                    }
+
                     filterStaffList();
+                    staffInitialLoadComplete = true;
                 } catch (e) {
                     console.warn(e);
                     MilkTeaApi.showToast('Không thể tải danh sách tài khoản', 'error');
@@ -221,15 +948,21 @@
             }
 
             function filterStaffList() {
-                const search = (document.getElementById('staffSearch')?.value || '').trim().toLowerCase();
-                const roleFilter = document.getElementById('staffRoleFilter')?.value || '';
+                const search = (document.getElementById('staffSearch')?.value || '')
+                    .trim()
+                    .toLowerCase();
+
+                const roleFilter =
+                    document.getElementById('staffRoleFilter')?.value || '';
 
                 const filtered = allStaff.filter(s => {
                     const matchSearch = !search
                         || (s.fullName && s.fullName.toLowerCase().includes(search))
                         || (s.email && s.email.toLowerCase().includes(search))
                         || (s.phone && s.phone.includes(search));
+
                     const matchRole = !roleFilter || s.role === roleFilter;
+
                     return matchSearch && matchRole;
                 });
 
@@ -240,88 +973,117 @@
                 const tbody = document.getElementById('staffTableBody');
                 const totalItems = filtered.length;
                 const totalPages = Math.ceil(totalItems / pageSize) || 1;
-                if (currentPage > totalPages) currentPage = totalPages;
+
+                if (currentPage > totalPages) {
+                    currentPage = totalPages;
+                }
 
                 const startIdx = (currentPage - 1) * pageSize;
                 const pageItems = filtered.slice(startIdx, startIdx + pageSize);
 
                 if (pageItems.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Không tìm thấy tài khoản nhân viên phù hợp.</td></tr>';
+                    tbody.innerHTML =
+                        '<tr><td colspan="7" class="text-center py-4 text-muted">Không tìm thấy tài khoản nhân viên phù hợp.</td></tr>';
+
                     renderPagination(0, 1);
                     return;
                 }
 
                 let html = '';
+
                 pageItems.forEach((s, idx) => {
-                    const stt = startIdx + idx + 1; // STT liên tục theo phân trang
+                    const stt = startIdx + idx + 1;
                     let roleBadge = 'bg-secondary';
+
                     if (s.role === 'ADMIN') roleBadge = 'bg-danger';
                     if (s.role === 'CASHIER') roleBadge = 'bg-primary';
                     if (s.role === 'KITCHEN') roleBadge = 'bg-success';
 
                     html += `
-                        <tr>
-                            <td class="text-center fw-bold text-muted">${stt}</td>
-                            <td class="fw-bold">${MilkTeaReceipts.esc(s.fullName)}</td>
-                            <td>${MilkTeaReceipts.esc(s.email)}</td>
-                            <td>${MilkTeaReceipts.esc(s.phone || '-')}</td>
-                            <td><span class="badge ${roleBadge}">${s.role}</span></td>
-                            <td>
-                                ${s.active ? '<span class="badge bg-success">Hoạt động</span>' : '<span class="badge bg-secondary">Bị khóa</span>'}
-                            </td>
-                            <td class="text-center">
-                                <div class="d-inline-flex gap-1 align-items-center">
-                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-2"
-                                            title="Sửa thông tin"
-                                            onclick="openEditStaffModal(${s.id})">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </button>
-                                    <button class="btn btn-sm ${s.active ? 'btn-outline-danger' : 'btn-outline-success'} rounded-pill px-3"
-                                            onclick="handleToggleStaffStatus(${s.id}, ${!s.active})">
-                                        ${s.active ? 'Khóa' : 'Mở khóa'}
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+                    <tr data-staff-id="${MilkTeaReceipts.esc(s.id)}">
+                        <td class="text-center fw-bold text-muted">${stt}</td>
+                        <td class="fw-bold">${MilkTeaReceipts.esc(s.fullName)}</td>
+                        <td>${MilkTeaReceipts.esc(s.email)}</td>
+                        <td>${MilkTeaReceipts.esc(s.phone || '-')}</td>
+                        <td><span class="badge ${roleBadge}">${s.role}</span></td>
+                        <td>
+                            ${s.active ? '<span class="badge bg-success">Hoạt động</span>' : '<span class="badge bg-secondary">Bị khóa</span>'}
+                        </td>
+                        <td class="text-center">
+                            <div class="d-inline-flex gap-1 align-items-center">
+                                <button class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                        title="Sửa thông tin"
+                                        onclick="openEditStaffModal(${s.id})">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button class="btn btn-sm ${s.active ? 'btn-outline-danger' : 'btn-outline-success'} rounded-pill px-3"
+                                        onclick="handleToggleStaffStatus(${s.id}, ${!s.active})">
+                                    ${s.active ? 'Khóa' : 'Mở khóa'}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
                 });
+
                 tbody.innerHTML = html;
+
                 renderPagination(totalItems, totalPages);
+                animateStaffRows(staffAnimationMode, staffPendingHighlights);
+
+                staffAnimationMode = 'filter';
+                staffPendingHighlights = new Set();
             }
 
             function renderPagination(totalItems, totalPages) {
                 const container = document.getElementById('staffPagination');
+
                 if (!container) return;
+
                 if (totalPages <= 1) {
-                    container.innerHTML = totalItems > 0 ? `<small class="text-muted">Tổng cộng <b>${totalItems}</b> nhân viên</small>` : '';
+                    container.innerHTML = totalItems > 0
+                        ? `<small class="text-muted">Tổng cộng <b>${totalItems}</b> nhân viên</small>`
+                        : '';
                     return;
                 }
 
-                const startIdx = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+                const startIdx = totalItems === 0
+                    ? 0
+                    : (currentPage - 1) * pageSize + 1;
+
                 const endIdx = Math.min(currentPage * pageSize, totalItems);
 
                 let pagesHtml = '';
+
                 for (let p = 1; p <= totalPages; p++) {
                     pagesHtml += `<li class="page-item ${p === currentPage ? 'active' : ''}"><button class="page-link" onclick="goToPage(${p})">${p}</button></li>`;
                 }
 
                 container.innerHTML = `
-                    <small class="text-muted">Hiển thị <b>${startIdx}-${endIdx}</b> trong <b>${totalItems}</b> nhân viên</small>
-                    <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><button class="page-link" onclick="goToPage(${currentPage - 1})">«</button></li>
-                        ${pagesHtml}
-                        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><button class="page-link" onclick="goToPage(${currentPage + 1})">»</button></li>
-                    </ul>
-                `;
+                <small class="text-muted">
+                    Hiển thị <b>${startIdx}-${endIdx}</b> trong <b>${totalItems}</b> nhân viên
+                </small>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                        <button class="page-link" onclick="goToPage(${currentPage - 1})">«</button>
+                    </li>
+                    ${pagesHtml}
+                    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                        <button class="page-link" onclick="goToPage(${currentPage + 1})">»</button>
+                    </li>
+                </ul>
+            `;
             }
 
             function goToPage(page) {
                 currentPage = page;
+                staffAnimationMode = 'pagination';
                 filterStaffList();
             }
 
             function openEditStaffModal(id) {
                 const staff = allStaff.find(s => s.id === id);
+
                 if (!staff) return;
 
                 document.getElementById('editStaffId').value = staff.id;
@@ -334,7 +1096,9 @@
                 errBox.classList.add('d-none');
                 errBox.textContent = '';
 
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('editStaffModal')).show();
+                bootstrap.Modal.getOrCreateInstance(
+                    document.getElementById('editStaffModal')
+                ).show();
             }
 
             async function submitEditStaff() {
@@ -350,6 +1114,7 @@
                     errBox.classList.remove('d-none');
                     return;
                 }
+
                 if (!email) {
                     errBox.textContent = 'Vui lòng nhập email đăng nhập';
                     errBox.classList.remove('d-none');
@@ -358,8 +1123,12 @@
 
                 try {
                     await AdminApp.updateStaff(id, fullName, email, phone, role);
-                    bootstrap.Modal.getInstance(document.getElementById('editStaffModal'))?.hide();
-                    await loadStaffList();
+
+                    bootstrap.Modal.getInstance(
+                        document.getElementById('editStaffModal')
+                    )?.hide();
+
+                    await loadStaffList('status');
                 } catch (e) {
                     errBox.textContent = e.message || 'Lỗi cập nhật nhân viên';
                     errBox.classList.remove('d-none');
@@ -369,13 +1138,19 @@
             async function handleToggleStaffStatus(id, active) {
                 const staff = allStaff.find(s => s.id === id);
                 const actionName = active ? 'mở khóa' : 'khóa';
-                if (!confirm(`Bạn có chắc muốn ${actionName} tài khoản "${staff ? staff.fullName : '#' + id}"?`)) return;
+
+                if (!confirm(`Bạn có chắc muốn ${actionName} tài khoản "${staff ? staff.fullName : '#' + id}"?`)) {
+                    return;
+                }
 
                 try {
                     await AdminApp.toggleStaffStatus(id, active);
-                    await loadStaffList();
+                    await loadStaffList('status');
                 } catch (e) {
-                    MilkTeaApi.showToast(e.message || 'Lỗi cập nhật trạng thái', 'error');
+                    MilkTeaApi.showToast(
+                        e.message || 'Lỗi cập nhật trạng thái',
+                        'error'
+                    );
                 }
             }
 
@@ -401,9 +1176,17 @@
                         phone: ph,
                         role: ro
                     });
-                    MilkTeaApi.showToast('Tạo tài khoản nhân viên thành công!', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('createStaffModal'))?.hide();
-                    await loadStaffList();
+
+                    MilkTeaApi.showToast(
+                        'Tạo tài khoản nhân viên thành công!',
+                        'success'
+                    );
+
+                    bootstrap.Modal.getInstance(
+                        document.getElementById('createStaffModal')
+                    )?.hide();
+
+                    await loadStaffList('status');
                 } catch (e) {
                     errBox.textContent = e.message || 'Lỗi tạo nhân viên';
                     errBox.classList.remove('d-none');
@@ -412,4 +1195,5 @@
         </script>
     </th:block>
 </body>
+
 </html>
