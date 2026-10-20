@@ -518,14 +518,7 @@
               sec:authorize="hasAnyRole('CASHIER','ADMIN')"
               hidden></span>
 
-        <div class="d-flex align-items-center justify-content-between mb-3 orders-heading">
-            <h3 class="brand-font mb-0">
-                Đơn hàng
-                <span class="table-badge"
-                      th:if="${currentTable != null}"
-                      th:text="${currentTable.name}"></span>
-            </h3>
-        </div>
+        
 
         <div sec:authorize="hasAnyRole('CASHIER','ADMIN')"
              class="order-tabs-scroll-container mb-3"
