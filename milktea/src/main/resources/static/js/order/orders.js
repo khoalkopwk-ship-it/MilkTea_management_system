@@ -188,6 +188,10 @@ const OrdersApp = (() => {
                         quickAction = button('confirm', o.orderId, 'Xác nhận đơn', 'primary');
                     }
                 }
+                if (!o.cancellationPending && ['CHO_XAC_NHAN', 'CHO_CHE_BIEN'].includes(o.status)
+                ) {
+                    actions += button('cancel', o.orderId, 'Hủy đơn', 'outline-danger');
+                }
 
                 if (currentTab === 'transfer' && o.transferNotified && !o.paid && o.status !== 'DA_HUY') {
                     quickAction = button('confirmTransfer', o.orderId, 'Đã thanh toán', 'success');
@@ -452,9 +456,16 @@ const OrdersApp = (() => {
 
         if (name === 'cancel') {
             cancelId = id;
-            modal('Yêu cầu hủy ' + MilkTeaReceipts.code(id),
-                '<p>Chỉ hủy khi bếp chưa bắt đầu pha chế.</p><label for="orderCancelReason">Lý do hủy</label><textarea maxlength="500" id="orderCancelReason" class="form-control" rows="3"></textarea>',
-                button('sendCancel', id, 'Gửi yêu cầu hủy', 'danger'));
+
+            const title = staff ? 'Hủy đơn ' : 'Yêu cầu hủy ';
+            const submitLabel = staff ? 'Xác nhận hủy' : 'Gửi yêu cầu hủy';
+
+            modal(title + MilkTeaReceipts.code(id),
+                '<p>Chỉ được hủy đơn khi bếp chưa bắt đầu chế biến.</p>' +
+                '<label for="orderCancelReason" class="form-label">Lý do hủy</label>' +
+                '<textarea maxlength="500" id="orderCancelReason" class="form-control" rows="3" placeholder="Nhập lý do hủy đơn"></textarea>',
+                button('sendCancel', id, submitLabel, 'danger'));
+
             return;
         }
 
@@ -503,9 +514,17 @@ const OrdersApp = (() => {
                 await MilkTeaApi.post(`/api/v1/cashier/orders/${id}/confirm`);
             } else if (name === 'sendCancel') {
                 const reason = document.getElementById('orderCancelReason').value.trim();
-                if (!reason) throw new Error('Vui lòng nhập lý do hủy đơn.');
-                await MilkTeaApi.post(`/api/v1/customer/orders/${cancelId}/cancellation-requests`, { reason });
-            } else if (name === 'approveCancel' || name === 'rejectCancel') {
+
+                if (!reason) {
+                    throw new Error('Vui lòng nhập lý do hủy đơn.');
+                }
+
+                const url = staff
+                    ? `/api/v1/orders/${cancelId}/cancellation-requests`
+                    : `/api/v1/customer/orders/${cancelId}/cancellation-requests`;
+
+                await MilkTeaApi.post(url, { reason });
+            }else if (name === 'approveCancel' || name === 'rejectCancel') {
                 await MilkTeaApi.post(`/api/v1/cashier/cancellation-requests/${id}/decision`, {
                     approved: name === 'approveCancel',
                     reason: 'Nhân viên xác nhận'
