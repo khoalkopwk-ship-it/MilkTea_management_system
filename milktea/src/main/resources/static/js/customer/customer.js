@@ -329,16 +329,25 @@ const CustomerApp = (() => {
     }
 
     function updateCartBadge() {
-        const badge = document.getElementById('cartCountBadge');
-        if (!badge) return;
         const currentItems = window.MilkTeaContext.sessionId ? serverCart : localCart;
-        const count = currentItems.reduce((acc, it) => acc + it.quantity, 0);
-        if (count > 0) {
-            badge.textContent = count;
-            badge.style.display = 'inline-block';
-        } else {
-            badge.style.display = 'none';
-        }
+        const count = (currentItems || []).reduce((acc, it) => acc + (parseInt(it.quantity) || 1), 0);
+
+        const badgeConfigs = [
+            { id: 'cartCountBadge', display: 'inline-block' },
+            { id: 'u011FabBadge', display: 'inline-flex' },
+            { id: 'menuRadialCartBadge', display: 'inline-flex' }
+        ];
+
+        badgeConfigs.forEach(cfg => {
+            const badge = document.getElementById(cfg.id);
+            if (!badge) return;
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = cfg.display;
+            } else {
+                badge.style.display = 'none';
+            }
+        });
     }
 
     // Đặt đơn hàng

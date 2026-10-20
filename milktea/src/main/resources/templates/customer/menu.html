@@ -1173,7 +1173,7 @@
                             <line x1="3" y1="18" x2="21" y2="18"></line>
                         </svg>
                     </i>
-                    <span class="u011-lbl"></span>
+                    <span class="u011-lbl">Menu</span>
                 </button>
 
                 <!-- Nút Giỏ hàng -->
@@ -1189,7 +1189,7 @@
                         </svg>
                         <span id="menuRadialCartBadge" class="u011-it-badge" style="display: none;">0</span>
                     </i>
-                    <span class="u011-lbl"></span>
+                    <span class="u011-lbl">Giỏ hàng</span>
                 </button>
 
                 <!-- Nút Đăng nhập (Chỉ hiện khi CHƯA đăng nhập) -->
@@ -1217,7 +1217,7 @@
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>
                     </i>
-                    <span class="u011-lbl"></span>
+                    <span class="u011-lbl">Tài khoản</span>
                 </button>
 
                 <!-- Nút Đăng xuất (Chỉ hiện khi ĐÃ đăng nhập) -->
@@ -1242,6 +1242,7 @@
                     <span id="u011FabBadge" class="u011-fab-badge" style="display: none;">0</span>
                 </button>
             </div>
+            <p class="u011-note" aria-live="polite" aria-atomic="true"></p>
         </div>
 
         <div class="modal fade" id="customizeModal" tabindex="-1">
@@ -1346,6 +1347,7 @@
                 CustomerApp.initContext(qr, tableId);
                 buildCatalog();
                 initializeMenuAnimations();
+                initRadialFabMenu();
             });
 
             function initializeMenuAnimations() {
@@ -1357,7 +1359,7 @@
             }
 
             function triggerCartBounce() {
-                const cartBtn = document.querySelector('.milk-menu-page .floating-cart-btn');
+                const cartBtn = document.querySelector('.u011-floating-container .u011-fab') || document.querySelector('.milk-menu-page .floating-cart-btn');
 
                 if (!cartBtn) return;
 
@@ -1549,6 +1551,135 @@
                 if (modal) modal.hide();
 
                 triggerCartBounce();
+                syncMenuFabCartBadges();
+            }
+
+            function initRadialFabMenu() {
+                const floatingContainer = document.querySelector('.u011-floating-container');
+                if (!floatingContainer) return;
+
+                const u011 = floatingContainer.querySelector('.u011');
+                const fabBtn = floatingContainer.querySelector('.u011-fab');
+                const items = floatingContainer.querySelectorAll('.u011-it');
+                const noteEl = floatingContainer.querySelector('.u011-note');
+                let noteTimeout = null;
+
+                function showNote(text) {
+                    if (!noteEl || !text) return;
+                    noteEl.textContent = text;
+                    noteEl.classList.add('is-on');
+                    clearTimeout(noteTimeout);
+                    noteTimeout = setTimeout(() => {
+                        noteEl.classList.remove('is-on');
+                    }, 1800);
+                }
+
+                function toggleMenu(forceState) {
+                    if (!u011 || !fabBtn) return;
+                    const willOpen = (typeof forceState === 'boolean')
+                        ? forceState
+                        : !u011.classList.contains('is-open');
+
+                    if (willOpen) {
+                        u011.classList.add('is-open');
+                        fabBtn.setAttribute('aria-expanded', 'true');
+                    } else {
+                        u011.classList.remove('is-open');
+                        fabBtn.setAttribute('aria-expanded', 'false');
+                    }
+                }
+
+                if (fabBtn) {
+                    fabBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleMenu();
+                    });
+                }
+
+                // Đóng khi click ra ngoài container
+                document.addEventListener('click', (e) => {
+                    if (!floatingContainer.contains(e.target)) {
+                        toggleMenu(false);
+                    }
+                });
+
+                // Đóng khi nhấn phím Escape
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' || e.key === 'Esc') {
+                        toggleMenu(false);
+                    }
+                });
+
+                // Xử lý click từng nút con tỏa tia
+                items.forEach(item => {
+                    item.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const action = item.getAttribute('data-action');
+                        const url = item.getAttribute('data-url');
+                        const doneMsg = item.getAttribute('data-done');
+
+                        if (doneMsg) {
+                            showNote(doneMsg);
+                        }
+
+                        // Đóng menu
+                        toggleMenu(false);
+
+                        if (action === 'logout') {
+                            try {
+                                if (typeof logoutAccount === 'function') {
+                                    await logoutAccount();
+                                } else {
+                                    await MilkTeaApi.post('/api/v1/auth/logout');
+                                    window.location.reload();
+                                }
+                            } catch (err) {
+                                window.location.reload();
+                            }
+                            return;
+                        }
+
+                        if (url) {
+                            setTimeout(() => {
+                                window.location.href = url;
+                            }, 120);
+                        }
+                    });
+                });
+
+                // Đồng bộ số lượng giỏ hàng ban đầu
+                syncMenuFabCartBadges();
+            }
+
+            function syncMenuFabCartBadges() {
+                try {
+                    let totalCount = 0;
+                    if (typeof CustomerApp !== 'undefined') {
+                        const isServer = window.MilkTeaContext && window.MilkTeaContext.sessionId;
+                        const items = isServer ? CustomerApp.getServerCart() : CustomerApp.getLocalCart();
+                        if (Array.isArray(items)) {
+                            totalCount = items.reduce((sum, it) => sum + (parseInt(it.quantity) || 1), 0);
+                        }
+                    }
+
+                    const fabBadge = document.getElementById('u011FabBadge');
+                    const radialCartBadge = document.getElementById('menuRadialCartBadge');
+
+                    [fabBadge, radialCartBadge].forEach(b => {
+                        if (!b) return;
+                        if (totalCount > 0) {
+                            b.textContent = totalCount;
+                            b.style.display = 'inline-flex';
+                        } else {
+                            b.style.display = 'none';
+                        }
+                    });
+                } catch (err) {
+                    console.debug('Lỗi đồng bộ badge FAB:', err);
+                }
             }
         </script>
     </th:block>
