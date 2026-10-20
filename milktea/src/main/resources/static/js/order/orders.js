@@ -628,9 +628,6 @@ const OrdersApp = (() => {
             history.replaceState(null, '', url.pathname + url.search);
         }
 
-        setInterval(() => {
-            if (!document.hidden && !busy) load();
-        }, 12000);
     }
 
     document.addEventListener('DOMContentLoaded', init);

@@ -127,7 +127,7 @@ table.orders-table td:nth-child(5) {
 table.orders-table thead th {
     background: #F8F4EF;
     color: #1e293b;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 700;
     padding: 15px 12px;
     border-bottom: 1px solid #D9CABC;
@@ -157,6 +157,7 @@ table.orders-table tbody tr:last-child td {
 table.orders-table tbody td:first-child b,
 table.orders-table tbody td:nth-child(2) {
     font-weight: 400 !important;
+    font-size:13px;
 }
 /* Nhãn tình trạng thanh toán */
 .orders-table .payment-pill {
