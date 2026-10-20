@@ -6,240 +6,445 @@
 </head>
 
 <body>
-    <div th:fragment="content" class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-5">
-                <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-                    <!-- Card Header -->
-                    <div class="card-header bg-white text-center pt-4 pb-2 border-0">
-                        <div class="mb-2">
-                            <img th:if="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()}" 
-                                 th:src="${settings.logoUrl}" 
-                                 alt="Logo" 
-                                 class="rounded-circle shadow-sm" 
-                                 style="width: 72px; height: 72px; object-fit: cover;" 
-                                 onerror="this.style.display='none'; document.getElementById('loginFallbackBadge').style.display='inline-block';">
-                            <div id="loginFallbackBadge" class="d-inline-block brand-badge fs-5" th:style="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()} ? 'display: none !important;' : ''">
-                                <i class="bi bi-cup-hot-fill me-1"></i>MilkTea
-                            </div>
+    <div th:fragment="content" class="milktea-auth-container">
+        <!-- Ambient Cafe Lighting Orbs -->
+        <div class="auth-orb auth-orb-1" aria-hidden="true"></div>
+        <div class="auth-orb auth-orb-2" aria-hidden="true"></div>
+        <div class="auth-orb auth-orb-3" aria-hidden="true"></div>
+        <div class="auth-grid-overlay" aria-hidden="true"></div>
+
+        <!-- Confetti Container (Fires on Login Success) -->
+        <div id="confettiContainer" class="confetti-container" aria-hidden="true"></div>
+
+        <div class="container position-relative z-1 py-3 py-lg-4">
+            <div class="auth-layout-box mx-auto">
+                <div class="row align-items-center justify-content-center g-3 g-lg-5">
+
+                    <!-- CỘT TRÁI (DESKTOP) / KHU VỰC TRÊN (MOBILE): NHÓM LY TRÀ SỮA THEO DÕI -->
+                    <div class="col-12 col-lg-6 col-xl-6 auth-stage-column">
+                        <!-- Tiêu đề trên Desktop -->
+                        <div class="d-none d-lg-block mb-3">
+                            <h2 class="auth-hero-title brand-font mb-1">
+                                Chào Mừng Đến <span class="text-primary-custom">MilkTea</span>
+                            </h2>
+                            <p class="text-muted small mb-0">Thương hiệu trà sữa thơm ngon đậm vị</p>
                         </div>
-                        <h4 class="brand-font mb-1">Cổng Xác Thực Hệ Thống</h4>
-                        <p class="text-muted small mb-0">Quản trị, Vận hành & Dành cho Khách hàng</p>
-                    </div>
 
-                    <!-- Nav Tabs: Đăng Nhập & Đăng Ký -->
-                    <div class="px-4 pt-2">
-                        <ul class="nav nav-pills nav-fill bg-light p-1 rounded-3" id="authTab" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active rounded-3 py-2 fw-semibold" id="login-tab"
-                                    data-bs-toggle="tab" data-bs-target="#loginTabContent" type="button" role="tab">
-                                    <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link rounded-3 py-2 fw-semibold" id="register-tab"
-                                    data-bs-toggle="tab" data-bs-target="#registerTabContent" type="button" role="tab">
-                                    <i class="bi bi-person-plus me-1"></i> Đăng Ký
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
+                        <!-- Tiêu đề trên Mobile -->
+                        <div class="d-block d-lg-none text-center mb-1">
+                            <h3 class="auth-hero-title brand-font fs-4 mb-0">
+                                <span class="text-primary-custom">MilkTea</span> Quán
+                            </h3>
+                        </div>
 
-                    <div class="card-body p-4">
-                        <!-- Alert Box chung -->
-                        <div id="authAlert" class="alert alert-danger d-none py-2 small rounded-3" role="alert"></div>
+                        <!-- KHU VỰC SÂN KHẤU CÁC LY TRÀ SỮA (BOBA STAGE) -->
+                        <div class="boba-stage-wrapper">
+                            <div class="boba-stage" id="bobaStage">
 
-                        <!-- Tab Content -->
-                        <div class="tab-content" id="authTabContent">
-                            <!-- TAB 1: ĐĂNG NHẬP -->
-                            <div class="tab-pane fade show active" id="loginTabContent" role="tabpanel">
-                                <form id="loginForm" onsubmit="handleLogin(event)">
-                                    <div class="mb-3">
-                                        <label for="email" class="form-label small fw-semibold">Email tài khoản</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0"><i
-                                                    class="bi bi-envelope text-muted"></i></span>
-                                            <input type="email" class="form-control border-start-0" id="email" required
-                                                placeholder="name@milktea.vn">
-                                        </div>
+                                <!-- LY 1: KHOAI MÔN BÉO BÙI (TARO BOBA CUP - BACK LAYER LEFT) -->
+                                <div class="boba-character taro-cup" id="taroCup">
+                                    <div class="boba-straw taro-straw"></div>
+                                    <div class="boba-lid taro-lid">
+                                        <div class="boba-lid-rim"></div>
                                     </div>
-
-                                    <div class="mb-2">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <label for="password" class="form-label small fw-semibold mb-0">Mật khẩu</label>
-                                            <a href="javascript:void(0)"
-                                                id="forgotPasswordLink"
-                                                class="text-primary small text-decoration-none fw-semibold"
-                                                onclick="openForgotPasswordModal(event)">
-                                                Quên mật khẩu?
-                                            </a>
+                                    <div class="boba-body taro-body">
+                                        <div class="boba-shimmer"></div>
+                                        <div class="boba-pearl-layer">
+                                            <span class="pearl p1"></span>
+                                            <span class="pearl p2"></span>
+                                            <span class="pearl p3"></span>
+                                            <span class="pearl p4"></span>
+                                            <span class="pearl p5"></span>
+                                            <span class="pearl p6"></span>
                                         </div>
-                                        <div class="input-group mt-1">
-                                            <span class="input-group-text bg-light border-end-0"><i
-                                                    class="bi bi-lock text-muted"></i></span>
-                                            <input type="password" class="form-control border-start-0" id="password"
-                                                required placeholder="••••••••">
+                                        <div class="boba-seal">
+                                            <i class="bi bi-cup-straw"></i>
                                         </div>
-                                    </div>
-
-                                    <button type="submit" id="loginBtn"
-                                        class="btn btn-primary-custom w-100 py-2 rounded-3 mt-3">
-                                        <span class="spinner-border spinner-border-sm me-2 d-none"
-                                            id="loginSpinner"></span>
-                                        Đăng Nhập
-                                    </button>
-                                </form>
-
-                                <!-- Tài Khoản Mẫu Nhanh -->
-                                <div class="mt-4 pt-3 border-top">
-                                    <p class="text-center text-muted small fw-semibold mb-2">Chọn nhanh tài khoản thử nghiệm:</p>
-                                    <div class="d-grid gap-2">
-                                        <button type="button"
-                                            class="btn btn-sm btn-outline-danger text-start py-2 px-3 rounded-3"
-                                            onclick="fillDemo('admin@milktea.vn', 'Password@123')">
-                                            <i class="bi bi-shield-lock-fill me-2"></i><strong>Quản Trị Viên (ADMIN)</strong>
-                                        </button>
-                                        <button type="button"
-                                            class="btn btn-sm btn-outline-primary text-start py-2 px-3 rounded-3"
-                                            onclick="fillDemo('cashier@milktea.vn', 'Password@123')">
-                                            <i class="bi bi-calculator me-2"></i><strong>Thu Ngân (CASHIER)</strong>
-                                        </button>
-                                        <button type="button"
-                                            class="btn btn-sm btn-outline-success text-start py-2 px-3 rounded-3"
-                                            onclick="fillDemo('kitchen@milktea.vn', 'Password@123')">
-                                            <i class="bi bi-fire me-2"></i><strong>Bếp Trưởng (KITCHEN)</strong>
-                                        </button>
-                                        <button type="button"
-                                            class="btn btn-sm btn-outline-secondary text-start py-2 px-3 rounded-3"
-                                            onclick="fillDemo('customer@milktea.vn', 'Password@123')">
-                                            <i class="bi bi-person me-2"></i><strong>Khách Hàng Demo (CUSTOMER)</strong>
-                                        </button>
+                                        <!-- Khuôn mặt (Mắt theo dõi + Miệng) -->
+                                        <div class="boba-face taro-face" id="taroFace">
+                                            <div class="boba-eyes">
+                                                <div class="eyeball" id="taroEyeL">
+                                                    <div class="eyelid" id="taroLidL"></div>
+                                                    <div class="pupil" id="taroPupilL">
+                                                        <span class="pupil-glint"></span>
+                                                    </div>
+                                                </div>
+                                                <div class="eyeball" id="taroEyeR">
+                                                    <div class="eyelid" id="taroLidR"></div>
+                                                    <div class="pupil" id="taroPupilR">
+                                                        <span class="pupil-glint"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="boba-blush-wrap">
+                                                <span class="blush-dot blush-left"></span>
+                                                <span class="blush-dot blush-right"></span>
+                                            </div>
+                                            <div class="boba-mouth taro-mouth" id="taroMouth"></div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- TAB 2: ĐĂNG KÝ -->
-                            <div class="tab-pane fade" id="registerTabContent" role="tabpanel">
-                                <!-- Bước A: Form nhập thông tin đăng ký -->
-                                <div id="registerFormContainer">
-                                    <form id="registerForm" onsubmit="handleRegister(event)">
-                                        <div class="mb-3">
-                                            <label for="regFullName" class="form-label small fw-semibold">Họ và tên</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-light border-end-0"><i
-                                                        class="bi bi-person text-muted"></i></span>
-                                                <input type="text" class="form-control border-start-0" id="regFullName"
-                                                    required placeholder="Nguyễn Văn A">
-                                            </div>
+                                <!-- LY 2: TRÀ SỮA NƯỚNG CARAMEL (ROASTED BOBA CUP - BACK LAYER RIGHT) -->
+                                <div class="boba-character roasted-cup" id="roastedCup">
+                                    <div class="boba-straw roasted-straw"></div>
+                                    <div class="boba-foam-cap roasted-foam"></div>
+                                    <div class="boba-body roasted-body">
+                                        <div class="boba-shimmer"></div>
+                                        <div class="boba-pearl-layer">
+                                            <span class="pearl p1"></span>
+                                            <span class="pearl p2"></span>
+                                            <span class="pearl p3"></span>
+                                            <span class="pearl p4"></span>
                                         </div>
-
-                                        <div class="mb-3">
-                                            <label for="regEmail" class="form-label small fw-semibold">Email đăng ký</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-light border-end-0"><i
-                                                        class="bi bi-envelope text-muted"></i></span>
-                                                <input type="email" class="form-control border-start-0" id="regEmail"
-                                                    required placeholder="example@gmail.com">
-                                            </div>
-                                            <div class="form-text small text-muted">Hệ thống sẽ gửi mã OTP 6 số đến email này để kích hoạt.</div>
+                                        <div class="boba-seal mini">
+                                            <span>Nướng</span>
                                         </div>
-
-                                        <div class="mb-3">
-                                            <label for="regPhone" class="form-label small fw-semibold">Số điện thoại</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-light border-end-0"><i
-                                                        class="bi bi-telephone text-muted"></i></span>
-                                                <input type="tel" class="form-control border-start-0" id="regPhone"
-                                                    required pattern="[0-9]{10}" placeholder="0901234567">
+                                        <div class="boba-face roasted-face" id="roastedFace">
+                                            <div class="boba-eyes">
+                                                <div class="eyeball" id="roastedEyeL">
+                                                    <div class="eyelid" id="roastedLidL"></div>
+                                                    <div class="pupil" id="roastedPupilL">
+                                                        <span class="pupil-glint"></span>
+                                                    </div>
+                                                </div>
+                                                <div class="eyeball" id="roastedEyeR">
+                                                    <div class="eyelid" id="roastedLidR"></div>
+                                                    <div class="pupil" id="roastedPupilR">
+                                                        <span class="pupil-glint"></span>
+                                                    </div>
+                                                </div>
                                             </div>
+                                            <div class="boba-mouth roasted-mouth" id="roastedMouth"></div>
                                         </div>
-
-                                        <div class="mb-3">
-                                            <label for="regPassword" class="form-label small fw-semibold">Mật khẩu</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-light border-end-0"><i
-                                                        class="bi bi-lock text-muted"></i></span>
-                                                <input type="password" class="form-control border-start-0" id="regPassword"
-                                                    required minlength="6" placeholder="Tối thiểu 6 ký tự">
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="regConfirmPassword" class="form-label small fw-semibold">Xác nhận mật khẩu</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-light border-end-0"><i
-                                                        class="bi bi-shield-check text-muted"></i></span>
-                                                <input type="password" class="form-control border-start-0"
-                                                    id="regConfirmPassword" required minlength="6"
-                                                    placeholder="Nhập lại mật khẩu">
-                                            </div>
-                                        </div>
-
-                                        <button type="submit" id="registerBtn"
-                                            class="btn btn-success w-100 py-2 rounded-3 mt-2">
-                                            <span class="spinner-border spinner-border-sm me-2 d-none"
-                                                id="registerSpinner"></span>
-                                            Đăng Ký & Nhận Mã Xác Thực
-                                        </button>
-                                    </form>
+                                    </div>
                                 </div>
 
-                                <!-- Bước B: Form nhập mã OTP xác thực email (Ẩn ban đầu) -->
-                                <div id="registerOtpContainer" class="d-none">
-                                    <div class="text-center mb-3">
-                                        <div class="d-inline-flex align-items-center justify-content-center bg-success-subtle text-success rounded-circle mb-2" style="width: 56px; height: 56px;">
-                                            <i class="bi bi-envelope-check-fill fs-3"></i>
+                                <!-- LY 3: MATCHA FOAM PHÔ MAI (MATCHA CUP - FRONT LAYER LEFT) -->
+                                <div class="boba-character matcha-cup" id="matchaCup">
+                                    <div class="boba-straw matcha-straw"></div>
+                                    <div class="boba-cheese-foam">
+                                        <div class="cheese-layer"></div>
+                                        <div class="cheese-drips">
+                                            <span class="drip d1"></span>
+                                            <span class="drip d2"></span>
+                                            <span class="drip d3"></span>
                                         </div>
-                                        <h5 class="fw-bold mb-1">Xác Thực Địa Chỉ Email</h5>
-                                        <p class="text-muted small mb-0">
-                                            Mã xác thực gồm 6 chữ số đã được gửi tới:
-                                        </p>
-                                        <div class="fw-bold text-primary mt-1" id="verifyTargetEmail">email@example.com</div>
                                     </div>
+                                    <div class="boba-body matcha-body">
+                                        <div class="boba-shimmer"></div>
+                                        <div class="boba-redbeans">
+                                            <span class="bean b1"></span>
+                                            <span class="bean b2"></span>
+                                            <span class="bean b3"></span>
+                                        </div>
+                                        <div class="boba-face matcha-face" id="matchaFace">
+                                            <div class="boba-eyes">
+                                                <div class="eyeball eyeball--pupil-only" id="matchaEyeL">
+                                                    <div class="eyelid" id="matchaLidL"></div>
+                                                    <div class="pupil" id="matchaPupilL">
+                                                        <span class="pupil-glint"></span>
+                                                    </div>
+                                                </div>
+                                                <div class="eyeball eyeball--pupil-only" id="matchaEyeR">
+                                                    <div class="eyelid" id="matchaLidR"></div>
+                                                    <div class="pupil" id="matchaPupilR">
+                                                        <span class="pupil-glint"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="boba-blush-wrap">
+                                                <span class="blush-dot blush-left"></span>
+                                                <span class="blush-dot blush-right"></span>
+                                            </div>
+                                            <div class="boba-mouth matcha-mouth" id="matchaMouth"></div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                    <div id="otpAlert" class="alert alert-danger d-none py-2 small rounded-3" role="alert"></div>
-
-                                    <form id="verifyOtpForm" onsubmit="handleVerifyOtp(event)">
-                                        <div class="mb-3 text-center">
-                                            <label for="otpCodeInput" class="form-label small fw-semibold">Nhập mã OTP (6 chữ số):</label>
-                                            <input type="text" class="form-control text-center fs-2 font-monospace fw-bold py-2 rounded-3 border-2" 
-                                                   id="otpCodeInput" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" 
-                                                   autocomplete="one-time-code" required placeholder="••••••" style="letter-spacing: 8px;">
-                                            <div class="form-text small text-muted mt-2">
-                                                <i class="bi bi-clock-history me-1"></i> Mã có hiệu lực trong <strong>10 phút</strong>.
+                                <!-- LY 4: TRÀ SỮA TRUYỀN THỐNG (CLASSIC HONEY BOBA - FRONT LAYER RIGHT) -->
+                                <div class="boba-character classic-cup" id="classicCup">
+                                    <div class="boba-straw classic-straw"></div>
+                                    <div class="boba-lid classic-lid">
+                                        <div class="boba-lid-rim"></div>
+                                    </div>
+                                    <div class="boba-body classic-body">
+                                        <div class="boba-shimmer"></div>
+                                        <div class="boba-ice ice-1"></div>
+                                        <div class="boba-ice ice-2"></div>
+                                        <div class="boba-pearl-layer">
+                                            <span class="pearl p1"></span>
+                                            <span class="pearl p2"></span>
+                                            <span class="pearl p3"></span>
+                                            <span class="pearl p4"></span>
+                                        </div>
+                                        <div class="boba-face classic-face" id="classicFace">
+                                            <div class="boba-eyes">
+                                                <div class="eyeball eyeball--pupil-only" id="classicEyeL">
+                                                    <div class="eyelid" id="classicLidL"></div>
+                                                    <div class="pupil" id="classicPupilL">
+                                                        <span class="pupil-glint"></span>
+                                                    </div>
+                                                </div>
+                                                <div class="eyeball eyeball--pupil-only" id="classicEyeR">
+                                                    <div class="eyelid" id="classicLidR"></div>
+                                                    <div class="pupil" id="classicPupilR">
+                                                        <span class="pupil-glint"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="boba-blush-wrap">
+                                                <span class="blush-dot blush-left"></span>
+                                                <span class="blush-dot blush-right"></span>
+                                            </div>
+                                            <div class="boba-mouth classic-mouth-wrap">
+                                                <svg width="60" height="18" viewBox="0 0 60 18" class="classic-mouth-svg">
+                                                    <path id="classicMouthPath" class="classic-mouth-path"
+                                                          d="M8 9 Q30 9, 52 9"
+                                                          stroke="#2D1A0E" stroke-width="3" fill="none" stroke-linecap="round"/>
+                                                </svg>
                                             </div>
                                         </div>
-
-                                        <button type="submit" id="btnVerifyOtp" class="btn btn-primary-custom w-100 py-2 rounded-3">
-                                            <span class="spinner-border spinner-border-sm me-2 d-none" id="verifySpinner"></span>
-                                            Xác Thực & Kích Hoạt Tài Khoản
-                                        </button>
-                                    </form>
-
-                                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                                        <button type="button" class="btn btn-link text-muted small p-0 text-decoration-none" onclick="backToRegisterForm()">
-                                            <i class="bi bi-arrow-left me-1"></i> Đổi thông tin
-                                        </button>
-                                        <button type="button" id="btnResendOtp" class="btn btn-sm btn-outline-secondary rounded-3" onclick="handleResendOtp()" disabled>
-                                            <span class="spinner-border spinner-border-sm me-1 d-none" id="resendSpinner"></span>
-                                            <span id="resendBtnText">Gửi lại mã (60s)</span>
-                                        </button>
                                     </div>
+                                </div>
+
+                                <!-- MẶT BÀN QUẦY BAR GỖ CAFE (WOODEN COUNTER SHELF) -->
+                                <div class="cafe-bar-counter">
+                                    <div class="counter-top-line"></div>
+                                    <div class="counter-wood-grain"></div>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Link quay lại thực đơn quán (Chỉ hiện trên Desktop) -->
+                        <div class="d-none d-lg-block mt-3 text-start">
+                            <a th:href="@{/}" class="text-muted text-decoration-none small auth-return-link">
+                                <i class="bi bi-arrow-left me-1"></i> Quay lại thực đơn quán
+                            </a>
+                        </div>
                     </div>
+
+                    <!-- CỘT PHẢI (DESKTOP) / KHU VỰC DƯỚI (MOBILE): FORM XÁC THỰC -->
+                    <div class="col-12 col-md-10 col-lg-6 col-xl-5">
+                        <div class="card auth-glass-card border-0 shadow-lg rounded-4 overflow-hidden" id="authCard">
+                            <!-- Card Header với Logo Quán tinh gọn -->
+                            <div class="card-header bg-transparent text-center pt-3 pb-1 border-0">
+                                <img th:if="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()}" 
+                                     th:src="${settings.logoUrl}" 
+                                     alt="Logo" 
+                                     class="rounded-circle shadow-sm" 
+                                     style="width: 56px; height: 56px; object-fit: cover;" 
+                                     onerror="this.style.display='none'; document.getElementById('loginFallbackBadge').style.display='inline-block';">
+                                <div id="loginFallbackBadge" class="d-inline-block brand-badge fs-5" 
+                                     th:style="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()} ? 'display: none !important;' : ''">
+                                    <i class="bi bi-cup-hot-fill me-1 text-primary-custom"></i>MilkTea
+                                </div>
+                            </div>
+
+                            <!-- Nav Tabs: Đăng Nhập & Đăng Ký -->
+                            <div class="px-3 px-sm-4 pt-1">
+                                <ul class="nav nav-pills nav-fill bg-light p-1 rounded-3" id="authTab" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active rounded-3 py-2 fw-semibold" id="login-tab"
+                                            data-bs-toggle="tab" data-bs-target="#loginTabContent" type="button" role="tab">
+                                            <i class="bi bi-box-arrow-in-right me-1"></i> Đăng Nhập
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link rounded-3 py-2 fw-semibold" id="register-tab"
+                                            data-bs-toggle="tab" data-bs-target="#registerTabContent" type="button" role="tab">
+                                            <i class="bi bi-person-plus me-1"></i> Đăng Ký
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="card-body p-3 p-sm-4">
+                                <!-- Alert Box chung -->
+                                <div id="authAlert" class="alert alert-danger d-none py-2 small rounded-3" role="alert"></div>
+
+                                <!-- Tab Content -->
+                                <div class="tab-content" id="authTabContent">
+                                    <!-- TAB 1: ĐĂNG NHẬP -->
+                                    <div class="tab-pane fade show active" id="loginTabContent" role="tabpanel">
+                                        <form id="loginForm" onsubmit="handleLogin(event)">
+                                            <div class="mb-3">
+                                                <label for="email" class="form-label small fw-semibold">Email tài khoản</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light border-end-0">
+                                                        <i class="bi bi-envelope text-muted"></i>
+                                                    </span>
+                                                    <input type="email" class="form-control border-start-0" id="email" required
+                                                        placeholder="name@milktea.vn" autocomplete="username">
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-2">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <label for="password" class="form-label small fw-semibold mb-0">Mật khẩu</label>
+                                                    <a href="javascript:void(0)"
+                                                        id="forgotPasswordLink"
+                                                        class="text-primary-custom small text-decoration-none fw-semibold"
+                                                        onclick="openForgotPasswordModal(event)">
+                                                        Quên mật khẩu?
+                                                    </a>
+                                                </div>
+                                                <!-- Mật khẩu kèm nút Toggle Hiện/Ẩn mắt tương tác -->
+                                                <div class="input-group mt-1">
+                                                    <span class="input-group-text bg-light border-end-0">
+                                                        <i class="bi bi-lock text-muted"></i>
+                                                    </span>
+                                                    <input type="password" class="form-control border-start-0 border-end-0" id="password"
+                                                        required placeholder="••••••••" autocomplete="current-password">
+                                                    <button class="btn btn-outline-secondary border-start-0 bg-light text-muted password-toggle-btn"
+                                                        type="button" id="togglePasswordBtn" title="Hiện / Ẩn mật khẩu"
+                                                        onclick="togglePasswordVisibility()">
+                                                        <i class="bi bi-eye" id="togglePasswordIcon"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <button type="submit" id="loginBtn"
+                                                class="btn btn-primary-custom w-100 py-2 rounded-3 mt-3 fw-bold">
+                                                <span class="spinner-border spinner-border-sm me-2 d-none" id="loginSpinner"></span>
+                                                Đăng Nhập
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <!-- TAB 2: ĐĂNG KÝ -->
+                                    <div class="tab-pane fade" id="registerTabContent" role="tabpanel">
+                                        <!-- Bước A: Form nhập thông tin đăng ký -->
+                                        <div id="registerFormContainer">
+                                            <form id="registerForm" onsubmit="handleRegister(event)">
+                                                <div class="mb-3">
+                                                    <label for="regFullName" class="form-label small fw-semibold">Họ và tên</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-light border-end-0">
+                                                            <i class="bi bi-person text-muted"></i>
+                                                        </span>
+                                                        <input type="text" class="form-control border-start-0" id="regFullName"
+                                                            required placeholder="Nguyễn Văn A">
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="regEmail" class="form-label small fw-semibold">Email đăng ký</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-light border-end-0">
+                                                            <i class="bi bi-envelope text-muted"></i>
+                                                        </span>
+                                                        <input type="email" class="form-control border-start-0" id="regEmail"
+                                                            required placeholder="example@gmail.com">
+                                                    </div>
+                                                    <div class="form-text small text-muted">Hệ thống sẽ gửi mã OTP 6 số đến email này để kích hoạt.</div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="regPhone" class="form-label small fw-semibold">Số điện thoại</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-light border-end-0">
+                                                            <i class="bi bi-telephone text-muted"></i>
+                                                        </span>
+                                                        <input type="tel" class="form-control border-start-0" id="regPhone"
+                                                            required pattern="[0-9]{10}" placeholder="0901234567">
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="regPassword" class="form-label small fw-semibold">Mật khẩu</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-light border-end-0">
+                                                            <i class="bi bi-lock text-muted"></i>
+                                                        </span>
+                                                        <input type="password" class="form-control border-start-0" id="regPassword"
+                                                            required minlength="6" placeholder="Tối thiểu 6 ký tự">
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="regConfirmPassword" class="form-label small fw-semibold">Xác nhận mật khẩu</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-light border-end-0">
+                                                            <i class="bi bi-shield-check text-muted"></i>
+                                                        </span>
+                                                        <input type="password" class="form-control border-start-0" id="regConfirmPassword"
+                                                            required minlength="6" placeholder="Nhập lại mật khẩu">
+                                                    </div>
+                                                </div>
+
+                                                <button type="submit" id="registerBtn"
+                                                    class="btn btn-success w-100 py-2 rounded-3 mt-2 fw-bold">
+                                                    <span class="spinner-border spinner-border-sm me-2 d-none" id="registerSpinner"></span>
+                                                    Đăng Ký &amp; Nhận Mã Xác Thực
+                                                </button>
+                                            </form>
+                                        </div>
+
+                                        <!-- Bước B: Form nhập mã OTP xác thực email (Ẩn ban đầu) -->
+                                        <div id="registerOtpContainer" class="d-none">
+                                            <div id="otpAlert" class="alert alert-danger d-none py-2 small rounded-3" role="alert"></div>
+
+                                            <div class="ux u026" id="registerOtpRoot">
+                                                <span class="u026-ic" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg>
+                                                </span>
+                                                <p class="u026-t">Xác Thực Địa Chỉ Email</p>
+                                                <p class="u026-s">Mã xác thực gồm 6 chữ số đã được gửi tới <b id="verifyTargetEmail">email@example.com</b></p>
+                                                
+                                                <form id="verifyOtpForm" onsubmit="handleVerifyOtp(event)" class="w-100">
+                                                    <div class="u026-row mb-2">
+                                                        <span class="u026-c" style="--i:0"></span><span class="u026-c" style="--i:1"></span><span class="u026-c" style="--i:2"></span>
+                                                        <i class="sep" aria-hidden="true"></i>
+                                                        <span class="u026-c" style="--i:3"></span><span class="u026-c" style="--i:4"></span><span class="u026-c" style="--i:5"></span>
+                                                        <input class="u026-real" id="otpCodeInput" type="text" inputmode="numeric" 
+                                                               autocomplete="one-time-code" maxlength="6" aria-label="Mã xác thực 6 chữ số" required>
+                                                    </div>
+                                                    
+                                                    <p class="u026-msg" id="otpStatusMsg">Nhập mã 6 chữ số để tự động xác thực</p>
+                                                    <span class="u026-live" id="otpLiveRegion" aria-live="polite"></span>
+
+                                                    <button type="submit" id="btnVerifyOtp" class="btn btn-primary-custom w-100 py-2 rounded-3 fw-bold mt-2">
+                                                        <span class="spinner-border spinner-border-sm me-2 d-none" id="verifySpinner"></span>
+                                                        Xác Thực &amp; Kích Hoạt Tài Khoản
+                                                    </button>
+                                                </form>
+
+                                                <div class="d-flex justify-content-between align-items-center w-100 mt-3 pt-3 border-top">
+                                                    <button type="button" class="btn btn-link text-muted small p-0 text-decoration-none" onclick="backToRegisterForm()">
+                                                        <i class="bi bi-arrow-left me-1"></i> Đổi thông tin
+                                                    </button>
+                                                    <button type="button" id="btnResendOtp" class="btn btn-sm btn-outline-secondary rounded-3" onclick="handleResendOtp()" disabled>
+                                                        <span class="spinner-border spinner-border-sm me-1 d-none" id="resendSpinner"></span>
+                                                        <span id="resendBtnText">Gửi lại mã (60s)</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Link quay lại thực đơn quán (Chỉ hiện trên Mobile) -->
+                        <div class="d-block d-lg-none mt-3 text-center">
+                            <a th:href="@{/}" class="text-muted text-decoration-none small auth-return-link">
+                                <i class="bi bi-arrow-left me-1"></i> Quay lại thực đơn quán
+                            </a>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
 
-        <!-- MODAL QUÊN MẬT KHẨU / OTP 2 BƯỚC (Đặt bên trong fragment content để render vào DOM) -->
+        <!-- MODAL QUÊN MẬT KHẨU / OTP 3 BƯỚC -->
         <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content rounded-4 border-0 shadow">
                     <div class="modal-header border-bottom-0 pb-0">
                         <h5 class="modal-title fw-bold" id="forgotPasswordModalLabel">
-                            <i class="bi bi-key-fill text-primary me-2"></i>Khôi Phục Mật Khẩu
+                            <i class="bi bi-key-fill text-primary-custom me-2"></i>Khôi Phục Mật Khẩu
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closeForgotPasswordModal()"></button>
                     </div>
@@ -256,51 +461,80 @@
                                 <div class="mb-3">
                                     <label for="forgotEmail" class="form-label small fw-semibold">Email tài khoản</label>
                                     <div class="input-group">
-                                        <span class="input-group-text bg-light"><i
-                                                class="bi bi-envelope text-muted"></i></span>
-                                        <input type="email" class="form-control" id="forgotEmail" required
-                                            placeholder="name@milktea.vn">
+                                        <span class="input-group-text bg-light"><i class="bi bi-envelope text-muted"></i></span>
+                                        <input type="email" class="form-control" id="forgotEmail" required placeholder="name@milktea.vn">
                                     </div>
                                 </div>
-                                <button type="submit" id="btnSendReset" class="btn btn-primary-custom w-100 py-2 rounded-3">
+                                <button type="submit" id="btnSendReset" class="btn btn-primary-custom w-100 py-2 rounded-3 fw-bold">
                                     <span class="spinner-border spinner-border-sm me-2 d-none" id="sendResetSpinner"></span>
                                     Gửi Mã Khôi Phục Qua Email
                                 </button>
                             </form>
                         </div>
 
-                        <!-- BƯỚC 2: XÁC THỰC MÃ OTP 6 CHỮ SỐ (Bắt buộc xác thực đúng trước khi mở form đổi mật khẩu) -->
-                        <div id="forgotStep2" class="d-none">
-                            <div class="alert alert-info py-2 small rounded-3 mb-3">
-                                <i class="bi bi-info-circle-fill me-1"></i> Mã xác thực 6 chữ số đã được gửi đến <strong id="forgotTargetEmail">email</strong>. Vui lòng kiểm tra hộp thư (cả mục Spam) và nhập vào bên dưới:
-                            </div>
-                            <form id="step2OtpForm" onsubmit="handleVerifyResetOtp(event)">
-                                <div class="mb-3 text-center">
-                                    <label for="resetOtpInput" class="form-label small fw-semibold">Nhập mã xác thực OTP (6 chữ số):</label>
-                                    <input type="text" class="form-control text-center font-monospace fs-2 fw-bold py-2 rounded-3 border-2" 
-                                        id="resetOtpInput" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric" 
-                                        autocomplete="one-time-code" placeholder="••••••" style="letter-spacing: 8px;">
-                                    <div class="form-text small text-muted mt-2">
-                                        <i class="bi bi-clock-history me-1"></i> Mã có hiệu lực trong <strong>15 phút</strong>.
+                        <!-- GIAI ĐOẠN TRUNG GIAN: HIỆU ỨNG LÁ THƯ BAY (Lucian UX/UI Prompt #064) -->
+                        <div id="forgotSendingStage" class="d-none text-center py-2">
+                            <div class="ux u064 mx-auto">
+                                <div class="u064-art" aria-hidden="true">
+                                    <div class="u064-env">
+                                        <span class="u064-clip">
+                                            <span class="u064-back"></span>
+                                            <span class="u064-letter"><i></i><i></i><i></i></span>
+                                        </span>
+                                        <span class="u064-front"></span>
+                                        <span class="u064-flap"></span>
+                                        <span class="u064-badge">
+                                            <svg viewBox="0 0 20 20"><path d="M5 10.5l3.5 3.5L15 7"/></svg>
+                                        </span>
                                     </div>
                                 </div>
-                                <button type="submit" id="btnVerifyResetOtp" class="btn btn-primary-custom w-100 py-2 rounded-3">
-                                    <span class="spinner-border spinner-border-sm me-2 d-none" id="verifyResetOtpSpinner"></span>
-                                    Xác Thực Mã OTP &amp; Tiếp Tục
-                                </button>
-                            </form>
-                            <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                                <button type="button" class="btn btn-link text-muted small p-0 text-decoration-none" onclick="backToStep1()">
-                                    <i class="bi bi-arrow-left me-1"></i> Đổi email khác
-                                </button>
-                                <button type="button" id="btnResendResetOtp" class="btn btn-sm btn-outline-secondary rounded-3" onclick="handleResendResetOtp()" disabled>
-                                    <span class="spinner-border spinner-border-sm me-1 d-none" id="resendResetSpinner"></span>
-                                    <span id="resendResetBtnText">Gửi lại mã (60s)</span>
-                                </button>
+                                <div class="u064-status-area">
+                                    <h6 class="fw-bold mb-1 u064-title" id="u064Title">Đang niêm phong thư...</h6>
+                                    <p class="text-muted small mb-0 u064-subtitle" id="u064Subtitle">Chuẩn bị mã xác thực gửi đến bạn</p>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- BƯỚC 3: THIẾT LẬP MẬT KHẨU MỚI (Chỉ mở khi OTP đã xác thực đúng) -->
+                        <!-- BƯỚC 2: XÁC THỰC MÃ OTP 6 CHỮ SỐ -->
+                        <div id="forgotStep2" class="d-none">
+                            <div class="ux u026" id="forgotOtpRoot">
+                                <span class="u026-ic" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg>
+                                </span>
+                                <p class="u026-t">Khôi Phục Mật Khẩu</p>
+                                <p class="u026-s">Mã xác thực 6 chữ số đã được gửi đến <b id="forgotTargetEmail">email</b></p>
+                                
+                                <form id="step2OtpForm" onsubmit="handleVerifyResetOtp(event)" class="w-100">
+                                    <div class="u026-row mb-2">
+                                        <span class="u026-c" style="--i:0"></span><span class="u026-c" style="--i:1"></span><span class="u026-c" style="--i:2"></span>
+                                        <i class="sep" aria-hidden="true"></i>
+                                        <span class="u026-c" style="--i:3"></span><span class="u026-c" style="--i:4"></span><span class="u026-c" style="--i:5"></span>
+                                        <input class="u026-real" id="resetOtpInput" type="text" inputmode="numeric" 
+                                               autocomplete="one-time-code" maxlength="6" aria-label="Mã xác thực OTP gồm 6 chữ số" required>
+                                    </div>
+                                    
+                                    <p class="u026-msg" id="forgotOtpStatusMsg">Nhập mã 6 chữ số để tự động xác thực</p>
+                                    <span class="u026-live" id="forgotOtpLiveRegion" aria-live="polite"></span>
+
+                                    <button type="submit" id="btnVerifyResetOtp" class="btn btn-primary-custom w-100 py-2 rounded-3 fw-bold mt-2">
+                                        <span class="spinner-border spinner-border-sm me-2 d-none" id="verifyResetOtpSpinner"></span>
+                                        Xác Thực Mã OTP &amp; Tiếp Tục
+                                    </button>
+                                </form>
+
+                                <div class="d-flex justify-content-between align-items-center w-100 mt-3 pt-3 border-top">
+                                    <button type="button" class="btn btn-link text-muted small p-0 text-decoration-none" onclick="backToStep1()">
+                                        <i class="bi bi-arrow-left me-1"></i> Đổi email khác
+                                    </button>
+                                    <button type="button" id="btnResendResetOtp" class="btn btn-sm btn-outline-secondary rounded-3" onclick="handleResendResetOtp()" disabled>
+                                        <span class="spinner-border spinner-border-sm me-1 d-none" id="resendResetSpinner"></span>
+                                        <span id="resendResetBtnText">Gửi lại mã (60s)</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BƯỚC 3: THIẾT LẬP MẬT KHẨU MỚI -->
                         <div id="forgotStep3" class="d-none">
                             <div class="alert alert-success py-2 small rounded-3 mb-3">
                                 <i class="bi bi-check-circle-fill me-1"></i> Mã OTP đã được xác thực thành công! Vui lòng nhập mật khẩu mới cho tài khoản:
@@ -322,9 +556,8 @@
                                             minlength="6" placeholder="Nhập lại mật khẩu mới">
                                     </div>
                                 </div>
-                                <button type="submit" id="btnConfirmReset" class="btn btn-success w-100 py-2 rounded-3">
-                                    <span class="spinner-border spinner-border-sm me-2 d-none"
-                                        id="confirmResetSpinner"></span>
+                                <button type="submit" id="btnConfirmReset" class="btn btn-success w-100 py-2 rounded-3 fw-bold">
+                                    <span class="spinner-border spinner-border-sm me-2 d-none" id="confirmResetSpinner"></span>
                                     Đặt Lại Mật Khẩu &amp; Hoàn Tất
                                 </button>
                             </form>
@@ -333,10 +566,1356 @@
                 </div>
             </div>
         </div>
+
+        <!-- STYLES DÀNH CHO KHÔNG GIAN LOGIN & CÁC LY TRÀ SỮA THEO DÕI -->
+        <style>
+            /* Lucian UX/UI Prompt #026 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#026 */
+            :root {
+                --ux-page: #FAF8F5;
+                --ux-surface: #FFFFFF;
+                --ux-surface-2: #F5F3EF;
+                --ux-surface-3: #EAE7E1;
+                --ux-ink: #16151B;
+                --ux-ink-2: #57535F;
+                --ux-ink-3: #8E8A97;
+                --ux-line: rgba(22, 21, 27, .09);
+                --ux-line-2: rgba(22, 21, 27, .17);
+                --ux-accent: #b86b35;
+                --ux-accent-2: #d35400;
+                --ux-accent-soft: rgba(184, 107, 53, .15);
+                --ux-accent-ink: #FFFFFF;
+                --ux-mint: #119C72;
+                --ux-warn: #D6731E;
+                --ux-danger: #D93A55;
+                --ux-glass: rgba(255, 255, 255, .58);
+                --ux-glass-line: rgba(255, 255, 255, .85);
+                --ux-shadow: rgba(40, 30, 80, .14);
+                --ux-shadow-strong: rgba(40, 30, 80, .3);
+                --ux-grad: linear-gradient(120deg, #b86b35, #d35400 55%, #119C72);
+                --ux-ease: cubic-bezier(.2, .8, .2, 1);
+                --ux-spring: cubic-bezier(.34, 1.45, .64, 1);
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root:not([data-theme="light"]) {
+                    --ux-page: #07080D;
+                    --ux-surface: #1E1F29;
+                    --ux-surface-2: #262734;
+                    --ux-surface-3: #313344;
+                    --ux-ink: #F4F0E8;
+                    --ux-ink-2: rgba(244, 240, 232, .68);
+                    --ux-ink-3: rgba(244, 240, 232, .42);
+                    --ux-line: rgba(255, 255, 255, .08);
+                    --ux-line-2: rgba(255, 255, 255, .16);
+                    --ux-accent: #E68A48;
+                    --ux-accent-2: #FFA366;
+                    --ux-accent-soft: rgba(230, 138, 72, .2);
+                    --ux-accent-ink: #0B0C12;
+                    --ux-mint: #7EE8C0;
+                    --ux-warn: #FFB26B;
+                    --ux-danger: #FF7D8C;
+                    --ux-glass: rgba(255, 255, 255, .07);
+                    --ux-glass-line: rgba(255, 255, 255, .18);
+                    --ux-shadow: rgba(0, 0, 0, .45);
+                    --ux-shadow-strong: rgba(0, 0, 0, .72);
+                    --ux-grad: linear-gradient(120deg, #E68A48, #FFA366 55%, #A5F2D3);
+                }
+            }
+
+            :root[data-theme="dark"] {
+                --ux-page: #07080D;
+                --ux-surface: #1E1F29;
+                --ux-surface-2: #262734;
+                --ux-surface-3: #313344;
+                --ux-ink: #F4F0E8;
+                --ux-ink-2: rgba(244, 240, 232, .68);
+                --ux-ink-3: rgba(244, 240, 232, .42);
+                --ux-line: rgba(255, 255, 255, .08);
+                --ux-line-2: rgba(255, 255, 255, .16);
+                --ux-accent: #E68A48;
+                --ux-accent-2: #FFA366;
+                --ux-accent-soft: rgba(230, 138, 72, .2);
+                --ux-accent-ink: #0B0C12;
+                --ux-mint: #7EE8C0;
+                --ux-warn: #FFB26B;
+                --ux-danger: #FF7D8C;
+                --ux-glass: rgba(255, 255, 255, .07);
+                --ux-glass-line: rgba(255, 255, 255, .18);
+                --ux-shadow: rgba(0, 0, 0, .45);
+                --ux-shadow-strong: rgba(0, 0, 0, .72);
+                --ux-grad: linear-gradient(120deg, #E68A48, #FFA366 55%, #A5F2D3);
+            }
+
+            .u026 {
+                position: relative;
+                width: 100%;
+                max-width: 360px;
+                min-height: 250px;
+                margin: 0 auto;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .u026-ic {
+                width: 56px;
+                height: 56px;
+                border-radius: 18px;
+                display: grid;
+                place-items: center;
+                color: #fff;
+                background: linear-gradient(140deg, #b86b35, #d35400);
+                box-shadow: 0 14px 26px -14px rgba(184, 107, 53, .8);
+                transition: background .5s var(--ux-ease);
+            }
+
+            .u026-ic svg {
+                width: 26px;
+                height: 26px;
+                fill: none;
+                stroke: currentColor;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            .u026.is-ok .u026-ic {
+                background: linear-gradient(140deg, #2FD8A8, #119C72);
+                box-shadow: 0 14px 26px -14px rgba(17, 156, 114, .8);
+            }
+
+            .u026-t {
+                margin: 16px 0 0;
+                font-size: 18px;
+                font-weight: 760;
+                letter-spacing: -.03em;
+                color: var(--ux-ink);
+                text-align: center;
+            }
+
+            .u026-s {
+                margin: 6px 0 20px;
+                font-size: 13.5px;
+                color: var(--ux-ink-3);
+                text-align: center;
+                line-height: 1.45;
+            }
+
+            .u026-s b {
+                color: var(--ux-ink-2);
+                font-weight: 650;
+                word-break: break-all;
+            }
+
+            .u026-row {
+                position: relative;
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .u026-row i.sep {
+                width: 10px;
+                align-self: center;
+                height: 2px;
+                border-radius: 2px;
+                background: var(--ux-line-2);
+            }
+
+            .u026-c {
+                position: relative;
+                width: 46px;
+                height: 58px;
+                border-radius: 14px;
+                background: var(--ux-surface);
+                box-shadow: inset 0 0 0 1.5px var(--ux-line-2);
+                display: grid;
+                place-items: center;
+                overflow: hidden;
+                font-size: 26px;
+                font-weight: 760;
+                font-variant-numeric: tabular-nums;
+                transition: box-shadow .25s var(--ux-ease), background-color .4s var(--ux-ease), color .4s, transform .45s var(--ux-spring);
+                color: var(--ux-ink);
+            }
+
+            .u026-c span {
+                display: block;
+                animation: u026-in .4s var(--ux-spring);
+            }
+
+            @keyframes u026-in {
+                from {
+                    transform: translateY(70%);
+                    opacity: 0;
+                }
+            }
+
+            .u026-c.cur {
+                box-shadow: inset 0 0 0 2px var(--ux-accent), 0 0 0 4px var(--ux-accent-soft);
+            }
+
+            .u026-c.cur::after {
+                content: "";
+                position: absolute;
+                left: 50%;
+                top: 16px;
+                bottom: 16px;
+                width: 2px;
+                margin-left: -1px;
+                border-radius: 1px;
+                background: var(--ux-accent);
+                animation: u026-blink 1s steps(1) infinite;
+            }
+
+            .u026-c.cur.has::after {
+                display: none;
+            }
+
+            @keyframes u026-blink {
+                50% {
+                    opacity: 0;
+                }
+            }
+
+            .u026.is-check .u026-c {
+                animation: u026-wave .5s var(--ux-ease);
+                animation-delay: calc(var(--i) * 60ms);
+            }
+
+            @keyframes u026-wave {
+                40% {
+                    transform: translateY(-8px);
+                }
+            }
+
+            .u026.is-ok .u026-c {
+                background: color-mix(in srgb, var(--ux-mint) 14%, var(--ux-surface));
+                box-shadow: inset 0 0 0 2px var(--ux-mint);
+                color: var(--ux-mint);
+                transition-delay: calc(var(--i) * 50ms);
+            }
+
+            .u026.is-bad .u026-row {
+                animation: u026-shake .45s var(--ux-ease);
+            }
+
+            .u026.is-bad .u026-c {
+                box-shadow: inset 0 0 0 2px var(--ux-danger);
+                color: var(--ux-danger);
+            }
+
+            @keyframes u026-shake {
+                20% {
+                    transform: translateX(-8px);
+                }
+                40% {
+                    transform: translateX(7px);
+                }
+                60% {
+                    transform: translateX(-4px);
+                }
+                80% {
+                    transform: translateX(2px);
+                }
+            }
+
+            .u026-real {
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                opacity: 0;
+                border: 0;
+                padding: 0;
+                font-size: 16px;
+                cursor: text;
+                caret-color: transparent;
+                color: transparent;
+                background: transparent;
+                z-index: 5;
+            }
+
+            .u026-real:focus-visible {
+                outline: none;
+            }
+
+            .u026-msg {
+                min-height: 20px;
+                margin: 14px 0 6px;
+                font-size: 13.5px;
+                font-weight: 650;
+                color: var(--ux-ink-3);
+                text-align: center;
+                transition: color .3s var(--ux-ease);
+            }
+
+            .u026.is-ok .u026-msg {
+                color: var(--ux-mint);
+            }
+
+            .u026.is-bad .u026-msg {
+                color: var(--ux-danger);
+            }
+
+            .u026-live {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                clip-path: inset(50%);
+                white-space: nowrap;
+            }
+
+            @media (max-width: 380px) {
+                .u026-c {
+                    width: 38px;
+                    height: 50px;
+                    font-size: 21px;
+                    border-radius: 10px;
+                }
+                .u026-row {
+                    gap: 5px;
+                }
+                .u026-row i.sep {
+                    width: 6px;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .u026, .u026 *, .u026 *::before, .u026 *::after {
+                    animation-duration: .001ms !important;
+                    animation-iteration-count: 1 !important;
+                    transition-duration: .001ms !important;
+                }
+            }
+
+            /* ==========================================================================
+               LUCIAN UX/UI PROMPT #064: ANIMATED ENVELOPE (LÁ THƯ BAY KHÔI PHỤC MẬT KHẨU)
+               ========================================================================== */
+            .u064 {
+                position: relative;
+                width: 100%;
+                max-width: 320px;
+                height: 270px;
+                border-radius: 26px;
+                background: #FFFFFF;
+                border: 1px solid rgba(61, 43, 31, 0.08);
+                box-shadow: 0 16px 36px -16px rgba(61, 43, 31, 0.16);
+                overflow: hidden;
+                margin: 0 auto;
+            }
+
+            .u064-art {
+                position: absolute;
+                left: 50%;
+                top: 36px;
+                width: 180px;
+                height: 150px;
+                margin-left: -90px;
+                transition: transform 0.7s cubic-bezier(.5, -.3, .6, 1), opacity 0.5s;
+                will-change: transform, opacity;
+            }
+
+            /* Trạng thái 2: Thư bay vút lên cao */
+            .u064.fly .u064-art {
+                transform: translate(170px, -160px) rotate(18deg) scale(.4);
+                opacity: 0;
+            }
+
+            /* Trạng thái 3: Đã gửi (thư hạ cánh và hiện tick xanh) */
+            .u064.sent .u064-art {
+                transform: none;
+                opacity: 1;
+                transition: transform 0.7s cubic-bezier(.34, 1.45, .64, 1), opacity 0.4s;
+            }
+
+            .u064-env {
+                position: absolute;
+                left: 10px;
+                right: 10px;
+                bottom: 0;
+                height: 104px;
+                perspective: 400px;
+            }
+
+            .u064-clip {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: -90px;
+                bottom: 0;
+                overflow: hidden;
+                border-radius: 0 0 14px 14px;
+            }
+
+            .u064-back {
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                height: 104px;
+                border-radius: 14px;
+                background: #EBDCCE;
+            }
+
+            .u064-letter {
+                position: absolute;
+                left: 16px;
+                right: 16px;
+                bottom: 30px;
+                height: 118px;
+                border-radius: 10px;
+                background: #FFFFFF;
+                box-shadow: 0 6px 16px rgba(61, 43, 31, 0.12);
+                padding: 16px;
+                transition: transform 0.6s cubic-bezier(.2, .8, .2, 1);
+            }
+
+            .u064-letter i {
+                display: block;
+                height: 7px;
+                margin-bottom: 9px;
+                border-radius: 4px;
+                background: #F3ECE5;
+            }
+
+            .u064-letter i:first-child {
+                width: 48%;
+                background: var(--ux-accent, #D35400);
+            }
+
+            .u064-letter i:nth-child(2) {
+                width: 88%;
+            }
+
+            .u064-letter i:nth-child(3) {
+                width: 68%;
+            }
+
+            .u064-front {
+                position: absolute;
+                inset: 0;
+                border-radius: 14px;
+                background: linear-gradient(160deg, #E68A48, #C85A17);
+                clip-path: polygon(0 0, 50% 58%, 100% 0, 100% 100%, 0 100%);
+            }
+
+            .u064-flap {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 0;
+                height: 64px;
+                transform-origin: 50% 0;
+                transform: rotateX(180deg);
+                transition: transform 0.5s cubic-bezier(.2, .8, .2, 1);
+            }
+
+            .u064-flap::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: #DF7A34;
+                clip-path: polygon(0 0, 100% 0, 50% 100%);
+                border-radius: 14px 14px 0 0;
+            }
+
+            /* Trạng thái 1: Đóng nắp thư */
+            .u064.sealed .u064-letter {
+                transform: translateY(70px);
+            }
+
+            .u064.sealed .u064-flap {
+                transform: none;
+                transition-delay: 0.45s;
+            }
+
+            /* Huy hiệu tích xanh (Badge) */
+            .u064-badge {
+                position: absolute;
+                right: -6px;
+                top: -10px;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                display: grid;
+                place-items: center;
+                background: var(--ux-mint, #119C72);
+                color: #FFFFFF;
+                box-shadow: 0 0 0 4px #FFFFFF, 0 4px 12px rgba(17, 156, 114, 0.35);
+                transform: scale(0);
+                transition: transform 0.5s cubic-bezier(.34, 1.45, .64, 1) 0.3s;
+            }
+
+            .u064-badge svg {
+                width: 20px;
+                height: 20px;
+                fill: none;
+                stroke: currentColor;
+                stroke-width: 3;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            .u064.sent .u064-badge {
+                transform: none;
+            }
+
+            /* Khu vực hiển thị tiêu đề và trạng thái */
+            .u064-status-area {
+                position: absolute;
+                bottom: 20px;
+                left: 16px;
+                right: 16px;
+                text-align: center;
+            }
+
+            .u064-title {
+                color: var(--ux-ink, #3D2B1F);
+                font-size: 15px;
+                font-weight: 700;
+                margin-bottom: 4px;
+            }
+
+            .u064-subtitle {
+                color: var(--ux-ink-2, #6B5B51);
+                font-size: 13px;
+                margin-bottom: 0;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .u064, .u064 *, .u064 *::before, .u064 *::after {
+                    animation-duration: .001ms !important;
+                    animation-iteration-count: 1 !important;
+                    transition-duration: .001ms !important;
+                }
+            }
+
+            .milktea-auth-container {
+                position: relative;
+                min-height: calc(100vh - 76px);
+                background: radial-gradient(circle at 18% 22%, rgba(251, 238, 228, 0.85) 0%, rgba(255, 253, 250, 0.96) 55%, #F7EFE6 100%);
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .auth-layout-box {
+                width: 100%;
+                max-width: 1040px;
+            }
+
+            /* Ambient Cafe Lighting Orbs */
+            .auth-orb {
+                position: absolute;
+                border-radius: 50%;
+                filter: blur(85px);
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .auth-orb-1 {
+                width: 480px;
+                height: 480px;
+                top: -120px;
+                left: -90px;
+                background: rgba(184, 107, 53, 0.15);
+            }
+
+            .auth-orb-2 {
+                width: 420px;
+                height: 420px;
+                bottom: -80px;
+                right: 3%;
+                background: rgba(230, 161, 75, 0.14);
+            }
+
+            .auth-orb-3 {
+                width: 320px;
+                height: 320px;
+                top: 45%;
+                left: 36%;
+                background: rgba(155, 193, 131, 0.11);
+            }
+
+            .auth-grid-overlay {
+                position: absolute;
+                inset: 0;
+                background-image: 
+                    linear-gradient(to right, rgba(184, 107, 53, 0.045) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(184, 107, 53, 0.045) 1px, transparent 1px);
+                background-size: 34px 34px;
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .auth-hero-title {
+                color: #2D1B0E;
+                letter-spacing: -0.02em;
+            }
+
+            .auth-return-link {
+                transition: color 0.18s ease;
+            }
+
+            .auth-return-link:hover {
+                color: var(--auth-primary) !important;
+            }
+
+            /* ====================================================
+               SÂN KHẤU CÁC LY TRÀ SỮA (BOBA STAGE RESPONSIVE)
+               ==================================================== */
+            .boba-stage-wrapper {
+                position: relative;
+                display: flex;
+                justify-content: center;
+                align-items: flex-end;
+                width: 100%;
+                overflow: visible;
+            }
+
+            .boba-stage {
+                position: relative;
+                width: 490px;
+                height: 390px;
+                user-select: none;
+                flex-shrink: 0;
+            }
+
+            /* BỐ CỤC MOBILE & DESKTOP */
+            @media (min-width: 992px) {
+                .auth-stage-column {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    justify-content: center;
+                    padding-right: 1.5rem;
+                }
+                .boba-stage-wrapper {
+                    justify-content: flex-start;
+                }
+                .boba-stage {
+                    transform: scale(0.96);
+                    transform-origin: bottom left;
+                }
+            }
+
+            @media (max-width: 991.98px) {
+                .auth-stage-column {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: -10px;
+                }
+                .boba-stage-wrapper {
+                    height: 240px;
+                    justify-content: center;
+                    align-items: flex-end;
+                }
+                .boba-stage {
+                    transform: scale(0.64);
+                    transform-origin: bottom center;
+                }
+            }
+
+            @media (max-width: 430px) {
+                .boba-stage-wrapper {
+                    height: 210px;
+                    margin-bottom: -15px;
+                }
+                .boba-stage {
+                    transform: scale(0.55);
+                    transform-origin: bottom center;
+                }
+            }
+
+            /* ====================================================
+               CÁC NHÂN VẬT LY TRÀ SỮA (BOBA CHARACTERS)
+               ==================================================== */
+            .boba-character {
+                position: absolute;
+                bottom: 16px;
+                transform-origin: bottom center;
+                transition: transform 0.65s cubic-bezier(0.34, 1.3, 0.64, 1),
+                            height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                will-change: transform, left, top;
+            }
+
+            /* Entrance Animations */
+            .taro-cup {
+                animation: taro-entrance 1.2s cubic-bezier(0.34, 1.45, 0.64, 1) forwards;
+            }
+            .roasted-cup {
+                animation: roasted-entrance 1.1s cubic-bezier(0.34, 1.45, 0.64, 1) 0.15s backwards;
+            }
+            .matcha-cup {
+                animation: matcha-entrance 1.1s cubic-bezier(0.34, 1.45, 0.64, 1) 0.1s backwards;
+            }
+            .classic-cup {
+                animation: classic-entrance 1.15s cubic-bezier(0.34, 1.45, 0.64, 1) 0.25s backwards;
+            }
+
+            .entrance-complete {
+                animation: none !important;
+            }
+
+            @keyframes taro-entrance {
+                0% { transform: translateX(-120px) translateY(70px) rotate(-16deg) scale(0.35); opacity: 0; }
+                65% { transform: translateX(8px) translateY(-10px) rotate(3deg) scale(1.04); }
+                100% { transform: translateX(0) translateY(0) rotate(0deg) scale(1); opacity: 1; }
+            }
+
+            @keyframes roasted-entrance {
+                0% { transform: translateY(-90px) scale(0.45); opacity: 0; }
+                70% { transform: translateY(8px) scale(1.06); }
+                100% { transform: translateY(0) scale(1); opacity: 1; }
+            }
+
+            @keyframes matcha-entrance {
+                0% { transform: translateX(-150px) translateY(60px) rotate(-22deg) scale(0.3); opacity: 0; }
+                65% { transform: translateX(12px) translateY(-8px) rotate(4deg) scale(1.08); }
+                100% { transform: translateX(0) translateY(0) rotate(0deg) scale(1); opacity: 1; }
+            }
+
+            @keyframes classic-entrance {
+                0% { transform: translateX(150px) translateY(60px) rotate(18deg) scale(0.35); opacity: 0; }
+                65% { transform: translateX(-10px) translateY(-6px) rotate(-4deg) scale(1.05); }
+                100% { transform: translateX(0) translateY(0) rotate(0deg) scale(1); opacity: 1; }
+            }
+
+            /* 1. LY KHOAI MÔN (TARO CUP) */
+            .taro-cup {
+                left: 55px;
+                width: 175px;
+                height: 350px;
+                z-index: 1;
+            }
+
+            .taro-straw {
+                position: absolute;
+                top: -46px;
+                left: 72px;
+                width: 18px;
+                height: 70px;
+                background: repeating-linear-gradient(
+                    -45deg,
+                    #FFFFFF,
+                    #FFFFFF 8px,
+                    #B39DDB 8px,
+                    #B39DDB 16px
+                );
+                border-radius: 9px 9px 0 0;
+                transform: rotate(-14deg);
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+                z-index: 1;
+            }
+
+            .taro-lid {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 38px;
+                background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(240, 230, 255, 0.5) 100%);
+                border-radius: 40px 40px 8px 8px;
+                border: 2px solid rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(4px);
+                z-index: 3;
+            }
+
+            .taro-lid-rim {
+                position: absolute;
+                bottom: -4px;
+                left: -4px;
+                right: -4px;
+                height: 8px;
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 4px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            }
+
+            .taro-body {
+                position: absolute;
+                top: 32px;
+                left: 6px;
+                right: 6px;
+                bottom: 0;
+                background: linear-gradient(180deg, #D4B9FC 0%, #B68DF8 45%, #8E54E9 100%);
+                border-radius: 0 0 32px 32px;
+                overflow: hidden;
+                box-shadow: inset 14px 0 20px rgba(255, 255, 255, 0.36),
+                            inset -14px 0 20px rgba(74, 20, 140, 0.22),
+                            0 12px 28px rgba(106, 27, 154, 0.18);
+            }
+
+            .boba-shimmer {
+                position: absolute;
+                top: 0;
+                left: 12px;
+                width: 18px;
+                height: 100%;
+                background: linear-gradient(90deg, rgba(255, 255, 255, 0.45) 0%, transparent 100%);
+                border-radius: 9px;
+                pointer-events: none;
+            }
+
+            .taro-cup .boba-seal {
+                position: absolute;
+                top: 130px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.28);
+                border: 1.5px dashed rgba(255, 255, 255, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #FFFFFF;
+                font-size: 1.3rem;
+                pointer-events: none;
+            }
+
+            .boba-pearl-layer {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 60px;
+                pointer-events: none;
+            }
+
+            .pearl {
+                position: absolute;
+                border-radius: 50%;
+                background: radial-gradient(circle at 35% 35%, #503125 0%, #1A0E08 75%);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            }
+
+            .pearl::after {
+                content: '';
+                position: absolute;
+                top: 20%;
+                left: 25%;
+                width: 28%;
+                height: 28%;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.65);
+            }
+
+            .taro-cup .pearl.p1 { width: 22px; height: 22px; bottom: 8px; left: 14px; }
+            .taro-cup .pearl.p2 { width: 24px; height: 24px; bottom: 10px; left: 40px; }
+            .taro-cup .pearl.p3 { width: 26px; height: 26px; bottom: 6px; left: 70px; }
+            .taro-cup .pearl.p4 { width: 23px; height: 23px; bottom: 12px; left: 100px; }
+            .taro-cup .pearl.p5 { width: 21px; height: 21px; bottom: 8px; left: 126px; }
+            .taro-cup .pearl.p6 { width: 20px; height: 20px; bottom: 28px; left: 55px; }
+
+            /* 2. LY TRÀ SỮA NƯỚNG (ROASTED CUP) */
+            .roasted-cup {
+                left: 225px;
+                width: 120px;
+                height: 285px;
+                z-index: 2;
+            }
+
+            .roasted-straw {
+                position: absolute;
+                top: -38px;
+                left: 55px;
+                width: 16px;
+                height: 58px;
+                background: linear-gradient(180deg, #F9E79F 0%, #D4AC0D 100%);
+                border-radius: 8px 8px 0 0;
+                transform: rotate(10deg);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+                z-index: 1;
+            }
+
+            .roasted-foam {
+                position: absolute;
+                top: 0;
+                left: 4px;
+                right: 4px;
+                height: 32px;
+                background: linear-gradient(180deg, #FFF9ED 0%, #F5DEB3 100%);
+                border-radius: 16px 16px 4px 4px;
+                border: 1.5px solid rgba(255, 255, 255, 0.85);
+                z-index: 3;
+            }
+
+            .roasted-body {
+                position: absolute;
+                top: 26px;
+                left: 4px;
+                right: 4px;
+                bottom: 0;
+                background: linear-gradient(180deg, #7D4E33 0%, #5B3520 50%, #381E10 100%);
+                border-radius: 0 0 24px 24px;
+                overflow: hidden;
+                box-shadow: inset 10px 0 16px rgba(255, 255, 255, 0.22),
+                            inset -10px 0 16px rgba(0, 0, 0, 0.4),
+                            0 10px 24px rgba(43, 24, 16, 0.25);
+            }
+
+            .roasted-cup .boba-seal.mini {
+                position: absolute;
+                top: 110px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 2px 10px;
+                border-radius: 999px;
+                background: rgba(255, 248, 220, 0.25);
+                border: 1px solid rgba(255, 248, 220, 0.6);
+                color: #FFF8DC;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.05em;
+                pointer-events: none;
+            }
+
+            .roasted-cup .pearl.p1 { width: 22px; height: 22px; bottom: 6px; left: 10px; }
+            .roasted-cup .pearl.p2 { width: 24px; height: 24px; bottom: 8px; left: 36px; }
+            .roasted-cup .pearl.p3 { width: 22px; height: 22px; bottom: 6px; left: 66px; }
+            .roasted-cup .pearl.p4 { width: 20px; height: 20px; bottom: 24px; left: 24px; }
+
+            /* 3. LY MATCHA FOAM PHÔ MAI */
+            .matcha-cup {
+                left: 0px;
+                width: 225px;
+                height: 155px;
+                z-index: 3;
+            }
+
+            .matcha-straw {
+                position: absolute;
+                top: -34px;
+                left: 48px;
+                width: 17px;
+                height: 55px;
+                background: linear-gradient(180deg, #99C68E 0%, #689F38 100%);
+                border-radius: 8px 8px 0 0;
+                transform: rotate(-20deg);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+                z-index: 1;
+            }
+
+            .boba-cheese-foam {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 42px;
+                z-index: 4;
+            }
+
+            .cheese-layer {
+                width: 100%;
+                height: 32px;
+                background: linear-gradient(180deg, #FFFFFF 0%, #FFFDF5 100%);
+                border-radius: 36px 36px 8px 8px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.9);
+            }
+
+            .cheese-drips .drip {
+                position: absolute;
+                background: #FFFDF5;
+                border-radius: 0 0 10px 10px;
+                box-shadow: 0 3px 6px rgba(0, 0, 0, 0.04);
+            }
+            .cheese-drips .d1 { width: 14px; height: 16px; top: 28px; left: 35px; }
+            .cheese-drips .d2 { width: 18px; height: 22px; top: 28px; left: 110px; }
+            .cheese-drips .d3 { width: 12px; height: 14px; top: 28px; left: 170px; }
+
+            .matcha-body {
+                position: absolute;
+                top: 24px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(180deg, #A8C97F 0%, #7CB342 55%, #558B2F 100%);
+                border-radius: 0 0 110px 110px;
+                overflow: hidden;
+                box-shadow: inset 16px 0 20px rgba(255, 255, 255, 0.35),
+                            inset -16px 0 20px rgba(46, 125, 50, 0.35),
+                            0 12px 26px rgba(51, 105, 30, 0.22);
+            }
+
+            .boba-redbeans {
+                position: absolute;
+                bottom: 4px;
+                left: 0;
+                right: 0;
+                height: 35px;
+                pointer-events: none;
+            }
+
+            .bean {
+                position: absolute;
+                width: 18px;
+                height: 14px;
+                border-radius: 9px;
+                background: #5D262C;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+            }
+            .bean.b1 { bottom: 6px; left: 65px; transform: rotate(-15deg); }
+            .bean.b2 { bottom: 8px; left: 100px; transform: rotate(10deg); }
+            .bean.b3 { bottom: 6px; left: 135px; transform: rotate(-25deg); }
+
+            /* 4. LY TRÀ SỮA TRUYỀN THỐNG */
+            .classic-cup {
+                left: 285px;
+                width: 140px;
+                height: 225px;
+                z-index: 4;
+            }
+
+            .classic-straw {
+                position: absolute;
+                top: -36px;
+                left: 70px;
+                width: 16px;
+                height: 56px;
+                background: linear-gradient(180deg, #F8C471 0%, #E67E22 100%);
+                border-radius: 8px 8px 0 0;
+                transform: rotate(12deg);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+                z-index: 1;
+            }
+
+            .classic-lid {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 30px;
+                background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(254, 249, 231, 0.6) 100%);
+                border-radius: 40px 40px 6px 6px;
+                border: 1.5px solid rgba(255, 255, 255, 0.95);
+                z-index: 3;
+            }
+
+            .classic-body {
+                position: absolute;
+                top: 24px;
+                left: 4px;
+                right: 4px;
+                bottom: 0;
+                background: linear-gradient(180deg, #FAD7A0 0%, #F0B27A 45%, #D35400 100%);
+                border-radius: 0 0 42px 42px;
+                overflow: hidden;
+                box-shadow: inset 12px 0 18px rgba(255, 255, 255, 0.4),
+                            inset -12px 0 18px rgba(186, 74, 0, 0.28),
+                            0 12px 26px rgba(160, 64, 0, 0.2);
+            }
+
+            .boba-ice {
+                position: absolute;
+                width: 26px;
+                height: 26px;
+                border-radius: 6px;
+                background: rgba(255, 255, 255, 0.32);
+                border: 1.5px solid rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(2px);
+                box-shadow: inset 0 0 6px rgba(255, 255, 255, 0.6);
+            }
+            .boba-ice.ice-1 { top: 35px; left: 18px; transform: rotate(18deg); }
+            .boba-ice.ice-2 { top: 60px; right: 20px; transform: rotate(-15deg); }
+
+            .classic-cup .pearl.p1 { width: 22px; height: 22px; bottom: 8px; left: 16px; }
+            .classic-cup .pearl.p2 { width: 24px; height: 24px; bottom: 10px; left: 45px; }
+            .classic-cup .pearl.p3 { width: 22px; height: 22px; bottom: 8px; left: 75px; }
+            .classic-cup .pearl.p4 { width: 20px; height: 20px; bottom: 12px; left: 100px; }
+
+            /* QUẦY BAR GỖ CAFE */
+            .cafe-bar-counter {
+                position: absolute;
+                bottom: 0;
+                left: -24px;
+                right: -24px;
+                height: 20px;
+                background: linear-gradient(180deg, #9C6644 0%, #7F4F24 50%, #582F0E 100%);
+                border-radius: 10px 10px 0 0;
+                box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(60, 35, 15, 0.2);
+                z-index: 5;
+            }
+
+            .counter-top-line {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+                background: rgba(255, 255, 255, 0.45);
+            }
+
+            /* MẮT & CON NGƯƠI THEO DÕI */
+            .boba-face {
+                position: absolute;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                transition: left 0.6s cubic-bezier(0.34, 1.25, 0.64, 1),
+                            top 0.6s cubic-bezier(0.34, 1.25, 0.64, 1);
+                will-change: left, top;
+                pointer-events: none;
+            }
+
+            .taro-face { left: 70px; top: 30px; }
+            .roasted-face { left: 28px; top: 38px; }
+            .matcha-face { left: 105px; top: 62px; }
+            .classic-face { left: 48px; top: 44px; }
+
+            .boba-eyes {
+                display: flex;
+                align-items: center;
+                gap: 28px;
+            }
+
+            .roasted-face .boba-eyes { gap: 20px; }
+            .matcha-face .boba-eyes { gap: 28px; }
+            .classic-face .boba-eyes { gap: 20px; }
+
+            .eyeball {
+                position: relative;
+                width: 20px;
+                height: 20px;
+                background: #FFFFFF;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.08);
+                overflow: hidden;
+                transition: transform 0.3s ease;
+            }
+
+            .roasted-cup .eyeball { width: 17px; height: 17px; }
+
+            .eyeball--pupil-only {
+                background: #2D1B0E;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            }
+
+            .eyelid {
+                position: absolute;
+                inset: 0;
+                background: inherit;
+                transform: scaleY(0);
+                transform-origin: top;
+                transition: transform 0.1s ease;
+                z-index: 2;
+            }
+
+            .eyeball.is-blinking .eyelid {
+                transform: scaleY(1);
+            }
+
+            .pupil {
+                position: absolute;
+                width: 8px;
+                height: 8px;
+                background: #20120B;
+                border-radius: 50%;
+                transition: transform 0.05s linear;
+                will-change: transform;
+            }
+
+            .eyeball--pupil-only .pupil {
+                background: transparent;
+                width: 100%;
+                height: 100%;
+            }
+
+            .pupil-glint {
+                position: absolute;
+                top: 15%;
+                left: 20%;
+                width: 32%;
+                height: 32%;
+                border-radius: 50%;
+                background: #FFFFFF;
+            }
+
+            .eyeball--sad {
+                border-radius: 0 0 20px 20px !important;
+                height: 10px !important;
+            }
+
+            .boba-blush-wrap {
+                position: relative;
+                width: 100%;
+                height: 8px;
+                margin-top: 4px;
+            }
+
+            .blush-dot {
+                position: absolute;
+                width: 12px;
+                height: 7px;
+                border-radius: 50%;
+                background: rgba(255, 105, 140, 0.42);
+            }
+            .blush-left { left: -6px; }
+            .blush-right { right: -6px; }
+
+            /* MIỆNG CẢM XÚC */
+            .boba-mouth {
+                margin-top: 2px;
+                transition: all 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+            }
+
+            .taro-mouth {
+                width: 20px;
+                height: 8px;
+                background: #2D1A0E;
+                border-radius: 0 0 10px 10px;
+            }
+
+            .taro-mouth--typing {
+                width: 8px;
+                height: 16px;
+                border-radius: 4px;
+                transform: translateY(-4px);
+            }
+
+            .taro-mouth--sad {
+                width: 20px;
+                height: 8px;
+                border-radius: 10px 10px 0 0;
+            }
+
+            .taro-mouth--happy {
+                width: 26px;
+                height: 14px;
+                border-radius: 0 0 14px 14px;
+                background: #D81B60;
+            }
+
+            .roasted-mouth {
+                width: 16px;
+                height: 3px;
+                background: #FFFFFF;
+                border-radius: 999px;
+            }
+
+            .roasted-mouth--sad {
+                height: 3px;
+                border-radius: 999px;
+                transform: rotate(-10deg);
+            }
+
+            .matcha-mouth {
+                width: 22px;
+                height: 10px;
+                background: #2D1A0E;
+                border-radius: 0 0 12px 12px;
+            }
+
+            .matcha-mouth--typing {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+            }
+
+            .matcha-mouth--sad {
+                width: 22px;
+                height: 8px;
+                border-radius: 12px 12px 0 0;
+            }
+
+            .matcha-mouth--happy {
+                width: 26px;
+                height: 14px;
+                border-radius: 0 0 14px 14px;
+                background: #E91E63;
+            }
+
+            .classic-mouth-wrap {
+                margin-top: -2px;
+            }
+
+            .classic-mouth-path {
+                transition: d 0.4s ease;
+            }
+
+            /* ====================================================
+               GLASSMORPHIC CARD & FORM
+               ==================================================== */
+            .auth-glass-card {
+                background: rgba(255, 255, 255, 0.94) !important;
+                backdrop-filter: blur(18px);
+                -webkit-backdrop-filter: blur(18px);
+                border: 1px solid rgba(232, 222, 213, 0.85) !important;
+                border-radius: 24px !important;
+                box-shadow: 0 24px 60px rgba(96, 71, 53, 0.1) !important;
+                transition: transform 0.25s ease, box-shadow 0.25s ease;
+            }
+
+            .auth-glass-card:hover {
+                box-shadow: 0 28px 70px rgba(96, 71, 53, 0.13) !important;
+            }
+
+            .password-toggle-btn {
+                border-color: #dee2e6 !important;
+                border-left: none !important;
+                transition: color 0.18s ease;
+            }
+
+            .password-toggle-btn:hover {
+                color: var(--auth-primary) !important;
+                background-color: #f8f9fa !important;
+            }
+
+            @keyframes authShake {
+                0%, 100% { transform: translateX(0); }
+                20%, 60% { transform: translateX(-9px); }
+                40%, 80% { transform: translateX(9px); }
+            }
+
+            .card-shake {
+                animation: authShake 0.45s ease-in-out;
+            }
+
+            /* CONFETTI SHOWER */
+            .confetti-container {
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 1099;
+                overflow: hidden;
+            }
+
+            .confetti-piece {
+                position: absolute;
+                border-radius: 2px;
+                animation: confetti-fall linear forwards;
+            }
+
+            @keyframes confetti-fall {
+                0% {
+                    transform: translateY(0) rotate(0deg);
+                    opacity: 1;
+                }
+                100% {
+                    transform: translateY(120vh) rotate(720deg);
+                    opacity: 0;
+                }
+            }
+        </style>
     </div>
 
     <th:block th:fragment="scripts">
         <script>
+            // ====================================================
+            // BIẾN TRẠNG THÁI TOÀN CỤC & AUTH LOGIC
+            // ====================================================
             let forgotModal = null;
             let currentVerifyEmail = '';
             let currentForgotEmail = '';
@@ -346,12 +1925,476 @@
             let forgotResendTimer = null;
             let forgotRemainingCooldown = 0;
 
-            function fillDemo(email, pass) {
-                document.getElementById('email').value = email;
-                document.getElementById('password').value = pass;
-                document.getElementById('authAlert').classList.add('d-none');
+            // ====================================================
+            // LOGIC TƯƠNG TÁC NHÓM LY TRÀ SỮA (BOBA CHARACTERS LOGIC)
+            // ====================================================
+            const BobaGang = (() => {
+                let hasEntered = false;
+                let isTyping = false;
+                let showPassword = false;
+                let passwordLength = 0;
+                let loginFailed = false;
+                let loginSuccess = false;
+                let isLookingAtEachOther = false;
+                let isTaroPeeking = false;
+
+                let mouseX = window.innerWidth / 2;
+                let mouseY = window.innerHeight / 2;
+                let pendingMouseX = mouseX;
+                let pendingMouseY = mouseY;
+                let needsUpdate = false;
+                let rafId = null;
+
+                let lookingTimeout = null;
+                let peekTimeout = null;
+                let failTimeout = null;
+
+                const centers = {
+                    taro: { x: 0, y: 0 },
+                    roasted: { x: 0, y: 0 },
+                    matcha: { x: 0, y: 0 },
+                    classic: { x: 0, y: 0 }
+                };
+
+                const pos = {
+                    taro: { faceX: 0, faceY: 0, skew: 0 },
+                    roasted: { faceX: 0, faceY: 0, skew: 0 },
+                    matcha: { faceX: 0, faceY: 0, skew: 0 },
+                    classic: { faceX: 0, faceY: 0, skew: 0 }
+                };
+
+                function updateCenters() {
+                    const stage = document.getElementById('bobaStage');
+                    if (!stage) return;
+
+                    const taro = document.getElementById('taroCup');
+                    const roasted = document.getElementById('roastedCup');
+                    const matcha = document.getElementById('matchaCup');
+                    const classic = document.getElementById('classicCup');
+
+                    if (taro) {
+                        const r = taro.getBoundingClientRect();
+                        centers.taro = { x: r.left + r.width / 2, y: r.top + r.height / 3 };
+                    }
+                    if (roasted) {
+                        const r = roasted.getBoundingClientRect();
+                        centers.roasted = { x: r.left + r.width / 2, y: r.top + r.height / 3 };
+                    }
+                    if (matcha) {
+                        const r = matcha.getBoundingClientRect();
+                        centers.matcha = { x: r.left + r.width / 2, y: r.top + r.height / 3 };
+                    }
+                    if (classic) {
+                        const r = classic.getBoundingClientRect();
+                        centers.classic = { x: r.left + r.width / 2, y: r.top + r.height / 3 };
+                    }
+                }
+
+                function calcPosition(centerX, centerY, mx, my, rangeX = 14, rangeY = 10) {
+                    const deltaX = mx - centerX;
+                    const deltaY = my - centerY;
+                    const faceX = Math.max(-rangeX, Math.min(rangeX, deltaX / 22));
+                    const faceY = Math.max(-rangeY, Math.min(rangeY, deltaY / 28));
+                    const skew = Math.max(-5.5, Math.min(5.5, -deltaX / 140));
+                    return { faceX, faceY, skew };
+                }
+
+                function calcPupil(eyeEl, mx, my, maxDist, forceX, forceY) {
+                    if (forceX !== undefined && forceY !== undefined) {
+                        return { x: forceX, y: forceY };
+                    }
+                    if (!eyeEl) return { x: 0, y: 0 };
+                    const r = eyeEl.getBoundingClientRect();
+                    const cx = r.left + r.width / 2;
+                    const cy = r.top + r.height / 2;
+                    const dx = mx - cx;
+                    const dy = my - cy;
+                    const dist = Math.min(Math.sqrt(dx * dx + dy * dy), maxDist);
+                    const angle = Math.atan2(dy, dx);
+                    return {
+                        x: Math.cos(angle) * dist,
+                        y: Math.sin(angle) * dist
+                    };
+                }
+
+                function applyPupil(pupilEl, eyeEl, mx, my, maxDist, forceX, forceY) {
+                    if (!pupilEl) return;
+                    const p = calcPupil(eyeEl, mx, my, maxDist, forceX, forceY);
+                    pupilEl.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
+                }
+
+                function render() {
+                    if (!hasEntered) {
+                        rafId = requestAnimationFrame(render);
+                        return;
+                    }
+
+                    if (needsUpdate) {
+                        needsUpdate = false;
+                        mouseX = pendingMouseX;
+                        mouseY = pendingMouseY;
+
+                        pos.taro = calcPosition(centers.taro.x, centers.taro.y, mouseX, mouseY, 20, 14);
+                        pos.roasted = calcPosition(centers.roasted.x, centers.roasted.y, mouseX, mouseY, 12, 9);
+                        pos.matcha = calcPosition(centers.matcha.x, centers.matcha.y, mouseX, mouseY, 16, 10);
+                        pos.classic = calcPosition(centers.classic.x, centers.classic.y, mouseX, mouseY, 14, 10);
+                    }
+
+                    const isHidingPassword = (passwordLength > 0 && !showPassword);
+
+                    // 1. CẬP NHẬT LY KHOAI MÔN (TARO)
+                    const taroEl = document.getElementById('taroCup');
+                    const taroFace = document.getElementById('taroFace');
+                    if (taroEl && taroFace) {
+                        if (passwordLength > 0 && showPassword) {
+                            taroEl.style.transform = `skewX(0deg)`;
+                        } else if (isTyping || isHidingPassword) {
+                            taroEl.style.transform = `skewX(${pos.taro.skew - 10}deg) translateX(30px)`;
+                        } else {
+                            taroEl.style.transform = `skewX(${pos.taro.skew}deg)`;
+                        }
+
+                        const tFaceX = (passwordLength > 0 && showPassword) ? 46 : isLookingAtEachOther ? 76 : (70 + pos.taro.faceX);
+                        const tFaceY = (passwordLength > 0 && showPassword) ? 22 : isLookingAtEachOther ? 46 : (30 + pos.taro.faceY);
+                        taroFace.style.left = `${tFaceX}px`;
+                        taroFace.style.top = `${tFaceY}px`;
+
+                        let fX = undefined, fY = undefined;
+                        if (loginSuccess) { fX = 0; fY = -4; }
+                        else if (passwordLength > 0 && showPassword) { fX = isTaroPeeking ? 4 : -4; fY = isTaroPeeking ? 4 : -3; }
+                        else if (isLookingAtEachOther) { fX = 3; fY = 3; }
+                        else if (isHidingPassword) { fX = -4; fY = 3; }
+
+                        applyPupil(document.getElementById('taroPupilL'), document.getElementById('taroEyeL'), mouseX, mouseY, 5, fX, fY);
+                        applyPupil(document.getElementById('taroPupilR'), document.getElementById('taroEyeR'), mouseX, mouseY, 5, fX, fY);
+                    }
+
+                    // 2. CẬP NHẬT LY TRÀ SỮA NƯỚNG (ROASTED)
+                    const roastedEl = document.getElementById('roastedCup');
+                    const roastedFace = document.getElementById('roastedFace');
+                    if (roastedEl && roastedFace) {
+                        if (passwordLength > 0 && showPassword) {
+                            roastedEl.style.transform = `skewX(0deg)`;
+                        } else if (isLookingAtEachOther) {
+                            roastedEl.style.transform = `skewX(${pos.roasted.skew * 1.3 + 8}deg) translateX(16px)`;
+                        } else {
+                            roastedEl.style.transform = `skewX(${pos.roasted.skew}deg)`;
+                        }
+
+                        const rFaceX = (passwordLength > 0 && showPassword) ? 14 : isLookingAtEachOther ? 26 : (28 + pos.roasted.faceX);
+                        const rFaceY = (passwordLength > 0 && showPassword) ? 26 : isLookingAtEachOther ? 16 : (38 + pos.roasted.faceY);
+                        roastedFace.style.left = `${rFaceX}px`;
+                        roastedFace.style.top = `${rFaceY}px`;
+
+                        let fX = undefined, fY = undefined;
+                        if (loginSuccess) { fX = 0; fY = -3.5; }
+                        else if (passwordLength > 0 && showPassword) { fX = -3.5; fY = -3; }
+                        else if (isLookingAtEachOther) { fX = 0; fY = -3.5; }
+
+                        applyPupil(document.getElementById('roastedPupilL'), document.getElementById('roastedEyeL'), mouseX, mouseY, 4, fX, fY);
+                        applyPupil(document.getElementById('roastedPupilR'), document.getElementById('roastedEyeR'), mouseX, mouseY, 4, fX, fY);
+                    }
+
+                    // 3. CẬP NHẬT LY MATCHA
+                    const matchaEl = document.getElementById('matchaCup');
+                    const matchaFace = document.getElementById('matchaFace');
+                    if (matchaEl && matchaFace) {
+                        matchaEl.style.transform = (passwordLength > 0 && showPassword) ? 'skewX(0deg)' : `skewX(${pos.matcha.skew}deg)`;
+
+                        const mFaceX = (passwordLength > 0 && showPassword) ? 75 : (105 + pos.matcha.faceX);
+                        const mFaceY = (passwordLength > 0 && showPassword) ? 54 : (62 + pos.matcha.faceY);
+                        matchaFace.style.left = `${mFaceX}px`;
+                        matchaFace.style.top = `${mFaceY}px`;
+
+                        let fX = undefined, fY = undefined;
+                        if (loginSuccess) { fX = 0; fY = -4; }
+                        else if (passwordLength > 0 && showPassword) { fX = -4.5; fY = -3.5; }
+
+                        applyPupil(document.getElementById('matchaPupilL'), document.getElementById('matchaEyeL'), mouseX, mouseY, 5, fX, fY);
+                        applyPupil(document.getElementById('matchaPupilR'), document.getElementById('matchaEyeR'), mouseX, mouseY, 5, fX, fY);
+                    }
+
+                    // 4. CẬP NHẬT LY TRUYỀN THỐNG (CLASSIC)
+                    const classicEl = document.getElementById('classicCup');
+                    const classicFace = document.getElementById('classicFace');
+                    if (classicEl && classicFace) {
+                        classicEl.style.transform = (passwordLength > 0 && showPassword) ? 'skewX(0deg)' : `skewX(${pos.classic.skew}deg)`;
+
+                        const cFaceX = (passwordLength > 0 && showPassword) ? 24 : (48 + pos.classic.faceX);
+                        const cFaceY = (passwordLength > 0 && showPassword) ? 36 : (44 + pos.classic.faceY);
+                        classicFace.style.left = `${cFaceX}px`;
+                        classicFace.style.top = `${cFaceY}px`;
+
+                        let fX = undefined, fY = undefined;
+                        if (loginSuccess) { fX = 0; fY = -4; }
+                        else if (passwordLength > 0 && showPassword) { fX = -4.5; fY = -3.5; }
+
+                        applyPupil(document.getElementById('classicPupilL'), document.getElementById('classicEyeL'), mouseX, mouseY, 5, fX, fY);
+                        applyPupil(document.getElementById('classicPupilR'), document.getElementById('classicEyeR'), mouseX, mouseY, 5, fX, fY);
+                    }
+
+                    rafId = requestAnimationFrame(render);
+                }
+
+                function setupBlinks() {
+                    function schedule(lidLId, lidRId, minMs, maxMs) {
+                        const delay = Math.random() * (maxMs - minMs) + minMs;
+                        setTimeout(() => {
+                            const l = document.getElementById(lidLId);
+                            const r = document.getElementById(lidRId);
+                            if (l && r) {
+                                l.parentElement.classList.add('is-blinking');
+                                r.parentElement.classList.add('is-blinking');
+                                setTimeout(() => {
+                                    l.parentElement.classList.remove('is-blinking');
+                                    r.parentElement.classList.remove('is-blinking');
+                                    schedule(lidLId, lidRId, minMs, maxMs);
+                                }, 140);
+                            }
+                        }, delay);
+                    }
+
+                    schedule('taroLidL', 'taroLidR', 3200, 6800);
+                    schedule('roastedLidL', 'roastedLidR', 3500, 7200);
+                    schedule('matchaLidL', 'matchaLidR', 3000, 6500);
+                    schedule('classicLidL', 'classicLidR', 3400, 7000);
+                }
+
+                function updateMouths() {
+                    const taroM = document.getElementById('taroMouth');
+                    const roastedM = document.getElementById('roastedMouth');
+                    const matchaM = document.getElementById('matchaMouth');
+                    const classicPath = document.getElementById('classicMouthPath');
+                    const roastedEyeL = document.getElementById('roastedEyeL');
+                    const roastedEyeR = document.getElementById('roastedEyeR');
+
+                    if (loginSuccess) {
+                        if (taroM) taroM.className = 'boba-mouth taro-mouth taro-mouth--happy';
+                        if (roastedM) roastedM.className = 'boba-mouth roasted-mouth';
+                        if (matchaM) matchaM.className = 'boba-mouth matcha-mouth matcha-mouth--happy';
+                        if (classicPath) classicPath.setAttribute('d', 'M8 4 Q30 18, 52 4');
+                        if (roastedEyeL) roastedEyeL.classList.remove('eyeball--sad');
+                        if (roastedEyeR) roastedEyeR.classList.remove('eyeball--sad');
+                    } else if (loginFailed) {
+                        if (taroM) taroM.className = 'boba-mouth taro-mouth taro-mouth--sad';
+                        if (roastedM) roastedM.className = 'boba-mouth roasted-mouth roasted-mouth--sad';
+                        if (matchaM) matchaM.className = 'boba-mouth matcha-mouth matcha-mouth--sad';
+                        if (classicPath) classicPath.setAttribute('d', 'M8 9 Q20 2, 30 9 Q40 16, 52 9');
+                        if (roastedEyeL) {
+                            roastedEyeL.classList.add('eyeball--sad');
+                            roastedEyeL.style.transform = 'rotate(-18deg)';
+                        }
+                        if (roastedEyeR) {
+                            roastedEyeR.classList.add('eyeball--sad');
+                            roastedEyeR.style.transform = 'rotate(18deg)';
+                        }
+                    } else if (isTyping || (passwordLength > 0 && !showPassword)) {
+                        if (taroM) taroM.className = 'boba-mouth taro-mouth taro-mouth--typing';
+                        if (roastedM) roastedM.className = 'boba-mouth roasted-mouth';
+                        if (matchaM) matchaM.className = 'boba-mouth matcha-mouth matcha-mouth--typing';
+                        if (classicPath) classicPath.setAttribute('d', 'M10 9 Q30 9, 50 9');
+                        if (roastedEyeL) { roastedEyeL.classList.remove('eyeball--sad'); roastedEyeL.style.transform = 'none'; }
+                        if (roastedEyeR) { roastedEyeR.classList.remove('eyeball--sad'); roastedEyeR.style.transform = 'none'; }
+                    } else {
+                        if (taroM) taroM.className = 'boba-mouth taro-mouth';
+                        if (roastedM) roastedM.className = 'boba-mouth roasted-mouth';
+                        if (matchaM) matchaM.className = 'boba-mouth matcha-mouth';
+                        if (classicPath) classicPath.setAttribute('d', 'M8 9 Q30 9, 52 9');
+                        if (roastedEyeL) { roastedEyeL.classList.remove('eyeball--sad'); roastedEyeL.style.transform = 'none'; }
+                        if (roastedEyeR) { roastedEyeR.classList.remove('eyeball--sad'); roastedEyeR.style.transform = 'none'; }
+                    }
+                }
+
+                function checkTaroPeeking() {
+                    if (passwordLength > 0 && showPassword && !isTaroPeeking) {
+                        const interval = Math.random() * 2500 + 1500;
+                        peekTimeout = setTimeout(() => {
+                            isTaroPeeking = true;
+                            setTimeout(() => {
+                                isTaroPeeking = false;
+                            }, 850);
+                        }, interval);
+                    } else if (passwordLength === 0 || !showPassword) {
+                        isTaroPeeking = false;
+                        if (peekTimeout) clearTimeout(peekTimeout);
+                    }
+                }
+
+                function triggerConfetti() {
+                    const container = document.getElementById('confettiContainer');
+                    if (!container) return;
+                    container.innerHTML = '';
+                    const colors = ['#b86b35', '#E67E22', '#27AE60', '#F39C12', '#E74C3C', '#9B59B6', '#3498DB'];
+                    const count = 120;
+
+                    for (let i = 0; i < count; i++) {
+                        const el = document.createElement('div');
+                        el.className = 'confetti-piece';
+                        const color = colors[i % colors.length];
+                        const left = Math.random() * 100;
+                        const sizeW = Math.random() * 8 + 6;
+                        const sizeH = Math.random() * 14 + 8;
+                        const delay = Math.random() * 1.5;
+                        const duration = Math.random() * 2.5 + 3.2;
+
+                        el.style.left = `${left}%`;
+                        el.style.top = `-20px`;
+                        el.style.width = `${sizeW}px`;
+                        el.style.height = `${sizeH}px`;
+                        el.style.backgroundColor = color;
+                        el.style.animationDelay = `${delay}s`;
+                        el.style.animationDuration = `${duration}s`;
+
+                        container.appendChild(el);
+                    }
+
+                    setTimeout(() => {
+                        container.innerHTML = '';
+                    }, 7000);
+                }
+
+                return {
+                    init() {
+                        // Theo dõi chuột
+                        window.addEventListener('mousemove', (e) => {
+                            pendingMouseX = e.clientX;
+                            pendingMouseY = e.clientY;
+                            needsUpdate = true;
+                        }, { passive: true });
+
+                        // Theo dõi ngón tay trên màn hình cảm ứng di động
+                        window.addEventListener('touchmove', (e) => {
+                            if (e.touches && e.touches.length > 0) {
+                                pendingMouseX = e.touches[0].clientX;
+                                pendingMouseY = e.touches[0].clientY;
+                                needsUpdate = true;
+                            }
+                        }, { passive: true });
+
+                        window.addEventListener('touchstart', (e) => {
+                            if (e.touches && e.touches.length > 0) {
+                                pendingMouseX = e.touches[0].clientX;
+                                pendingMouseY = e.touches[0].clientY;
+                                needsUpdate = true;
+                            }
+                        }, { passive: true });
+
+                        window.addEventListener('resize', () => {
+                            updateCenters();
+                        }, { passive: true });
+
+                        setTimeout(() => {
+                            hasEntered = true;
+                            const cups = document.querySelectorAll('.boba-character');
+                            cups.forEach(c => c.classList.add('entrance-complete'));
+                            updateCenters();
+                            setupBlinks();
+                            rafId = requestAnimationFrame(render);
+                        }, 1350);
+                    },
+
+                    setTyping(val) {
+                        isTyping = val;
+                        if (val) {
+                            isLookingAtEachOther = true;
+                            if (lookingTimeout) clearTimeout(lookingTimeout);
+                            lookingTimeout = setTimeout(() => {
+                                isLookingAtEachOther = false;
+                            }, 850);
+                        } else {
+                            isLookingAtEachOther = false;
+                        }
+                        updateMouths();
+                    },
+
+                    setPasswordState(length, isVisible) {
+                        passwordLength = length;
+                        showPassword = isVisible;
+                        checkTaroPeeking();
+                        updateMouths();
+                    },
+
+                    setLoginFailed() {
+                        loginFailed = true;
+                        loginSuccess = false;
+                        updateMouths();
+                        const card = document.getElementById('authCard');
+                        if (card) {
+                            card.classList.remove('card-shake');
+                            void card.offsetWidth;
+                            card.classList.add('card-shake');
+                        }
+                        if (failTimeout) clearTimeout(failTimeout);
+                        failTimeout = setTimeout(() => {
+                            loginFailed = false;
+                            updateMouths();
+                        }, 3600);
+                    },
+
+                    setLoginSuccess() {
+                        loginSuccess = true;
+                        loginFailed = false;
+                        updateMouths();
+                        triggerConfetti();
+                    }
+                };
+            })();
+
+            document.addEventListener('DOMContentLoaded', () => {
+                BobaGang.init();
+
+                const emailInput = document.getElementById('email');
+                if (emailInput) {
+                    emailInput.addEventListener('focus', () => BobaGang.setTyping(true));
+                    emailInput.addEventListener('blur', () => BobaGang.setTyping(false));
+                }
+
+                const passInput = document.getElementById('password');
+                if (passInput) {
+                    passInput.addEventListener('focus', () => BobaGang.setTyping(true));
+                    passInput.addEventListener('blur', () => BobaGang.setTyping(false));
+                    passInput.addEventListener('input', () => {
+                        const isVisible = passInput.type === 'text';
+                        BobaGang.setPasswordState(passInput.value.length, isVisible);
+                    });
+                }
+            });
+
+            function togglePasswordVisibility() {
+                const passInput = document.getElementById('password');
+                const icon = document.getElementById('togglePasswordIcon');
+                if (!passInput) return;
+
+                if (passInput.type === 'password') {
+                    passInput.type = 'text';
+                    if (icon) {
+                        icon.classList.remove('bi-eye');
+                        icon.classList.add('bi-eye-slash');
+                    }
+                    BobaGang.setPasswordState(passInput.value.length, true);
+                } else {
+                    passInput.type = 'password';
+                    if (icon) {
+                        icon.classList.remove('bi-eye-slash');
+                        icon.classList.add('bi-eye');
+                    }
+                    BobaGang.setPasswordState(passInput.value.length, false);
+                }
             }
 
+            function fillDemo(email, pass) {
+                const emailInput = document.getElementById('email');
+                const passInput = document.getElementById('password');
+                if (emailInput) emailInput.value = email;
+                if (passInput) passInput.value = pass;
+                const alertEl = document.getElementById('authAlert');
+                if (alertEl) alertEl.classList.add('d-none');
+                BobaGang.setPasswordState(pass.length, passInput ? passInput.type === 'text' : false);
+            }
+
+            // ====================================================
+            // AUTH REQUEST HANDLERS
+            // ====================================================
             async function handleLogin(e) {
                 e.preventDefault();
                 const email = document.getElementById('email').value.trim();
@@ -369,6 +2412,8 @@
                     const data = await MilkTeaApi.post('/api/v1/auth/login', { email, password });
                     if (MilkTeaApi.showToast) MilkTeaApi.showToast('Đăng nhập thành công!', 'success');
 
+                    BobaGang.setLoginSuccess();
+
                     const urlParams = new URLSearchParams(window.location.search);
                     const redirect = urlParams.get('redirect');
 
@@ -381,10 +2426,8 @@
                         } else if (role === 'KITCHEN') {
                             window.location.href = '/kitchen';
                         } else {
-                            // CUSTOMER hoặc Khách hàng thường
                             let targetUrl = (redirect && !redirect.includes('/login')) ? redirect : '/';
 
-                            // Tìm mã QR bàn từ Cookie hoặc localStorage
                             let savedTableQr = null;
                             let savedTableId = null;
                             const cookies = document.cookie.split(';');
@@ -396,7 +2439,6 @@
                             if (!savedTableQr) savedTableQr = localStorage.getItem('milktea.lastTableQr');
                             if (!savedTableId) savedTableId = localStorage.getItem('milktea.lastTableId');
 
-                            // Bổ sung param bàn nếu URL đích chưa có
                             if ((savedTableQr || savedTableId) && !targetUrl.includes('qr=') && !targetUrl.includes('table=')) {
                                 const joiner = targetUrl.includes('?') ? '&' : '?';
                                 if (savedTableQr) {
@@ -407,9 +2449,11 @@
                             }
                             window.location.href = targetUrl;
                         }
-                    }, 500);
+                    }, 1200);
 
                 } catch (err) {
+                    BobaGang.setLoginFailed();
+
                     alertEl.className = 'alert alert-danger py-2 small rounded-3';
                     if (err.code === 'AUTH_EMAIL_NOT_VERIFIED') {
                         currentVerifyEmail = email;
@@ -450,6 +2494,7 @@
                     alertEl.className = 'alert alert-danger py-2 small rounded-3';
                     alertEl.classList.remove('d-none');
                     document.getElementById('regPhone').focus();
+                    BobaGang.setLoginFailed();
                     return;
                 }
 
@@ -457,6 +2502,7 @@
                     alertEl.textContent = 'Mật khẩu xác nhận không khớp!';
                     alertEl.className = 'alert alert-danger py-2 small rounded-3';
                     alertEl.classList.remove('d-none');
+                    BobaGang.setLoginFailed();
                     return;
                 }
 
@@ -479,6 +2525,7 @@
                     showOtpVerificationScreen(email, maskedEmail, cooldown);
 
                 } catch (err) {
+                    BobaGang.setLoginFailed();
                     alertEl.textContent = err.message || 'Không thể đăng ký tài khoản';
                     alertEl.className = 'alert alert-danger py-2 small rounded-3';
                     alertEl.classList.remove('d-none');
@@ -488,23 +2535,158 @@
                 }
             }
 
+            // ====================================================
+            // Lucian UX/UI Prompt #026: 6-digit Code Input Controller
+            // ====================================================
+            class OtpBoxController {
+                constructor(config) {
+                    this.root = typeof config.root === 'string' ? document.getElementById(config.root) : config.root;
+                    this.input = typeof config.input === 'string' ? document.getElementById(config.input) : config.input;
+                    this.msgEl = typeof config.msg === 'string' ? document.getElementById(config.msg) : config.msg;
+                    this.liveEl = typeof config.live === 'string' ? document.getElementById(config.live) : config.live;
+                    this.onComplete = config.onComplete || null;
+                    this.defaultMsg = config.defaultMsg || 'Nhập mã 6 chữ số để tự động xác thực';
+
+                    if (!this.root || !this.input) return;
+                    this.cells = Array.from(this.root.querySelectorAll('.u026-c'));
+                    this.prevVal = '';
+                    this.isChecking = false;
+                    this.timers = [];
+
+                    this.bindEvents();
+                    this.paint();
+                }
+
+                later(fn, ms) {
+                    const timer = setTimeout(() => {
+                        if (this.root && this.root.isConnected) fn();
+                    }, ms);
+                    this.timers.push(timer);
+                    return timer;
+                }
+
+                clearTimers() {
+                    this.timers.forEach(t => clearTimeout(t));
+                    this.timers = [];
+                }
+
+                say(text) {
+                    if (this.msgEl) this.msgEl.textContent = text;
+                    if (this.liveEl) this.liveEl.textContent = text;
+                }
+
+                paint() {
+                    if (!this.input) return;
+                    const v = this.input.value;
+                    const isFocused = document.activeElement === this.input;
+
+                    this.cells.forEach((c, i) => {
+                        const ch = v[i] || '';
+                        const prevCh = this.prevVal[i] || '';
+                        if (ch !== prevCh) {
+                            c.innerHTML = ch ? `<span>${ch}</span>` : '';
+                        }
+                        c.classList.toggle('has', !!ch);
+                        c.classList.toggle('cur', isFocused && (i === Math.min(v.length, 5)));
+                    });
+
+                    this.prevVal = v;
+                    if (window.BobaGang && typeof window.BobaGang.trackInput === 'function') {
+                        window.BobaGang.trackInput(this.input);
+                    }
+                }
+
+                bindEvents() {
+                    this.input.addEventListener('input', () => {
+                        this.input.value = this.input.value.replace(/\D/g, '').slice(0, 6);
+                        if (this.root.classList.contains('is-ok')) this.root.classList.remove('is-ok');
+                        if (this.root.classList.contains('is-bad')) this.root.classList.remove('is-bad');
+                        this.paint();
+
+                        if (this.input.value.length === 6 && !this.isChecking) {
+                            if (typeof this.onComplete === 'function') {
+                                this.onComplete(this.input.value);
+                            }
+                        }
+                    });
+
+                    this.input.addEventListener('focus', () => this.paint());
+                    this.input.addEventListener('blur', () => this.paint());
+                }
+
+                startChecking(msg = 'Đang kiểm tra mã xác thực...') {
+                    this.isChecking = true;
+                    this.root.classList.remove('is-bad', 'is-ok');
+                    this.root.classList.add('is-check');
+                    this.say(msg);
+                }
+
+                setSuccess(msg = 'Xác thực thành công!') {
+                    this.isChecking = false;
+                    this.root.classList.remove('is-check', 'is-bad');
+                    this.root.classList.add('is-ok');
+                    this.say(msg);
+                    this.input.blur();
+                }
+
+                setFailure(errMsg = 'Mã xác thực không đúng. Vui lòng thử lại', autoClear = true) {
+                    this.isChecking = false;
+                    this.root.classList.remove('is-check', 'is-ok');
+                    this.root.classList.add('is-bad');
+                    this.say(errMsg);
+
+                    if (autoClear) {
+                        const rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                        this.later(() => {
+                            this.root.classList.remove('is-bad');
+                            this.input.value = '';
+                            this.paint();
+                            this.say(this.defaultMsg);
+                            this.input.focus();
+                        }, rm ? 400 : 900);
+                    }
+                }
+
+                reset() {
+                    this.clearTimers();
+                    this.isChecking = false;
+                    this.root.classList.remove('is-check', 'is-ok', 'is-bad');
+                    this.input.value = '';
+                    this.say(this.defaultMsg);
+                    this.paint();
+                }
+
+                focus() {
+                    if (this.input) {
+                        this.input.focus();
+                        this.paint();
+                    }
+                }
+            }
+
+            let registerOtpController = null;
+            let forgotOtpController = null;
+
             function showOtpVerificationScreen(rawEmail, displayEmail, cooldownSec) {
                 currentVerifyEmail = rawEmail;
                 document.getElementById('registerFormContainer').classList.add('d-none');
                 document.getElementById('registerOtpContainer').classList.remove('d-none');
                 document.getElementById('verifyTargetEmail').textContent = displayEmail;
-                document.getElementById('otpCodeInput').value = '';
+                if (registerOtpController) registerOtpController.reset();
                 document.getElementById('otpAlert').classList.add('d-none');
                 document.getElementById('authAlert').classList.add('d-none');
 
                 startResendCooldown(cooldownSec);
-                setTimeout(() => document.getElementById('otpCodeInput').focus(), 300);
+                setTimeout(() => {
+                    if (registerOtpController) registerOtpController.focus();
+                }, 300);
             }
 
             function backToRegisterForm() {
                 document.getElementById('registerFormContainer').classList.remove('d-none');
                 document.getElementById('registerOtpContainer').classList.add('d-none');
                 document.getElementById('otpAlert').classList.add('d-none');
+                if (registerOtpController) registerOtpController.reset();
                 if (resendTimer) clearInterval(resendTimer);
             }
 
@@ -529,22 +2711,27 @@
             }
 
             async function handleVerifyOtp(e) {
-                e.preventDefault();
+                if (e && e.preventDefault) e.preventDefault();
                 const otp = document.getElementById('otpCodeInput').value.trim();
                 const alertEl = document.getElementById('otpAlert');
                 const btn = document.getElementById('btnVerifyOtp');
                 const spinner = document.getElementById('verifySpinner');
 
                 if (!/^[0-9]{6}$/.test(otp)) {
+                    if (registerOtpController) {
+                        registerOtpController.setFailure('Vui lòng nhập đúng 6 chữ số mã xác thực.', false);
+                    }
                     alertEl.textContent = 'Vui lòng nhập đúng 6 chữ số mã xác thực.';
                     alertEl.className = 'alert alert-danger py-2 small rounded-3';
                     alertEl.classList.remove('d-none');
+                    BobaGang.setLoginFailed();
                     return;
                 }
 
                 alertEl.classList.add('d-none');
                 btn.disabled = true;
-                spinner.classList.remove('d-none');
+                if (spinner) spinner.classList.remove('d-none');
+                if (registerOtpController) registerOtpController.startChecking();
 
                 try {
                     const res = await MilkTeaApi.post('/api/v1/auth/verify-email', {
@@ -553,7 +2740,9 @@
                     });
 
                     if (MilkTeaApi.showToast) MilkTeaApi.showToast('Kích hoạt tài khoản thành công!', 'success');
-                    
+                    BobaGang.setLoginSuccess();
+                    if (registerOtpController) registerOtpController.setSuccess(res && res.message ? res.message : 'Xác thực thành công! Đang chuyển hướng...');
+
                     alertEl.textContent = res && res.message ? res.message : 'Kích hoạt tài khoản thành công! Đang chuyển đến màn hình đăng nhập...';
                     alertEl.className = 'alert alert-success py-2 small rounded-3';
                     alertEl.classList.remove('d-none');
@@ -574,15 +2763,18 @@
                         mainAlert.classList.remove('d-none');
 
                         backToRegisterForm();
-                    }, 1200);
+                    }, 1400);
 
                 } catch (err) {
-                    alertEl.textContent = err.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn.';
+                    BobaGang.setLoginFailed();
+                    const errMsg = err.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn.';
+                    if (registerOtpController) registerOtpController.setFailure(errMsg, true);
+                    alertEl.textContent = errMsg;
                     alertEl.className = 'alert alert-danger py-2 small rounded-3';
                     alertEl.classList.remove('d-none');
                 } finally {
                     btn.disabled = false;
-                    spinner.classList.add('d-none');
+                    if (spinner) spinner.classList.add('d-none');
                 }
             }
 
@@ -593,13 +2785,17 @@
                 const alertEl = document.getElementById('otpAlert');
 
                 btn.disabled = true;
-                spinner.classList.remove('d-none');
+                if (spinner) spinner.classList.remove('d-none');
                 alertEl.classList.add('d-none');
 
                 try {
                     const res = await MilkTeaApi.post('/api/v1/auth/resend-otp', { email: currentVerifyEmail });
                     if (MilkTeaApi.showToast) MilkTeaApi.showToast('Đã gửi lại mã xác thực mới!', 'info');
-                    
+                    if (registerOtpController) {
+                        registerOtpController.reset();
+                        registerOtpController.focus();
+                    }
+
                     alertEl.textContent = res && res.message ? res.message : 'Đã gửi lại mã xác thực mới vào email của bạn.';
                     alertEl.className = 'alert alert-info py-2 small rounded-3';
                     alertEl.classList.remove('d-none');
@@ -611,10 +2807,13 @@
                     alertEl.classList.remove('d-none');
                     btn.disabled = false;
                 } finally {
-                    spinner.classList.add('d-none');
+                    if (spinner) spinner.classList.add('d-none');
                 }
             }
 
+            // ====================================================
+            // MODAL KHÔI PHỤC MẬT KHẨU
+            // ====================================================
             function getOrInitForgotModal() {
                 const el = document.getElementById('forgotPasswordModal');
                 if (!el) return null;
@@ -679,17 +2878,22 @@
 
             function backToStep1() {
                 const s1 = document.getElementById('forgotStep1');
+                const sStage = document.getElementById('forgotSendingStage');
                 const s2 = document.getElementById('forgotStep2');
                 const s3 = document.getElementById('forgotStep3');
                 const alertEl = document.getElementById('forgotAlert');
                 if (s1) s1.classList.remove('d-none');
+                if (sStage) sStage.classList.add('d-none');
                 if (s2) s2.classList.add('d-none');
                 if (s3) s3.classList.add('d-none');
+                const u064 = document.querySelector('.u064');
+                if (u064) u064.classList.remove('sealed', 'fly', 'sent');
                 if (alertEl) {
                     alertEl.classList.add('d-none');
                     alertEl.textContent = '';
                 }
                 currentResetToken = '';
+                if (forgotOtpController) forgotOtpController.reset();
                 if (forgotResendTimer) clearInterval(forgotResendTimer);
             }
 
@@ -715,48 +2919,101 @@
             }
 
             async function handleRequestReset(e) {
-                e.preventDefault();
+                if (e && e.preventDefault) e.preventDefault();
                 const emailInput = document.getElementById('forgotEmail');
                 const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
                 const alertEl = document.getElementById('forgotAlert');
                 const btn = document.getElementById('btnSendReset');
                 const spinner = document.getElementById('sendResetSpinner');
+                const step1 = document.getElementById('forgotStep1');
+                const stage = document.getElementById('forgotSendingStage');
+                const step2 = document.getElementById('forgotStep2');
+                const step3 = document.getElementById('forgotStep3');
+                const u064 = document.querySelector('.u064');
+                const u064Title = document.getElementById('u064Title');
+                const u064Subtitle = document.getElementById('u064Subtitle');
 
                 if (!email) return;
 
                 alertEl.classList.add('d-none');
                 alertEl.textContent = '';
                 btn.disabled = true;
-                spinner.classList.remove('d-none');
+                if (spinner) spinner.classList.remove('d-none');
+
+                currentForgotEmail = email;
+
+                // Chuẩn bị trạng thái ban đầu của hiệu ứng thư
+                if (u064) u064.classList.remove('sealed', 'fly', 'sent');
+                if (u064Title) u064Title.textContent = 'Đang niêm phong thư...';
+                if (u064Subtitle) u064Subtitle.textContent = `Chuẩn bị mã xác thực gửi đến ${email}`;
+
+                // Chuyển sang khung hoạt ảnh lá thư
+                if (step1) step1.classList.add('d-none');
+                if (stage) stage.classList.remove('d-none');
+                if (step2) step2.classList.add('d-none');
+                if (step3) step3.classList.add('d-none');
+
+                // Bắt đầu gọi API đồng thời với hiệu ứng chuyển động
+                const apiPromise = MilkTeaApi.post('/api/v1/auth/password-reset', { email });
+                const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
                 try {
-                    currentForgotEmail = email;
-                    await MilkTeaApi.post('/api/v1/auth/password-reset', { email });
+                    // Bước 1: Sau 120ms, đóng nắp thư và thụt lá thư vào trong
+                    await delay(120);
+                    if (u064) u064.classList.add('sealed');
 
-                    document.getElementById('forgotTargetEmail').textContent = email;
-                    document.getElementById('forgotStep1').classList.add('d-none');
-                    document.getElementById('forgotStep2').classList.remove('d-none');
-                    document.getElementById('forgotStep3').classList.add('d-none');
-                    const otpInput = document.getElementById('resetOtpInput');
-                    if (otpInput) otpInput.value = '';
+                    // Bước 2: Sau 780ms, thư bay vút lên cao
+                    await delay(780);
+                    if (u064) u064.classList.add('fly');
+                    if (u064Title) u064Title.textContent = 'Đang gửi thư đi...';
+                    if (u064Subtitle) u064Subtitle.textContent = 'Lá thư đang bay đến hộp thư của bạn';
 
-                    startForgotResendCooldown(60);
+                    // Chờ cả API hoàn thành và hoạt ảnh bay tối thiểu (tổng thời gian bay ~800ms)
+                    await Promise.all([
+                        apiPromise,
+                        delay(800)
+                    ]);
+
+                    // Bước 3: Đã gửi thành công, thư đáp xuống và hiện tick xanh
+                    if (u064) {
+                        u064.classList.remove('fly');
+                        u064.classList.add('sent');
+                    }
+                    if (u064Title) u064Title.textContent = 'Đã gửi thành công!';
+                    if (u064Subtitle) u064Subtitle.textContent = `Mã xác thực đã tới hộp thư ${email}`;
 
                     if (MilkTeaApi.showToast) MilkTeaApi.showToast('Mã xác thực đã được gửi qua email', 'info');
-                    setTimeout(() => {
-                        if (otpInput) otpInput.focus();
-                    }, 300);
+
+                    // Bước 4: Sau 850ms chiêm ngưỡng dấu tick xanh, chuyển tiếp sang ô nhập OTP 6 số
+                    await delay(850);
+                    if (stage) stage.classList.add('d-none');
+                    if (step2) step2.classList.remove('d-none');
+
+                    const targetEmailEl = document.getElementById('forgotTargetEmail');
+                    if (targetEmailEl) targetEmailEl.textContent = email;
+
+                    if (forgotOtpController) {
+                        forgotOtpController.reset();
+                        setTimeout(() => forgotOtpController.focus(), 150);
+                    }
+
+                    startForgotResendCooldown(60);
                 } catch (err) {
+                    // Nếu gửi email thất bại, quay trở lại bước 1 kèm cảnh báo lỗi
+                    if (stage) stage.classList.add('d-none');
+                    if (step1) step1.classList.remove('d-none');
+                    if (u064) u064.classList.remove('sealed', 'fly', 'sent');
+
                     alertEl.textContent = err.message || 'Không thể xử lý yêu cầu đặt lại mật khẩu';
                     alertEl.classList.remove('d-none');
                 } finally {
                     btn.disabled = false;
-                    spinner.classList.add('d-none');
+                    if (spinner) spinner.classList.add('d-none');
                 }
             }
 
             async function handleVerifyResetOtp(e) {
-                e.preventDefault();
+                if (e && e.preventDefault) e.preventDefault();
                 const email = currentForgotEmail || (document.getElementById('forgotEmail') ? document.getElementById('forgotEmail').value.trim().toLowerCase() : '');
                 const otpInput = document.getElementById('resetOtpInput');
                 const otp = otpInput ? otpInput.value.replace(/\s+/g, '') : '';
@@ -765,16 +3022,18 @@
                 const spinner = document.getElementById('verifyResetOtpSpinner');
 
                 if (!/^[0-9]{6}$/.test(otp)) {
+                    if (forgotOtpController) forgotOtpController.setFailure('Vui lòng nhập đúng 6 chữ số!', false);
                     alertEl.textContent = 'Mã xác thực phải gồm đúng 6 chữ số!';
                     alertEl.classList.remove('d-none');
-                    if (otpInput) otpInput.focus();
+                    if (forgotOtpController) forgotOtpController.focus();
                     return;
                 }
 
                 alertEl.classList.add('d-none');
                 alertEl.textContent = '';
                 btn.disabled = true;
-                spinner.classList.remove('d-none');
+                if (spinner) spinner.classList.remove('d-none');
+                if (forgotOtpController) forgotOtpController.startChecking();
 
                 try {
                     const res = await MilkTeaApi.post('/api/v1/auth/password-reset/verify-otp', {
@@ -787,25 +3046,27 @@
                         throw new Error('Không nhận được vé xác thực từ hệ thống');
                     }
 
-                    // Chuyển sang Bước 3: Mở form đặt lại mật khẩu mới
-                    document.getElementById('forgotStep2').classList.add('d-none');
-                    document.getElementById('forgotStep3').classList.remove('d-none');
-                    const newPassInput = document.getElementById('resetNewPassword');
-                    const confirmPassInput = document.getElementById('resetConfirmNewPassword');
-                    if (newPassInput) newPassInput.value = '';
-                    if (confirmPassInput) confirmPassInput.value = '';
-
+                    if (forgotOtpController) forgotOtpController.setSuccess('Xác thực thành công!');
                     if (MilkTeaApi.showToast) MilkTeaApi.showToast('Xác thực mã OTP thành công! Vui lòng đặt mật khẩu mới.', 'success');
+
                     setTimeout(() => {
+                        document.getElementById('forgotStep2').classList.add('d-none');
+                        document.getElementById('forgotStep3').classList.remove('d-none');
+                        const newPassInput = document.getElementById('resetNewPassword');
+                        const confirmPassInput = document.getElementById('resetConfirmNewPassword');
+                        if (newPassInput) newPassInput.value = '';
+                        if (confirmPassInput) confirmPassInput.value = '';
                         if (newPassInput) newPassInput.focus();
-                    }, 300);
+                    }, 700);
 
                 } catch (err) {
-                    alertEl.textContent = err.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn';
+                    const errMsg = err.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn';
+                    if (forgotOtpController) forgotOtpController.setFailure(errMsg, true);
+                    alertEl.textContent = errMsg;
                     alertEl.classList.remove('d-none');
                 } finally {
                     btn.disabled = false;
-                    spinner.classList.add('d-none');
+                    if (spinner) spinner.classList.add('d-none');
                 }
             }
 
@@ -816,19 +3077,23 @@
                 const alertEl = document.getElementById('forgotAlert');
 
                 btn.disabled = true;
-                spinner.classList.remove('d-none');
+                if (spinner) spinner.classList.remove('d-none');
                 alertEl.classList.add('d-none');
 
                 try {
                     await MilkTeaApi.post('/api/v1/auth/password-reset', { email: currentForgotEmail });
                     if (MilkTeaApi.showToast) MilkTeaApi.showToast('Đã gửi lại mã xác thực mới!', 'info');
+                    if (forgotOtpController) {
+                        forgotOtpController.reset();
+                        forgotOtpController.focus();
+                    }
                     startForgotResendCooldown(60);
                 } catch (err) {
                     alertEl.textContent = err.message || 'Không thể gửi lại mã xác thực lúc này.';
                     alertEl.classList.remove('d-none');
                     btn.disabled = false;
                 } finally {
-                    spinner.classList.add('d-none');
+                    if (spinner) spinner.classList.add('d-none');
                 }
             }
 
@@ -878,7 +3143,6 @@
                         mainAlert.classList.remove('d-none');
                     }
 
-                    // Chuyển sang tab login và điền sẵn email
                     const tabBtn = document.getElementById('login-tab');
                     if (tabBtn && window.bootstrap && window.bootstrap.Tab) {
                         const tab = bootstrap.Tab.getOrCreateInstance(tabBtn);
@@ -891,6 +3155,7 @@
                     }
 
                     if (MilkTeaApi.showToast) MilkTeaApi.showToast('Đặt lại mật khẩu thành công!', 'success');
+                    BobaGang.setLoginSuccess();
 
                 } catch (err) {
                     alertEl.textContent = err.message || 'Không thể đặt lại mật khẩu hoặc phiên khôi phục đã hết hạn';
@@ -901,7 +3166,32 @@
                 }
             }
 
+            function initOtpControllers() {
+                registerOtpController = new OtpBoxController({
+                    root: 'registerOtpRoot',
+                    input: 'otpCodeInput',
+                    msg: 'otpStatusMsg',
+                    live: 'otpLiveRegion',
+                    defaultMsg: 'Nhập mã 6 chữ số để tự động xác thực',
+                    onComplete: () => {
+                        handleVerifyOtp(new Event('submit'));
+                    }
+                });
+
+                forgotOtpController = new OtpBoxController({
+                    root: 'forgotOtpRoot',
+                    input: 'resetOtpInput',
+                    msg: 'forgotOtpStatusMsg',
+                    live: 'forgotOtpLiveRegion',
+                    defaultMsg: 'Nhập mã 6 chữ số để tự động xác thực',
+                    onComplete: () => {
+                        handleVerifyResetOtp(new Event('submit'));
+                    }
+                });
+            }
+
             document.addEventListener('DOMContentLoaded', () => {
+                initOtpControllers();
                 const modalEl = document.getElementById('forgotPasswordModal');
                 if (modalEl) {
                     modalEl.addEventListener('hidden.bs.modal', () => {
