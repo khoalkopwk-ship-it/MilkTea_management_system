@@ -3,7 +3,7 @@
     th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
 
 <head>
-    <title>Thực Đơn - MilkTea</title>
+    <title>Thực đơn - MilkTea</title>
 </head>
 
 <body>
@@ -1101,14 +1101,14 @@
 
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
-                <h2 class="brand-font mb-1">Thực Đơn Trà Sữa</h2>
+                <h2 class="brand-font mb-1">Thực đơn trà sữa</h2>
                 <p class="text-muted small mb-0">Hương vị trà sữa nguyên bản, pha chế thủ công thơm ngon mỗi ngày</p>
             </div>
 
             <div class="menu-category-filter">
                 <select class="form-select rounded-pill fw-semibold shadow-sm" id="categoryFilterSelect"
                     onchange="filterCategory(this.value)">
-                    <option value="ALL">Tất Cả</option>
+                    <option value="ALL">Tất cả</option>
                     <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">
                         Danh mục
                     </option>
@@ -1249,7 +1249,7 @@
             <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                     <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title brand-font" id="modalProductName">Tên Món</h5>
+                        <h5 class="modal-title brand-font" id="modalProductName">Tên món</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
 
@@ -1270,7 +1270,7 @@
                         </div>
 
                         <div class="mb-3" id="toppingSelectionSection">
-                            <label class="form-label small fw-semibold text-dark mb-1">Thêm Topping (áp dụng theo
+                            <label class="form-label small fw-semibold text-dark mb-1">Thêm topping (áp dụng theo
                                 ly):</label>
                             <p class="text-muted small mb-2" style="font-size: 0.8rem;">Topping đã chọn được tính trên
                                 mỗi ly trong cùng dòng</p>
@@ -1325,7 +1325,7 @@
                                 data-bs-dismiss="modal">Đóng</button>
                             <button type="button" class="btn btn-primary-custom flex-grow-1 py-2 rounded-pill fw-bold"
                                 onclick="confirmAddToCart()">
-                                <i class="bi bi-bag-plus-fill me-1"></i> Thêm Vào Giỏ Hàng
+                                <i class="bi bi-bag-plus-fill me-1"></i> Thêm vào giỏ hàng
                             </button>
                         </div>
                     </div>
