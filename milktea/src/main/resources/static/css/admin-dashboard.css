@@ -338,15 +338,15 @@
 }
 
 .dashboard-page .legend-received::before {
-    background: #D9B99B;
+    background: #FFF176;
 }
 
 .dashboard-page .legend-refunded::before {
-    background: #B86B35;
+    background: #C08E38;
 }
 
 .dashboard-page .legend-net::before {
-    background: #A58A74;
+    background: #72C7D6;
 }
 
 .dashboard-page .dashboard-chart-wrap {
