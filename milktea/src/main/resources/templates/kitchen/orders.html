@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
 
 <head>
-    <title>Màn Hình Bếp (KDS) - MilkTea</title>
+    <title>Màn hình bếp (KDS) - MilkTea</title>
 </head>
 
 <body>
@@ -743,18 +743,18 @@
                         <div class="card p-4">
                             <h5 class="fw-bold mb-3">
                                 <i class="bi bi-boxes me-2"></i>
-                                Nguyên Liệu Sơ Chế Tồn Tại Bếp
+                                Nguyên liệu sơ chế tồn tại bếp
                             </h5>
 
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Nguyên Liệu</th>
+                                            <th>Nguyên liệu</th>
                                             <th>Loại</th>
-                                            <th>Tồn Bếp</th>
-                                            <th>Ngưỡng Tối Thiểu</th>
-                                            <th>Trạng Thái</th>
+                                            <th>Tồn bếp</th>
+                                            <th>Ngưỡng tối thiểu</th>
+                                            <th>Trạng thái</th>
                                         </tr>
                                     </thead>
                                     <tbody id="bepStockTableBody"></tbody>
@@ -767,7 +767,7 @@
                         <div class="card p-4">
                             <h5 class="fw-bold mb-3">
                                 <i class="bi bi-magic me-2"></i>
-                                Sơ Chế Mẻ Mới
+                                Sơ chế mẻ mới
                             </h5>
 
                             <p class="text-muted small">
@@ -818,7 +818,7 @@
                                 <button type="submit" id="btnSubmitPrep"
                                     class="btn btn-primary-custom w-100 py-2 rounded-pill fw-bold">
                                     <i class="bi bi-check2-circle me-1"></i>
-                                    Xác Nhận Mẻ Sơ Chế
+                                    Xác nhận mẻ sơ chế
                                 </button>
                             </form>
                         </div>
@@ -834,7 +834,7 @@
                         <div>
                             <h5 class="fw-bold mb-1">
                                 <i class="bi bi-clock-history me-2"></i>
-                                Lịch Sử Sơ Chế Nguyên Liệu
+                                Lịch sử sơ chế nguyên liệu
                             </h5>
                             <p class="text-muted small mb-0">
                                 Theo dõi toàn bộ lịch sử sơ chế từ khi hệ thống hoạt động,
@@ -905,7 +905,7 @@
                         <div>
                             <h5 class="fw-bold mb-1">
                                 <i class="bi bi-clipboard2-check me-2"></i>
-                                Bảng Kiểm Kê &amp; Tính Hao Hụt Cuối Ca (Bếp)
+                                Bảng kiểm kê &amp; tính hao hụt cuối ca (Bếp)
                             </h5>
 
                             <p class="text-muted small mb-0">
@@ -919,7 +919,7 @@
                             <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3"
                                 onclick="KitchenApp.loadShiftSettlementPreview()">
                                 <i class="bi bi-arrow-clockwise me-1"></i>
-                                Nạp Dữ Liệu Tồn Sổ
+                                Nạp dữ liệu tồn sổ
                             </button>
                         </div>
                     </div>
@@ -928,22 +928,22 @@
                         <table class="table table-bordered table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Nguyên Liệu</th>
-                                    <th>Đơn Vị</th>
-                                    <th>Tồn Sổ</th>
-                                    <th style="width: 140px;">Tồn Thực Tế</th>
-                                    <th style="width: 140px;">Lượng Loại Bỏ</th>
-                                    <th style="width: 140px;">Lượng Giữ Lại</th>
-                                    <th>Giá Vốn / Đơn Vị</th>
-                                    <th>Chi Phí Hao Hụt</th>
-                                    <th>Lý Do</th>
+                                    <th>Nguyên liệu</th>
+                                    <th>Đơn vị</th>
+                                    <th>Tồn sổ</th>
+                                    <th style="width: 140px;">Tồn thực tế</th>
+                                    <th style="width: 140px;">Lượng loại bỏ</th>
+                                    <th style="width: 140px;">Lượng giữ lại</th>
+                                    <th>Giá vốn / đơn vị</th>
+                                    <th>Chi phí hao hụt</th>
+                                    <th>Lý do</th>
                                 </tr>
                             </thead>
 
                             <tbody id="shiftSettlementTableBody">
                                 <tr>
                                     <td colspan="9" class="text-center text-muted py-4">
-                                        Nhấn "Nạp Dữ Liệu Tồn Sổ" để bắt đầu kiểm kê cuối ca
+                                        Nhấn "Nạp dữ liệu tồn sổ" để bắt đầu kiểm kê cuối ca
                                     </td>
                                 </tr>
                             </tbody>
@@ -972,7 +972,7 @@
                             <button type="button" class="btn btn-danger w-100 py-2 rounded-pill fw-bold"
                                 onclick="KitchenApp.submitShiftSettlement()">
                                 <i class="bi bi-check2-circle me-1"></i>
-                                Xác Nhận Chốt Ca &amp; Ghi Hao Hụt
+                                Xác nhận chốt ca &amp; ghi hao hụt
                             </button>
                         </div>
                     </div>
@@ -985,7 +985,7 @@
                         <div>
                             <h5 class="fw-bold mb-1">
                                 <i class="bi bi-clock-history me-2"></i>
-                                Lịch Sử Biên Bản Kết Ca Đã Chốt
+                                Lịch sử biên bản kết ca đã chốt
                             </h5>
                             <p class="text-muted small mb-0">
                                 Theo dõi lịch sử kết ca và số liệu hao hụt đã chốt qua các ca làm việc.
@@ -1024,10 +1024,10 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Mã BB</th>
-                                    <th>Thời Gian Chốt</th>
-                                    <th>Người Chốt</th>
-                                    <th>Tổng Chi Phí Hao Hụt</th>
-                                    <th>Ghi Chú</th>
+                                    <th>Thời gian chốt</th>
+                                    <th>Người chốt</th>
+                                    <th>Tổng chi phí hao hụt</th>
+                                    <th>Ghi chú</th>
                                 </tr>
                             </thead>
 
@@ -1054,7 +1054,7 @@
                         <div>
                             <h5 class="modal-title brand-font text-dark fw-bold mb-1" id="orderDetailTitle">
                                 <i class="bi bi-receipt me-1 text-primary"></i>
-                                Chi Tiết Đơn Hàng
+                                Chi tiết đơn hàng
                             </h5>
                             <span class="badge bg-light text-muted border small" id="orderDetailSubtitle"></span>
                         </div>
@@ -1066,22 +1066,22 @@
                         <div class="row g-3 mb-3 p-3 bg-light rounded-3">
 
                             <div class="col-6 col-md-3">
-                                <span class="text-muted small d-block">Mã Đơn:</span>
+                                <span class="text-muted small d-block">Mã đơn:</span>
                                 <strong class="fs-6" id="orderDetailCode">-</strong>
                             </div>
 
                             <div class="col-6 col-md-3">
-                                <span class="text-muted small d-block">Nguồn / Bàn:</span>
+                                <span class="text-muted small d-block">Nguồn / bàn:</span>
                                 <strong class="fs-6" id="orderDetailTable">-</strong>
                             </div>
 
                             <div class="col-6 col-md-3">
-                                <span class="text-muted small d-block">Trạng Thái:</span>
+                                <span class="text-muted small d-block">Trạng thái:</span>
                                 <span id="orderDetailStatus" class="badge bg-secondary">-</span>
                             </div>
 
                             <div class="col-6 col-md-3">
-                                <span class="text-muted small d-block">Thời Gian Đặt:</span>
+                                <span class="text-muted small d-block">Thời gian đặt:</span>
                                 <strong class="small" id="orderDetailTime">-</strong>
                             </div>
 
@@ -1089,7 +1089,7 @@
 
                         <h6 class="fw-bold mb-2">
                             <i class="bi bi-cup-hot me-1 text-success"></i>
-                            Danh Sách Món Cần Chế Biến:
+                            Danh sách món cần chế biến:
                         </h6>
 
                         <div class="table-responsive">
