@@ -256,58 +256,7 @@ public class InventoryDto {
         private java.time.Instant createdAt;
     }
 
-    // === SỰ CỐ & PHA BÙ (INCIDENTS & REMAKE) ===
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class IncidentRequest {
-        @NotNull(message = "Lý do sự cố không được để trống")
-        private String reason;
-
-        private String notes;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class IncidentResponse {
-        private Long id;
-        private Long orderId;
-        private String reason;
-        private java.time.Instant createdAt;
-        private String createdByEmail;
-        private boolean resolved;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class AdditionalConsumptionItemRequest {
-        @NotNull(message = "Mã nguyên liệu không được để trống")
-        private Long materialId;
-
-        @NotNull(message = "Số lượng không được để trống")
-        @DecimalMin(value = "0.001", message = "Số lượng pha bù phải lớn hơn 0")
-        private BigDecimal quantity;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class AdditionalConsumptionRequest {
-        private Long incidentId;
-
-        @NotNull(message = "Lý do pha bù không được để trống")
-        private String reason;
-
-        @NotEmpty(message = "Danh sách nguyên liệu pha bù không được rỗng")
-        private List<AdditionalConsumptionItemRequest> items;
-    }
-
+    
     // === KẾT CA KHO & HAO HỤT ===
     @Data
     @Builder

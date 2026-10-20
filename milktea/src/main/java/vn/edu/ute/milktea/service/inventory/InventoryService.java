@@ -44,7 +44,6 @@ public class InventoryService {
     private final ShiftSettlementRepository shiftSettlementRepository;
     private final ShiftSettlementItemRepository shiftSettlementItemRepository;
     private final vn.edu.ute.milktea.repository.audit.BusinessAuditRepository auditRepository;
-    private final vn.edu.ute.milktea.repository.order.OrderRepository orderRepository;
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
 
     @Transactional(readOnly = true)
@@ -939,105 +938,6 @@ public class InventoryService {
                 .createdAt(m.getCreatedAt())
                 .build()
         ).toList();
-    }
-
-    // ==========================================
-    // SỰ CỐ PHA CHẾ & PHA BÙ (INCIDENTS & REMAKE)
-
-    // ==========================================
-
-    @Transactional
-    public InventoryDto.IncidentResponse recordIncident(Long orderId, InventoryDto.IncidentRequest request, Account kitchenAccount) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng #" + orderId));
-        vn.edu.ute.milktea.entity.audit.BusinessAudit audit = vn.edu.ute.milktea.entity.audit.BusinessAudit.builder()
-                .orderId(order.getId())
-                .accountId(kitchenAccount != null ? kitchenAccount.getId() : null)
-                .action("ORDER_INCIDENT_RECORDED")
-                .reason(request.getReason() + (request.getNotes() != null ? " (" + request.getNotes() + ")" : ""))
-                .createdAt(Instant.now())
-                .build();
-        audit = auditRepository.save(audit);
-        return InventoryDto.IncidentResponse.builder()
-                .id(audit.getId())
-                .orderId(order.getId())
-                .reason(audit.getReason())
-                .createdAt(audit.getCreatedAt())
-                .createdByEmail(kitchenAccount != null ? kitchenAccount.getEmail() : null)
-                .resolved(false)
-                .build();
-    }
-
-    @Transactional
-    public void resolveIncident(Long orderId, Long incidentId, Account account) {
-        auditRepository.save(vn.edu.ute.milktea.entity.audit.BusinessAudit.builder()
-                .orderId(orderId)
-                .accountId(account != null ? account.getId() : null)
-                .action("ORDER_INCIDENT_RESOLVED")
-                .reason("Giải quyết sự cố #" + incidentId)
-                .createdAt(Instant.now())
-                .build());
-    }
-
-    @Transactional(readOnly = true)
-    public List<InventoryDto.IncidentResponse> getIncidents(Long orderId) {
-        List<vn.edu.ute.milktea.entity.audit.BusinessAudit> audits = auditRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
-        return audits.stream()
-                .filter(a -> "ORDER_INCIDENT_RECORDED".equals(a.getAction()))
-                .map(a -> InventoryDto.IncidentResponse.builder()
-                        .id(a.getId())
-                        .orderId(a.getOrderId())
-                        .reason(a.getReason())
-                        .createdAt(a.getCreatedAt())
-                        .createdByEmail(null)
-                        .resolved(false)
-                        .build()
-                ).toList();
-    }
-
-    @Transactional
-    public void recordAdditionalConsumption(Long orderId, InventoryDto.AdditionalConsumptionRequest request, Account kitchenAccount) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng #" + orderId));
-        List<StockMovement> movements = new ArrayList<>();
-        for (var item : request.getItems()) {
-            Material material = materialRepository.findById(item.getMaterialId())
-                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Nguyên liệu không tồn tại: ID " + item.getMaterialId()));
-            Stock stock = stockRepository.findByIdWithLock(material.getId(), StockLocation.BEP)
-                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.INVENTORY_INSUFFICIENT,
-                            "Không tìm thấy tồn tại Bếp cho nguyên liệu: " + material.getName()));
-            if (stock.getQuantity().compareTo(item.getQuantity()) < 0) {
-                throw BusinessException.conflict(ErrorCode.INVENTORY_INSUFFICIENT,
-                        "Tồn tại Bếp không đủ để pha bù: " + material.getName() + " (Còn: " + stock.getQuantity() + ", cần: " + item.getQuantity() + ")");
-            }
-            BigDecimal before = stock.getQuantity();
-            BigDecimal after = before.subtract(item.getQuantity());
-            stock.setQuantity(after);
-            stockRepository.save(stock);
-            movements.add(StockMovement.builder()
-                    .material(material)
-                    .location(StockLocation.BEP)
-                    .type(StockMovementType.TIEU_HAO)
-                    .deltaQuantity(item.getQuantity().negate())
-                    .beforeQuantity(before)
-                    .afterQuantity(after)
-                    .sourceType("REMAKE")
-                    .sourceId(order.getId())
-                    .sourceLine(material.getId())
-                    .createdBy(kitchenAccount)
-                    .createdAt(Instant.now())
-                    .reason("Pha bù đơn hàng #" + order.getId() + ": " + request.getReason())
-                    .build());
-        }
-        movementRepository.saveAll(movements);
-        auditRepository.save(vn.edu.ute.milktea.entity.audit.BusinessAudit.builder()
-                .orderId(order.getId())
-                .accountId(kitchenAccount != null ? kitchenAccount.getId() : null)
-                .action("ORDER_REMAKE_CONSUMED")
-                .reason(request.getReason())
-                .createdAt(Instant.now())
-                .build());
-        realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", order.getId().toString(), null, "1", java.util.Map.of("action", "REMAKE"));
     }
 
     // =========================================================================

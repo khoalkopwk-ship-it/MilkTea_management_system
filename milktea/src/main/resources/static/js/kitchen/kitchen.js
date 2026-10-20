@@ -9,8 +9,6 @@ const KitchenApp = (() => {
     let prepRecipes = [];
     let preparationHistory = [];
     let shiftSettlementRows = [];
-    let currentIncidentOrderId = null;
-    let currentRemakeOrderId = null;
     let preparing = false;
     let preparationKey = null;
 
@@ -244,12 +242,6 @@ const KitchenApp = (() => {
                                     <button class="btn btn-sm btn-outline-info text-dark flex-grow-1 rounded-pill" onclick="KitchenApp.viewOrderDetail(${o.orderId})">
                                         <i class="bi bi-eye me-1"></i> Chi Tiết
                                     </button>
-                                    <button class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3" onclick="KitchenApp.openIncidentModal(${o.orderId})">
-                                        <i class="bi bi-exclamation-triangle me-1"></i> Sự Cố
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="KitchenApp.openRemakeModal(${o.orderId})">
-                                        <i class="bi bi-arrow-repeat me-1"></i> Pha Bù
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -326,67 +318,7 @@ const KitchenApp = (() => {
         }
     }
 
-    // Modal Sự Cố
-    function openIncidentModal(orderId) {
-        currentIncidentOrderId = orderId;
-        document.getElementById('incidentReason').value = '';
-        const modal = new bootstrap.Modal(document.getElementById('incidentModal'));
-        modal.show();
-    }
-
-    async function submitIncident() {
-        if (!currentIncidentOrderId) return;
-        const reason = document.getElementById('incidentReason').value.trim();
-        if (!reason) {
-            MilkTeaApi.showToast('Vui lòng nhập lý do sự cố', 'warning');
-            return;
-        }
-
-        try {
-            await MilkTeaApi.post(`/api/v1/kitchen/orders/${currentIncidentOrderId}/incidents`, { reason });
-            MilkTeaApi.showToast('Đã ghi nhận sự cố đơn hàng', 'success');
-            const modalEl = document.getElementById('incidentModal');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
-        } catch (e) {
-            MilkTeaApi.showToast(e.message || 'Lỗi ghi sự cố', 'error');
-        }
-    }
-
-    // Modal Pha Bù (Remake)
-    function openRemakeModal(orderId) {
-        currentRemakeOrderId = orderId;
-        document.getElementById('remakeReason').value = '';
-        const select = document.getElementById('remakeMaterialSelect');
-        select.innerHTML = '';
-        bepStock.forEach(s => {
-            select.innerHTML += `<option value="${s.materialId}">${escapeHtml(s.materialName)} (Tồn Bếp: ${s.quantity} ${s.unit})</option>`;
-        });
-        const modal = new bootstrap.Modal(document.getElementById('remakeModal'));
-        modal.show();
-    }
-
-    async function submitRemake() {
-        if (!currentRemakeOrderId) return;
-        const matId = document.getElementById('remakeMaterialSelect').value;
-        const qty = parseFloat(document.getElementById('remakeQuantity').value) || 1;
-        const reason = document.getElementById('remakeReason').value.trim() || 'Pha lại do hỏng';
-
-        try {
-            await MilkTeaApi.post(`/api/v1/kitchen/orders/${currentRemakeOrderId}/consumption`, {
-                reason: reason,
-                items: [{ materialId: parseInt(matId), quantity: qty }]
-            });
-            MilkTeaApi.showToast('Đã ghi nhận tiêu hao pha bù vào kho Bếp!', 'success');
-            const modalEl = document.getElementById('remakeModal');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
-            await loadStock();
-        } catch (e) {
-            MilkTeaApi.showToast(e.message || 'Lỗi ghi tiêu hao pha bù', 'error');
-        }
-    }
-
+    
     // ==========================================
     // 2. TỒN KHO BẾP & SƠ CHẾ THEO ĐỊNH MỨC CỐ ĐỊNH
     // ==========================================
@@ -932,10 +864,6 @@ const KitchenApp = (() => {
         startCooking,
         completeOrder,
         viewOrderDetail,
-        openIncidentModal,
-        submitIncident,
-        openRemakeModal,
-        submitRemake,
         onPrepOutputMaterialChange,
         onDesiredQtyChange,
         submitPreparation,
