@@ -645,50 +645,6 @@
                                                placeholder="Địa chỉ quán hiển thị trên hóa đơn và trang chủ" />
                                     </div>
 
-                                    <div class="mb-4">
-                                        <label class="form-label fw-semibold">
-                                            <i class="bi bi-image me-1"></i>Logo quán trà sữa (Cloudinary)
-                                        </label>
-
-                                        <div class="d-flex align-items-center gap-3 settings-logo-section">
-                                            <div class="border rounded-circle d-flex align-items-center justify-content-center bg-light overflow-hidden flex-shrink-0 settings-logo-preview"
-                                                 style="width: 54px; height: 54px;">
-                                                <img id="shopLogoPreview"
-                                                     th:src="${settings?.logoUrl}"
-                                                     alt="Logo"
-                                                     class="w-100 h-100 object-fit-cover"
-                                                     th:classappend="${settings?.logoUrl == null or settings.logoUrl.isEmpty()} ? 'd-none' : ''" />
-
-                                                <i id="shopLogoFallbackIcon"
-                                                   class="bi bi-cup-hot fs-3 text-muted"
-                                                   th:classappend="${settings?.logoUrl != null and !settings.logoUrl.isEmpty()} ? 'd-none' : ''"></i>
-                                            </div>
-
-                                            <div class="flex-grow-1 settings-logo-upload">
-                                                <div class="input-group">
-                                                    <input type="file"
-                                                           id="shopLogoInput"
-                                                           class="form-control"
-                                                           accept="image/jpeg,image/png,image/webp">
-
-                                                    <button type="button"
-                                                            class="btn btn-primary"
-                                                            id="btnUploadLogo"
-                                                            onclick="AdminApp.uploadLogo(document.getElementById('shopLogoInput'))">
-                                                        <span class="spinner-border spinner-border-sm me-1 d-none"
-                                                              id="logoUploadSpinner"></span>
-                                                        <i class="bi bi-cloud-arrow-up me-1"></i> Tải lên logo
-                                                    </button>
-                                                </div>
-
-                                                <small class="text-muted d-block mt-1">
-                                                    Định dạng JPEG, PNG, WebP (Tối đa 5MB). Tải lên Cloudinary
-                                                    và cập nhật realtime trên header quán.
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </div>
-
                                     <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2 settings-section-title">
                                         Chương trình khuyến mãi
                                     </h6>
@@ -848,7 +804,10 @@
                                         tạo cho khách hàng và thu ngân.
                                     </li>
                                     <li>
-                                        Tỷ lệ giảm giá (%) áp dụng cho các đơn hàng tạo sau khi lưu cấu hình.
+                                        Thông tin tên quán và địa chỉ được đồng bộ tức thì lên hóa đơn và giao diện khách hàng.
+                                    </li>
+                                    <li>
+                                        Tỷ lệ hoặc số tiền giảm giá áp dụng cho các đơn hàng tạo sau khi lưu cấu hình.
                                     </li>
                                     <li>
                                         Đơn hàng cũ giữ nguyên snapshot giá và giảm giá tại thời điểm đặt đơn.
@@ -870,15 +829,15 @@
                 toggleDiscountType();
 
                 document.getElementById('bankAccountNumber').addEventListener('input', (e) => {
-                    document.getElementById('previewBankNumber').textContent = e.target.value || '0000000000';
+                     document.getElementById('previewBankNumber').textContent = e.target.value || '0000000000';
                 });
 
                 document.getElementById('bankAccountHolder').addEventListener('input', (e) => {
-                    document.getElementById('previewHolder').textContent = e.target.value.toUpperCase() || 'TEN CHU TK';
+                     document.getElementById('previewHolder').textContent = e.target.value.toUpperCase() || 'TEN CHU TK';
                 });
 
                 document.getElementById('bankName').addEventListener('input', (e) => {
-                    document.getElementById('previewBank').textContent = e.target.value || 'NGAN HANG';
+                     document.getElementById('previewBank').textContent = e.target.value || 'NGAN HANG';
                 });
             });
 
