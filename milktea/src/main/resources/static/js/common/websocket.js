@@ -14,7 +14,11 @@ const MilkTeaRealtime = (() => {
     const activeSubscriptions = [];
 
     function connect(headers = {}) {
-        if (isConnected || isConnecting || (stompClient && stompClient.connected)) {
+        if (isConnected || (stompClient && stompClient.connected)) {
+            setupContextSubscriptions();
+            return;
+        }
+        if (isConnecting) {
             return;
         }
 
@@ -204,6 +208,8 @@ const MilkTeaRealtime = (() => {
         connect,
         disconnect,
         subscribe,
+        refreshSubscriptions: setupContextSubscriptions,
+        isConnected: () => isConnected,
         on,
         onReconnect
     };

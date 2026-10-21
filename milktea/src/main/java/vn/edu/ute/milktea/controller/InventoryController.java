@@ -56,16 +56,6 @@ public class InventoryController {
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
-    @PostMapping("/batches")
-    public ResponseEntity<ApiResponse<Void>> createBatch(
-            @Valid @RequestBody InventoryDto.CreatePreparationBatchRequest requestBody,
-            @AuthenticationPrincipal CurrentActor actor) {
-
-        Account kitchen = actor != null ? accountRepository.findById(actor.getAccountId()).orElse(null) : null;
-        inventoryService.recordPreparation(requestBody, kitchen);
-        return ResponseEntity.status(201).body(ApiResponse.ok(null));
-    }
-
     
     @PostMapping("/preparation-batches")
     @org.springframework.security.access.prepost.PreAuthorize(

@@ -43,6 +43,9 @@ const AdminApp = (() => {
             }
         });
         MilkTeaRealtime.onReconnect(refreshAdminRefundBadge);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) refreshAdminRefundBadge();
+        });
 
         if (document.getElementById('productTableBody')) {
             loadProducts(1);
@@ -349,6 +352,9 @@ const AdminApp = (() => {
             }
             if (typeof loadStockData === 'function') {
                 await loadStockData();
+            }
+            if (typeof refreshMaterialCombobox === 'function') {
+                await refreshMaterialCombobox();
             }
         } catch (e) {
             MilkTeaApi.showToast(e.message || 'Lỗi tạo phiếu nhập kho', 'error');

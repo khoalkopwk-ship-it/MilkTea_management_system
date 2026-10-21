@@ -156,6 +156,12 @@ const CustomerApp = (() => {
                 loadOrdersList();
             }
         });
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && window.MilkTeaContext.sessionId) {
+                loadServerCart();
+            }
+        });
     }
 
     // Thêm món vào giỏ

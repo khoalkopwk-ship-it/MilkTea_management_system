@@ -88,6 +88,12 @@ const CashierApp = (() => {
         MilkTeaRealtime.onReconnect(() => {
             loadTables();
         });
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                loadTables();
+            }
+        });
     }
 
     async function loadTables() {

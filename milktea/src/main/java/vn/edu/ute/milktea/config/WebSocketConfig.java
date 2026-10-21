@@ -37,6 +37,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final AccountRepository accountRepository;
     private final GuestAccessService guestAccessService;
 
+    @org.springframework.beans.factory.annotation.Value("${app.websocket.allowed-origin:*}")
+    private String allowedOrigin;
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         org.springframework.web.socket.server.HandshakeInterceptor cookieInterceptor = new org.springframework.web.socket.server.HandshakeInterceptor() {
@@ -67,12 +70,25 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             }
         };
 
+        String[] originPatterns;
+        if (allowedOrigin == null || allowedOrigin.isBlank() || "*".equals(allowedOrigin.trim())) {
+            originPatterns = new String[]{"*"};
+        } else {
+            originPatterns = java.util.Arrays.stream(allowedOrigin.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toArray(String[]::new);
+            if (originPatterns.length == 0) {
+                originPatterns = new String[]{"*"};
+            }
+        }
+
         registry.addEndpoint("/ws")
                 .addInterceptors(cookieInterceptor)
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(originPatterns);
         registry.addEndpoint("/ws")
                 .addInterceptors(cookieInterceptor)
-                .setAllowedOriginPatterns("*")
+                .setAllowedOriginPatterns(originPatterns)
                 .withSockJS();
     }
 
@@ -250,7 +266,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     throw new IllegalArgumentException("Không có quyền truy cập phiên bàn này");
                 }
             } catch (NumberFormatException ignored) {
+                throw new IllegalArgumentException("Mã phiên bàn không hợp lệ");
             }
+        } else if (destination.startsWith("/user/queue/") || destination.startsWith("/user/")) {
+            if (actor == null) {
+                log.warn("Từ chối SUBSCRIBE {} từ principal ẩn danh", destination);
+                throw new IllegalArgumentException("Cần đăng nhập hoặc có quyền để truy cập kênh người dùng");
+            }
+        } else {
+            log.warn("Từ chối SUBSCRIBE điểm đến không xác định hoặc không được phép: {}", destination);
+            throw new IllegalArgumentException("Kênh không hợp lệ hoặc không được phép");
         }
     }
 }
