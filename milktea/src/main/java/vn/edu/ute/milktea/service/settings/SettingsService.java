@@ -107,5 +107,7 @@ public class SettingsService {
                 java.util.Map.of("shopName", settings.getShopName()));
         realtimeEventPublisher.publishAfterCommit("/topic/cashier", "SETTINGS_CHANGED", "1", null, "1",
                 java.util.Map.of("shopName", settings.getShopName()));
+        realtimeEventPublisher.publishAfterCommit("/topic/kitchen", "SETTINGS_CHANGED", "1", null, "1",
+                java.util.Map.of("shopName", settings.getShopName()));
     }
 }
