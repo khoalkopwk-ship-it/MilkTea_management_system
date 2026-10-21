@@ -57,20 +57,13 @@ public class FixedRecipeService {
         Map<String, BigDecimal> ingredients = RECIPES.get(key);
 
         if (ingredients == null) {
-            throw BusinessException.conflict(
-                ErrorCode.VALIDATION_FAILED,
-                "Chưa cấu hình công thức cố định: " + key
-            );
+            return null;
         }
 
         BigDecimal quantity = ingredients.get(materialName);
 
         if (quantity == null || quantity.signum() <= 0) {
-            throw BusinessException.conflict(
-                ErrorCode.VALIDATION_FAILED,
-                "Nguyên liệu " + materialName
-                    + " không thuộc công thức " + key
-            );
+            return null;
         }
 
         return quantity;
@@ -81,15 +74,6 @@ public class FixedRecipeService {
             String size) {
 
         String key = productName + "|" + size;
-        Map<String, BigDecimal> ingredients = RECIPES.get(key);
-
-        if (ingredients == null) {
-            throw BusinessException.conflict(
-                ErrorCode.VALIDATION_FAILED,
-                "Chưa cấu hình công thức cố định: " + key
-            );
-        }
-
-        return ingredients;
+        return RECIPES.get(key);
     }
 }

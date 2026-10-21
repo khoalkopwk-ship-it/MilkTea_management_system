@@ -20,14 +20,6 @@ public class ReportController {
 
     private final ReportService reportService;
 
-    @GetMapping("/sales")
-    public ResponseEntity<ApiResponse<ReportDto.SalesReportResponse>> getSalesReport(
-            @RequestParam(value = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(value = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-
-        return ResponseEntity.ok(ApiResponse.ok(reportService.getSalesReport(startDate, endDate)));
-    }
-
     @GetMapping("/revenue")
     public ResponseEntity<ApiResponse<ReportDto.RevenueReportView>> getRevenueReport(
             @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,

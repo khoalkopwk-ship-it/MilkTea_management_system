@@ -94,14 +94,4 @@ public class TableController {
         var response = tableSessionService.closeBySessionId(sessionId, cashierId);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
-
-    @PostMapping("/cashier/tables/{id}/close-session")
-    public ResponseEntity<ApiResponse<Void>> closeSession(
-            @PathVariable("id") Long tableId,
-            @AuthenticationPrincipal CurrentActor actor) {
-
-        Long cashierId = actor != null ? actor.getAccountId() : null;
-        tableSessionService.closeByCashier(tableId, cashierId);
-        return ResponseEntity.ok(ApiResponse.ok(null));
-    }
 }

@@ -11,34 +11,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 public class ReportDto {
 
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class SalesReportResponse {
-        private LocalDate startDate;
-        private LocalDate endDate;
-        private BigDecimal completedOrdersTotal;   // Doanh số các đơn hoàn thành
-        private BigDecimal actualReceiptsTotal;     // Tổng thực thu
-        private BigDecimal actualRefundsTotal;      // Tổng thực hoàn
-        private BigDecimal netRevenue;              // Thu ròng = Thực thu - Thực hoàn
-        private BigDecimal currentOutstandingDebt;  // Dư nợ các hóa đơn hiệu lực chưa thu
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class OrderReportResponse {
-        private LocalDate startDate;
-        private LocalDate endDate;
-        private long totalOrders;
-        private long completedOrders;
-        private long cancelledOrders;
-        private long tableOrders;
-        private long counterOrders;
-        private BigDecimal averageOrderValue;
-    }
 
     @Data
     @Builder

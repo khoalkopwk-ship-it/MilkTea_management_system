@@ -247,6 +247,8 @@ public class ProductImageService {
                 Map.of("action", "LOGO_UPDATED", "logoUrl", secureUrl));
         realtimeEventPublisher.publishAfterCommit("/topic/cashier", "SETTINGS_CHANGED", "1", null, "1",
                 Map.of("action", "LOGO_UPDATED", "logoUrl", secureUrl));
+        realtimeEventPublisher.publishAfterCommit("/topic/kitchen", "SETTINGS_CHANGED", "1", null, "1",
+                Map.of("action", "LOGO_UPDATED", "logoUrl", secureUrl));
 
         return SettingsDto.LogoImageView.builder()
                 .logoUrl(secureUrl)
