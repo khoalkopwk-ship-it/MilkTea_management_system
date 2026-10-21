@@ -917,11 +917,34 @@
                                 placeholder="Nhập định kỳ...">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold">Nguyên liệu nhập:</label>
-                            <select id="importMaterialSelect" class="form-select rounded-3">
-                                <option th:each="m : ${materials}" th:if="${m.type != null and m.type.name() == 'THO'}"
-                                    th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}"></option>
-                            </select>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label small fw-semibold mb-0">Nguyên liệu nhập:</label>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="importNewMaterialToggle" onchange="toggleImportMaterialMode()">
+                                    <label class="form-check-label small" for="importNewMaterialToggle">Nhập nguyên liệu mới</label>
+                                </div>
+                            </div>
+                            <div id="importExistingContainer">
+                                <select id="importMaterialSelect" class="form-select rounded-3">
+                                    <option th:each="m : ${materials}" th:if="${m.type != null and m.type.name() == 'THO'}"
+                                        th:value="${m.id}" th:text="${m.name + ' (' + m.unit + ')'}"></option>
+                                </select>
+                            </div>
+                            <div id="importNewContainer" class="d-none">
+                                <div class="row g-2">
+                                    <div class="col-8">
+                                        <input type="text" id="importNewMaterialName" class="form-control rounded-3"
+                                            placeholder="Tên nguyên liệu mới (VD: Trà Lài)">
+                                    </div>
+                                    <div class="col-4">
+                                        <input type="text" id="importNewMaterialUnit" class="form-control rounded-3"
+                                            placeholder="Đơn vị" value="kg">
+                                    </div>
+                                </div>
+                                <div class="form-text small text-muted mt-1">
+                                    <i class="bi bi-info-circle me-1"></i>Nguyên liệu mới sẽ tự động được thêm vào kho và lưu vào danh mục cho các lần nhập sau.
+                                </div>
+                            </div>
                         </div>
                         <div class="row g-2 mb-4">
                             <div class="col-6">
@@ -1659,17 +1682,52 @@
                 }
             }
 
+            function toggleImportMaterialMode() {
+                const isNew = document.getElementById('importNewMaterialToggle') && document.getElementById('importNewMaterialToggle').checked;
+                const existingContainer = document.getElementById('importExistingContainer');
+                const newContainer = document.getElementById('importNewContainer');
+                if (existingContainer && newContainer) {
+                    if (isNew) {
+                        existingContainer.classList.add('d-none');
+                        newContainer.classList.remove('d-none');
+                        document.getElementById('importNewMaterialName')?.focus();
+                    } else {
+                        existingContainer.classList.remove('d-none');
+                        newContainer.classList.add('d-none');
+                    }
+                }
+            }
+
+            async function refreshMaterialCombobox() {
+                try {
+                    const res = await MilkTeaApi.get('/api/v1/inventory/materials');
+                    const materials = res.data || res;
+                    const select = document.getElementById('importMaterialSelect');
+                    const wasteSelect = document.getElementById('wasteMaterialSelect');
+                    if (select && Array.isArray(materials)) {
+                        const rawMaterials = materials.filter(m => m.type === 'THO' && m.active !== false);
+                        select.innerHTML = rawMaterials.map(m => 
+                            `<option value="${m.id}">${m.name} (${m.unit})</option>`
+                        ).join('');
+                    }
+                    if (wasteSelect && Array.isArray(materials)) {
+                        const rawMaterials = materials.filter(m => m.type === 'THO' && m.active !== false);
+                        wasteSelect.innerHTML = rawMaterials.map(m => 
+                            `<option value="${m.id}">${m.name} (${m.unit})</option>`
+                        ).join('');
+                    }
+                } catch (e) {
+                    console.warn('Không thể làm mới danh sách nguyên liệu:', e);
+                }
+            }
+
             function submitImportForm() {
                 const sup = document.getElementById('importSupplier').value.trim();
                 const reas = document.getElementById('importReason').value.trim();
-                const matId = parseInt(document.getElementById('importMaterialSelect').value);
+                const isNew = document.getElementById('importNewMaterialToggle') && document.getElementById('importNewMaterialToggle').checked;
                 const qty = parseFloat(document.getElementById('importQuantity').value);
                 const price = parseFloat(document.getElementById('importUnitPrice').value);
 
-                if (!matId) {
-                    MilkTeaApi.showToast('Vui lòng chọn nguyên liệu nhập', 'warning');
-                    return;
-                }
                 if (isNaN(qty) || qty <= 0) {
                     MilkTeaApi.showToast('Số lượng nhập phải lớn hơn 0', 'warning');
                     return;
@@ -1679,8 +1737,43 @@
                     return;
                 }
 
-                AdminApp.submitImport(sup, reas, [{ materialId: matId, quantity: qty, unitPrice: price }]);
+                let itemPayload;
+                if (isNew) {
+                    const matName = document.getElementById('importNewMaterialName').value.trim();
+                    const matUnit = (document.getElementById('importNewMaterialUnit').value.trim()) || 'kg';
+                    if (!matName) {
+                        MilkTeaApi.showToast('Vui lòng nhập tên nguyên liệu mới', 'warning');
+                        return;
+                    }
+                    itemPayload = { materialName: matName, unit: matUnit, quantity: qty, unitPrice: price };
+                } else {
+                    const matId = parseInt(document.getElementById('importMaterialSelect').value);
+                    if (!matId) {
+                        MilkTeaApi.showToast('Vui lòng chọn nguyên liệu nhập', 'warning');
+                        return;
+                    }
+                    itemPayload = { materialId: matId, quantity: qty, unitPrice: price };
+                }
+
+                AdminApp.submitImport(sup, reas, [itemPayload]);
             }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const modalEl = document.getElementById('importModal');
+                if (modalEl) {
+                    modalEl.addEventListener('hidden.bs.modal', () => {
+                        const toggle = document.getElementById('importNewMaterialToggle');
+                        if (toggle && toggle.checked) {
+                            toggle.checked = false;
+                            toggleImportMaterialMode();
+                        }
+                        const nameInput = document.getElementById('importNewMaterialName');
+                        if (nameInput) nameInput.value = '';
+                        const unitInput = document.getElementById('importNewMaterialUnit');
+                        if (unitInput) unitInput.value = 'kg';
+                    });
+                }
+            });
 
             function submitWasteForm() {
                 const reas = document.getElementById('wasteReason').value.trim();

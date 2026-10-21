@@ -149,6 +149,13 @@ const KitchenApp = (() => {
             loadPreparationHistory();
             loadPastSettlements();
         });
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                loadOrders();
+                loadStock();
+            }
+        });
     }
 
     // ==========================================

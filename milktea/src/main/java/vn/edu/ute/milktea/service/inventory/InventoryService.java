@@ -129,12 +129,6 @@ public class InventoryService {
         movementRepository.saveAll(movements);
     }
 
-    @Transactional
-    public void recordPreparation(
-            InventoryDto.CreatePreparationBatchRequest request,
-            Account kitchenAccount) {
-        recordPreparation(request, kitchenAccount, null);
-    }
 
     @Transactional
     public void recordPreparation(
@@ -628,8 +622,46 @@ public class InventoryService {
         List<ImportReceiptItem> items = new ArrayList<>();
         List<StockMovement> movements = new ArrayList<>();
         for (var it : request.getItems()) {
-            Material material = materialRepository.findById(it.getMaterialId())
-                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Nguyên liệu không tồn tại: ID " + it.getMaterialId()));
+            Material material;
+            if (it.getMaterialId() != null) {
+                material = materialRepository.findById(it.getMaterialId())
+                        .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Nguyên liệu không tồn tại: ID " + it.getMaterialId()));
+            } else if (it.getMaterialName() != null && !it.getMaterialName().trim().isEmpty()) {
+                String rawName = it.getMaterialName().trim();
+                material = materialRepository.findByName(rawName)
+                        .orElseGet(() -> {
+                            String unit = (it.getUnit() != null && !it.getUnit().trim().isEmpty())
+                                    ? it.getUnit().trim()
+                                    : "kg";
+                            Material newMat = Material.builder()
+                                    .name(rawName)
+                                    .type(MaterialType.THO)
+                                    .unit(unit)
+                                    .active(true)
+                                    .build();
+                            newMat = materialRepository.save(newMat);
+
+                            // Đồng thời khởi tạo tồn kho ở cả KHO và BEP để cả 2 kho luôn có đầy đủ nguyên liệu
+                            Stock khoStock = Stock.builder()
+                                    .id(new StockId(newMat.getId(), StockLocation.KHO))
+                                    .material(newMat)
+                                    .quantity(BigDecimal.ZERO)
+                                    .threshold(BigDecimal.ZERO)
+                                    .costPrice(BigDecimal.ZERO)
+                                    .build();
+                            Stock bepStock = Stock.builder()
+                                    .id(new StockId(newMat.getId(), StockLocation.BEP))
+                                    .material(newMat)
+                                    .quantity(BigDecimal.ZERO)
+                                    .threshold(BigDecimal.ZERO)
+                                    .costPrice(BigDecimal.ZERO)
+                                    .build();
+                            stockRepository.saveAll(List.of(khoStock, bepStock));
+                            return newMat;
+                        });
+            } else {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Vui lòng chọn hoặc nhập tên nguyên liệu");
+            }
             if (material.getType() != MaterialType.THO) {
                 throw BusinessException.badRequest(
                         ErrorCode.VALIDATION_FAILED,

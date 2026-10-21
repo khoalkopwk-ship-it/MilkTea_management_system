@@ -170,8 +170,11 @@ public class InventoryDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ImportItemRequest {
-        @NotNull(message = "Mã nguyên liệu không được để trống")
-        private Long materialId;
+        private Long materialId; // Tùy chọn nếu nhập tên mới
+
+        private String materialName; // Cho phép nhập tên nguyên liệu ngoài/mới
+
+        private String unit; // Đơn vị tính (kg, g, ml, ly, cái...) nếu tạo mới
 
         @NotNull(message = "Số lượng không được để trống")
         @DecimalMin(value = "0.001", message = "Số lượng nhập phải lớn hơn 0")

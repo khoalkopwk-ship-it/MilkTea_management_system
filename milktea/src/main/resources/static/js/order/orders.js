@@ -632,6 +632,9 @@ const OrdersApp = (() => {
         });
         MilkTeaRealtime.onReconnect(load);
         MilkTeaRealtime.connect();
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) load();
+        });
 
         await load();
 
