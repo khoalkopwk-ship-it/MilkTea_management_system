@@ -53,64 +53,6 @@ public class ReportService {
     private final StockMovementRepository stockMovementRepository;
     private final ShiftSettlementItemRepository shiftSettlementItemRepository;
     private final StockRepository stockRepository;
-    @Transactional(readOnly = true)
-    public ReportDto.SalesReportResponse getSalesReport(LocalDate startDate, LocalDate endDate) {
-        if (startDate == null) startDate = LocalDate.now(VIETNAM_ZONE).minusDays(30);
-        if (endDate == null) endDate = LocalDate.now(VIETNAM_ZONE).plusDays(1);
-
-        Instant startInstant = startDate.atStartOfDay(VIETNAM_ZONE).toInstant();
-        Instant endInstant = endDate.atStartOfDay(VIETNAM_ZONE).toInstant();
-
-        // 1. Thực thu (Payments completed trong khoảng)
-        List<Payment> payments = paymentRepository.findByPaidAtBetween(startInstant, endInstant);
-        BigDecimal actualReceiptsTotal = payments.stream()
-                .map(Payment::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // 2. Thực hoàn (Refunds DA_HOAN trong khoảng)
-        List<RefundRequest> refunds = refundRepository.findCompletedRefundsBetween(startInstant, endInstant);
-        BigDecimal actualRefundsTotal = refunds.stream()
-                .map(RefundRequest::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // 3. Thu ròng = Thực thu - Thực hoàn
-        BigDecimal netRevenue = actualReceiptsTotal.subtract(actualRefundsTotal);
-
-        // 4. Doanh số các đơn hoàn thành
-        var completedOrders = orderRepository.findByStatusInOrderByCreatedAtAsc(List.of(OrderStatus.HOAN_THANH));
-        BigDecimal completedOrdersTotal = BigDecimal.ZERO;
-        for (var ord : completedOrders) {
-            if (ord.getCompletedAt() != null &&
-                    !ord.getCompletedAt().isBefore(startInstant) &&
-                    ord.getCompletedAt().isBefore(endInstant)) {
-                Invoice inv = invoiceRepository.findByOrderId(ord.getId()).orElse(null);
-                if (inv != null && inv.getStatus() == InvoiceStatus.HIEU_LUC) {
-                    completedOrdersTotal = completedOrdersTotal.add(inv.getTotalAmount());
-                }
-            }
-        }
-
-        // 5. Dư nợ hiện tại (Tất cả hóa đơn HIEU_LUC chưa có payment)
-        List<Invoice> allInvoices = invoiceRepository.findAll();
-        BigDecimal currentOutstandingDebt = BigDecimal.ZERO;
-        for (Invoice inv : allInvoices) {
-            if (inv.getStatus() == InvoiceStatus.HIEU_LUC) {
-                if (!paymentRepository.existsByInvoiceId(inv.getId())) {
-                    currentOutstandingDebt = currentOutstandingDebt.add(inv.getTotalAmount());
-                }
-            }
-        }
-
-        return ReportDto.SalesReportResponse.builder()
-                .startDate(startDate)
-                .endDate(endDate)
-                .completedOrdersTotal(completedOrdersTotal)
-                .actualReceiptsTotal(actualReceiptsTotal)
-                .actualRefundsTotal(actualRefundsTotal)
-                .netRevenue(netRevenue)
-                .currentOutstandingDebt(currentOutstandingDebt)
-                .build();
-    }
 
     @Transactional(readOnly = true)
     public ReportDto.RevenueReportView getRevenueReport(LocalDate fromDate, LocalDate toDate) {

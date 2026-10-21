@@ -78,16 +78,6 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.ok(adminService.toggleStaffStatus(id, active, currentAdminId)));
     }
 
-    @PutMapping("/accounts/{id}/status")
-    public ResponseEntity<ApiResponse<AdminDto.StaffResponse>> updateStaffStatus(
-            @PathVariable("id") Long id,
-            @RequestBody(required = false) Map<String, Boolean> body,
-            @AuthenticationPrincipal CurrentActor actor) {
-        Long currentAdminId = actor != null ? actor.getAccountId() : null;
-        boolean active = body != null && Boolean.TRUE.equals(body.get("active"));
-        return ResponseEntity.ok(ApiResponse.ok(adminService.toggleStaffStatus(id, active, currentAdminId)));
-    }
-
     @DeleteMapping("/accounts/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStaffAccount(
             @PathVariable("id") Long id,

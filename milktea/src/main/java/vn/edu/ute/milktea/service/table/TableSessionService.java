@@ -90,11 +90,6 @@ public class TableSessionService {
         closeSession(tableId, cashierId, true);
     }
 
-    @Transactional
-    public void closeAfterPayment(Long tableId, Long cashierId) {
-        closeSession(tableId, cashierId, false);
-    }
-
     private void closeSession(Long tableId, Long cashierId, boolean requireCompleted) {
         DiningTable table = tableRepository.findByIdWithLock(tableId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));

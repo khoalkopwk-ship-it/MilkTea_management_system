@@ -124,6 +124,10 @@ public class CancellationService {
                 .build());
 
         publish(order);
+        String sid = order.getSession() != null ? order.getSession().getId().toString() : null;
+        var cancelPayload = java.util.Map.<String, Object>of("orderId", order.getId(), "status", order.getStatus().name());
+        publisher.publishAfterCommit("/topic/admin", "CANCELLATION_REQUESTED", order.getId().toString(), sid, "1", cancelPayload);
+        publisher.publishAfterCommit("/topic/cashier", "CANCELLATION_REQUESTED", order.getId().toString(), sid, "1", cancelPayload);
         return CancellationDto.CancellationResponse.builder()
                 .id(cancelReq.getId())
                 .orderId(order.getId())
@@ -208,6 +212,13 @@ public class CancellationService {
 
         cancellationRepository.save(cancelReq);
         publish(order);
+        String sid = order.getSession() != null ? order.getSession().getId().toString() : null;
+        var decidedPayload = java.util.Map.<String, Object>of("orderId", order.getId(), "status", cancelReq.getStatus().name());
+        publisher.publishAfterCommit("/topic/admin", "CANCELLATION_DECIDED", order.getId().toString(), sid, "1", decidedPayload);
+        publisher.publishAfterCommit("/topic/cashier", "CANCELLATION_DECIDED", order.getId().toString(), sid, "1", decidedPayload);
+        if (sid != null) {
+            publisher.publishAfterCommit("/topic/table-sessions/" + sid, "CANCELLATION_DECIDED", order.getId().toString(), sid, "1", decidedPayload);
+        }
     }
 
     private void createRefundIfPaid(CancellationRequest cancelReq, Invoice invoice, Long staffId) {
