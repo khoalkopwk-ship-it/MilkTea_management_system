@@ -1,4 +1,9 @@
 spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -6,9 +11,17 @@ spring:
   thymeleaf:
     cache: true
 
+server:
+  address: 127.0.0.1
+  port: 8080
+  forward-headers-strategy: framework
+
 app:
+  base-url: https://milkteaa.top
   jwt:
     cookie-secure: true
+  websocket:
+    allowed-origin: https://milkteaa.top
 
 logging:
   file:
@@ -16,7 +29,8 @@ logging:
   logback:
     rollingpolicy:
       max-file-size: 10MB
-      max-history: 30
+      max-history: 7
+      total-size-cap: 100MB
   level:
     root: INFO
     vn.edu.ute.milktea: INFO
