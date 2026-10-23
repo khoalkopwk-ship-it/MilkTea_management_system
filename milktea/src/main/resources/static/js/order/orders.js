@@ -157,11 +157,13 @@ const OrdersApp = (() => {
                 }
 
                 detailActions.set(String(o.orderId), button('receipt', o.orderId, 'Xem hóa đơn'));
-                const actionCell = `<button title="Xem chi tiết đơn" aria-label="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn" data-action="details" data-id="${o.orderId}"><i class="bi bi-sliders"></i><span class="ms-2 d-none d-lg-inline">Chi tiết</span></button>`;
+                const actionCell = `<button title="Xem chi tiết đơn" aria-label="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn d-inline-flex align-items-center justify-content-center gap-1 text-nowrap" data-action="details" data-id="${o.orderId}"><i class="bi bi-receipt"></i><span>Chi tiết</span></button>`;
 
                 return `<tr>
                     <td>
-                        <b>${MilkTeaReceipts.code(o.orderId)}</b>
+                        <button type="button" class="btn btn-link p-0 text-decoration-none fw-bold text-start order-code-btn" data-action="details" data-id="${o.orderId}" title="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}">
+                            ${MilkTeaReceipts.code(o.orderId)}
+                        </button>
                         <small class="d-block text-muted mt-1">${e(o.tableName || (o.staffCreated ? 'Quầy thu ngân' : 'Quầy / mang về'))}</small>
                     </td>
                     <td class="text-end fw-semibold text-nowrap">${MilkTeaApi.formatVND(o.totalAmount)}</td>
@@ -210,8 +212,8 @@ const OrdersApp = (() => {
             detailActions.set(String(o.orderId), actions);
 
             const actionCell = quickAction
-                ? `<div class="d-flex justify-content-center align-items-center gap-1">${quickAction}<button title="Chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn" data-action="details" data-id="${o.orderId}"><i class="bi bi-sliders"></i></button></div>`
-                : `<button title="Xem chi tiết đơn" aria-label="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn" data-action="details" data-id="${o.orderId}"><i class="bi bi-sliders"></i><span class="ms-2 d-none d-lg-inline">Chi tiết</span></button>`;
+                ? `<div class="d-flex justify-content-center align-items-center gap-1">${quickAction}<button title="Chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn d-inline-flex align-items-center justify-content-center gap-1" data-action="details" data-id="${o.orderId}"><i class="bi bi-receipt"></i><span>Chi tiết</span></button></div>`
+                : `<button title="Xem chi tiết đơn" aria-label="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn d-inline-flex align-items-center justify-content-center gap-1 text-nowrap" data-action="details" data-id="${o.orderId}"><i class="bi bi-receipt"></i><span>Chi tiết</span></button>`;
 
             let statusBadge = '';
             if (currentTab === 'cooking') {
@@ -228,8 +230,10 @@ const OrdersApp = (() => {
 
             return `<tr>
                 <td>
-                    <b>${MilkTeaReceipts.code(o.orderId)}</b>
-                    
+                    <button type="button" class="btn btn-link p-0 text-decoration-none fw-bold text-start order-code-btn" data-action="details" data-id="${o.orderId}" title="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}">
+                        ${MilkTeaReceipts.code(o.orderId)}
+                    </button>
+                    <small class="d-block text-muted mt-1">${e(o.tableName || (o.staffCreated ? 'Quầy thu ngân' : 'Quầy / mang về'))}</small>
                 </td>
                 <td class="text-end fw-semibold text-nowrap">${MilkTeaApi.formatVND(o.totalAmount)}</td>
                 <td>${statusBadge}</td>
@@ -241,7 +245,13 @@ const OrdersApp = (() => {
         }).join('');
 
         const thirdColHeader = currentTab === 'refund' ? 'Trạng thái hoàn' : 'Trạng thái đơn';
+        const swipeTip = pagedOrders.length > 0
+            ? `<div class="d-md-none orders-mobile-swipe-tip">
+               </div>`
+            : '';
+
         document.getElementById('ordersList').innerHTML = `<div class="orders-panel table-responsive">
+            ${swipeTip}
             <table class="table table-hover orders-table align-middle mb-0">
                 <thead>
                     <tr>
@@ -347,7 +357,7 @@ const OrdersApp = (() => {
             cancellations = fetchedCancels;
             document.getElementById('ordersError').classList.add('d-none');
             render();
-        } catch(err) {
+        } catch (err) {
             if (seq !== requestSeq) return;
             const box = document.getElementById('ordersError');
             box.textContent = err.message || 'Không thể tải danh sách đơn hàng. Nhấn Làm mới để thử lại.';
@@ -386,7 +396,7 @@ const OrdersApp = (() => {
                 render();
                 window.PendingOrders?.refresh();
                 await load();
-            } catch(err) {
+            } catch (err) {
                 MilkTeaApi.showToast(err.message || 'Lỗi khi xác nhận thanh toán', 'error');
             }
             return;
@@ -398,7 +408,7 @@ const OrdersApp = (() => {
                 await MilkTeaApi.post(`/api/v1/cashier/orders/${id}/refund-bank-request`);
                 MilkTeaApi.showToast('Đã gửi yêu cầu hoàn tiền chuyển khoản tới Admin thành công.', 'success');
                 await load();
-            } catch(err) {
+            } catch (err) {
                 MilkTeaApi.showToast(err.message || 'Lỗi khi gửi yêu cầu hoàn tiền', 'error');
             }
             return;
@@ -410,7 +420,7 @@ const OrdersApp = (() => {
                 await MilkTeaApi.post(`/api/v1/cashier/orders/${id}/refund-cash`);
                 MilkTeaApi.showToast('Đã ghi nhận hoàn tiền mặt thành công.', 'success');
                 await load();
-            } catch(err) {
+            } catch (err) {
                 MilkTeaApi.showToast(err.message || 'Lỗi khi ghi nhận hoàn tiền mặt', 'error');
             }
             return;
@@ -424,7 +434,7 @@ const OrdersApp = (() => {
                 const actionModal = document.getElementById('orderActionModal');
                 bootstrap.Modal.getInstance(actionModal)?.hide();
                 await load();
-            } catch(err) {
+            } catch (err) {
                 MilkTeaApi.showToast(err.message || 'Lỗi khi chi trả hoàn tiền', 'error');
             }
             return;
@@ -480,8 +490,8 @@ const OrdersApp = (() => {
             try {
                 const shop = document.getElementById('receiptShop') || {};
                 const bank = (shop.dataset && shop.dataset.bank) || 'Vietcombank',
-                      account = (shop.dataset && shop.dataset.account) || '',
-                      holder = (shop.dataset && shop.dataset.holder) || '';
+                    account = (shop.dataset && shop.dataset.account) || '',
+                    holder = (shop.dataset && shop.dataset.holder) || '';
                 const img = account
                     ? `<img alt="QR chuyển khoản" class="d-block mx-auto my-3 img-fluid border rounded p-2" style="max-width:240px" src="https://img.vietqr.io/image/${encodeURIComponent(bank)}-${encodeURIComponent(account)}-compact2.png?amount=${encodeURIComponent(o.totalAmount)}&addInfo=DH${id}&accountName=${encodeURIComponent(holder)}">`
                     : '<p class="text-muted">Vui lòng liên hệ thu ngân để nhận thông tin chuyển khoản.</p>';
@@ -493,7 +503,7 @@ const OrdersApp = (() => {
                      ${img}
                      <p class="small text-muted mb-0">Sau khi chuyển khoản thành công, nhấn nút <b>"Tôi đã chuyển khoản"</b> để thông báo tới thu ngân xác nhận đã nhận tiền.</p>`,
                     button('noticeBank', id, 'Tôi đã chuyển khoản', 'primary'));
-            } catch(err) {
+            } catch (err) {
                 MilkTeaApi.showToast(err.message, 'error');
             }
             return;
@@ -524,7 +534,7 @@ const OrdersApp = (() => {
                     : `/api/v1/customer/orders/${cancelId}/cancellation-requests`;
 
                 await MilkTeaApi.post(url, { reason });
-            }else if (name === 'approveCancel' || name === 'rejectCancel') {
+            } else if (name === 'approveCancel' || name === 'rejectCancel') {
                 await MilkTeaApi.post(`/api/v1/cashier/cancellation-requests/${id}/decision`, {
                     approved: name === 'approveCancel',
                     reason: 'Nhân viên xác nhận'
@@ -552,7 +562,7 @@ const OrdersApp = (() => {
             }
             MilkTeaApi.showToast('Đã ghi nhận thành công.', 'success');
             await load();
-        } catch(err) {
+        } catch (err) {
             MilkTeaApi.showToast(err.message, 'error');
         } finally {
             busy = false;

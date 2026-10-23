@@ -275,13 +275,72 @@
             font-size: 13px;
         }
 
-        .milk-orders-page #ordersList .card,
-        .milk-orders-page #ordersList .orders-panel {
+        .milk-orders-page #ordersList .card {
             background: #FFFDFB;
             border: 1px solid var(--orders-border) !important;
             border-radius: 17px !important;
             box-shadow: 0 4px 16px rgba(96, 71, 53, .05) !important;
             overflow: hidden;
+        }
+
+        .milk-orders-page #ordersList .orders-panel {
+            background: #FFFDFB;
+            border: 1px solid var(--orders-border) !important;
+            border-radius: 17px !important;
+            box-shadow: 0 4px 16px rgba(96, 71, 53, .05) !important;
+            overflow-x: auto !important;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #D9B99B #F8F4EF;
+        }
+
+        .milk-orders-page #ordersList .orders-panel::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .milk-orders-page #ordersList .orders-panel::-webkit-scrollbar-track {
+            background: #F8F4EF;
+            border-radius: 10px;
+            margin: 0 10px;
+        }
+
+        .milk-orders-page #ordersList .orders-panel::-webkit-scrollbar-thumb {
+            background: #D9B99B;
+            border-radius: 10px;
+        }
+
+        .milk-orders-page #ordersList .orders-panel::-webkit-scrollbar-thumb:hover {
+            background: var(--orders-primary);
+        }
+
+        .milk-orders-page .orders-mobile-swipe-tip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 14px;
+            background: #FCF8F4;
+            border-bottom: 1px dashed var(--orders-border);
+            color: var(--orders-secondary);
+            font-size: 11.5px;
+            font-weight: 600;
+            user-select: none;
+        }
+
+        .milk-orders-page .order-code-btn {
+            color: var(--orders-primary) !important;
+            font-weight: 700;
+            font-size: 13px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            transition: color .15s ease;
+            cursor: pointer;
+        }
+
+        .milk-orders-page .order-code-btn:hover {
+            color: var(--orders-primary-hover) !important;
+            text-decoration: underline !important;
         }
 
         .milk-orders-page #ordersList .card-header,
@@ -387,7 +446,6 @@
         .milk-orders-page #ordersList .orders-table,
         .milk-orders-page #ordersList table {
             background: #FFFDFB;
-            overflow: hidden;
             border-radius: 16px;
         }
 
@@ -496,6 +554,10 @@
             .milk-orders-page #ordersList .card,
             .milk-orders-page #ordersList .orders-panel {
                 border-radius: 14px !important;
+            }
+
+            .milk-orders-page #ordersList .orders-table {
+                min-width: 680px;
             }
         }
 
