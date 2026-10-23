@@ -5,7 +5,7 @@ const MilkTeaReceipts = (() => {
     const code = id => 'ORD' + String(id).padStart(3, '0');
     let currentOrder;
     function lines(o) {
-        return `<table class="receipt-items"><thead><tr><th>Tên món</th><th>Số lượng</th><th>Thành tiền</th></tr></thead><tbody>${(o.items || []).map(i => {
+        return `<div class="receipt-items-wrapper"><table class="receipt-items"><thead><tr><th>Tên món</th><th>Số lượng</th><th>Thành tiền</th></tr></thead><tbody>${(o.items || []).map(i => {
             const toppingText = (i.toppings && i.toppings.length)
                 ? `<div class="small text-muted">
                     ${i.toppings.map(t => `<div>+ ${esc(t.name)} (${money(t.price)})</div>`).join('')}
@@ -13,7 +13,7 @@ const MilkTeaReceipts = (() => {
                 : '';
             const noteText = i.note ? `<div class="small text-muted fst-italic">Ghi chú: ${esc(i.note)}</div>` : '';
             return `<tr><td>${esc(i.productName)} <small class="text-secondary">${esc(i.size)}</small>${toppingText}${noteText}</td><td>${i.quantity}</td><td>${money(i.lineTotal)}</td></tr>`;
-        }).join('')}</tbody></table>`;
+        }).join('')}</tbody></table></div>`;
     }
     function shop() {
         const e = document.getElementById('receiptShop');

@@ -68,6 +68,13 @@
     overflow-wrap: anywhere;
 }
 
+.receipt-items-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
 .receipt-items {
     width: 100%;
     border-collapse: collapse;
