@@ -27,11 +27,7 @@ public class CartController {
             HttpServletRequest request) {
 
         CurrentActor actor = (CurrentActor) request.getAttribute(JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
-        Long sessionId = pathSessionId != null ? pathSessionId : (querySessionId != null ? querySessionId : (actor != null ? actor.getSessionId() : null));
-
-        if (sessionId == null) {
-            throw BusinessException.badRequest(ErrorCode.TABLE_SESSION_CLOSED, "Chưa xác định được phiên bàn");
-        }
+        Long sessionId = resolveAndVerifySessionId(pathSessionId, querySessionId, actor);
 
         CartDto.CartResponse response = sessionCartService.getCart(sessionId);
         return ResponseEntity.ok()
@@ -48,15 +44,31 @@ public class CartController {
             HttpServletRequest request) {
 
         CurrentActor actor = (CurrentActor) request.getAttribute(JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
+        Long sessionId = resolveAndVerifySessionId(pathSessionId, querySessionId, actor);
+
+        CartDto.CartResponse response = sessionCartService.replaceCart(sessionId, requestBody, ifMatch);
+        return ResponseEntity.ok()
+                .eTag("\"" + response.getVersion() + "\"")
+                .body(ApiResponse.ok(response));
+    }
+
+    /**
+     * SEC-02.4: Xác thực quyền sở hữu giỏ hàng của phiên bàn.
+     * Ngăn chặn khách bàn (TABLE_GUEST) can thiệp hoặc truy cập giỏ hàng của bàn khác.
+     */
+    private Long resolveAndVerifySessionId(Long pathSessionId, Long querySessionId, CurrentActor actor) {
         Long sessionId = pathSessionId != null ? pathSessionId : (querySessionId != null ? querySessionId : (actor != null ? actor.getSessionId() : null));
 
         if (sessionId == null) {
             throw BusinessException.badRequest(ErrorCode.TABLE_SESSION_CLOSED, "Chưa xác định được phiên bàn");
         }
 
-        CartDto.CartResponse response = sessionCartService.replaceCart(sessionId, requestBody, ifMatch);
-        return ResponseEntity.ok()
-                .eTag("\"" + response.getVersion() + "\"")
-                .body(ApiResponse.ok(response));
+        if (actor != null && actor.getActorType() == CurrentActor.ActorType.TABLE_GUEST) {
+            if (actor.getSessionId() != null && !actor.getSessionId().equals(sessionId)) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không thể truy cập giỏ hàng của bàn khác");
+            }
+        }
+
+        return sessionId;
     }
 }
