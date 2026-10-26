@@ -1099,30 +1099,86 @@
             </div>
         </div>
 
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
             <div>
                 <h2 class="brand-font mb-1">Thực đơn trà sữa</h2>
                 <p class="text-muted small mb-0">Hương vị trà sữa nguyên bản, pha chế thủ công thơm ngon mỗi ngày</p>
             </div>
 
-            <div class="menu-category-filter">
-                <select class="form-select rounded-pill fw-semibold shadow-sm" id="categoryFilterSelect"
-                    onchange="filterCategory(this.value)">
-                    <option value="ALL">Tất cả</option>
-                    <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">
-                        Danh mục
-                    </option>
-                </select>
+            <!-- Thanh Tìm Kiếm & Lọc Danh Mục & Sắp Xếp (CUS-01) -->
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <div class="position-relative" style="min-width: 220px; flex-grow: 1;">
+                    <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                    <input type="text"
+                           id="menuSearchInput"
+                           class="form-control rounded-pill ps-5 pe-3 shadow-sm border"
+                           placeholder="Tìm tên món uống..."
+                           oninput="handleMenuFilterAndSearch()">
+                </div>
+
+                <div class="menu-category-filter">
+                    <select class="form-select rounded-pill fw-semibold shadow-sm" id="categoryFilterSelect"
+                        onchange="handleMenuFilterAndSearch()">
+                        <option value="ALL">Tất cả danh mục</option>
+                        <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">
+                            Danh mục
+                        </option>
+                    </select>
+                </div>
+
+                <div>
+                    <select class="form-select rounded-pill fw-semibold shadow-sm" id="menuSortSelect"
+                        onchange="handleMenuFilterAndSearch()">
+                        <option value="default">Sắp xếp: Mặc định</option>
+                        <option value="price_asc">Giá: Thấp đến Cao</option>
+                        <option value="price_desc">Giá: Cao đến Thấp</option>
+                        <option value="name_asc">Tên món: A - Z</option>
+                    </select>
+                </div>
             </div>
+        </div>
+
+        <!-- 4 Danh Sách Nổi Bật: Mới nhất, Bán chạy nhất, Đánh giá cao, Yêu thích nhất (CUS-02) -->
+        <div class="menu-featured-tabs d-flex flex-wrap gap-2 mb-4 align-items-center">
+            <span class="small fw-bold text-muted me-1 d-none d-md-inline">
+                <i class="bi bi-stars text-warning me-1"></i>Bộ sưu tập:
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill active px-3 featured-tab-btn" data-type="all" onclick="selectFeaturedTab('all', this)">
+                Tất cả món
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 featured-tab-btn" data-type="newest" onclick="selectFeaturedTab('newest', this)">
+                <i class="bi bi-sparkles text-info me-1"></i> Mới nhất
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 featured-tab-btn" data-type="best-seller" onclick="selectFeaturedTab('best-seller', this)">
+                <i class="bi bi-fire text-danger me-1"></i> Bán chạy nhất
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 featured-tab-btn" data-type="top-rated" onclick="selectFeaturedTab('top-rated', this)">
+                <i class="bi bi-star-fill text-warning me-1"></i> Đánh giá cao
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 featured-tab-btn" data-type="most-favorited" onclick="selectFeaturedTab('most-favorited', this)">
+                <i class="bi bi-heart-fill text-danger me-1"></i> Yêu thích nhất
+            </button>
         </div>
 
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="productsGrid">
             <div th:each="p : ${products}" class="col product-item"
                 th:attr="data-category=${p.category.id}, data-category-name=${p.category.name}, data-category-allow-topping=${p.category.allowTopping}, data-id=${p.id}, data-name=${p.name}, data-price=${p.price}, data-size=${p.size}, data-img=${p.imageUrl}">
-                <div class="product-card">
-                    <div class="product-img-wrapper">
-                        <img th:src="${p.imageUrl != null and !p.imageUrl.isEmpty() ? p.imageUrl : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80'}"
-                            class="product-img" alt="Ảnh món">
+                <div class="product-card position-relative">
+                    <!-- Nút Trái tim Yêu thích (CUS-05) -->
+                    <button type="button"
+                            class="btn btn-sm btn-favorite-toggle position-absolute top-0 start-0 m-2 rounded-circle"
+                            th:attr="data-product-id=${p.id}"
+                            onclick="toggleProductFavorite(event, this)"
+                            title="Thêm vào yêu thích"
+                            style="width: 34px; height: 34px; z-index: 3; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                        <i class="bi bi-heart text-secondary fs-6"></i>
+                    </button>
+
+                    <div class="product-img-wrapper position-relative">
+                        <a th:href="@{'/products/' + ${p.id}}" class="d-block text-decoration-none">
+                            <img th:src="${p.imageUrl != null and !p.imageUrl.isEmpty() ? p.imageUrl : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80'}"
+                                class="product-img" alt="Ảnh món">
+                        </a>
                         <span
                             class="position-absolute top-0 end-0 m-2 badge bg-dark bg-opacity-75 rounded-pill px-2 py-1 small"
                             th:text="'Size ' + ${p.size}">
@@ -1131,7 +1187,17 @@
                     </div>
 
                     <div class="p-3 d-flex flex-column flex-grow-1">
-                        <h5 class="fw-bold mb-1 text-truncate" th:text="${p.name}">Trà Sữa Truyền Thống</h5>
+                        <a th:href="@{'/products/' + ${p.id}}" class="text-decoration-none text-dark">
+                            <h5 class="fw-bold mb-1 text-truncate" th:text="${p.name}">Trà Sữa Truyền Thống</h5>
+                        </a>
+                        <div class="d-flex align-items-center gap-1 mb-1 small">
+                            <i class="bi bi-star-fill text-warning small"></i>
+                            <span class="fw-semibold text-secondary small">5.0</span>
+                            <span class="text-muted small">·</span>
+                            <a th:href="@{'/products/' + ${p.id}}" class="text-muted small text-decoration-none">
+                                Xem đánh giá
+                            </a>
+                        </div>
                         <p class="text-muted small flex-grow-1 mb-2 text-truncate-2"
                             th:text="${p.description != null ? p.description : 'Đậm vị trà thơm ngậy sữa'}">
                             Mô tả món
@@ -1348,6 +1414,7 @@
                 buildCatalog();
                 initializeMenuAnimations();
                 initRadialFabMenu();
+                loadUserFavorites();
             });
 
             function initializeMenuAnimations() {
@@ -1388,15 +1455,143 @@
                 }));
             }
 
-            function filterCategory(catId) {
-                const items = document.querySelectorAll('.product-item');
+            let currentFeaturedType = 'all';
+
+            function handleMenuFilterAndSearch() {
+                const searchInput = document.getElementById('menuSearchInput');
+                const catSelect = document.getElementById('categoryFilterSelect');
+                const sortSelect = document.getElementById('menuSortSelect');
+
+                const query = (searchInput?.value || '').trim().toLowerCase();
+                const catId = catSelect?.value || 'ALL';
+                const sortKey = sortSelect?.value || 'default';
+
+                const grid = document.getElementById('productsGrid');
+                if (!grid) return;
+                const items = Array.from(grid.querySelectorAll('.product-item'));
+
                 items.forEach(it => {
-                    if (catId === 'ALL' || it.getAttribute('data-category') === catId) {
+                    const name = (it.getAttribute('data-name') || '').toLowerCase();
+                    const itemCat = it.getAttribute('data-category');
+                    const matchCategory = (catId === 'ALL' || itemCat === catId);
+                    const matchQuery = (!query || name.includes(query));
+                    const matchFeatured = (currentFeaturedType === 'all' || it.getAttribute('data-featured-match') !== 'false');
+
+                    if (matchCategory && matchQuery && matchFeatured) {
                         it.style.display = '';
                     } else {
                         it.style.display = 'none';
                     }
                 });
+
+                if (sortKey !== 'default') {
+                    items.sort((a, b) => {
+                        const priceA = Number(a.getAttribute('data-price') || 0);
+                        const priceB = Number(b.getAttribute('data-price') || 0);
+                        const nameA = (a.getAttribute('data-name') || '').toLowerCase();
+                        const nameB = (b.getAttribute('data-name') || '').toLowerCase();
+
+                        if (sortKey === 'price_asc') return priceA - priceB;
+                        if (sortKey === 'price_desc') return priceB - priceA;
+                        if (sortKey === 'name_asc') return nameA.localeCompare(nameB);
+                        return 0;
+                    });
+                    items.forEach(it => grid.appendChild(it));
+                }
+            }
+
+            function filterCategory(catId) {
+                const catSelect = document.getElementById('categoryFilterSelect');
+                if (catSelect) catSelect.value = catId;
+                handleMenuFilterAndSearch();
+            }
+
+            async function selectFeaturedTab(type, btn) {
+                currentFeaturedType = type;
+                document.querySelectorAll('.featured-tab-btn').forEach(b => b.classList.remove('active', 'btn-secondary', 'text-white'));
+                if (btn) {
+                    btn.classList.add('active');
+                }
+
+                const grid = document.getElementById('productsGrid');
+                if (!grid) return;
+                const items = Array.from(grid.querySelectorAll('.product-item'));
+
+                if (type === 'all') {
+                    items.forEach(it => it.removeAttribute('data-featured-match'));
+                    handleMenuFilterAndSearch();
+                    return;
+                }
+
+                try {
+                    const res = await MilkTeaApi.get(`/api/v1/public/products/featured?type=${type}&limit=20`);
+                    const featuredList = (res && res.products) || [];
+                    const featuredIds = new Set(featuredList.map(p => String(p.id)));
+
+                    items.forEach(it => {
+                        const id = it.getAttribute('data-id');
+                        if (featuredIds.has(id)) {
+                            it.removeAttribute('data-featured-match');
+                        } else {
+                            it.setAttribute('data-featured-match', 'false');
+                        }
+                    });
+                    handleMenuFilterAndSearch();
+                } catch (e) {
+                    console.warn('Lỗi khi tải bộ sưu tập nổi bật:', e);
+                    items.forEach(it => it.removeAttribute('data-featured-match'));
+                    handleMenuFilterAndSearch();
+                }
+            }
+
+            async function toggleProductFavorite(event, btn) {
+                event.stopPropagation();
+                event.preventDefault();
+                const productId = btn.getAttribute('data-product-id');
+                if (!productId) return;
+
+                const icon = btn.querySelector('i');
+                const isCurrentlyFav = icon && icon.classList.contains('bi-heart-fill');
+
+                try {
+                    const res = await MilkTeaApi.post(`/api/v1/favorites/${productId}`);
+                    const newStatus = (res && res.isFavorite !== undefined) ? res.isFavorite : !isCurrentlyFav;
+
+                    if (icon) {
+                        if (newStatus) {
+                            icon.className = 'bi bi-heart-fill text-danger fs-6';
+                            btn.title = 'Bỏ yêu thích';
+                            MilkTeaApi.showToast('Đã thêm món vào danh sách yêu thích!', 'success');
+                        } else {
+                            icon.className = 'bi bi-heart text-secondary fs-6';
+                            btn.title = 'Thêm vào yêu thích';
+                            MilkTeaApi.showToast('Đã xóa món khỏi danh sách yêu thích', 'info');
+                        }
+                    }
+                } catch (err) {
+                    MilkTeaApi.showToast('Vui lòng đăng nhập để lưu món yêu thích', 'info');
+                }
+            }
+
+            async function loadUserFavorites() {
+                try {
+                    const res = await MilkTeaApi.get('/api/v1/favorites?size=50');
+                    const favList = (res && res.items) || [];
+                    const favIdSet = new Set(favList.map(f => String(f.productId)));
+
+                    document.querySelectorAll('.btn-favorite-toggle').forEach(btn => {
+                        const pid = btn.getAttribute('data-product-id');
+                        if (favIdSet.has(pid)) {
+                            const icon = btn.querySelector('i');
+                            if (icon) {
+                                icon.className = 'bi bi-heart-fill text-danger fs-6';
+                                btn.title = 'Bỏ yêu thích';
+                            }
+                        }
+                    });
+                } catch (e) {
+                    // Chưa đăng nhập, không tải yêu thích
+                }
             }
 
             function openCustomizeModal(productId) {

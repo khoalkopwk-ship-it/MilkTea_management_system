@@ -227,7 +227,8 @@
                         });
                         const data = await res.json();
                         if (res.ok && data.success) {
-                            if (data.data.favorite) {
+                            const isFav = data.data.isFavorite !== undefined ? data.data.isFavorite : data.data.favorite;
+                            if (isFav) {
                                 heartIcon.className = 'bi bi-heart-fill text-danger';
                             } else {
                                 heartIcon.className = 'bi bi-heart';
