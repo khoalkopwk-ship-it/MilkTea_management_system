@@ -194,11 +194,31 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                             }
                         }
 
+                        // Đọc thêm table token hoặc counter token nếu khách hàng đã đăng nhập nhưng đang ngồi bàn
+                        Long sessionId = null;
+                        Long tableId = null;
+                        String tableToken = accessor.getFirstNativeHeader("X-Table-Session-Token");
+                        if (tableToken == null) {
+                            tableToken = accessor.getFirstNativeHeader("X-Table-Token");
+                        }
+                        if (tableToken != null && !tableToken.isBlank()) {
+                            var accessOpt = guestAccessService.validateTableToken(tableToken);
+                            if (accessOpt.isPresent()) {
+                                sessionId = accessOpt.get().getSession().getId();
+                                tableId = accessOpt.get().getSession().getTable().getId();
+                                if (primaryBranchId == null && accessOpt.get().getSession().getTable().getBranch() != null) {
+                                    primaryBranchId = accessOpt.get().getSession().getTable().getBranch().getId();
+                                }
+                            }
+                        }
+
                         CurrentActor actor = CurrentActor.builder()
                                 .actorType(CurrentActor.ActorType.AUTHENTICATED)
                                 .accountId(account.getId())
                                 .email(account.getEmail())
                                 .role(role)
+                                .sessionId(sessionId)
+                                .tableId(tableId)
                                 .branchId(primaryBranchId)
                                 .assignedBranchIds(assignedBranchIds)
                                 .build();
@@ -337,13 +357,25 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             String sessionIdStr = destination.substring("/topic/table-sessions/".length());
             try {
                 Long targetSessionId = Long.parseLong(sessionIdStr);
-                // Được phép nếu là ADMIN, CASHIER, MANAGER, hoặc khách của đúng sessionId này
+                // Được phép nếu là ADMIN, CASHIER, MANAGER, CUSTOMER, hoặc khách của đúng sessionId này
                 boolean allowed = actor != null && (
                         actor.getRole() == Role.ADMIN ||
                         actor.getRole() == Role.CASHIER ||
                         actor.getRole() == Role.MANAGER ||
+                        actor.getRole() == Role.CUSTOMER ||
                         (actor.getSessionId() != null && actor.getSessionId().equals(targetSessionId))
                 );
+                if (!allowed) {
+                    // Fallback kiểm tra header table token
+                    String subTableToken = accessor.getFirstNativeHeader("X-Table-Session-Token");
+                    if (subTableToken == null) subTableToken = accessor.getFirstNativeHeader("X-Table-Token");
+                    if (subTableToken != null && !subTableToken.isBlank()) {
+                        var accessOpt = guestAccessService.validateTableToken(subTableToken);
+                        if (accessOpt.isPresent() && accessOpt.get().getSession().getId().equals(targetSessionId)) {
+                            allowed = true;
+                        }
+                    }
+                }
                 if (!allowed) {
                     log.warn("Từ chối SUBSCRIBE {} từ actor={}", destination, actor != null ? actor.getEmail() : "anonymous");
                     throw new IllegalArgumentException("Không có quyền truy cập phiên bàn này");
