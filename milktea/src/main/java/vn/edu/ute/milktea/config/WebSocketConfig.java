@@ -44,6 +44,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         this(jwtService, accountRepository, guestAccessService, null, null);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public WebSocketConfig(JwtService jwtService,
                            AccountRepository accountRepository,
                            GuestAccessService guestAccessService,
