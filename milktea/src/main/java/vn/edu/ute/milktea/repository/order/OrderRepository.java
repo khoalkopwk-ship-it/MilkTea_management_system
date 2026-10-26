@@ -19,6 +19,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findBySessionId(Long sessionId);
 
+    List<Order> findByBranchIdOrderByCreatedAtDesc(Long branchId);
+
+    List<Order> findByBranchIdAndStatusInOrderByCreatedAtAsc(Long branchId, Collection<OrderStatus> statuses);
+
+    List<Order> findByBranchIdAndSessionId(Long branchId, Long sessionId);
+
     List<Order> findByAccountIdOrderByCreatedAtDesc(Long accountId);
 
     Optional<Order> findByIdempotencyKey(String idempotencyKey);

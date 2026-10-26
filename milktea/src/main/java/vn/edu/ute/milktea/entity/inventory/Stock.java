@@ -18,6 +18,11 @@ public class Stock {
     private StockId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("branchId")
+    @JoinColumn(name = "MaCN", nullable = false)
+    private vn.edu.ute.milktea.entity.branch.Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("materialId")
     @JoinColumn(name = "MaNL", nullable = false)
     private Material material;

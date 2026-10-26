@@ -19,7 +19,11 @@ public interface StockRepository extends JpaRepository<Stock, StockId> {
 
     List<Stock> findByIdLocation(StockLocation location);
 
+    List<Stock> findByIdBranchIdAndIdLocation(Long branchId, StockLocation location);
+
     Optional<Stock> findByIdMaterialIdAndIdLocation(Long materialId, StockLocation location);
+
+    Optional<Stock> findByIdBranchIdAndIdMaterialIdAndIdLocation(Long branchId, Long materialId, StockLocation location);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM Stock s WHERE s.id.location = :location AND s.id.materialId IN :materialIds ORDER BY s.id.materialId ASC")
@@ -29,4 +33,8 @@ public interface StockRepository extends JpaRepository<Stock, StockId> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM Stock s WHERE s.id.materialId = :materialId AND s.id.location = :location")
     Optional<Stock> findByIdWithLock(@Param("materialId") Long materialId, @Param("location") StockLocation location);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Stock s WHERE s.id.branchId = :branchId AND s.id.materialId = :materialId AND s.id.location = :location")
+    Optional<Stock> findByIdWithLock(@Param("branchId") Long branchId, @Param("materialId") Long materialId, @Param("location") StockLocation location);
 }

@@ -17,6 +17,10 @@ public class DiningTable {
     @Column(name = "MaBan")
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MaCN")
+    private vn.edu.ute.milktea.entity.branch.Branch branch;
+
     @Column(name = "TenBan", nullable = false, unique = true, length = 40)
     private String name;
 
