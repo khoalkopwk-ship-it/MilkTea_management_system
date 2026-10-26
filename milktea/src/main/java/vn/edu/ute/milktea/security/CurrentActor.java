@@ -37,6 +37,10 @@ public class CurrentActor {
         return isAuthenticated() && this.role == requiredRole;
     }
 
+    public boolean isSystemAdmin() {
+        return hasRole(Role.ADMIN);
+    }
+
     public boolean canAccessBranch(Long targetBranchId) {
         if (targetBranchId == null) {
             return false;

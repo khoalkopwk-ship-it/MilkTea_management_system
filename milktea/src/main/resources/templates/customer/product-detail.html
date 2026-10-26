@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+    th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+
+<head>
+    <title th:text="${product.name + ' - MilkTea'}">Chi tiết món - MilkTea</title>
+</head>
+
+<body>
+    <div th:fragment="content" class="container py-4 product-detail-page">
+        <style>
+            .product-detail-page {
+                --primary-color: #b86b35;
+                --primary-hover: #9e5524;
+                --primary-light: #fbeee4;
+                --card-bg: #ffffff;
+                --border-color: #e8ded5;
+                --text-dark: #1e293b;
+                --text-muted: #64748b;
+            }
+            .product-card {
+                background: var(--card-bg);
+                border: 1px solid var(--border-color);
+                border-radius: 1.25rem;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+                overflow: hidden;
+            }
+            .product-image-container {
+                position: relative;
+                border-radius: 1rem;
+                overflow: hidden;
+                background-color: #f8fafc;
+                min-height: 320px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .product-image-container img {
+                width: 100%;
+                height: 100%;
+                max-height: 400px;
+                object-fit: cover;
+                transition: transform 0.4s ease;
+            }
+            .product-image-container:hover img {
+                transform: scale(1.04);
+            }
+            .badge-branch {
+                background: linear-gradient(135deg, #b86b35, #e08b53);
+                color: #fff;
+                font-size: 0.82rem;
+                padding: 0.45rem 0.85rem;
+                border-radius: 2rem;
+            }
+            .price-tag {
+                color: var(--primary-color);
+                font-size: 2rem;
+                font-weight: 700;
+            }
+            .btn-favorite {
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                border: 1px solid var(--border-color);
+                background: #fff;
+                color: #ef4444;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.25rem;
+                transition: all 0.25s ease;
+                cursor: pointer;
+            }
+            .btn-favorite:hover {
+                transform: scale(1.1);
+                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+            }
+            .rating-star {
+                color: #f59e0b;
+            }
+            .review-card {
+                border-bottom: 1px solid var(--border-color);
+                padding: 1.25rem 0;
+            }
+            .review-card:last-child {
+                border-bottom: none;
+            }
+        </style>
+
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/menu" class="text-decoration-none text-muted">Thực đơn</a></li>
+                <li class="breadcrumb-item" th:if="${product.categoryName}" th:text="${product.categoryName}">Danh mục</li>
+                <li class="breadcrumb-item active text-dark fw-semibold" aria-current="page" th:text="${product.name}">Tên món</li>
+            </ol>
+        </nav>
+
+        <div class="product-card p-4 p-md-5 mb-5">
+            <div class="row g-4 align-items-center">
+                <div class="col-lg-5">
+                    <div class="product-image-container">
+                        <img th:if="${product.imageUrl}" th:src="${product.imageUrl}" th:alt="${product.name}" class="img-fluid" />
+                        <div th:unless="${product.imageUrl}" class="text-muted p-5 text-center">
+                            <i class="bi bi-cup-straw display-1"></i>
+                            <p class="mt-2 mb-0">Chưa có ảnh</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <span th:if="${product.branchName}" class="badge badge-branch mb-2">
+                                <i class="bi bi-geo-alt-fill me-1"></i><span th:text="${product.branchName}">Chi nhánh</span>
+                            </span>
+                            <span th:if="${product.categoryName}" class="badge bg-light text-secondary border ms-1 mb-2" th:text="${product.categoryName}">Danh mục</span>
+                            <h1 class="h2 fw-bold text-dark mb-1" th:text="${product.name}">Trà Sữa O Long</h1>
+                        </div>
+                        <button type="button" class="btn-favorite" id="btnToggleFavorite" th:data-product-id="${product.id}" title="Yêu thích">
+                            <i th:class="${product.isFavorite} ? 'bi bi-heart-fill' : 'bi bi-heart'" id="heartIcon"></i>
+                        </button>
+                    </div>
+
+                    <!-- Đánh giá sao & lượt yêu thích -->
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="d-flex align-items-center text-warning">
+                            <i class="bi bi-star-fill rating-star me-1"></i>
+                            <span class="fw-bold text-dark me-1" th:text="${product.averageRating > 0 ? product.averageRating : '5.0'}">5.0</span>
+                            <span class="text-muted small">(<span th:text="${product.reviewCount}">0</span> đánh giá)</span>
+                        </div>
+                        <span class="text-muted">|</span>
+                        <div class="text-muted small">
+                            <i class="bi bi-check-circle-fill text-success me-1" th:if="${product.available}"></i>
+                            <span th:if="${product.available}" class="text-success fw-medium">Còn phục vụ</span>
+                            <i class="bi bi-x-circle-fill text-danger me-1" th:unless="${product.available}"></i>
+                            <span th:unless="${product.available}" class="text-danger fw-medium">Tạm hết tại cơ sở</span>
+                        </div>
+                    </div>
+
+                    <!-- Giá tiền -->
+                    <div class="mb-4">
+                        <span class="price-tag" th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT') + ' đ'}">35,000 đ</span>
+                        <span class="text-muted small ms-1" th:if="${product.size}" th:text="'(Size ' + ${product.size} + ')'"></span>
+                    </div>
+
+                    <!-- Mô tả -->
+                    <p class="text-muted mb-4" th:text="${product.description ?: 'Hương vị trà sữa thơm béo, đậm đà được pha chế từ nguyên liệu tươi ngon nhất.'}">Mô tả món</p>
+
+                    <!-- Lựa chọn Size -->
+                    <div class="mb-4" th:if="${product.availableSizes != null and not #lists.isEmpty(product.availableSizes)}">
+                        <label class="form-label fw-bold text-dark mb-2">Chọn kích cỡ (Size):</label>
+                        <div class="d-flex gap-2">
+                            <button type="button" th:each="s : ${product.availableSizes}" 
+                                    th:class="${s == product.size} ? 'btn btn-outline-warning active px-3' : 'btn btn-outline-secondary px-3'"
+                                    th:text="${s}">M</button>
+                        </div>
+                    </div>
+
+                    <!-- Toppings nếu có -->
+                    <div class="mb-4" th:if="${product.allowTopping and product.toppings != null and not #lists.isEmpty(product.toppings)}">
+                        <label class="form-label fw-bold text-dark mb-2">Topping đi kèm:</label>
+                        <div class="row g-2">
+                            <div class="col-6 col-sm-4" th:each="t : ${product.toppings}">
+                                <div class="border rounded p-2 text-center small bg-light">
+                                    <div class="fw-semibold text-dark text-truncate" th:text="${t.name}">Trân châu đen</div>
+                                    <div class="text-muted" th:text="${'+ ' + #numbers.formatDecimal(t.price, 0, 'COMMA', 0, 'POINT') + ' đ'}">+ 5,000 đ</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nút Thêm vào giỏ hàng -->
+                    <div class="d-flex gap-3 pt-3 border-top">
+                        <a th:href="@{/menu(branchId=${branchId})}" class="btn btn-outline-secondary px-4 py-2 rounded-pill">
+                            <i class="bi bi-arrow-left me-1"></i>Xem Menu
+                        </a>
+                        <button type="button" class="btn btn-warning px-4 py-2 rounded-pill text-white fw-bold flex-grow-1"
+                                style="background: linear-gradient(135deg, #b86b35, #9e5524); border: none;"
+                                th:disabled="${!product.available}">
+                            <i class="bi bi-bag-plus me-1"></i>Thêm vào giỏ hàng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Khối Đánh giá & Bình luận -->
+        <div class="product-card p-4 p-md-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="h4 fw-bold text-dark mb-1">Đánh giá & Bình luận từ khách hàng</h3>
+                    <p class="text-muted small mb-0">Các đánh giá xác thực từ khách hàng đã mua món tại cơ sở</p>
+                </div>
+                <div class="text-end">
+                    <span class="h3 fw-bold text-warning mb-0" th:text="${product.averageRating > 0 ? product.averageRating : '5.0'}">5.0</span>
+                    <span class="text-muted">/ 5.0</span>
+                    <div class="text-muted small" th:text="${product.reviewCount + ' lượt đánh giá'}">0 lượt đánh giá</div>
+                </div>
+            </div>
+
+            <!-- Danh sách bình luận -->
+            <div id="reviewsContainer">
+                <div class="text-center py-4 text-muted" id="reviewsLoading">
+                    <div class="spinner-border text-warning spinner-border-sm me-2" role="status"></div>
+                    Đang tải đánh giá từ khách hàng...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:fragment="scripts">
+        <script th:inline="javascript">
+            const productId = /*[[${product.id}]]*/ 1;
+            const btnFav = document.getElementById('btnToggleFavorite');
+            const heartIcon = document.getElementById('heartIcon');
+
+            if (btnFav) {
+                btnFav.addEventListener('click', async () => {
+                    try {
+                        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+                        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+
+                        const res = await fetch(`/api/v1/favorites/${productId}`, {
+                            method: 'POST',
+                            headers: headers
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            if (data.data.favorite) {
+                                heartIcon.className = 'bi bi-heart-fill text-danger';
+                            } else {
+                                heartIcon.className = 'bi bi-heart';
+                            }
+                        } else if (res.status === 401) {
+                            window.location.href = `/login?redirect=/products/${productId}`;
+                        }
+                    } catch (e) {
+                        console.error('Lỗi toggle favorite:', e);
+                    }
+                });
+            }
+
+            // Tải danh sách đánh giá
+            async function loadReviews() {
+                const container = document.getElementById('reviewsContainer');
+                try {
+                    const res = await fetch(`/api/v1/reviews/product/${productId}?page=0&size=10`);
+                    const data = await res.json();
+                    if (res.ok && data.success && data.data.items && data.data.items.length > 0) {
+                        let html = '';
+                        data.data.items.forEach(r => {
+                            let stars = '';
+                            for (let i = 1; i <= 5; i++) {
+                                stars += i <= r.rating ? '<i class="bi bi-star-fill text-warning me-1"></i>' : '<i class="bi bi-star text-muted me-1"></i>';
+                            }
+                            let mediaHtml = '';
+                            if (r.mediaList && r.mediaList.length > 0) {
+                                mediaHtml = '<div class="d-flex gap-2 mt-2">';
+                                r.mediaList.forEach(m => {
+                                    mediaHtml += `<img src="${m.mediaUrl}" class="rounded border" style="width: 72px; height: 72px; object-fit: cover;" />`;
+                                });
+                                mediaHtml += '</div>';
+                            }
+                            html += `
+                                <div class="review-card">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold text-dark">${r.customerName || 'Khách hàng'}</span>
+                                        <span class="text-muted small">${new Date(r.createdAt).toLocaleDateString('vi-VN')}</span>
+                                    </div>
+                                    <div class="mb-2">${stars}</div>
+                                    <p class="text-dark mb-1">${r.content}</p>
+                                    ${mediaHtml}
+                                </div>
+                            `;
+                        });
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = '<div class="text-center py-4 text-muted">Chưa có đánh giá nào cho món uống này. Hãy là người đầu tiên trải nghiệm và chia sẻ nhé!</div>';
+                    }
+                } catch (e) {
+                    container.innerHTML = '<div class="text-center py-4 text-muted">Không thể tải danh sách đánh giá lúc này.</div>';
+                }
+            }
+            loadReviews();
+        </script>
+    </div>
+</body>
+</html>

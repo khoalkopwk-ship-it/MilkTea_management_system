@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+    th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+
+<head>
+    <title>Món yêu thích của tôi - MilkTea</title>
+</head>
+
+<body>
+    <div th:fragment="content" class="container py-4 wishlist-page">
+        <style>
+            .wishlist-page {
+                --primary-color: #b86b35;
+                --primary-hover: #9e5524;
+                --card-bg: #ffffff;
+                --border-color: #e8ded5;
+            }
+            .wishlist-card {
+                background: var(--card-bg);
+                border: 1px solid var(--border-color);
+                border-radius: 1rem;
+                overflow: hidden;
+                transition: transform 0.25s ease, box-shadow 0.25s ease;
+            }
+            .wishlist-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+            }
+            .item-image {
+                width: 100%;
+                height: 180px;
+                object-fit: cover;
+                background-color: #f8fafc;
+            }
+            .btn-remove-fav {
+                background: #fee2e2;
+                color: #ef4444;
+                border: none;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s;
+            }
+            .btn-remove-fav:hover {
+                background: #ef4444;
+                color: #fff;
+            }
+        </style>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 fw-bold text-dark mb-1">Món yêu thích của tôi</h1>
+                <p class="text-muted small mb-0">Danh sách các món uống bạn đã lưu lại để thưởng thức</p>
+            </div>
+            <a href="/menu" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i>Về Menu
+            </a>
+        </div>
+
+        <div id="wishlistContainer" class="row g-4">
+            <div class="col-12 text-center py-5 text-muted" id="wishlistLoading">
+                <div class="spinner-border text-warning spinner-border-sm me-2" role="status"></div>
+                Đang tải danh sách yêu thích...
+            </div>
+        </div>
+    </div>
+
+    <div th:fragment="scripts">
+        <script>
+            async function loadWishlist() {
+                const container = document.getElementById('wishlistContainer');
+                try {
+                    const res = await fetch('/api/v1/favorites?page=0&size=50');
+                    const data = await res.json();
+                    if (res.ok && data.success && data.data.items && data.data.items.length > 0) {
+                        let html = '';
+                        data.data.items.forEach(item => {
+                            html += `
+                                <div class="col-sm-6 col-md-4 col-lg-3" id="fav-item-${item.productId}">
+                                    <div class="wishlist-card h-100 d-flex flex-column">
+                                        <div class="position-relative">
+                                            <img src="${item.imageUrl || '/images/default-tea.png'}" alt="${item.productName}" class="item-image" />
+                                            <button type="button" class="btn-remove-fav position-absolute top-0 end-0 m-2" onclick="removeFavorite(${item.productId})" title="Xóa khỏi yêu thích">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        <div class="p-3 d-flex flex-column flex-grow-1">
+                                            <span class="badge bg-light text-muted border align-self-start mb-2">${item.categoryName || 'Trà sữa'}</span>
+                                            <h6 class="fw-bold text-dark mb-1 text-truncate">${item.productName}</h6>
+                                            <div class="text-warning fw-bold mb-3">${Number(item.price).toLocaleString('vi-VN')} đ</div>
+                                            <div class="mt-auto">
+                                                <a href="/products/${item.productId}" class="btn btn-sm btn-outline-warning w-100 rounded-pill">
+                                                    Xem chi tiết
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = `
+                            <div class="col-12 text-center py-5">
+                                <i class="bi bi-heart text-muted display-3 mb-3 d-block"></i>
+                                <h5 class="text-dark fw-bold">Chưa có món yêu thích nào</h5>
+                                <p class="text-muted small">Hãy dạo một vòng quanh menu và lưu lại những món bạn yêu thích nhé!</p>
+                                <a href="/menu" class="btn btn-warning rounded-pill px-4 text-white fw-bold" style="background: #b86b35; border: none;">
+                                    Khám phá Menu ngay
+                                </a>
+                            </div>
+                        `;
+                    }
+                } catch (e) {
+                    container.innerHTML = '<div class="col-12 text-center py-5 text-muted">Không thể tải danh sách lúc này. Vui lòng thử lại sau.</div>';
+                }
+            }
+
+            async function removeFavorite(productId) {
+                try {
+                    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+                    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+                    const headers = {};
+                    if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+
+                    const res = await fetch(`/api/v1/favorites/${productId}`, {
+                        method: 'DELETE',
+                        headers: headers
+                    });
+                    if (res.ok) {
+                        const el = document.getElementById(`fav-item-${productId}`);
+                        if (el) el.remove();
+                    }
+                } catch (e) {
+                    console.error('Lỗi khi xóa món yêu thích:', e);
+                }
+            }
+
+            loadWishlist();
+        </script>
+    </div>
+</body>
+</html>

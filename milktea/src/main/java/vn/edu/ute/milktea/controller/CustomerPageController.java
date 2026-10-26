@@ -26,6 +26,7 @@ public class CustomerPageController {
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
     private final DiningTableRepository tableRepository;
+    private final vn.edu.ute.milktea.service.catalog.CatalogService catalogService;
 
     private static final String COOKIE_TABLE_QR = "MILKTEA_TABLE_QR";
     private static final String COOKIE_TABLE_ID = "MILKTEA_TABLE_ID";
@@ -194,6 +195,52 @@ public class CustomerPageController {
         model.addAttribute("backUrl", safeBackUrl);
 
         return "profile";
+    }
+
+    @GetMapping("/products/{id}")
+    public String productDetailPage(
+            @org.springframework.web.bind.annotation.PathVariable("id") Long id,
+            @RequestParam(value = "branchId", required = false) Long branchId,
+            @RequestParam(value = "qr", required = false) String qrCode,
+            @RequestParam(value = "table", required = false) String tableParam,
+            jakarta.servlet.http.HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response,
+            @AuthenticationPrincipal CurrentActor actor,
+            Model model) {
+        DiningTable table = resolveTable(qrCode, tableParam, request, response);
+        Long targetBranchId = branchId;
+        if (targetBranchId == null && table != null && table.getBranch() != null) {
+            targetBranchId = table.getBranch().getId();
+        }
+        GlobalSettings settings = settingsRepository.findById(1).orElse(null);
+        var productDetail = catalogService.getProductDetail(id, targetBranchId, actor);
+
+        model.addAttribute("product", productDetail);
+        model.addAttribute("settings", settings);
+        model.addAttribute("currentTable", table);
+        model.addAttribute("tableQr", table != null ? table.getQrCode() : qrCode);
+        model.addAttribute("branchId", targetBranchId);
+        return "customer/product-detail";
+    }
+
+    @GetMapping("/favorites")
+    public String wishlistPage(
+            @RequestParam(value = "qr", required = false) String qrCode,
+            @RequestParam(value = "table", required = false) String tableParam,
+            jakarta.servlet.http.HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response,
+            @AuthenticationPrincipal CurrentActor actor,
+            Model model) {
+        if (actor == null || !actor.isAuthenticated()) {
+            return "redirect:/login?redirect=/favorites";
+        }
+        DiningTable table = resolveTable(qrCode, tableParam, request, response);
+        GlobalSettings settings = settingsRepository.findById(1).orElse(null);
+
+        model.addAttribute("settings", settings);
+        model.addAttribute("currentTable", table);
+        model.addAttribute("tableQr", table != null ? table.getQrCode() : qrCode);
+        return "customer/wishlist";
     }
 
     private String resolveSafeBackUrl(String returnUrl, String referer, CurrentActor actor) {

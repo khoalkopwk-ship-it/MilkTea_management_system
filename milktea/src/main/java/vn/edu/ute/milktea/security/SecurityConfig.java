@@ -54,6 +54,8 @@ public class SecurityConfig {
                                 "/cart",
                                 "/orders",
                                 "/profile",
+                                "/products/**",
+                                "/favorites",
                                 "/login",
                                 "/error",
                                 "/static/**",
@@ -77,7 +79,9 @@ public class SecurityConfig {
                                 "/api/v1/tables/**",
                                 "/api/v1/table-sessions/**",
                                 "/api/v1/orders/**",
-                                "/api/v1/customer/**"
+                                "/api/v1/customer/**",
+                                "/api/v1/favorites/**",
+                                "/api/v1/reviews/**"
                         ).permitAll()
                         // Everything else authenticated
                         .anyRequest().authenticated()
