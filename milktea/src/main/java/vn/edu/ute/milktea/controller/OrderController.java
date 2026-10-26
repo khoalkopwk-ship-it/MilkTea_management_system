@@ -40,6 +40,17 @@ public class OrderController {
         return ResponseEntity.status(201).body(ApiResponse.ok(response));
     }
 
+    @PostMapping({ "/orders/online", "/customer/orders/online" })
+    public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> createOnlineOrder(
+            @Valid @RequestBody OrderDto.CreateOnlineOrderRequest requestBody,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            HttpServletRequest request) {
+
+        CurrentActor actor = (CurrentActor) request.getAttribute(JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
+        OrderDto.OrderResponse response = orderService.createOnlineOrder(requestBody, actor, idempotencyKey);
+        return ResponseEntity.status(201).body(ApiResponse.ok(response));
+    }
+
     @GetMapping("/customer/orders")
     public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getCustomerOrders(
             HttpServletRequest request) {
@@ -57,21 +68,30 @@ public class OrderController {
 
     @GetMapping("/cashier/orders")
     public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getCashierOrders(
+            @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @RequestParam(value = "status", required = false) vn.edu.ute.milktea.entity.order.OrderStatus status,
             @RequestParam(value = "paymentStatus", required = false) String paymentStatus,
             @RequestParam(value = "tab", required = false) String tab,
-            @RequestParam(value = "query", required = false) String query) {
-        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrdersForCashier(status, paymentStatus, tab, query)));
+            @RequestParam(value = "query", required = false) String query,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long branchId = (actor != null && actor.getBranchId() != null) ? actor.getBranchId() : branchIdParam;
+        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrdersForCashier(branchId, status, paymentStatus, tab, query)));
     }
 
     @GetMapping("/cashier/orders/work-summary")
-    public ResponseEntity<ApiResponse<OrderDto.OrderWorkSummaryResponse>> getOrderWorkSummary() {
-        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrderWorkSummary()));
+    public ResponseEntity<ApiResponse<OrderDto.OrderWorkSummaryResponse>> getOrderWorkSummary(
+            @RequestParam(value = "branchId", required = false) Long branchIdParam,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long branchId = (actor != null && actor.getBranchId() != null) ? actor.getBranchId() : branchIdParam;
+        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrderWorkSummary(branchId)));
     }
 
     @GetMapping("/kitchen/orders")
-    public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getKitchenOrders() {
-        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrdersForKitchen()));
+    public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getKitchenOrders(
+            @RequestParam(value = "branchId", required = false) Long branchIdParam,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long branchId = (actor != null && actor.getBranchId() != null) ? actor.getBranchId() : branchIdParam;
+        return ResponseEntity.ok(ApiResponse.ok(orderService.getOrdersForKitchen(branchId)));
     }
 
     @PostMapping("/cashier/orders/{id}/assign-table")

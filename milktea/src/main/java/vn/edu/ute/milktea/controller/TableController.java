@@ -47,8 +47,19 @@ public class TableController {
     }
 
     @GetMapping({"/cashier/tables", "/tables"})
-    public ResponseEntity<ApiResponse<List<TableDto.TableItem>>> getTables() {
-        List<DiningTable> tables = tableRepository.findByActiveTrueOrderByIdAsc();
+    public ResponseEntity<ApiResponse<List<TableDto.TableItem>>> getTables(
+            @RequestParam(value = "branchId", required = false) Long branchId,
+            @AuthenticationPrincipal CurrentActor actor) {
+
+        Long targetBranchId = branchId;
+        if (targetBranchId == null && actor != null && !actor.isSystemAdmin()) {
+            targetBranchId = actor.getBranchId();
+        }
+
+        List<DiningTable> tables = (targetBranchId != null)
+                ? tableRepository.findByBranchIdAndActiveTrueOrderByIdAsc(targetBranchId)
+                : tableRepository.findByActiveTrueOrderByIdAsc();
+
         List<TableDto.TableItem> items = tables.stream().map(t -> TableDto.TableItem.builder()
                 .id(t.getId())
                 .name(t.getName())
@@ -56,6 +67,8 @@ public class TableController {
                 .status(t.getStatus())
                 .activeSessionId(t.getActiveSessionId())
                 .active(t.getActive())
+                .branchId(t.getBranch() != null ? t.getBranch().getId() : null)
+                .branchName(t.getBranch() != null ? t.getBranch().getName() : null)
                 .build()
         ).toList();
         return ResponseEntity.ok(ApiResponse.ok(items));
@@ -82,6 +95,8 @@ public class TableController {
                 .status(table.getStatus())
                 .activeSessionId(session.getId())
                 .active(table.getActive())
+                .branchId(table.getBranch() != null ? table.getBranch().getId() : null)
+                .branchName(table.getBranch() != null ? table.getBranch().getName() : null)
                 .build()));
     }
 

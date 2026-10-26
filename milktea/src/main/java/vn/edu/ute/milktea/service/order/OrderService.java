@@ -74,15 +74,31 @@ public class OrderService {
     private final FixedRecipeService fixedRecipeService;
     private final MaterialRepository materialRepository;
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
+    private final vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository;
+    private final vn.edu.ute.milktea.service.common.IdempotencyService idempotencyService;
     @Transactional
     public OrderDto.OrderResponse createTableOrder(OrderDto.CreateTableOrderRequest request, CurrentActor actor, String idempotencyKey) {
+        Long actorId = actor != null ? actor.getAccountId() : null;
+        String payloadJson = "tableId=" + request.getTableId() + ";session=" + request.getExpectedSessionId() + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
+        String fingerprint = idempotencyService.computeFingerprint(payloadJson, actorId);
+
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
-            if (existing.isPresent()) {
-                Order order = existing.get();
-                Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
-                List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-                return mapToOrderResponse(order, invoice, items, null, null);
+            var existingOrderId = idempotencyService.checkExisting("CREATE_ORDER", idempotencyKey, fingerprint);
+            if (existingOrderId.isPresent()) {
+                Order order = orderRepository.findById(existingOrderId.get()).orElse(null);
+                if (order != null) {
+                    Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
+                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+                    return mapToOrderResponse(order, invoice, items, null, null);
+                }
+            } else {
+                var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+                if (existing.isPresent()) {
+                    Order order = existing.get();
+                    Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
+                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+                    return mapToOrderResponse(order, invoice, items, null, null);
+                }
             }
         }
         DiningTable table = tableRepository.findByIdWithLock(request.getTableId())
@@ -133,10 +149,11 @@ public class OrderService {
         Account customerAccount = (actor != null && actor.isAuthenticated()) ?
                 accountRepository.findById(actor.getAccountId()).orElse(null) : null;
         Order order = Order.builder()
+                .branch(table.getBranch())
                 .session(session)
                 .account(customerAccount)
                 .source(OrderSource.TABLE)
-                .status(actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN))
+                .status(actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN) || actor.hasRole(Role.MANAGER))
                         ? OrderStatus.CHO_THANH_TOAN : OrderStatus.CHO_XAC_NHAN)
                 .idempotencyKey(idempotencyKey)
                 .createdAt(Instant.now())
@@ -172,29 +189,59 @@ public class OrderService {
                 .afterState(order.getStatus().name())
                 .createdAt(Instant.now())
                 .build());
-        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_CREATED", order.getId().toString(), session.getId().toString(), "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
+        Long branchId = table.getBranch() != null ? table.getBranch().getId() : 1L;
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_CREATED", order.getId().toString(), session.getId().toString(), "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", branchId));
+        realtimeEventPublisher.publishAfterCommit("/topic/branches/" + branchId + "/cashier", "ORDER_CREATED", order.getId().toString(), session.getId().toString(), "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", branchId));
         realtimeEventPublisher.publishAfterCommit("/topic/table-sessions/" + session.getId(), "ORDER_CREATED", order.getId().toString(), session.getId().toString(), "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            idempotencyService.record("CREATE_ORDER", idempotencyKey, fingerprint, "ORDER", order.getId(), 24);
+        }
         return mapToOrderResponse(order, invoice, savedItems, rawGuestTableToken, null);
     }
 
     @Transactional
     public OrderDto.OrderResponse createCounterOrder(OrderDto.CreateCounterOrderRequest request, CurrentActor actor, String idempotencyKey) {
+        Long actorId = actor != null ? actor.getAccountId() : null;
+        String payloadJson = "branchId=" + request.getBranchId() + ";note=" + request.getNote() + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
+        String fingerprint = idempotencyService.computeFingerprint(payloadJson, actorId);
+
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
-            if (existing.isPresent()) {
-                Order order = existing.get();
-                Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
-                List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-                return mapToOrderResponse(order, invoice, items, null, null);
+            var existingOrderId = idempotencyService.checkExisting("CREATE_ORDER", idempotencyKey, fingerprint);
+            if (existingOrderId.isPresent()) {
+                Order order = orderRepository.findById(existingOrderId.get()).orElse(null);
+                if (order != null) {
+                    Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
+                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+                    return mapToOrderResponse(order, invoice, items, null, null);
+                }
+            } else {
+                var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+                if (existing.isPresent()) {
+                    Order order = existing.get();
+                    Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
+                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+                    return mapToOrderResponse(order, invoice, items, null, null);
+                }
             }
         }
+        Long targetBranchId = request.getBranchId();
+        if (targetBranchId == null && actor != null && actor.getBranchId() != null) {
+            targetBranchId = actor.getBranchId();
+        }
+        if (targetBranchId == null) {
+            targetBranchId = 1L; // Fallback default branch
+        }
+        var branch = branchRepository.findById(targetBranchId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy chi nhánh"));
+
         Account creator = (actor != null && actor.isAuthenticated()) ?
                 accountRepository.findById(actor.getAccountId()).orElse(null) : null;
         Order order = Order.builder()
+                .branch(branch)
                 .session(null)
                 .account(creator)
                 .source(OrderSource.COUNTER)
-                .status(actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN))
+                .status(actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN) || actor.hasRole(Role.MANAGER))
                         ? OrderStatus.CHO_THANH_TOAN : OrderStatus.CHO_XAC_NHAN)
                 .note(request.getNote())
                 .idempotencyKey(idempotencyKey)
@@ -226,7 +273,114 @@ public class OrderService {
                 .afterState(order.getStatus().name())
                 .createdAt(Instant.now())
                 .build());
-        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_CREATED", order.getId().toString(), null, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_CREATED", order.getId().toString(), null, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", branch.getId()));
+        realtimeEventPublisher.publishAfterCommit("/topic/branches/" + branch.getId() + "/cashier", "ORDER_CREATED", order.getId().toString(), null, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", branch.getId()));
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            idempotencyService.record("CREATE_ORDER", idempotencyKey, fingerprint, "ORDER", order.getId(), 24);
+        }
+        return mapToOrderResponse(order, invoice, savedItems, null, issued.rawToken());
+    }
+
+    @Transactional
+    public OrderDto.OrderResponse createOnlineOrder(OrderDto.CreateOnlineOrderRequest request, CurrentActor actor, String idempotencyKey) {
+        if (request.getBranchId() == null) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Chi nhánh đặt hàng không được để trống");
+        }
+        var branch = branchRepository.findById(request.getBranchId())
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy chi nhánh"));
+        if (!branch.isActive()) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Chi nhánh đang tạm ngưng hoạt động");
+        }
+
+        Long actorId = actor != null ? actor.getAccountId() : null;
+        String payloadJson = "branchId=" + request.getBranchId() + ";phone=" + request.getCustomerPhone() + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
+        String fingerprint = idempotencyService.computeFingerprint(payloadJson, actorId);
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            var existingOrderId = idempotencyService.checkExisting("CREATE_ORDER", idempotencyKey, fingerprint);
+            if (existingOrderId.isPresent()) {
+                Order order = orderRepository.findById(existingOrderId.get()).orElse(null);
+                if (order != null) {
+                    Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
+                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+                    return mapToOrderResponse(order, invoice, items, null, null);
+                }
+            } else {
+                var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+                if (existing.isPresent()) {
+                    Order order = existing.get();
+                    Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
+                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+                    return mapToOrderResponse(order, invoice, items, null, null);
+                }
+            }
+        }
+
+        Account creator = (actor != null && actor.isAuthenticated()) ?
+                accountRepository.findById(actor.getAccountId()).orElse(null) : null;
+
+        StringBuilder noteBuilder = new StringBuilder();
+        if (request.getNote() != null && !request.getNote().isBlank()) {
+            noteBuilder.append(request.getNote().trim()).append("\n");
+        }
+        if (request.getCustomerName() != null && !request.getCustomerName().isBlank()) {
+            noteBuilder.append("Người nhận: ").append(request.getCustomerName().trim()).append("; ");
+        }
+        if (request.getCustomerPhone() != null && !request.getCustomerPhone().isBlank()) {
+            noteBuilder.append("SĐT: ").append(request.getCustomerPhone().trim()).append("; ");
+        }
+        if (request.getDeliveryAddress() != null && !request.getDeliveryAddress().isBlank()) {
+            noteBuilder.append("Đ/c giao: ").append(request.getDeliveryAddress().trim());
+        }
+
+        Order order = Order.builder()
+                .branch(branch)
+                .session(null)
+                .account(creator)
+                .source(OrderSource.ONLINE)
+                .status(OrderStatus.CHO_XAC_NHAN)
+                .note(noteBuilder.toString().trim())
+                .idempotencyKey(idempotencyKey)
+                .createdAt(Instant.now())
+                .version(0L)
+                .build();
+        order = orderRepository.save(order);
+
+        List<OrderItem> savedItems = createOrderItemsAndSnapshots(order, request.getItems());
+        BigDecimal subtotal = calculateOrderSubtotal(savedItems);
+        GlobalSettings settings = settingsRepository.findById(1).orElse(null);
+        CalculatedDiscount discount = computeDiscount(subtotal, settings);
+
+        Invoice invoice = Invoice.builder()
+                .order(order)
+                .subtotal(subtotal)
+                .discountAmount(discount.discountAmount)
+                .totalAmount(discount.totalAmount)
+                .snapshotDiscountPercent(discount.snapshotPercent)
+                .snapshotDiscountType(discount.discountType)
+                .snapshotDiscountValue(discount.configValue)
+                .status(InvoiceStatus.HIEU_LUC)
+                .createdAt(Instant.now())
+                .build();
+        invoice = invoiceRepository.save(invoice);
+
+        var issued = guestAccessService.issueCounterOrderToken(order, 24);
+
+        auditRepository.save(BusinessAudit.builder()
+                .orderId(order.getId())
+                .accountId(creator != null ? creator.getId() : null)
+                .action("ONLINE_ORDER_CREATED")
+                .afterState(order.getStatus().name())
+                .createdAt(Instant.now())
+                .build());
+
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_CREATED", order.getId().toString(), null, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", branch.getId()));
+        realtimeEventPublisher.publishAfterCommit("/topic/branches/" + branch.getId() + "/cashier", "ORDER_CREATED", order.getId().toString(), null, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", branch.getId()));
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            idempotencyService.record("CREATE_ORDER", idempotencyKey, fingerprint, "ORDER", order.getId(), 24);
+        }
+
         return mapToOrderResponse(order, invoice, savedItems, null, issued.rawToken());
     }
 
@@ -239,6 +393,11 @@ public class OrderService {
         }
         if (order.getSession() != null) {
             throw BusinessException.badRequest(ErrorCode.ORDER_STATE_CONFLICT, "Đơn hàng đã được gắn vào phiên bàn khác");
+        }
+        DiningTable table = tableRepository.findById(tableId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
+        if (order.getBranch() != null && table.getBranch() != null && !order.getBranch().getId().equals(table.getBranch().getId())) {
+            throw BusinessException.badRequest(ErrorCode.ORDER_STATE_CONFLICT, "Đơn hàng và bàn không cùng một chi nhánh");
         }
         // Mở phiên nếu bàn chưa có phiên, hoặc lấy phiên hiện tại
         TableSession session = tableSessionService.openByCashier(tableId, cashierId);
@@ -283,8 +442,13 @@ public class OrderService {
                 .createdAt(Instant.now())
                 .build());
         String sId = order.getSession() != null ? order.getSession().getId().toString() : null;
+        Long bId = order.getBranch() != null ? order.getBranch().getId() : null;
         realtimeEventPublisher.publishAfterCommit("/topic/kitchen", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
         realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
+        if (bId != null) {
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + bId + "/kitchen", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", bId));
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + bId + "/cashier", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", bId));
+        }
         if (order.getSession() != null) {
             realtimeEventPublisher.publishAfterCommit("/topic/table-sessions/" + order.getSession().getId(), "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
         }
@@ -325,8 +489,13 @@ public class OrderService {
                 .createdAt(Instant.now())
                 .build());
         String sId = order.getSession() != null ? order.getSession().getId().toString() : null;
+        Long bId = order.getBranch() != null ? order.getBranch().getId() : null;
         realtimeEventPublisher.publishAfterCommit("/topic/kitchen", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
         realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
+        if (bId != null) {
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + bId + "/kitchen", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", bId));
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + bId + "/cashier", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", bId));
+        }
         if (order.getSession() != null) {
             realtimeEventPublisher.publishAfterCommit("/topic/table-sessions/" + order.getSession().getId(), "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
         }
@@ -360,8 +529,14 @@ public class OrderService {
                 .createdAt(Instant.now())
                 .build());
         String sId = order.getSession() != null ? order.getSession().getId().toString() : null;
+        Long bId = order.getBranch() != null ? order.getBranch().getId() : null;
         realtimeEventPublisher.publishAfterCommit("/topic/kitchen", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
         realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
+        if (bId != null) {
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + bId + "/kitchen", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", bId));
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + bId + "/cashier", "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", bId));
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + bId + "/stock", "STOCK_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "branchId", bId));
+        }
         if (order.getSession() != null) {
             realtimeEventPublisher.publishAfterCommit("/topic/table-sessions/" + order.getSession().getId(), "ORDER_STATUS_CHANGED", order.getId().toString(), sId, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
         }
@@ -591,6 +766,8 @@ public class OrderService {
         }).toList();
         return OrderDto.OrderResponse.builder()
                 .orderId(order.getId())
+                .branchId(order.getBranch() != null ? order.getBranch().getId() : null)
+                .branchName(order.getBranch() != null ? order.getBranch().getName() : null)
                 .sessionId(order.getSession() != null ? order.getSession().getId() : null)
                 .tableId(order.getSession() != null ? order.getSession().getTable().getId() : null)
                 .tableName(order.getSession() != null ? order.getSession().getTable().getName() : null)
@@ -670,7 +847,7 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderDto.OrderResponse> getOrdersForCashier(OrderStatus status) {
-        return getOrdersForCashier(status, null, null);
+        return getOrdersForCashier(null, status, null, null, null);
     }
 
     private static class CalculatedDiscount {
@@ -717,13 +894,21 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderDto.OrderResponse> getOrdersForCashier(OrderStatus status, String paymentStatus, String tab, String query) {
+    public List<OrderDto.OrderResponse> getOrdersForCashier(Long branchId, OrderStatus status, String paymentStatus, String tab, String query) {
         List<Order> orders;
         boolean isAllTab = (tab == null || tab.isBlank() || "all".equalsIgnoreCase(tab));
-        if (isAllTab && status != null) {
-            orders = orderRepository.findByStatusInOrderByCreatedAtAsc(List.of(status));
+        if (branchId != null) {
+            if (isAllTab && status != null) {
+                orders = orderRepository.findByBranchIdAndStatusInOrderByCreatedAtAsc(branchId, List.of(status));
+            } else {
+                orders = orderRepository.findByBranchIdOrderByCreatedAtDesc(branchId);
+            }
         } else {
-            orders = orderRepository.findAll();
+            if (isAllTab && status != null) {
+                orders = orderRepository.findByStatusInOrderByCreatedAtAsc(List.of(status));
+            } else {
+                orders = orderRepository.findAll();
+            }
         }
         var stream = orders.stream()
                 .sorted(java.util.Comparator.comparing(Order::getCreatedAt).reversed())
@@ -762,8 +947,13 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public List<OrderDto.OrderResponse> getOrdersForCashier(OrderStatus status, String paymentStatus, String tab, String query) {
+        return getOrdersForCashier(null, status, paymentStatus, tab, query);
+    }
+
+    @Transactional(readOnly = true)
     public List<OrderDto.OrderResponse> getOrdersForCashier(OrderStatus status, String tab, String query) {
-        return getOrdersForCashier(status, null, tab, query);
+        return getOrdersForCashier(null, status, null, tab, query);
     }
 
     public boolean matchesTab(OrderDto.OrderResponse o, String tab) {
@@ -787,15 +977,28 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderDto.OrderResponse> getOrdersForKitchen() {
-        List<Order> orders = orderRepository.findByStatusInOrderByCreatedAtAsc(
-                List.of(OrderStatus.CHO_CHE_BIEN, OrderStatus.DANG_CHE_BIEN));
+    public List<OrderDto.OrderResponse> getOrdersForKitchen(Long branchId) {
+        List<Order> orders;
+        if (branchId != null) {
+            orders = orderRepository.findByBranchIdAndStatusInOrderByCreatedAtAsc(
+                    branchId, List.of(OrderStatus.CHO_CHE_BIEN, OrderStatus.DANG_CHE_BIEN));
+        } else {
+            orders = orderRepository.findByStatusInOrderByCreatedAtAsc(
+                    List.of(OrderStatus.CHO_CHE_BIEN, OrderStatus.DANG_CHE_BIEN));
+        }
         return orders.stream().map(this::mapOrderToResponse).toList();
     }
 
     @Transactional(readOnly = true)
-    public OrderDto.OrderWorkSummaryResponse getOrderWorkSummary() {
-        List<Order> allOrders = orderRepository.findAll();
+    public List<OrderDto.OrderResponse> getOrdersForKitchen() {
+        return getOrdersForKitchen(null);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderDto.OrderWorkSummaryResponse getOrderWorkSummary(Long branchId) {
+        List<Order> allOrders = (branchId != null)
+                ? orderRepository.findByBranchIdOrderByCreatedAtDesc(branchId)
+                : orderRepository.findAll();
         long totalCount = allOrders.size();
         long confirmCount = 0;
         long cookingCount = 0;
@@ -864,5 +1067,10 @@ public class OrderService {
                 .refundCount(refundCount)
                 .pendingActionCount(pendingActionOrderIds.size())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderDto.OrderWorkSummaryResponse getOrderWorkSummary() {
+        return getOrderWorkSummary(null);
     }
 }

@@ -44,6 +44,25 @@ public class OrderDto {
         private List<CartDto.CartItemRequest> items;
 
         private String note;
+        private Long branchId;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreateOnlineOrderRequest {
+        @NotNull(message = "Mã chi nhánh không được để trống")
+        private Long branchId;
+
+        @NotEmpty(message = "Danh sách món đặt không được rỗng")
+        @jakarta.validation.Valid
+        private List<CartDto.CartItemRequest> items;
+
+        private String note;
+        private String customerName;
+        private String customerPhone;
+        private String deliveryAddress;
     }
 
     @Data
@@ -77,6 +96,8 @@ public class OrderDto {
     @AllArgsConstructor
     public static class OrderResponse {
         private Long orderId;
+        private Long branchId;
+        private String branchName;
         private Long sessionId;
         private Long tableId;
         private String tableName;
