@@ -445,10 +445,33 @@ const OrdersApp = (() => {
                 ? `<div class="alert alert-warning py-2 mb-3"><i class="bi bi-info-circle me-1"></i> Khách hàng đã nhấn <b>"Tôi đã chuyển khoản"</b>. Vui lòng kiểm tra tài khoản ngân hàng trước khi xác nhận.</div>`
                 : '';
 
+            let itemsSection = MilkTeaReceipts.lines(o);
+            if (!staff && o.status === 'HOAN_THANH' && o.paid && o.items && o.items.length > 0) {
+                const reviewItems = o.items.map(it => `
+                    <div class="d-flex align-items-center justify-content-between p-2 mb-2 bg-light rounded-3 border">
+                        <div class="pe-2">
+                            <span class="fw-bold">${e(it.productName)}</span> <small class="text-muted">(Size ${e(it.size)}) x${it.quantity}</small>
+                            <div class="small text-primary fw-semibold">${MilkTeaApi.formatVND(it.lineTotal)}</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-3 fw-bold text-nowrap"
+                                onclick="OrdersApp.openReviewModal(${o.orderId}, ${it.id}, '${e(it.productName).replace(/'/g, "\\'")}')">
+                            <i class="bi bi-star-fill me-1"></i> Đánh giá
+                        </button>
+                    </div>
+                `).join('');
+                itemsSection = `
+                    <div class="mb-3">
+                        <div class="fw-semibold mb-2 text-secondary"><i class="bi bi-chat-heart me-1"></i> Đánh giá món uống của bạn:</div>
+                        ${reviewItems}
+                    </div>
+                    ${MilkTeaReceipts.lines(o)}
+                `;
+            }
+
             modal('Chi tiết ' + MilkTeaReceipts.code(id),
                 `${transferNoticeBanner}
                  <p><b>${e(o.tableName || (o.staffCreated ? 'Quầy thu ngân' : 'Quầy / mang về'))}</b> · ${MilkTeaReceipts.date(o.createdAt)}</p>
-                 ${MilkTeaReceipts.lines(o)}
+                 ${itemsSection}
                  <p class="mt-2">Tổng cộng: <b>${MilkTeaApi.formatVND(o.totalAmount)}</b> · ${paymentState(o).label}</p>
                  ${o.paymentRequestMethod && !o.transferNotified ? '<p class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i> Khách chọn thanh toán ' + (o.paymentRequestMethod === 'CASH' ? 'tiền mặt' : 'chuyển khoản') + '.</p>' : ''}`,
                 detailActions.get(String(id)) || '');
@@ -648,6 +671,47 @@ const OrdersApp = (() => {
 
         await load();
 
+        // Setup star rating clicks & hover
+        const starLabels = ['', '1 sao - Rất tệ', '2 sao - Tệ', '3 sao - Bình thường', '4 sao - Ngon', '5 sao - Rất ngon'];
+        const stars = document.querySelectorAll('#ratingStarsContainer i');
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                const r = parseInt(star.dataset.rating, 10);
+                const valInput = document.getElementById('reviewRatingValue');
+                const descEl = document.getElementById('ratingTextDesc');
+                if (valInput) valInput.value = r;
+                if (descEl) descEl.textContent = starLabels[r] || `${r} sao`;
+                stars.forEach(s => {
+                    const sr = parseInt(s.dataset.rating, 10);
+                    s.className = sr <= r ? 'bi bi-star-fill text-warning' : 'bi bi-star text-muted';
+                });
+            });
+        });
+
+        // Setup live character counter for review content
+        const reviewTextarea = document.getElementById('reviewContentInput');
+        if (reviewTextarea) {
+            reviewTextarea.addEventListener('input', () => {
+                const len = reviewTextarea.value.trim().length;
+                const countSpan = document.getElementById('currentCharCount');
+                const submitBtn = document.getElementById('submitReviewBtn');
+                const statusEl = document.getElementById('reviewCharStatus');
+                if (countSpan) countSpan.textContent = len;
+                if (statusEl && submitBtn) {
+                    if (len >= 50) {
+                        statusEl.className = 'text-success fw-semibold';
+                        statusEl.innerHTML = '<i class="bi bi-check-circle me-1"></i>Đã đủ điều kiện độ dài đánh giá';
+                        submitBtn.disabled = false;
+                    } else {
+                        const remain = 50 - len;
+                        statusEl.className = 'text-danger fw-semibold';
+                        statusEl.innerHTML = `<i class="bi bi-info-circle me-1"></i>Cần nhập thêm <span id="charsRemaining">${remain}</span> ký tự`;
+                        submitBtn.disabled = true;
+                    }
+                }
+            });
+        }
+
         const focusOrder = new URLSearchParams(location.search).get('order');
         if (focusOrder && orders.some(o => String(o.orderId) === focusOrder)) {
             await action('details', focusOrder);
@@ -662,6 +726,96 @@ const OrdersApp = (() => {
 
     }
 
+    function openReviewModal(orderId, orderItemId, productName) {
+        const orderIdInput = document.getElementById('reviewOrderId');
+        const itemIdInput = document.getElementById('reviewOrderItemId');
+        const nameEl = document.getElementById('reviewProductName');
+        const ratingVal = document.getElementById('reviewRatingValue');
+        const ratingDesc = document.getElementById('ratingTextDesc');
+        const contentInput = document.getElementById('reviewContentInput');
+        const mediaInput = document.getElementById('reviewMediaInput');
+        const charCount = document.getElementById('currentCharCount');
+        const charStatus = document.getElementById('reviewCharStatus');
+        const submitBtn = document.getElementById('submitReviewBtn');
+
+        if (orderIdInput) orderIdInput.value = orderId;
+        if (itemIdInput) itemIdInput.value = orderItemId;
+        if (nameEl) nameEl.textContent = productName;
+        if (ratingVal) ratingVal.value = 5;
+        if (ratingDesc) ratingDesc.textContent = '5 sao - Rất ngon';
+        if (contentInput) contentInput.value = '';
+        if (mediaInput) mediaInput.value = '';
+        if (charCount) charCount.textContent = '0';
+        if (charStatus) {
+            charStatus.className = 'text-danger fw-semibold';
+            charStatus.innerHTML = '<i class="bi bi-info-circle me-1"></i>Cần nhập thêm <span id="charsRemaining">50</span> ký tự';
+        }
+        if (submitBtn) submitBtn.disabled = true;
+
+        const stars = document.querySelectorAll('#ratingStarsContainer i');
+        stars.forEach(s => {
+            s.className = 'bi bi-star-fill text-warning';
+        });
+
+        const actionModal = document.getElementById('orderActionModal');
+        if (actionModal && actionModal.classList.contains('show')) {
+            bootstrap.Modal.getInstance(actionModal)?.hide();
+        }
+
+        const modalEl = document.getElementById('orderReviewModal');
+        if (modalEl) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+    }
+
+    async function submitReview() {
+        const orderItemId = document.getElementById('reviewOrderItemId')?.value;
+        const rating = parseInt(document.getElementById('reviewRatingValue')?.value || '5', 10);
+        const content = document.getElementById('reviewContentInput')?.value.trim() || '';
+        const mediaUrl = document.getElementById('reviewMediaInput')?.value.trim() || '';
+
+        if (!orderItemId) {
+            MilkTeaApi.showToast('Không xác định được món cần đánh giá', 'error');
+            return;
+        }
+        if (rating < 1 || rating > 5) {
+            MilkTeaApi.showToast('Vui lòng chọn từ 1 đến 5 sao', 'error');
+            return;
+        }
+        if (content.length < 50) {
+            MilkTeaApi.showToast('Nội dung đánh giá phải có tối thiểu 50 ký tự', 'error');
+            return;
+        }
+
+        const submitBtn = document.getElementById('submitReviewBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang gửi...';
+        }
+
+        try {
+            const payload = {
+                orderItemId: parseInt(orderItemId, 10),
+                rating: rating,
+                content: content,
+                mediaList: mediaUrl ? [{ mediaUrl: mediaUrl, mediaType: 'IMAGE' }] : []
+            };
+            await MilkTeaApi.post('/api/v1/reviews', payload);
+            MilkTeaApi.showToast('Cảm ơn bạn đã gửi đánh giá món uống!', 'success');
+            const reviewModalEl = document.getElementById('orderReviewModal');
+            if (reviewModalEl) {
+                bootstrap.Modal.getInstance(reviewModalEl)?.hide();
+            }
+        } catch (err) {
+            MilkTeaApi.showToast(err.message || 'Không thể gửi đánh giá', 'error');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-send me-1"></i> Gửi đánh giá';
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', init);
-    return { load, action, switchTab };
+    return { load, action, switchTab, openReviewModal, submitReview };
 })();

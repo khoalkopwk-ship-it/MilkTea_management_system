@@ -470,8 +470,8 @@
 
         .milk-orders-page #ordersList .orders-stagger-item {
             opacity: 0;
-            animation: ordersSlideInLeft .52s cubic-bezier(.22, 1, .36, 1) forwards;
-            animation-delay: calc(var(--orders-stagger-index, 0) * 70ms);
+            animation: ordersSlideInLeft .36s cubic-bezier(.22, 1, .36, 1) forwards;
+            animation-delay: calc(var(--orders-stagger-index, 0) * 35ms);
             will-change: transform, opacity;
         }
 
@@ -719,15 +719,92 @@
 
         <div id="ordersPagination"></div>
     </div>
+
+    <!-- Modal Đánh Giá Món Uống (Customer Experience - CUS-06) -->
+    <div class="modal fade" id="orderReviewModal" tabindex="-1" aria-labelledby="orderReviewTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="orderReviewTitle">
+                        <i class="bi bi-star-fill text-warning me-2"></i>Đánh giá món uống
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <input type="hidden" id="reviewOrderItemId">
+                    <input type="hidden" id="reviewOrderId">
+                    <div class="alert alert-light border rounded-3 p-2 mb-3 d-flex align-items-center">
+                        <i class="bi bi-cup-hot text-primary fs-4 me-2"></i>
+                        <div>
+                            <span class="small text-muted d-block">Sản phẩm đánh giá:</span>
+                            <strong id="reviewProductName" class="text-dark">Tên món</strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 text-center">
+                        <label class="form-label d-block fw-semibold mb-2">Đánh giá độ ngon &amp; chất lượng</label>
+                        <div class="rating-stars d-inline-flex gap-2 fs-3" id="ratingStarsContainer" role="radiogroup" aria-label="Đánh giá sao">
+                            <i class="bi bi-star-fill text-warning" data-rating="1" style="cursor: pointer;" title="1 sao - Rất tệ"></i>
+                            <i class="bi bi-star-fill text-warning" data-rating="2" style="cursor: pointer;" title="2 sao - Tệ"></i>
+                            <i class="bi bi-star-fill text-warning" data-rating="3" style="cursor: pointer;" title="3 sao - Bình thường"></i>
+                            <i class="bi bi-star-fill text-warning" data-rating="4" style="cursor: pointer;" title="4 sao - Ngon"></i>
+                            <i class="bi bi-star-fill text-warning" data-rating="5" style="cursor: pointer;" title="5 sao - Rất ngon"></i>
+                        </div>
+                        <input type="hidden" id="reviewRatingValue" value="5">
+                        <div class="small text-muted mt-1" id="ratingTextDesc">5 sao - Rất ngon</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reviewContentInput" class="form-label fw-semibold">
+                            Cảm nhận chi tiết <span class="text-danger">*</span>
+                        </label>
+                        <textarea id="reviewContentInput"
+                                  class="form-control rounded-3"
+                                  rows="4"
+                                  maxlength="1000"
+                                  placeholder="Hãy chia sẻ cảm nhận của bạn về độ đậm trà, độ ngọt, trân châu hoặc phục vụ... (Tối thiểu 50 ký tự)"></textarea>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <small id="reviewCharStatus" class="text-danger fw-semibold">
+                                <i class="bi bi-info-circle me-1"></i>Cần nhập thêm <span id="charsRemaining">50</span> ký tự
+                            </small>
+                            <small class="text-muted"><span id="currentCharCount">0</span>/1000</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reviewMediaInput" class="form-label fw-semibold">
+                            Link ảnh món uống <span class="text-muted fw-normal">(Tùy chọn)</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-image"></i></span>
+                            <input type="url" id="reviewMediaInput" class="form-control" placeholder="https://example.com/anh-tra-sua.jpg">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" id="submitReviewBtn" class="btn btn-warning rounded-pill px-4 fw-bold" disabled onclick="OrdersApp.submitReview()">
+                        <i class="bi bi-send me-1"></i> Gửi đánh giá
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <th:block th:fragment="scripts">
     <script th:src="@{/js/customer/customer.js}"></script>
     <script th:src="@{/js/order/orders.js}"></script>
     <script>
-        function applyOrdersStaggerAnimation() {
+        let ordersStaggerPlayed = false;
+
+        function applyOrdersStaggerAnimation(force = false) {
             const list = document.getElementById('ordersList');
             if (!list) return;
+
+            // Chỉ kích hoạt hiệu ứng stagger xuất hiện một lần duy nhất lúc tải ban đầu
+            // Tránh chớp nháy hoặc reload liên tục khi nhận WebSocket, chuyển tab hoặc tìm kiếm
+            if (ordersStaggerPlayed && !force) return;
 
             const tableRows = list.querySelectorAll('table tbody tr');
             const cardRows = list.querySelectorAll(':scope > .card, :scope > .orders-panel, :scope > .order-card, :scope > .list-group-item');
@@ -735,20 +812,20 @@
             if (tableRows.length > 0) {
                 tableRows.forEach((row, index) => {
                     row.classList.remove('orders-stagger-item');
-                    void row.offsetWidth;
+                    row.style.setProperty('--orders-stagger-index', Math.min(index, 8));
                     row.classList.add('orders-stagger-item');
-                    row.style.setProperty('--orders-stagger-index', Math.min(index, 12));
                 });
+                ordersStaggerPlayed = true;
                 return;
             }
 
             if (cardRows.length > 0) {
                 cardRows.forEach((item, index) => {
                     item.classList.remove('orders-stagger-item');
-                    void item.offsetWidth;
+                    item.style.setProperty('--orders-stagger-index', Math.min(index, 8));
                     item.classList.add('orders-stagger-item');
-                    item.style.setProperty('--orders-stagger-index', Math.min(index, 12));
                 });
+                ordersStaggerPlayed = true;
             }
         }
 
@@ -818,15 +895,15 @@
             const list = document.getElementById('ordersList');
             if (!list) return;
 
-            applyOrdersStaggerAnimation();
-
             const observer = new MutationObserver(() => {
-                applyOrdersStaggerAnimation();
+                // Chỉ chạy khi chưa từng chạy animation stagger
+                if (!ordersStaggerPlayed) {
+                    applyOrdersStaggerAnimation();
+                }
             });
 
             observer.observe(list, {
-                childList: true,
-                subtree: true
+                childList: true
             });
         }
 
@@ -836,7 +913,7 @@
             setTimeout(() => {
                 updateOrdersTabIndicator();
                 applyOrdersStaggerAnimation();
-            }, 120);
+            }, 100);
         });
     </script>
 </th:block>
