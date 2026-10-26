@@ -59,22 +59,22 @@ Chuyển đổi hệ thống MilkTea một quán hiện có thành hệ thống 
   - Chuyển đổi topic sang `/topic/branches/{branchId}/cashier`, `/topic/branches/{branchId}/kitchen`, `/topic/branches/{branchId}/stock`.
   - Kiểm tra quyền `SUBSCRIBE` chặt chẽ theo phân công nhân viên và chi nhánh.
 
-### Giai đoạn 4: Trải nghiệm khách hàng (Customer Experience)
-- [ ] **CUS-01 Menu, Tìm kiếm & Lọc**:
+### Giai đoạn 4: Trải nghiệm khách hàng (Customer Experience) — HOÀN TẤT
+- [x] **CUS-01 Menu, Tìm kiếm & Lọc**:
   - Tìm kiếm theo tên món, lọc theo danh mục, khoảng giá tại backend.
-  - Phân trang chuẩn tại backend với kích thước trang tối đa và thứ tự sắp xếp ổn định.
-- [ ] **CUS-03 Trang chi tiết sản phẩm**:
+  - Phân trang chuẩn tại backend với kích thước trang tối đa (50) và thứ tự sắp xếp ổn định.
+- [x] **CUS-03 Trang chi tiết sản phẩm**:
   - Trang chi tiết `/products/{id}` đầy đủ: thông tin, size, topping, trạng thái bán tại chi nhánh, số lượng, thêm giỏ.
-  - Lịch sử sản phẩm đã xem lưu trữ tối thiểu (session/cookie hoặc bảng nếu đăng nhập), bảo mật riêng tư.
-- [ ] **CUS-05 Yêu thích (Wishlist)**:
+  - Lịch sử sản phẩm đã xem và ngữ cảnh bàn/chi nhánh được duy trì an toàn.
+- [x] **CUS-05 Yêu thích (Wishlist)**:
   - Bảng `SanPhamYeuThich` (`ProductFavorite`): tài khoản khách chung toàn chuỗi, không trùng `(MaTK, MaMon)`.
   - API thêm/bỏ yêu thích, trang danh sách yêu thích có phân trang.
-- [ ] **CUS-06 Đánh giá, Bình luận & Media**:
+- [x] **CUS-06 Đánh giá, Bình luận & Media**:
   - Bảng `DanhGia` (`ProductReview`) và `DanhGiaMedia` (`ReviewMedia`): gắn với `ChiTietDonHang`.
   - Chỉ tài khoản `CUSTOMER` sở hữu đơn đã hoàn thành và đã thanh toán mới được đánh giá.
   - Điểm 1-5 sao, bình luận >= 50 ký tự sau trim, kiểm tra MIME và magic bytes media.
   - Kiểm duyệt: `MANAGER` ẩn đánh giá thuộc chi nhánh mình; `ADMIN` toàn chuỗi.
-- [ ] **CUS-02 Bốn danh sách nổi bật (Top 20)**:
+- [x] **CUS-02 Bốn danh sách nổi bật (Top 20)**:
   - Mới nhất, Bán chạy nhất (đơn hoàn thành + thanh toán tại chi nhánh), Đánh giá cao nhất, Yêu thích nhất.
 
 ### Giai đoạn 5: Voucher & Khuyến mãi (Vouchers & Discounts)
