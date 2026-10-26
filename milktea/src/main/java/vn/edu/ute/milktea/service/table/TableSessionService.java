@@ -80,6 +80,9 @@ public class TableSessionService {
                 .build());
 
         realtimeEventPublisher.publishAfterCommit("/topic/cashier", "TABLE_SESSION_OPENED", session.getId().toString(), session.getId().toString(), "1", java.util.Map.of("tableId", table.getId(), "tableName", table.getName()));
+        if (table.getBranch() != null && table.getBranch().getId() != null) {
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + table.getBranch().getId() + "/cashier", "TABLE_SESSION_OPENED", session.getId().toString(), session.getId().toString(), "1", java.util.Map.of("tableId", table.getId(), "tableName", table.getName()));
+        }
         realtimeEventPublisher.publishAfterCommit("/topic/table-sessions/" + session.getId(), "TABLE_SESSION_OPENED", session.getId().toString(), session.getId().toString(), "1", java.util.Map.of("tableId", table.getId(), "tableName", table.getName()));
 
         return session;
@@ -154,12 +157,21 @@ public class TableSessionService {
                 .build());
 
         realtimeEventPublisher.publishAfterCommit("/topic/cashier", "TABLE_SESSION_CLOSED", session.getId().toString(), session.getId().toString(), "1", java.util.Map.of("tableId", table.getId(), "tableName", table.getName()));
+        if (table.getBranch() != null && table.getBranch().getId() != null) {
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + table.getBranch().getId() + "/cashier", "TABLE_SESSION_CLOSED", session.getId().toString(), session.getId().toString(), "1", java.util.Map.of("tableId", table.getId(), "tableName", table.getName()));
+        }
         realtimeEventPublisher.publishAfterCommit("/topic/table-sessions/" + session.getId(), "TABLE_SESSION_CLOSED", session.getId().toString(), session.getId().toString(), "1", java.util.Map.of("tableId", table.getId(), "tableName", table.getName()));
     }
 
     public vn.edu.ute.milktea.dto.TableDto.TableSessionResponse getSessionResponse(Long sessionId) {
         TableSession s = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_SESSION_CLOSED, "Không tìm thấy phiên"));
+        Long branchId = (s.getTable() != null && s.getTable().getBranch() != null)
+                ? s.getTable().getBranch().getId()
+                : null;
+        String branchName = (s.getTable() != null && s.getTable().getBranch() != null)
+                ? s.getTable().getBranch().getName()
+                : null;
         return vn.edu.ute.milktea.dto.TableDto.TableSessionResponse.builder()
                 .sessionId(s.getId())
                 .tableId(s.getTable().getId())
@@ -167,6 +179,8 @@ public class TableSessionService {
                 .status(s.getStatus())
                 .openedAt(s.getOpenedAt())
                 .closedAt(s.getClosedAt())
+                .branchId(branchId)
+                .branchName(branchName)
                 .build();
     }
 

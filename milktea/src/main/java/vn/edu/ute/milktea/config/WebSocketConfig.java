@@ -30,12 +30,31 @@ import java.util.Optional;
 @Slf4j
 @Configuration
 @EnableWebSocketMessageBroker
-@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtService jwtService;
     private final AccountRepository accountRepository;
     private final GuestAccessService guestAccessService;
+    private final vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository;
+    private final vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
+
+    public WebSocketConfig(JwtService jwtService,
+                           AccountRepository accountRepository,
+                           GuestAccessService guestAccessService) {
+        this(jwtService, accountRepository, guestAccessService, null, null);
+    }
+
+    public WebSocketConfig(JwtService jwtService,
+                           AccountRepository accountRepository,
+                           GuestAccessService guestAccessService,
+                           vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository,
+                           vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository) {
+        this.jwtService = jwtService;
+        this.accountRepository = accountRepository;
+        this.guestAccessService = guestAccessService;
+        this.branchRepository = branchRepository;
+        this.staffBranchRepository = staffBranchRepository;
+    }
 
     @org.springframework.beans.factory.annotation.Value("${app.websocket.allowed-origin:*}")
     private String allowedOrigin;
@@ -154,11 +173,33 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     Account account = accountOpt.get();
                     if (Boolean.TRUE.equals(account.getActive()) && account.getTokenVersion().equals(claimVersion)) {
                         Role role = account.getRole();
+                        Long primaryBranchId = null;
+                        java.util.Set<Long> assignedBranchIds = new java.util.HashSet<>();
+                        if (role == Role.ADMIN) {
+                            if (branchRepository != null) {
+                                branchRepository.findByActiveTrueOrderByIdAsc().forEach(b -> assignedBranchIds.add(b.getId()));
+                            }
+                        } else {
+                            if (staffBranchRepository != null) {
+                                var staffBranches = staffBranchRepository.findByAccountId(account.getId());
+                                for (var sb : staffBranches) {
+                                    if (sb.getBranch() != null) {
+                                        assignedBranchIds.add(sb.getBranch().getId());
+                                        if (primaryBranchId == null) {
+                                            primaryBranchId = sb.getBranch().getId();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         CurrentActor actor = CurrentActor.builder()
                                 .actorType(CurrentActor.ActorType.AUTHENTICATED)
                                 .accountId(account.getId())
                                 .email(account.getEmail())
                                 .role(role)
+                                .branchId(primaryBranchId)
+                                .assignedBranchIds(assignedBranchIds)
                                 .build();
 
                         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
@@ -183,6 +224,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         .actorType(CurrentActor.ActorType.TABLE_GUEST)
                         .sessionId(access.getSession().getId())
                         .tableId(access.getSession().getTable().getId())
+                        .branchId(access.getSession().getTable().getBranch() != null ? access.getSession().getTable().getBranch().getId() : null)
                         .build();
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
@@ -204,6 +246,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 CurrentActor actor = CurrentActor.builder()
                         .actorType(CurrentActor.ActorType.COUNTER_GUEST)
                         .orderId(access.getOrder().getId())
+                        .branchId(access.getOrder().getBranch() != null ? access.getOrder().getBranch().getId() : null)
                         .build();
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
@@ -230,19 +273,57 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             }
         }
 
+        // Kiểm tra kênh branch scoped: /topic/branches/{branchId}/{type}
+        if (destination.startsWith("/topic/branches/")) {
+            String[] parts = destination.split("/");
+            if (parts.length >= 5) {
+                try {
+                    Long branchId = Long.parseLong(parts[3]);
+                    String type = parts[4];
+                    if ("cashier".equals(type)) {
+                        boolean allowed = actor != null && (actor.getRole() == Role.CASHIER || actor.getRole() == Role.ADMIN || actor.getRole() == Role.MANAGER)
+                                && actor.canAccessBranch(branchId);
+                        if (!allowed) {
+                            log.warn("Từ chối SUBSCRIBE {} từ actor={}", destination, actor != null ? actor.getEmail() : "anonymous");
+                            throw new IllegalArgumentException("Không có quyền truy cập kênh Thu Ngân chi nhánh " + branchId);
+                        }
+                        return;
+                    } else if ("kitchen".equals(type)) {
+                        boolean allowed = actor != null && (actor.getRole() == Role.KITCHEN || actor.getRole() == Role.ADMIN || actor.getRole() == Role.MANAGER)
+                                && actor.canAccessBranch(branchId);
+                        if (!allowed) {
+                            log.warn("Từ chối SUBSCRIBE {} từ actor={}", destination, actor != null ? actor.getEmail() : "anonymous");
+                            throw new IllegalArgumentException("Không có quyền truy cập kênh Bếp chi nhánh " + branchId);
+                        }
+                        return;
+                    } else if ("stock".equals(type)) {
+                        boolean allowed = actor != null && (actor.getRole() == Role.KITCHEN || actor.getRole() == Role.ADMIN || actor.getRole() == Role.MANAGER)
+                                && actor.canAccessBranch(branchId);
+                        if (!allowed) {
+                            log.warn("Từ chối SUBSCRIBE {} từ actor={}", destination, actor != null ? actor.getEmail() : "anonymous");
+                            throw new IllegalArgumentException("Không có quyền truy cập kênh Kho chi nhánh " + branchId);
+                        }
+                        return;
+                    }
+                } catch (NumberFormatException ignored) {
+                    throw new IllegalArgumentException("Định dạng kênh chi nhánh không hợp lệ");
+                }
+            }
+        }
+
         // Kiểm tra quyền theo bảng 2 trong realtime_rule.md
         if (destination.startsWith("/topic/cashier")) {
-            if (actor == null || (actor.getRole() != Role.CASHIER && actor.getRole() != Role.ADMIN)) {
+            if (actor == null || (actor.getRole() != Role.CASHIER && actor.getRole() != Role.ADMIN && actor.getRole() != Role.MANAGER)) {
                 log.warn("Từ chối SUBSCRIBE /topic/cashier từ principal không hợp lệ");
                 throw new IllegalArgumentException("Không có quyền truy cập kênh Thu Ngân");
             }
         } else if (destination.startsWith("/topic/kitchen")) {
-            if (actor == null || (actor.getRole() != Role.KITCHEN && actor.getRole() != Role.ADMIN)) {
+            if (actor == null || (actor.getRole() != Role.KITCHEN && actor.getRole() != Role.ADMIN && actor.getRole() != Role.MANAGER)) {
                 log.warn("Từ chối SUBSCRIBE /topic/kitchen từ principal không hợp lệ");
                 throw new IllegalArgumentException("Không có quyền truy cập kênh Bếp");
             }
         } else if (destination.startsWith("/topic/stock")) {
-            if (actor == null || (actor.getRole() != Role.KITCHEN && actor.getRole() != Role.ADMIN)) {
+            if (actor == null || (actor.getRole() != Role.KITCHEN && actor.getRole() != Role.ADMIN && actor.getRole() != Role.MANAGER)) {
                 log.warn("Từ chối SUBSCRIBE /topic/stock từ principal không hợp lệ");
                 throw new IllegalArgumentException("Không có quyền truy cập kênh Kho");
             }
@@ -255,10 +336,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             String sessionIdStr = destination.substring("/topic/table-sessions/".length());
             try {
                 Long targetSessionId = Long.parseLong(sessionIdStr);
-                // Được phép nếu là ADMIN, CASHIER, hoặc khách của đúng sessionId này
+                // Được phép nếu là ADMIN, CASHIER, MANAGER, hoặc khách của đúng sessionId này
                 boolean allowed = actor != null && (
                         actor.getRole() == Role.ADMIN ||
                         actor.getRole() == Role.CASHIER ||
+                        actor.getRole() == Role.MANAGER ||
                         (actor.getSessionId() != null && actor.getSessionId().equals(targetSessionId))
                 );
                 if (!allowed) {
