@@ -35,4 +35,15 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             Pageable pageable
     );
 
+    @Query("""
+        SELECT oi.product.id
+        FROM OrderItem oi
+        JOIN oi.order o
+        WHERE o.status = vn.edu.ute.milktea.entity.order.OrderStatus.HOAN_THANH
+          AND (:branchId IS NULL OR o.branch.id = :branchId)
+          AND EXISTS (SELECT p FROM vn.edu.ute.milktea.entity.payment.Payment p JOIN p.invoice i WHERE i.order.id = o.id)
+        GROUP BY oi.product.id
+        ORDER BY SUM(oi.quantity) DESC
+        """)
+    List<Long> findBestSellerProductIds(@Param("branchId") Long branchId, Pageable pageable);
 }

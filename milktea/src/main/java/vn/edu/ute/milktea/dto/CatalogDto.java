@@ -47,4 +47,54 @@ public class CatalogDto {
     public static class MenuResponse {
         private List<CategoryItem> categories;
     }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProductDetailResponse {
+        private Long id;
+        private Long categoryId;
+        private String categoryName;
+        private Boolean allowTopping;
+        private String name;
+        private String size;
+        private String description;
+        private BigDecimal price;
+        private String imageUrl;
+        private Boolean active;
+        @Builder.Default
+        private boolean available = true;
+        private Long branchId;
+        private String branchName;
+        private Double averageRating;
+        private long reviewCount;
+        @Builder.Default
+        private boolean isFavorite = false;
+        private List<String> availableSizes;
+        private List<ProductItem> toppings;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProductSearchResponse {
+        private List<ProductItem> items;
+        private int page;
+        private int size;
+        private long totalElements;
+        private int totalPages;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class FeaturedProductsResponse {
+        private String type; // newest, best_seller, top_rated, most_favorited
+        private Long branchId;
+        private String branchName;
+        private List<ProductItem> products;
+    }
 }
