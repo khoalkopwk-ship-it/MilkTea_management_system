@@ -21,6 +21,8 @@ public class TableDto {
         private Long sessionId;
         private TableSessionStatus sessionStatus;
         private String tableToken; // Trả về khi phiên đang mở
+        private Long branchId;
+        private String branchName;
     }
 
     @Data
@@ -34,6 +36,8 @@ public class TableDto {
         private TableStatus status;
         private Long activeSessionId;
         private Boolean active;
+        private Long branchId;
+        private String branchName;
     }
 
     @Data
@@ -47,5 +51,7 @@ public class TableDto {
         private TableSessionStatus status;
         private java.time.Instant openedAt;
         private java.time.Instant closedAt;
+        private Long branchId;
+        private String branchName;
     }
 }

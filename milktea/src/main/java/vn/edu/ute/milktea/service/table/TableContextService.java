@@ -40,7 +40,9 @@ public class TableContextService {
                 .tableId(table.getId())
                 .tableName(table.getName())
                 .qrCode(table.getQrCode())
-                .status(table.getStatus());
+                .status(table.getStatus())
+                .branchId(table.getBranch() != null ? table.getBranch().getId() : null)
+                .branchName(table.getBranch() != null ? table.getBranch().getName() : null);
 
         if (table.getActiveSessionId() != null) {
             Optional<TableSession> sessionOpt = sessionRepository.findById(table.getActiveSessionId());

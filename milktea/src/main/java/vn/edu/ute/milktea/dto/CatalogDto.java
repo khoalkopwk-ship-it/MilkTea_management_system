@@ -24,6 +24,8 @@ public class CatalogDto {
         private BigDecimal price;
         private String imageUrl;
         private Boolean active;
+        @Builder.Default
+        private boolean available = true;
     }
 
     @Data

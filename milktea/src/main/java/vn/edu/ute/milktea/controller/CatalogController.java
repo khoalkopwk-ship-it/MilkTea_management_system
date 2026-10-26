@@ -15,8 +15,9 @@ public class CatalogController {
     private final CatalogService catalogService;
 
     @GetMapping({"/public/menu", "/catalog/menu"})
-    public ResponseEntity<ApiResponse<CatalogDto.MenuResponse>> getMenu() {
-        return ResponseEntity.ok(ApiResponse.ok(catalogService.getMenu()));
+    public ResponseEntity<ApiResponse<CatalogDto.MenuResponse>> getMenu(
+            @RequestParam(value = "branchId", required = false) Long branchId) {
+        return ResponseEntity.ok(ApiResponse.ok(catalogService.getMenu(branchId)));
     }
 
     @GetMapping({"/public/categories", "/catalog/categories"})
