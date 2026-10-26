@@ -95,11 +95,16 @@ public class InventoryService {
                 throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
                         "Số lượng tiêu hao không hợp lệ: " + material.getName());
             }
+            Long branchId = (order != null && order.getBranch() != null) ? order.getBranch().getId() : null;
             StockLocation location = snap.getSnapshotType() == MaterialType.SOCHE ? StockLocation.BEP : StockLocation.KHO;
-            var stockOpt = stockRepository.findByIdWithLock(material.getId(), location);
+            var stockOpt = branchId != null
+                    ? stockRepository.findByIdWithLock(branchId, material.getId(), location)
+                    : stockRepository.findByIdWithLock(material.getId(), location);
             if (stockOpt.isEmpty()) {
                 StockLocation alternate = location == StockLocation.BEP ? StockLocation.KHO : StockLocation.BEP;
-                var altOpt = stockRepository.findByIdWithLock(material.getId(), alternate);
+                var altOpt = branchId != null
+                        ? stockRepository.findByIdWithLock(branchId, material.getId(), alternate)
+                        : stockRepository.findByIdWithLock(material.getId(), alternate);
                 if (altOpt.isPresent()) {
                     stockOpt = altOpt;
                     location = alternate;
