@@ -26,7 +26,12 @@ const MilkTeaReceipts = (() => {
         return `<article class="milk-receipt invoice"><header><img class="receipt-logo" src="/images/receipt-logo.svg" alt="MilkTea"><div><b>${esc(s.name)}</b><div>${esc(s.address)}</div></div></header><hr><h4>HÓA ĐƠN THANH TOÁN</h4>
         <h6>Thông tin hóa đơn</h6><div class="receipt-meta"><span>Mã hóa đơn: HD${o.invoiceId != null ? String(o.invoiceId).padStart(3,'0') : '—'}</span><span>Ngày lập: ${date(o.createdAt)}</span><span>Mã đơn hàng: ${code(o.orderId)}</span><span>Nhân viên: ${esc(o.cashierName || 'Chưa ghi thu')}</span></div>
         <h6>Thông tin khách hàng</h6><div class="receipt-meta"><span>Khách hàng: ${esc(o.customerName || 'Khách vãng lai')}</span><span>Bàn: ${esc(o.tableName || 'Quầy / mang về')}</span></div>
-        ${lines(o)}<div class="receipt-total"><div><span>Tạm tính:</span><b>${money(o.subtotal)}</b></div><div><span>Giảm giá:</span><b>${money(o.discountAmount)}</b></div><div><span>Phụ thu:</span><b>${money(o.surchargeAmount)}</b></div></div>
+        ${lines(o)}<div class="receipt-total">
+            <div><span>Tạm tính:</span><b>${money(o.subtotal)}</b></div>
+            ${Number(o.discountAmount) > 0 ? `<div><span>Giảm giá:</span><b>-${money(o.discountAmount)}</b></div>` : ''}
+            ${(Number(o.voucherDiscountAmount) > 0 || o.voucherCode) ? `<div><span>Giảm Voucher (${esc(o.voucherCode || '')}):</span><b>-${money(o.voucherDiscountAmount)}</b></div>` : ''}
+            <div><span>Phụ thu:</span><b>${money(o.surchargeAmount)}</b></div>
+        </div>
         <p>Phương thức thanh toán: ${esc(payMethodLabel)}</p>
         <div class="receipt-grand">Tổng cộng: <b>${money(o.totalAmount)}</b></div><p class="receipt-state">${o.status === 'DA_HUY' ? 'ĐƠN ĐÃ HỦY' : o.paid ? paidStatusLabel : o.status === 'CHO_XAC_NHAN' ? 'CHỜ THU NGÂN XÁC NHẬN ĐƠN' : 'CHƯA THU TIỀN'}</p>${o.paidAt ? `<p>Thu tiền lúc: ${date(o.paidAt)}</p>` : ''}</article>`;
     }

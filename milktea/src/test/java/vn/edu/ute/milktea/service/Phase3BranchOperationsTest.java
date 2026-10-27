@@ -97,6 +97,7 @@ class Phase3BranchOperationsTest {
     @Mock private IdempotencyService idempotencyService;
     @Mock private StockRepository stockRepository;
     @Mock private StockMovementRepository stockMovementRepository;
+    @Mock private vn.edu.ute.milktea.service.voucher.VoucherService voucherService;
 
     private BranchService branchService;
     private CatalogService catalogService;
@@ -118,7 +119,7 @@ class Phase3BranchOperationsTest {
                 invoiceRepository, paymentRepository, paymentNoticeRepository, refundRepository,
                 cancellationRepository, settingsRepository, accountRepository, auditRepository,
                 guestAccessService, inventoryService, fixedRecipeService, materialRepository,
-                realtimeEventPublisher, branchRepository, idempotencyService
+                realtimeEventPublisher, branchRepository, idempotencyService, voucherService
         );
 
         branch1 = Branch.builder().id(1L).code("CN01").name("Chi nhánh Quận 1").status("HOAT_DONG").build();

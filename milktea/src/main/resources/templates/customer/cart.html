@@ -517,13 +517,42 @@
                 </div>
 
                 <div class="card border-0 shadow-sm rounded-4 p-4" id="cartSummary" style="display: none;">
+                    <!-- Voucher Section -->
+                    <div class="mb-3 pb-3 border-bottom">
+                        <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-ticket-perforated me-1"></i> Mã khuyến mãi / Voucher</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control form-control-sm text-uppercase" id="voucherInput" placeholder="Nhập mã voucher (vd: CHAOMUNG)">
+                            <button class="btn btn-outline-primary btn-sm fw-bold px-3" type="button" id="applyVoucherBtn" onclick="applyVoucher()">Áp dụng</button>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none small text-primary fw-semibold" onclick="openVoucherModal()">
+                                <i class="bi bi-tag-fill me-1"></i> Chọn mã ưu đãi có sẵn
+                            </button>
+                        </div>
+                        <div id="appliedVoucherBox" class="alert alert-success d-flex align-items-center justify-content-between py-2 px-3 mt-2 mb-0 rounded-3 d-none">
+                            <div class="small">
+                                <i class="bi bi-check-circle-fill me-1 text-success"></i>
+                                <span class="fw-bold" id="appliedVoucherCode">CODE</span>:
+                                <span id="appliedVoucherName">Tên voucher</span>
+                                <div class="text-success fw-semibold" id="appliedVoucherDiscountText">-0 ₫</div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="removeVoucher()" title="Hủy áp dụng">
+                                <i class="bi bi-x-circle-fill fs-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Tạm tính:</span>
                         <span class="fw-semibold" id="subtotalVal">0 ₫</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2" id="discountRow" style="display: none;">
-                        <span class="text-muted">Giảm giá (<span id="discountPercentVal">0%</span>):</span>
+                        <span class="text-muted">Giảm giá cửa hàng (<span id="discountPercentVal">0%</span>):</span>
                         <span class="text-danger fw-semibold" id="discountVal">-0 ₫</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2" id="voucherDiscountRow" style="display: none;">
+                        <span class="text-muted">Giảm Voucher (<span id="voucherDiscountCodeVal">CODE</span>):</span>
+                        <span class="text-danger fw-semibold" id="voucherDiscountVal">-0 ₫</span>
                     </div>
                     <hr class="my-3">
                     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -538,6 +567,29 @@
                 </div>
             </div>
         </div>
+
+        <!-- Voucher Selection Modal -->
+        <div class="modal fade" id="voucherModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0 shadow">
+                    <div class="modal-header border-bottom-0 pb-0">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-ticket-perforated-fill text-primary me-2"></i>Chọn Voucher Khuyến Mãi</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="voucherModalLoading" class="text-center py-4">
+                            <div class="spinner-border spinner-custom mb-2"></div>
+                            <p class="text-muted small">Đang nạp voucher khả dụng...</p>
+                        </div>
+                        <div id="voucherModalEmpty" class="text-center py-4 d-none">
+                            <i class="bi bi-tag text-muted fs-1 mb-2 d-block"></i>
+                            <p class="text-muted mb-0">Hiện chưa có voucher nào phù hợp cho chi nhánh này.</p>
+                        </div>
+                        <div id="voucherModalList" class="d-flex flex-column gap-2 d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <th:block th:fragment="scripts">
@@ -545,9 +597,13 @@
         <script th:inline="javascript">
             const discountType = /*[[${settings != null && settings.discountType != null ? settings.discountType : 'PERCENT'}]]*/ 'PERCENT';
             const discountValue = /*[[${settings != null && settings.discountValue != null ? settings.discountValue : (settings != null && settings.discountPercent != null ? settings.discountPercent : 0)}]]*/ 0;
+            const branchId = /*[[${currentTable != null && currentTable.branch != null ? currentTable.branch.id : null}]]*/ null;
 
             let cartEntranceShown = false;
             let previousCartQuantities = null;
+            let currentSubtotal = 0;
+            let appliedVoucher = null;
+            let voucherModalInstance = null;
 
             document.addEventListener('DOMContentLoaded', async () => {
                 const qr = /*[[${tableQr}]]*/ null;
@@ -572,6 +628,8 @@
                     if (list) list.classList.add('d-none');
                     if (summary) summary.style.display = 'none';
                     previousCartQuantities = null;
+                    currentSubtotal = 0;
+                    removeVoucher();
                     return;
                 }
 
@@ -644,31 +702,147 @@
                 previousCartQuantities = currentQuantities;
 
                 const sub = parseFloat(subtotal) || 0;
-                let discountAmount = 0;
+                currentSubtotal = sub;
+
+                let storeDiscountAmount = 0;
                 if (discountType === 'FIXED_AMOUNT') {
-                    discountAmount = Math.min(sub, parseFloat(discountValue) || 0);
-                    if (discountAmount > 0) {
+                    storeDiscountAmount = Math.min(sub, parseFloat(discountValue) || 0);
+                    if (storeDiscountAmount > 0) {
                         document.getElementById('discountRow').style.display = 'flex';
                         document.getElementById('discountPercentVal').textContent = 'Cố định';
-                        document.getElementById('discountVal').textContent = '-' + MilkTeaApi.formatVND(discountAmount);
+                        document.getElementById('discountVal').textContent = '-' + MilkTeaApi.formatVND(storeDiscountAmount);
                     } else {
                         document.getElementById('discountRow').style.display = 'none';
                     }
                 } else {
                     const percent = parseFloat(discountValue) || 0;
                     if (percent > 0) {
-                        discountAmount = Math.min(sub, (sub * percent) / 100);
+                        storeDiscountAmount = Math.min(sub, (sub * percent) / 100);
                         document.getElementById('discountRow').style.display = 'flex';
                         document.getElementById('discountPercentVal').textContent = percent + '%';
-                        document.getElementById('discountVal').textContent = '-' + MilkTeaApi.formatVND(discountAmount);
+                        document.getElementById('discountVal').textContent = '-' + MilkTeaApi.formatVND(storeDiscountAmount);
                     } else {
                         document.getElementById('discountRow').style.display = 'none';
                     }
                 }
 
-                const total = Math.max(0, sub - discountAmount);
+                let voucherDiscountAmount = 0;
+                if (appliedVoucher) {
+                    const remainingAfterStore = Math.max(0, sub - storeDiscountAmount);
+                    voucherDiscountAmount = Math.min(remainingAfterStore, appliedVoucher.discountAmount || 0);
+                    document.getElementById('voucherDiscountRow').style.display = 'flex';
+                    document.getElementById('voucherDiscountCodeVal').textContent = appliedVoucher.voucherCode;
+                    document.getElementById('voucherDiscountVal').textContent = '-' + MilkTeaApi.formatVND(voucherDiscountAmount);
+                } else {
+                    document.getElementById('voucherDiscountRow').style.display = 'none';
+                }
+
+                const total = Math.max(0, sub - storeDiscountAmount - voucherDiscountAmount);
                 document.getElementById('subtotalVal').textContent = MilkTeaApi.formatVND(sub);
                 document.getElementById('totalVal').textContent = MilkTeaApi.formatVND(total);
+            }
+
+            async function applyVoucher(inputCode) {
+                const code = inputCode || (document.getElementById('voucherInput') ? document.getElementById('voucherInput').value.trim() : '');
+                if (!code) {
+                    MilkTeaApi.showToast('Vui lòng nhập mã voucher', 'warning');
+                    return;
+                }
+
+                try {
+                    const res = await MilkTeaApi.post('/api/v1/vouchers/validate', {
+                        voucherCode: code,
+                        branchId: branchId,
+                        subtotal: currentSubtotal
+                    });
+
+                    appliedVoucher = res;
+                    CustomerApp.setAppliedVoucher(res);
+
+                    const box = document.getElementById('appliedVoucherBox');
+                    document.getElementById('appliedVoucherCode').textContent = res.voucherCode;
+                    document.getElementById('appliedVoucherName').textContent = res.voucherName || '';
+                    document.getElementById('appliedVoucherDiscountText').textContent = 'Tiết kiệm ' + MilkTeaApi.formatVND(res.discountAmount);
+                    box.classList.remove('d-none');
+
+                    if (document.getElementById('voucherInput')) {
+                        document.getElementById('voucherInput').value = res.voucherCode;
+                    }
+
+                    if (voucherModalInstance) {
+                        voucherModalInstance.hide();
+                    }
+
+                    const items = window.MilkTeaContext.sessionId ? CustomerApp.getServerCart() : CustomerApp.getLocalCart();
+                    renderCartItems(items, currentSubtotal);
+                    MilkTeaApi.showToast(res.message || 'Áp dụng mã voucher thành công!', 'success');
+                } catch (e) {
+                    MilkTeaApi.showToast(e.message || 'Mã voucher không hợp lệ', 'error');
+                }
+            }
+
+            function removeVoucher() {
+                appliedVoucher = null;
+                CustomerApp.setAppliedVoucher(null);
+                const box = document.getElementById('appliedVoucherBox');
+                if (box) box.classList.add('d-none');
+                if (document.getElementById('voucherInput')) document.getElementById('voucherInput').value = '';
+
+                const items = window.MilkTeaContext.sessionId ? CustomerApp.getServerCart() : CustomerApp.getLocalCart();
+                renderCartItems(items, currentSubtotal);
+            }
+
+            async function openVoucherModal() {
+                const modalEl = document.getElementById('voucherModal');
+                if (!modalEl) return;
+                voucherModalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+                voucherModalInstance.show();
+
+                const loading = document.getElementById('voucherModalLoading');
+                const empty = document.getElementById('voucherModalEmpty');
+                const list = document.getElementById('voucherModalList');
+
+                loading.classList.remove('d-none');
+                empty.classList.add('d-none');
+                list.classList.add('d-none');
+
+                try {
+                    let url = '/api/v1/vouchers/active?subtotal=' + currentSubtotal;
+                    if (branchId) url += '&branchId=' + branchId;
+                    const vouchers = await MilkTeaApi.get(url);
+
+                    loading.classList.add('d-none');
+                    if (!vouchers || vouchers.length === 0) {
+                        empty.classList.remove('d-none');
+                        return;
+                    }
+
+                    list.innerHTML = vouchers.map(v => `
+                        <div class="card border rounded-3 p-3 ${v.canApply ? 'border-primary-subtle bg-light' : 'opacity-75 bg-body-tertiary'}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="badge bg-primary text-uppercase px-2 py-1 fw-bold">${v.code}</span>
+                                        <span class="fw-bold small">${v.name}</span>
+                                    </div>
+                                    <div class="text-danger fw-bold small mb-1">${v.formattedDiscountText}</div>
+                                    <div class="text-muted small">Đơn tối thiểu: ${MilkTeaApi.formatVND(v.minOrderValue)}</div>
+                                    ${v.description ? `<div class="text-muted small fst-italic mt-1">${v.description}</div>` : ''}
+                                </div>
+                                <div>
+                                    ${v.canApply
+                                        ? `<button class="btn btn-sm btn-primary-custom rounded-pill px-3 py-1 fw-bold" onclick="applyVoucher('${v.code}')">Dùng ngay</button>`
+                                        : `<span class="badge bg-secondary small">Chưa đủ ĐK</span>`}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                    list.classList.remove('d-none');
+                } catch (e) {
+                    loading.classList.add('d-none');
+                    empty.classList.remove('d-none');
+                    empty.innerHTML = `<p class="text-danger small mb-0">${e.message || 'Không thể tải danh sách voucher'}</p>`;
+                }
             }
         </script>
     </th:block>

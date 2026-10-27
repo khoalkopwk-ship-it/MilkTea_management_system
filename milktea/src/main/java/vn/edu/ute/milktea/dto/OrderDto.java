@@ -32,6 +32,7 @@ public class OrderDto {
         private List<CartDto.CartItemRequest> items;
 
         private List<CartDto.CartItemRequest> remainingCartItems;
+        private String voucherCode;
     }
 
     @Data
@@ -45,6 +46,7 @@ public class OrderDto {
 
         private String note;
         private Long branchId;
+        private String voucherCode;
     }
 
     @Data
@@ -63,6 +65,7 @@ public class OrderDto {
         private String customerName;
         private String customerPhone;
         private String deliveryAddress;
+        private String voucherCode;
     }
 
     @Data
@@ -108,6 +111,9 @@ public class OrderDto {
         private Long invoiceId;
         private BigDecimal subtotal;
         private BigDecimal discountAmount;
+        private BigDecimal voucherDiscountAmount;
+        private Long voucherId;
+        private String voucherCode;
         private BigDecimal surchargeAmount;
         private BigDecimal totalAmount;
         private BigDecimal discountPercent;

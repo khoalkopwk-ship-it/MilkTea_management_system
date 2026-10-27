@@ -356,6 +356,8 @@ const CustomerApp = (() => {
         });
     }
 
+    let appliedVoucher = null;
+
     // Đặt đơn hàng
     async function submitOrder() {
         const currentItems = window.MilkTeaContext.sessionId ? serverCart : localCart;
@@ -376,15 +378,18 @@ const CustomerApp = (() => {
             }));
 
             const hasTableContext = !!window.MilkTeaContext.tableId;
+            const vCode = appliedVoucher ? (appliedVoucher.voucherCode || appliedVoucher.code) : null;
             const payload = hasTableContext
                 ? {
                     tableId: window.MilkTeaContext.tableId,
                     expectedSessionId: window.MilkTeaContext.sessionId,
                     items: items,
-                    remainingCartItems: []
+                    remainingCartItems: [],
+                    voucherCode: vCode
                 }
                 : {
-                    items: items
+                    items: items,
+                    voucherCode: vCode
                 };
 
             const order = await MilkTeaApi.post(
@@ -408,6 +413,7 @@ const CustomerApp = (() => {
             // Xóa giỏ hàng chỉ khi tạo đơn thành công
             clearLocalCart();
             serverCart = [];
+            appliedVoucher = null;
             updateCartBadge();
 
             // Chuyển hướng sang trang theo dõi đơn hàng
@@ -431,6 +437,8 @@ const CustomerApp = (() => {
         submitOrder,
         loadServerCart,
         getLocalCart: () => localCart,
-        getServerCart: () => serverCart
+        getServerCart: () => serverCart,
+        setAppliedVoucher: (v) => { appliedVoucher = v; },
+        getAppliedVoucher: () => appliedVoucher
     };
 })();

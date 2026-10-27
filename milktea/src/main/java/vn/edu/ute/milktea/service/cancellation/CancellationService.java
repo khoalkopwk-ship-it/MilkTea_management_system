@@ -41,6 +41,7 @@ public class CancellationService {
     private final BusinessAuditRepository auditRepository;
     private final jakarta.persistence.EntityManager entityManager;
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher publisher;
+    private final vn.edu.ute.milktea.service.voucher.VoucherService voucherService;
 
     @Transactional
     public CancellationDto.CancellationResponse requestCancellation(
@@ -73,6 +74,10 @@ public class CancellationService {
                 invoice.setStatus(InvoiceStatus.DA_HUY);
                 invoice.setCancelledAt(Instant.now());
                 invoiceRepository.save(invoice);
+            }
+
+            if (voucherService != null) {
+                voucherService.releaseVoucherFromOrder(order, request.getReason());
             }
 
             CancellationRequest cancelReq = CancellationRequest.builder()
@@ -189,6 +194,10 @@ public class CancellationService {
                 invoice.setStatus(InvoiceStatus.DA_HUY);
                 invoice.setCancelledAt(Instant.now());
                 invoiceRepository.save(invoice);
+            }
+
+            if (voucherService != null) {
+                voucherService.releaseVoucherFromOrder(order, request.getReason());
             }
 
             auditRepository.save(BusinessAudit.builder()

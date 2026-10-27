@@ -60,6 +60,13 @@ public class Order {
     @Column(name = "HoanThanhLuc")
     private Instant completedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MaVoucher")
+    private vn.edu.ute.milktea.entity.voucher.Voucher voucher;
+
+    @Column(name = "MaCodeVoucher", length = 50)
+    private String voucherCode;
+
     @Version
     @Column(name = "Version", nullable = false)
     @Builder.Default

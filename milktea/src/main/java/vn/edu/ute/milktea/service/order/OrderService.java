@@ -76,6 +76,7 @@ public class OrderService {
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
     private final vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository;
     private final vn.edu.ute.milktea.service.common.IdempotencyService idempotencyService;
+    private final vn.edu.ute.milktea.service.voucher.VoucherService voucherService;
     @Transactional
     public OrderDto.OrderResponse createTableOrder(OrderDto.CreateTableOrderRequest request, CurrentActor actor, String idempotencyKey) {
         Long actorId = actor != null ? actor.getAccountId() : null;
@@ -177,6 +178,9 @@ public class OrderService {
                 .createdAt(Instant.now())
                 .build();
         invoice = invoiceRepository.save(invoice);
+        if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
+            voucherService.applyVoucherToOrder(order, invoice, request.getVoucherCode(), customerAccount != null ? customerAccount.getId() : null);
+        }
         // Cập nhật phần còn lại của giỏ hàng trên server
         sessionCartService.replaceCart(session.getId(),
                 new CartDto.ReplaceCartRequest(request.getRemainingCartItems() != null ? request.getRemainingCartItems() : Collections.emptyList()),
@@ -265,6 +269,9 @@ public class OrderService {
                 .createdAt(Instant.now())
                 .build();
         invoice = invoiceRepository.save(invoice);
+        if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
+            voucherService.applyVoucherToOrder(order, invoice, request.getVoucherCode(), creator != null ? creator.getId() : null);
+        }
         var issued = guestAccessService.issueCounterOrderToken(order, 24);
         auditRepository.save(BusinessAudit.builder()
                 .orderId(order.getId())
@@ -363,6 +370,9 @@ public class OrderService {
                 .createdAt(Instant.now())
                 .build();
         invoice = invoiceRepository.save(invoice);
+        if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
+            voucherService.applyVoucherToOrder(order, invoice, request.getVoucherCode(), creator != null ? creator.getId() : null);
+        }
 
         var issued = guestAccessService.issueCounterOrderToken(order, 24);
 
@@ -777,6 +787,9 @@ public class OrderService {
                 .customerEmail(customer != null ? customer.getEmail() : null)
                 .subtotal(invoice != null ? invoice.getSubtotal() : BigDecimal.ZERO)
                 .discountAmount(invoice != null ? invoice.getDiscountAmount() : BigDecimal.ZERO)
+                .voucherDiscountAmount(invoice != null && invoice.getVoucherDiscountAmount() != null ? invoice.getVoucherDiscountAmount() : BigDecimal.ZERO)
+                .voucherId(order.getVoucher() != null ? order.getVoucher().getId() : (invoice != null && invoice.getVoucher() != null ? invoice.getVoucher().getId() : null))
+                .voucherCode(order.getVoucherCode() != null ? order.getVoucherCode() : (invoice != null ? invoice.getVoucherCode() : null))
                 .surchargeAmount(BigDecimal.ZERO)
                 .totalAmount(invoice != null ? invoice.getTotalAmount() : BigDecimal.ZERO)
                 .discountPercent(invoice != null ? invoice.getSnapshotDiscountPercent() : BigDecimal.ZERO)

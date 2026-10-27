@@ -56,4 +56,15 @@ public class Invoice {
 
     @Column(name = "HuyLuc")
     private Instant cancelledAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MaVoucher")
+    private vn.edu.ute.milktea.entity.voucher.Voucher voucher;
+
+    @Column(name = "MaCodeVoucher", length = 50)
+    private String voucherCode;
+
+    @Column(name = "TienGiamVoucher", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal voucherDiscountAmount = BigDecimal.ZERO;
 }

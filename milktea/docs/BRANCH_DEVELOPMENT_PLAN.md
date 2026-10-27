@@ -77,10 +77,24 @@ Chuyển đổi hệ thống MilkTea một quán hiện có thành hệ thống 
 - [x] **CUS-02 Bốn danh sách nổi bật (Top 20)**:
   - Mới nhất, Bán chạy nhất (đơn hoàn thành + thanh toán tại chi nhánh), Đánh giá cao nhất, Yêu thích nhất.
 
-### Giai đoạn 5: Voucher & Khuyến mãi (Vouchers & Discounts)
-- [ ] Bảng `Voucher`, `VoucherChiNhanh`, `LichSuSuDungVoucher`.
-- [ ] Kiểm tra điều kiện: chi nhánh áp dụng, hạn dùng, giá trị đơn tối thiểu, số lượng còn lại, chống race-condition khi đồng thời.
-- [ ] Snapshot thông tin giảm giá vào `HoaDon`.
+### Giai đoạn 5: Voucher & Khuyến mãi (Vouchers & Discounts) — HOÀN TẤT
+- [x] **BR-06 & AT-05 Schema & Migration Voucher**:
+  - Tạo bảng `Voucher`, `VoucherChiNhanh`, `LichSuSuDungVoucher`.
+  - Thêm snapshot `MaVoucher`, `MaCodeVoucher`, `TienGiamVoucher` vào `HoaDon` và `DonHang`.
+  - Migration script `V3__voucher_and_discounts.sql` tạo dữ liệu mẫu voucher `CHAOMUNG`, `MILKTEA10`, `CN01SPECIAL`.
+- [x] **Quy tắc kiểm tra điều kiện**:
+  - Hạn dùng (thời gian bắt đầu/kết thúc), chi nhánh áp dụng (`applyAllBranches` hoặc theo danh sách chi nhánh), giá trị đơn tối thiểu (`minOrderValue`), tổng lượt dùng (`totalUsageLimit`), số lượt cho phép mỗi khách (`usageLimitPerCustomer`).
+- [x] **Xử lý tranh chấp đồng thời (AT-05 Concurrency Control)**:
+  - Atomic database update `incrementUsageCount` chặn race condition khi tranh chấp lượt voucher cuối cùng.
+  - Snapshot giảm giá voucher và trừ tồn số lượt khi áp dụng cho đơn hàng.
+  - Tự động hoàn trả số lượt voucher và cập nhật trạng thái `DA_HOAN_TRA` khi đơn hàng bị hủy hoặc hoàn tiền.
+- [x] **Giao diện & API**:
+  - API khách hàng: `GET /api/v1/vouchers/active`, `POST /api/v1/vouchers/validate`.
+  - API quản trị Admin: Tìm kiếm phân trang, CRUD voucher, toggle kích hoạt, xem lịch sử sử dụng voucher.
+  - Giao diện giỏ hàng (`cart.html`, `customer.js`): Nhập mã voucher, chọn nhanh từ modal voucher khả dụng, tính toán giảm giá kép (cửa hàng + voucher) minh bạch.
+  - Hiển thị voucher trên hóa đơn (`receipts.js`).
+- [x] **Kiểm thử tự động toàn diện**:
+  - `Phase5VoucherAndDiscountsTest.java` với 18 test cases bao phủ toàn bộ điều kiện voucher, AT-05 concurrency race condition, hoàn trả khi hủy đơn, lọc chi nhánh và Admin CRUD.
 
 ### Giai đoạn 6: Nghiệm thu & Bàn giao (Acceptance & Delivery)
 - [ ] Chạy bộ kiểm thử hồi quy và kiểm thử tích hợp trên database SQL Server.

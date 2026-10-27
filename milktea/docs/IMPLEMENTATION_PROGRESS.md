@@ -9,7 +9,7 @@
 | **Giai đoạn 2** | Nền tảng dữ liệu đa chi nhánh | **HOÀN TẤT** | Đã chạy migration V1 trên SQL Server, backfill 100% dữ liệu gốc về CN01, khởi tạo CN02, cập nhật entity, repository, security filter & role MANAGER. 64/64 tests PASS. |
 | **Giai đoạn 3** | Vận hành chi nhánh (QR, Đơn, Bếp, Thu ngân, Realtime) | **HOÀN TẤT** | Menu/QR theo chi nhánh, đơn online, thu ngân/bếp scoped chi nhánh, trừ kho Bếp theo chi nhánh, realtime topic theo chi nhánh. 70/70 tests PASS. |
 | **Giai đoạn 4** | Trải nghiệm khách hàng (Chi tiết món, Tìm kiếm/Lọc, Top 20, Yêu thích, Đánh giá) | **HOÀN TẤT** | Đánh giá gắn đơn hoàn thành + đã thanh toán, kiểm duyệt theo chi nhánh, wishlist tài khoản, tìm kiếm & lọc phân trang, 4 danh sách Top 20. 87/87 tests PASS. |
-| **Giai đoạn 5** | Voucher & Giảm giá | **SẴN SÀNG TRIỂN KHAI** | Áp dụng voucher an toàn đồng thời, hạn dùng, giới hạn lượt dùng và chi nhánh. |
+| **Giai đoạn 5** | Voucher & Giảm giá | **HOÀN TẤT** | Áp dụng voucher an toàn đồng thời (AT-05), migration V3, snapshot HoaDon, hoàn trả khi hủy đơn, giao diện giỏ hàng và 18 test cases. 105/105 tests PASS. |
 | **Giai đoạn 6** | Nghiệm thu & Bàn giao | **CHỜ BẮT ĐẦU** | Hồi quy toàn bộ ca kiểm thử, đối soát chuỗi và cơ sở. |
 
 ---
@@ -115,9 +115,42 @@
 
 ---
 
-## 7. Kế hoạch tiếp theo: Giai đoạn 5 (Voucher & Giảm giá)
-1. **Thiết kế & Bổ sung bảng**: `Voucher`, `VoucherChiNhanh`, `LichSuSuDungVoucher`.
-2. **Kiểm tra tính hợp lệ**: Hạn sử dụng, chi nhánh áp dụng, giá trị đơn tối thiểu, số lượt dùng tối đa chung và theo khách hàng.
-3. **Chống Race-Condition**: Sử dụng khóa bi quan (`Pessimistic Lock`) hoặc cập nhật nguyên tử để chống tranh chấp lượt dùng cuối khi hai khách hàng thanh toán đồng thời.
-4. **Snapshot giảm giá**: Lưu thông tin chiết khấu vào `HoaDon` và hoàn trả lượt dùng khi đơn bị hủy hợp lệ.
+## 7. Checkpoint Chi tiết Giai đoạn 5 — Voucher & Khuyến mãi (HOÀN TẤT)
+
+### 1. Cơ sở dữ liệu & Migration V3:
+- File migration: `database/migrations/V3__voucher_and_discounts.sql`:
+  - Bảng `Voucher`: Lưu mã code, loại giảm giá (`PERCENT`, `FIXED_AMOUNT`), giá trị giảm, mức giảm tối đa, giá trị đơn tối thiểu, tổng số lượt dùng, số lượt đã dùng, giới hạn mỗi khách, phạm vi áp dụng (`applyAllBranches`), thời gian hiệu lực (`startDate`, `endDate`), cờ kích hoạt (`isActive`).
+  - Bảng `VoucherChiNhanh`: Phân bổ danh sách chi nhánh được áp dụng cho voucher phạm vi giới hạn.
+  - Bảng `LichSuSuDungVoucher`: Lưu lịch sử mỗi lần voucher được sử dụng kèm trạng thái (`DA_DUNG`, `DA_HOAN_TRA`), liên kết với Đơn hàng, Hóa đơn, Khách hàng và Chi nhánh.
+  - Mở rộng bảng `HoaDon` & `DonHang`: Thêm cột `MaVoucher`, `MaCodeVoucher`, `TienGiamVoucher` để snapshot minh bạch.
+  - Seed voucher ban đầu: `CHAOMUNG` (giảm 20.000đ, min 50k toàn chuỗi), `MILKTEA10` (giảm 10% tối đa 30k toàn chuỗi), `CN01SPECIAL` (giảm 15.000đ tại chi nhánh CN01).
+
+### 2. Xử lý Tranh chấp Đồng thời & Khấu trừ An toàn (AT-05 Concurrency Control):
+- Phương thức `incrementUsageCount` thực thi câu lệnh UPDATE nguyên tử ở mức database:
+  `UPDATE Voucher SET usedCount = usedCount + 1 WHERE id = :id AND usedCount < totalUsageLimit`
+- Nếu cập nhật trả về 0 dòng (do hết lượt hoặc request đồng thời khác vừa chiếm slot cuối), hệ thống lập tức ném ngoại lệ `BusinessException(VOUCHER_EXHAUSTED)`, loại bỏ hoàn toàn hiện tượng bán vượt số lượng voucher khả dụng.
+- Tự động hoàn trả lượt dùng (`decrementUsageCount`) và cập nhật trạng thái `DA_HOAN_TRA` khi đơn hàng bị hủy (`CancellationService`) hoặc hoàn tiền.
+
+### 3. Phân cấp Chiết khấu & Tích hợp Giỏ hàng:
+- Áp dụng độc lập cả Giảm giá cửa hàng (`GlobalSettings`) và Giảm giá Voucher, đảm bảo tổng tiền hóa đơn không bao giờ âm.
+- `VoucherController`: Cung cấp API `GET /api/v1/vouchers/active` và `POST /api/v1/vouchers/validate` cho khách hàng và khách vãng lai.
+- `AdminVoucherController`: Cung cấp API quản lý danh sách phân trang, chi tiết, tạo mới, chỉnh sửa, bật/tắt voucher và tra cứu lịch sử sử dụng.
+- Giao diện giỏ hàng (`cart.html`, `customer.js`): Nhập mã voucher trực tiếp hoặc duyệt danh sách modal voucher khả dụng cho chi nhánh hiện tại; tự động cập nhật bảng tạm tính và tổng thanh toán; đính kèm `voucherCode` khi đặt đơn hàng.
+- Hiển thị thông tin voucher trên chứng từ hóa đơn (`receipts.js`).
+
+### 4. Kết quả Kiểm thử:
+- Tạo mới [Phase5VoucherAndDiscountsTest.java](file:///h:/UTE/Nam_3/MilkTea_management_system/milktea/src/test/java/vn/edu/ute/milktea/service/Phase5VoucherAndDiscountsTest.java) gồm 18 ca kiểm thử:
+  - Xác thực mã tồn tại, hạn dùng, kích hoạt, đơn tối thiểu, phạm vi chi nhánh, giới hạn lượt dùng mỗi khách.
+  - Tính toán chiết khấu phần trăm có chặn trần và chiết khấu cố định.
+  - Concurrency AT-05 tranh chấp slot voucher cuối cùng.
+  - Hoàn trả lượt voucher khi hủy đơn hàng.
+  - Admin CRUD và bật/tắt kích hoạt voucher.
+- Toàn bộ test suite dự án: **105/105 tests PASS (BUILD SUCCESS)**.
+
+---
+
+## 8. Kế hoạch tiếp theo: Giai đoạn 6 (Nghiệm thu & Bàn giao)
+1. **Kiểm thử hồi quy & Đối soát**: Chạy toàn bộ luồng tích hợp trên SQL Server, đối soát doanh thu chi nhánh và toàn chuỗi.
+2. **Kiểm tra báo cáo**: Báo cáo doanh thu, sản phẩm bán chạy, tồn kho và chiết khấu theo từng chi nhánh.
+3. **Hoàn thiện tài liệu bàn giao**: Hướng dẫn vận hành cho Quản lý chi nhánh, Thu ngân, Bếp và Quản trị viên hệ thống.
 

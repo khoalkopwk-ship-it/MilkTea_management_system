@@ -98,6 +98,7 @@ class NewRulesTest {
         @Mock AccountRepository accountRepository;
         @Mock BusinessAuditRepository auditRepository;
         @Mock RealtimeEventPublisher publisher;
+        @Mock vn.edu.ute.milktea.service.voucher.VoucherService voucherService;
         @InjectMocks CancellationService cancellationService;
 
         @Test

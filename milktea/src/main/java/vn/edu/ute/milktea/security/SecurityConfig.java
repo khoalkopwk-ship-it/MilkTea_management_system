@@ -81,7 +81,8 @@ public class SecurityConfig {
                                 "/api/v1/orders/**",
                                 "/api/v1/customer/**",
                                 "/api/v1/favorites/**",
-                                "/api/v1/reviews/**"
+                                "/api/v1/reviews/**",
+                                "/api/v1/vouchers/**"
                         ).permitAll()
                         // Everything else authenticated
                         .anyRequest().authenticated()
