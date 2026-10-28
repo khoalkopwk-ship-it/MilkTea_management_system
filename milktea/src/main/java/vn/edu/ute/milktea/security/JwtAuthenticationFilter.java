@@ -106,8 +106,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (actor != null) {
                     actor.setSessionId(access.getSession().getId());
                     actor.setTableId(access.getSession().getTable().getId());
-                    if (actor.getBranchId() == null && access.getSession().getTable().getBranch() != null) {
-                        actor.setBranchId(access.getSession().getTable().getBranch().getId());
+                    Long tBranchId = (access.getSession().getTable().getBranch() != null)
+                            ? access.getSession().getTable().getBranch().getId()
+                            : null;
+                    actor.setTableBranchId(tBranchId);
+                    // Tuyệt đối không điền working branch cho STAFF từ token bàn (V4-02)
+                    if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CUSTOMER) && actor.getBranchId() == null) {
+                        actor.setBranchId(tBranchId);
                     }
                 } else {
                     Long tableBranchId = (access.getSession().getTable().getBranch() != null)
@@ -117,6 +122,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             .actorType(CurrentActor.ActorType.TABLE_GUEST)
                             .sessionId(access.getSession().getId())
                             .tableId(access.getSession().getTable().getId())
+                            .tableBranchId(tableBranchId)
                             .branchId(tableBranchId)
                             .build();
 
@@ -132,8 +138,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 var access = accessOpt.get();
                 if (actor != null) {
                     actor.setOrderId(access.getOrder().getId());
-                    if (actor.getBranchId() == null && access.getOrder().getBranch() != null) {
-                        actor.setBranchId(access.getOrder().getBranch().getId());
+                    Long cBranchId = (access.getOrder().getBranch() != null)
+                            ? access.getOrder().getBranch().getId()
+                            : null;
+                    actor.setTableBranchId(cBranchId);
+                    // Tuyệt đối không điền working branch cho STAFF từ counter token (V4-02)
+                    if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CUSTOMER) && actor.getBranchId() == null) {
+                        actor.setBranchId(cBranchId);
                     }
                 } else {
                     Long counterBranchId = (access.getOrder().getBranch() != null)

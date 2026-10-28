@@ -21,6 +21,7 @@ import vn.edu.ute.milktea.repository.recipe.PreparationRecipeRepository;
 import vn.edu.ute.milktea.entity.branch.Branch;
 import vn.edu.ute.milktea.service.branch.BranchService;
 import vn.edu.ute.milktea.repository.branch.BranchRepository;
+import vn.edu.ute.milktea.security.CurrentActor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -53,12 +54,7 @@ public class InventoryService {
     private final BranchService branchService;
     private final BranchRepository branchRepository;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
-
-    public void setStaffBranchRepository(vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository) {
-        this.staffBranchRepository = staffBranchRepository;
-    }
+    private final vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
 
     @Transactional(readOnly = true)
     public BigDecimal getMaterialCostPrice(Long materialId) {
@@ -156,6 +152,12 @@ public class InventoryService {
                     .reason("Tiêu hao đơn hàng #" + order.getId()).build());
         }
         movementRepository.saveAll(movements);
+        if (realtimeEventPublisher != null) {
+            if (order != null && order.getBranch() != null) {
+                realtimeEventPublisher.publishAfterCommit("/topic/branches/" + order.getBranch().getId() + "/stock", "STOCK_CHANGED", order.getId().toString(), null, "1", java.util.Map.of("action", "ORDER_CONSUMPTION", "branchId", order.getBranch().getId()));
+            }
+            realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", order != null ? order.getId().toString() : "", null, "1", java.util.Map.of("action", "ORDER_CONSUMPTION"));
+        }
     }
 
 
@@ -1043,6 +1045,10 @@ public class InventoryService {
         importReceiptItemRepository.saveAll(items);
         movementRepository.saveAll(movements);
 
+        realtimeEventPublisher.publishAfterCommit("/topic/branches/" + targetBranch.getId() + "/stock", "STOCK_CHANGED", receipt.getId().toString(), null, "1", java.util.Map.of("action", "IMPORT", "branchId", targetBranch.getId()));
+        if (!isCentralImport && centralWarehouse != null) {
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + centralWarehouse.getId() + "/stock", "STOCK_CHANGED", receipt.getId().toString(), null, "1", java.util.Map.of("action", "TRANSFER_OUT", "branchId", centralWarehouse.getId()));
+        }
         realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", receipt.getId().toString(), null, "1", java.util.Map.of("action", "IMPORT"));
         realtimeEventPublisher.publishAfterCommit("/topic/admin", "STOCK_CHANGED", receipt.getId().toString(), null, "1", java.util.Map.of("action", "IMPORT"));
 
@@ -1169,6 +1175,7 @@ public class InventoryService {
                 .reason(request.getReason())
                 .createdAt(Instant.now())
                 .build());
+        realtimeEventPublisher.publishAfterCommit("/topic/branches/" + targetBranch.getId() + "/stock", "STOCK_CHANGED", location.name(), null, "1", java.util.Map.of("action", "WASTE", "branchId", targetBranch.getId()));
         realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", location.name(), null, "1", java.util.Map.of("action", "WASTE", "branchId", targetBranch.getId()));
         realtimeEventPublisher.publishAfterCommit("/topic/admin", "STOCK_CHANGED", location.name(), null, "1", java.util.Map.of("action", "WASTE", "branchId", targetBranch.getId()));
     }
@@ -1331,6 +1338,9 @@ public class InventoryService {
                 .createdAt(Instant.now())
                 .build());
 
+        if (targetBranchId != null) {
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + targetBranchId + "/stock", "STOCK_CHANGED", material.getId().toString(), null, "1", java.util.Map.of("action", "ADJUST", "branchId", targetBranchId));
+        }
         realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", material.getId().toString(), null, "1", java.util.Map.of("action", "ADJUST", "branchId", targetBranchId));
         realtimeEventPublisher.publishAfterCommit("/topic/admin", "STOCK_CHANGED", material.getId().toString(), null, "1", java.util.Map.of("action", "ADJUST", "branchId", targetBranchId));
     }
@@ -1748,8 +1758,19 @@ public class InventoryService {
 
     @Transactional(readOnly = true)
     public InventoryDto.ShiftSettlementResponse getShiftSettlement(Long id) {
+        return getShiftSettlement(id, null);
+    }
+
+    @Transactional(readOnly = true)
+    public InventoryDto.ShiftSettlementResponse getShiftSettlement(Long id, CurrentActor actor) {
         ShiftSettlement s = shiftSettlementRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy biên bản kết ca: ID " + id));
+        if (actor != null && !actor.isSystemAdmin()) {
+            Long branchId = (s.getBranch() != null) ? s.getBranch().getId() : null;
+            if (branchId != null && !actor.canAccessBranch(branchId)) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không thể truy cập biên bản kết ca của chi nhánh khác");
+            }
+        }
         return mapShiftSettlement(s);
     }
 

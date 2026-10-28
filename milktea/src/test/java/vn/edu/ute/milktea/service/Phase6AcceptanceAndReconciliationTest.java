@@ -171,11 +171,11 @@ public class Phase6AcceptanceAndReconciliationTest {
         LocalDate toDate = LocalDate.now();
 
         List<Object[]> rowsCn1 = Collections.singletonList(new Object[]{1L, "Trà sữa Trân châu Đường đen (CN01)", 45L});
-        when(orderItemRepository.findTopSellingProducts(any(), any(), eq(OrderStatus.DA_HUY), eq(1L), any(PageRequest.class)))
+        when(orderItemRepository.findTopSellingProducts(any(), any(), eq(1L), any(PageRequest.class)))
                 .thenReturn(rowsCn1);
 
         List<Object[]> rowsCn2 = Collections.singletonList(new Object[]{2L, "Trà sữa Oolong Nướng (CN02)", 30L});
-        when(orderItemRepository.findTopSellingProducts(any(), any(), eq(OrderStatus.DA_HUY), eq(2L), any(PageRequest.class)))
+        when(orderItemRepository.findTopSellingProducts(any(), any(), eq(2L), any(PageRequest.class)))
                 .thenReturn(rowsCn2);
 
         List<ReportDto.TopSellingProduct> topCn1 = reportService.getDashboardTopProducts(1L, fromDate, toDate);

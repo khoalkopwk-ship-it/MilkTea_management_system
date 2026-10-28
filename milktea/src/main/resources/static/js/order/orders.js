@@ -733,7 +733,6 @@ const OrdersApp = (() => {
         const ratingVal = document.getElementById('reviewRatingValue');
         const ratingDesc = document.getElementById('ratingTextDesc');
         const contentInput = document.getElementById('reviewContentInput');
-        const mediaInput = document.getElementById('reviewMediaInput');
         const charCount = document.getElementById('currentCharCount');
         const charStatus = document.getElementById('reviewCharStatus');
         const submitBtn = document.getElementById('submitReviewBtn');
@@ -744,7 +743,6 @@ const OrdersApp = (() => {
         if (ratingVal) ratingVal.value = 5;
         if (ratingDesc) ratingDesc.textContent = '5 sao - Rất ngon';
         if (contentInput) contentInput.value = '';
-        if (mediaInput) mediaInput.value = '';
         if (charCount) charCount.textContent = '0';
         if (charStatus) {
             charStatus.className = 'text-danger fw-semibold';
@@ -772,7 +770,6 @@ const OrdersApp = (() => {
         const orderItemId = document.getElementById('reviewOrderItemId')?.value;
         const rating = parseInt(document.getElementById('reviewRatingValue')?.value || '5', 10);
         const content = document.getElementById('reviewContentInput')?.value.trim() || '';
-        const mediaUrl = document.getElementById('reviewMediaInput')?.value.trim() || '';
 
         if (!orderItemId) {
             MilkTeaApi.showToast('Không xác định được món cần đánh giá', 'error');
@@ -797,8 +794,7 @@ const OrdersApp = (() => {
             const payload = {
                 orderItemId: parseInt(orderItemId, 10),
                 rating: rating,
-                content: content,
-                mediaList: mediaUrl ? [{ mediaUrl: mediaUrl, mediaType: 'IMAGE' }] : []
+                content: content
             };
             await MilkTeaApi.post('/api/v1/reviews', payload);
             MilkTeaApi.showToast('Cảm ơn bạn đã gửi đánh giá món uống!', 'success');

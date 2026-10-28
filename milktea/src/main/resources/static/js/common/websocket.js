@@ -173,9 +173,20 @@ const MilkTeaRealtime = (() => {
     function handleSessionClosed() {
         if (['CASHIER','ADMIN','KITCHEN'].includes(window.MilkTeaContext?.role)) return;
         console.warn('Nhận sự kiện TABLE_SESSION_CLOSED: Phiên bàn đã kết thúc!');
+        localStorage.removeItem('milktea.lastTableQr');
+        localStorage.removeItem('milktea.cart');
+        sessionStorage.removeItem('milktea_table_token');
         if (window.MilkTeaContext) {
             window.MilkTeaContext.sessionId = null;
             window.MilkTeaContext.tableToken = null;
+            window.MilkTeaContext.tableId = null;
+            window.MilkTeaContext.tableName = null;
+        }
+
+        const badgeContainer = document.getElementById('navbarTableBadgeContainer');
+        if (badgeContainer) {
+            badgeContainer.style.display = 'none';
+            badgeContainer.classList.add('d-none');
         }
 
         // Hiển thị modal hoặc thông báo phiên kết thúc

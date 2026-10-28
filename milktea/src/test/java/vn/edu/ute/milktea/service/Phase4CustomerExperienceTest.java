@@ -241,7 +241,7 @@ class Phase4CustomerExperienceTest {
 
         Product oolongSizeL = Product.builder().id(101L).name("Trà Sữa O Long").size("L").active(true).build();
         when(productRepository.findByNameIgnoreCaseAndActiveTrue("Trà Sữa O Long")).thenReturn(List.of(productOolong, oolongSizeL));
-        when(productRepository.findByCategoryAllowToppingFalseAndActiveTrue()).thenReturn(List.of(productBoba));
+        when(productRepository.findToppingProducts()).thenReturn(List.of(productBoba));
 
         CatalogDto.ProductDetailResponse detail = catalogService.getProductDetail(100L, 1L, customerActor);
 

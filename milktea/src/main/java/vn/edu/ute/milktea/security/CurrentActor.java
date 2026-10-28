@@ -29,6 +29,8 @@ public class CurrentActor {
     private Long branchId;
     private java.util.Set<Long> assignedBranchIds;
 
+    private Long tableBranchId;
+
     public boolean isAuthenticated() {
         return actorType == ActorType.AUTHENTICATED;
     }
@@ -47,6 +49,10 @@ public class CurrentActor {
         }
         if (hasRole(Role.ADMIN)) {
             return true;
+        }
+        // Customer hoặc Guest tuyệt đối không có quyền canAccessBranch của nhân sự cơ sở
+        if (hasRole(Role.CUSTOMER) || actorType == ActorType.TABLE_GUEST || actorType == ActorType.COUNTER_GUEST || actorType == ActorType.QR_ANONYMOUS) {
+            return false;
         }
         if (assignedBranchIds != null && assignedBranchIds.contains(targetBranchId)) {
             return true;

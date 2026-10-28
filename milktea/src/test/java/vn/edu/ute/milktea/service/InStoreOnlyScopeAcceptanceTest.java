@@ -208,7 +208,11 @@ public class InStoreOnlyScopeAcceptanceTest {
         when(branchRepository.findById(1L)).thenReturn(Optional.of(branch1));
         when(productRepository.findById(10L)).thenReturn(Optional.of(testProduct));
         when(recipeRepository.findByIdProductId(10L)).thenReturn(List.of(testRecipe));
-        when(branchProductRepository.findByBranchIdAndProductId(anyLong(), eq(10L))).thenReturn(Optional.empty());
+        when(branchProductRepository.findByBranchIdAndProductId(anyLong(), eq(10L)))
+                .thenReturn(Optional.of(vn.edu.ute.milktea.entity.branch.BranchProduct.builder()
+                        .id(100L)
+                        .available(true)
+                        .build()));
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
             Order o = inv.getArgument(0);
             o.setId(999L);
@@ -240,7 +244,12 @@ public class InStoreOnlyScopeAcceptanceTest {
         when(tableRepository.findByIdWithLock(101L)).thenReturn(Optional.of(table1));
         when(productRepository.findById(10L)).thenReturn(Optional.of(testProduct));
         when(recipeRepository.findByIdProductId(10L)).thenReturn(List.of(testRecipe));
-        when(branchProductRepository.findByBranchIdAndProductId(anyLong(), eq(10L))).thenReturn(Optional.empty());
+        when(branchProductRepository.findByBranchIdAndProductId(anyLong(), eq(10L)))
+                .thenReturn(Optional.of(vn.edu.ute.milktea.entity.branch.BranchProduct.builder()
+                        .id(101L)
+                        .available(true)
+                        .build()));
+        when(guestAccessService.validateTableQrCapabilityToken(eq("VALID_TABLE_TOKEN"), eq(101L))).thenReturn(true);
         when(sessionRepository.save(any(TableSession.class))).thenAnswer(inv -> {
             TableSession s = inv.getArgument(0);
             s.setId(500L);
@@ -258,6 +267,7 @@ public class InStoreOnlyScopeAcceptanceTest {
 
         OrderDto.CreateTableOrderRequest req = OrderDto.CreateTableOrderRequest.builder()
                 .tableId(101L)
+                .tableToken("VALID_TABLE_TOKEN")
                 .expectedSessionId(null) // Đơn đầu mở phiên
                 .note("Ít đá, ít ngọt")
                 .items(List.of(vn.edu.ute.milktea.dto.CartDto.CartItemRequest.builder().productId(10L).quantity(1).build()))
@@ -306,7 +316,7 @@ public class InStoreOnlyScopeAcceptanceTest {
     @Test
     @DisplayName("Prompt 1: getTableContext bắt buộc có mã QR, từ chối cấp ngữ cảnh không có QR")
     void testTableContext_RequiresValidQrCode() {
-        TableController tableController = new TableController(tableContextService, null, tableRepository);
+        TableController tableController = new TableController(tableContextService, null, tableRepository, sessionRepository);
 
         BusinessException exNull = assertThrows(BusinessException.class, () -> tableController.getTableContext(null));
         assertEquals(ErrorCode.QR_INVALID, exNull.getErrorCode());

@@ -186,15 +186,17 @@ public class OtpService {
             }
         }
 
-        // Khớp mã -> đánh dấu đã dùng nguyên tử chống race condition
+        // Khớp mã -> đánh dấu đã dùng nguyên tử chống race condition (V4-05)
         if (otp.getId() != null) {
             int consumed = otpRepository.consumeOtpAtomically(otp.getId(), now);
-            if (consumed == 0 && (otp.getUsedAt() != null || otp.getRevokedAt() != null)) {
-                throw BusinessException.badRequest(ErrorCode.AUTH_OTP_INVALID, "Mã xác thực đã được sử dụng hoặc đã bị thu hồi.");
+            if (consumed != 1) {
+                throw BusinessException.badRequest(ErrorCode.AUTH_OTP_INVALID, "Mã xác thực không hợp lệ, đã được sử dụng hoặc đã bị thu hồi.");
             }
+            otp.setUsedAt(now);
+        } else {
+            otp.setUsedAt(now);
+            otpRepository.save(otp);
         }
-        otp.setUsedAt(now);
-        otpRepository.save(otp);
     }
 
     /**

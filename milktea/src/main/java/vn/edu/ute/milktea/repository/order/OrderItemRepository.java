@@ -17,7 +17,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     // Dashboard: Top món bán chạy, chỉ tính đơn hoàn thành và đã thanh toán (F24)
     @Query("""
         SELECT oi.product.id,
-               oi.snapshotName,
+               oi.product.name,
                SUM(oi.quantity)
         FROM OrderItem oi
         JOIN oi.order o
@@ -26,14 +26,12 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
           AND o.status = vn.edu.ute.milktea.entity.order.OrderStatus.HOAN_THANH
           AND EXISTS (SELECT p FROM vn.edu.ute.milktea.entity.payment.Payment p JOIN p.invoice i WHERE i.order.id = o.id)
           AND (:branchId IS NULL OR o.branch.id = :branchId)
-        GROUP BY oi.product.id, oi.snapshotName
-        ORDER BY SUM(oi.quantity) DESC, oi.snapshotName ASC
+        GROUP BY oi.product.id, oi.product.name
+        ORDER BY SUM(oi.quantity) DESC, oi.product.name ASC
         """)
     List<Object[]> findTopSellingProducts(
             @Param("start") Instant start,
             @Param("end") Instant end,
-            @Param("cancelledStatus")
-            vn.edu.ute.milktea.entity.order.OrderStatus cancelledStatus,
             @Param("branchId") Long branchId,
             Pageable pageable
     );
@@ -41,10 +39,9 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     default List<Object[]> findTopSellingProducts(
             Instant start,
             Instant end,
-            vn.edu.ute.milktea.entity.order.OrderStatus cancelledStatus,
             Pageable pageable
     ) {
-        return findTopSellingProducts(start, end, cancelledStatus, null, pageable);
+        return findTopSellingProducts(start, end, null, pageable);
     }
 
     @Query("""

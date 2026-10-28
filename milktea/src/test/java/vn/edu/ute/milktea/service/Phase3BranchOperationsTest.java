@@ -98,6 +98,7 @@ class Phase3BranchOperationsTest {
     @Mock private StockRepository stockRepository;
     @Mock private StockMovementRepository stockMovementRepository;
     @Mock private vn.edu.ute.milktea.service.voucher.VoucherService voucherService;
+    @Mock private vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
 
     private BranchService branchService;
     private CatalogService catalogService;
@@ -116,7 +117,7 @@ class Phase3BranchOperationsTest {
                 stockRepository, stockMovementRepository, materialRepository, accountRepository,
                 null, null, null, null, snapshotRepository, orderItemRepository,
                 recipeRepository, null, null, null, null, auditRepository, realtimeEventPublisher,
-                branchService, branchRepository);
+                branchService, branchRepository, staffBranchRepository);
         orderService = new OrderService(
                 tableRepository, sessionRepository, tableSessionService, sessionCartService,
                 cartRepository, productRepository, recipeRepository,
@@ -124,7 +125,8 @@ class Phase3BranchOperationsTest {
                 invoiceRepository, paymentRepository, paymentNoticeRepository, refundRepository,
                 cancellationRepository, settingsRepository, accountRepository, auditRepository,
                 guestAccessService, inventoryService, fixedRecipeService, materialRepository,
-                realtimeEventPublisher, branchRepository, branchProductRepository, idempotencyService, voucherService
+                realtimeEventPublisher, branchRepository, branchProductRepository, idempotencyService, voucherService,
+                staffBranchRepository
         );
 
         branch1 = Branch.builder().id(1L).code("CN01").name("Chi nhánh Quận 1").status("HOAT_DONG").build();
@@ -220,6 +222,11 @@ class Phase3BranchOperationsTest {
                         .quantity(BigDecimal.valueOf(10))
                         .build()
         ));
+        when(branchProductRepository.findByBranchIdAndProductId(eq(1L), eq(10L)))
+                .thenReturn(Optional.of(vn.edu.ute.milktea.entity.branch.BranchProduct.builder()
+                        .id(100L)
+                        .available(true)
+                        .build()));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order o = invocation.getArgument(0);
             o.setId(1001L);
@@ -308,7 +315,7 @@ class Phase3BranchOperationsTest {
                 stockRepository, stockMovementRepository, materialRepository, accountRepository,
                 null, null, null, null, snapshotRepository, orderItemRepository,
                 recipeRepository, null, null, null, null, auditRepository, realtimeEventPublisher,
-                branchService, branchRepository);
+                branchService, branchRepository, staffBranchRepository);
 
         Material mat = Material.builder().id(100L).name("Cốt Trà Oolong").type(vn.edu.ute.milktea.entity.inventory.MaterialType.SOCHE).unit("ml").build();
         Order orderBranch2 = Order.builder().id(999L).branch(branch2).build();

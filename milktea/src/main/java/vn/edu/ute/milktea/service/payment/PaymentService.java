@@ -38,12 +38,7 @@ public class PaymentService {
     private final BusinessAuditRepository auditRepository;
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
-
-    public void setStaffBranchRepository(vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository) {
-        this.staffBranchRepository = staffBranchRepository;
-    }
+    private final vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
 
     @Transactional
     public PaymentDto.PaymentResponse recordReceipt(

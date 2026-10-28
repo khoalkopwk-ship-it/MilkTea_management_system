@@ -442,7 +442,6 @@ public class ReportService {
         return orderItemRepository.findTopSellingProducts(
                 start,
                 end,
-                OrderStatus.DA_HUY,
                 branchId,
                 PageRequest.of(0, 5)
         ).stream()

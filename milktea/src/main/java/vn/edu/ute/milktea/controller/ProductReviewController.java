@@ -48,7 +48,7 @@ public class ProductReviewController {
         return ResponseEntity.ok(ApiResponse.ok(productReviewService.createReview(req, actor)));
     }
 
-    @GetMapping({"/product/{productId}", "/public/product/{productId}"})
+    @GetMapping({"/product/{productId}", "/public/product/{productId}", "/products/{productId}", "/public/products/{productId}"})
     public ResponseEntity<ApiResponse<ReviewDto.ReviewListResponse>> getProductReviews(
             @PathVariable("productId") Long productId,
             @RequestParam(value = "page", defaultValue = "0") int page,

@@ -85,7 +85,7 @@ public class BranchAccessControlAuditTest {
         paymentService = new PaymentService(
                 invoiceRepository, tableRepository, tableSessionService,
                 paymentRepository, orderRepository, paymentNoticeRepository,
-                accountRepository, auditRepository, realtimeEventPublisher
+                accountRepository, auditRepository, realtimeEventPublisher, staffBranchRepository
         );
     }
 

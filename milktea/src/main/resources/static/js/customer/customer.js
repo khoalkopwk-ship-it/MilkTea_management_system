@@ -47,16 +47,22 @@ const CustomerApp = (() => {
     async function initContext(qrCodeParam) {
         let qr = qrCodeParam;
         const urlParams = new URLSearchParams(window.location.search);
+        let isExplicitQrScan = !!urlParams.get('qr');
         if (!qr) qr = urlParams.get('qr');
 
-        // Nếu URL không có, thử phục hồi từ cookie hoặc localStorage
+        // Nếu URL không có, chỉ phục hồi nếu còn table token hợp lệ
         if (!qr) {
-            const cookies = document.cookie.split(';');
-            for (let c of cookies) {
-                const parts = c.trim().split('=');
-                if (parts[0] === 'MILKTEA_TABLE_QR' && parts[1]) qr = decodeURIComponent(parts[1]);
+            const hasActiveToken = !!window.MilkTeaContext?.tableToken || !!sessionStorage.getItem('milktea_table_token');
+            if (hasActiveToken) {
+                const cookies = document.cookie.split(';');
+                for (let c of cookies) {
+                    const parts = c.trim().split('=');
+                    if (parts[0] === 'MILKTEA_TABLE_QR' && parts[1]) qr = decodeURIComponent(parts[1]);
+                }
+                if (!qr) qr = localStorage.getItem('milktea.lastTableQr');
+            } else {
+                localStorage.removeItem('milktea.lastTableQr');
             }
-            if (!qr) qr = localStorage.getItem('milktea.lastTableQr');
         }
 
         if (qr) {
@@ -74,7 +80,13 @@ const CustomerApp = (() => {
                     window.MilkTeaContext.sessionStatus = ctx.sessionStatus;
                     window.MilkTeaContext.tableToken = ctx.tableToken;
 
-                    if (ctx.qrCode) localStorage.setItem('milktea.lastTableQr', ctx.qrCode);
+                    if (ctx.qrCode && ctx.sessionId) {
+                        localStorage.setItem('milktea.lastTableQr', ctx.qrCode);
+                        if (ctx.tableToken) sessionStorage.setItem('milktea_table_token', ctx.tableToken);
+                    } else if (!isExplicitQrScan) {
+                        localStorage.removeItem('milktea.lastTableQr');
+                        sessionStorage.removeItem('milktea_table_token');
+                    }
 
                     // Cập nhật nhãn bàn trên navbar nếu đang ẩn
                     const badgeContainer = document.getElementById('navbarTableBadgeContainer');

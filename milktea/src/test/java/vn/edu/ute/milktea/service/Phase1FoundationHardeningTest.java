@@ -79,15 +79,18 @@ class Phase1FoundationHardeningTest {
                 .expiresAt(Instant.now().plus(5, ChronoUnit.MINUTES))
                 .build();
 
+        when(otpRepository.incrementAttemptsAtomically(eq(100L), any(Instant.class))).thenAnswer(inv -> {
+            otp.setAttempts(5);
+            otp.setRevokedAt(Instant.now());
+            return 1;
+        });
         when(otpRepository.findById(100L)).thenReturn(Optional.of(otp));
-        when(otpRepository.saveAndFlush(any(EmailVerificationOtp.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         int newAttempts = otpAttemptRecorder.recordFailedAttempt(100L, 5);
 
         assertEquals(5, newAttempts);
         assertEquals(5, otp.getAttempts());
         assertNotNull(otp.getRevokedAt(), "OTP phải bị thu hồi khi đạt maxAttempts=5");
-        verify(otpRepository).saveAndFlush(otp);
     }
 
     @Test

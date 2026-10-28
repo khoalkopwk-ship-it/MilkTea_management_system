@@ -144,7 +144,7 @@ public class CatalogService {
             case "price_asc" -> Sort.by(Sort.Order.asc("price"), Sort.Order.asc("id"));
             case "price_desc" -> Sort.by(Sort.Order.desc("price"), Sort.Order.asc("id"));
             case "name_asc" -> Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id"));
-            default -> Sort.by(Sort.Order.desc("id"));
+            default -> Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         };
 
         Pageable pageable = PageRequest.of(pageIndex, limitSize, sort);
@@ -194,7 +194,7 @@ public class CatalogService {
             if (bpOpt.isPresent()) {
                 available = Boolean.TRUE.equals(bpOpt.get().getActive()) && Boolean.TRUE.equals(bpOpt.get().getAvailable());
             } else {
-                available = branchProductRepository.findByBranchId(branchId).isEmpty();
+                available = false;
             }
         }
 
@@ -232,7 +232,7 @@ public class CatalogService {
 
         List<CatalogDto.ProductItem> toppings = new ArrayList<>();
         if (p.getCategory() != null && Boolean.TRUE.equals(p.getCategory().getAllowTopping())) {
-            List<Product> toppingProds = productRepository.findByCategoryAllowToppingFalseAndActiveTrue();
+            List<Product> toppingProds = productRepository.findToppingProducts();
             Map<Long, Boolean> toppingAvailMap = getAvailabilityMap(branchId);
             toppings = toppingProds.stream()
                     .map(tp -> mapProduct(tp, isProductAvailable(tp.getId(), branchId, toppingAvailMap)))
@@ -378,7 +378,7 @@ public class CatalogService {
         if (availabilityMap.containsKey(productId)) {
             return Boolean.TRUE.equals(availabilityMap.get(productId));
         }
-        return availabilityMap.isEmpty();
+        return false;
     }
 
     private CatalogDto.ProductItem mapProduct(Product p) {

@@ -26,7 +26,55 @@ public class GuestAccessService {
     private final CounterOrderAccessRepository counterOrderAccessRepository;
     private final SecureRandom secureRandom = new SecureRandom();
 
+    @org.springframework.beans.factory.annotation.Value("${app.jwt.secret-base64:c29tZXNlY3JldGtleWZvcm1pbGt0ZWFhcHBsaWNhdGlvbjEyMzQ1Njc4OQ==}")
+    private String jwtSecretBase64;
+
     public record IssuedToken(String rawToken, String tokenHash, Instant expiresAt) {}
+
+    public String issueTableQrCapabilityToken(Long tableId, Long branchId, int ttlHours) {
+        Instant exp = Instant.now().plus(ttlHours, ChronoUnit.HOURS);
+        String payload = "TQR:" + tableId + ":" + (branchId != null ? branchId : 0) + ":" + exp.toEpochMilli() + ":" + generateRandomOpaqueToken();
+        String sig = signPayload(payload);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8))
+                + "." + sig;
+    }
+
+    public boolean validateTableQrCapabilityToken(String token, Long expectedTableId) {
+        if (token == null || token.isBlank() || expectedTableId == null) return false;
+        String[] parts = token.split("\\.");
+        if (parts.length != 2) return false;
+        try {
+            String payload = new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
+            String sig = parts[1];
+            String expectedSig = signPayload(payload);
+            if (!MessageDigest.isEqual(sig.getBytes(StandardCharsets.UTF_8), expectedSig.getBytes(StandardCharsets.UTF_8))) {
+                return false;
+            }
+            String[] tokens = payload.split(":");
+            if (tokens.length < 5 || !"TQR".equals(tokens[0])) return false;
+            Long tableId = Long.parseLong(tokens[1]);
+            long expMillis = Long.parseLong(tokens[3]);
+            if (!tableId.equals(expectedTableId)) return false;
+            if (Instant.now().toEpochMilli() > expMillis) return false;
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String signPayload(String payload) {
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            byte[] keyBytes = (jwtSecretBase64 != null && !jwtSecretBase64.isBlank())
+                    ? Base64.getDecoder().decode(jwtSecretBase64)
+                    : "milktea-secret-fallback-key-256bit!".getBytes(StandardCharsets.UTF_8);
+            mac.init(new javax.crypto.spec.SecretKeySpec(keyBytes, "HmacSHA256"));
+            byte[] hash = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi ký QR token", e);
+        }
+    }
 
     public IssuedToken issueTableSessionToken(TableSession session, int ttlHours) {
         String rawToken = generateRandomOpaqueToken();

@@ -15,11 +15,13 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, Lo
 
     boolean existsByOrderItemId(Long orderItemId);
 
-    Page<ProductReview> findByProductIdAndHiddenFalseOrderByCreatedAtDesc(Long productId, Pageable pageable);
+    @Query("SELECT r FROM ProductReview r WHERE (r.product.id = :productId OR r.product.name IN (SELECT p.name FROM Product p WHERE p.id = :productId)) AND r.hidden = false ORDER BY r.createdAt DESC")
+    Page<ProductReview> findByProductIdAndHiddenFalseOrderByCreatedAtDesc(@Param("productId") Long productId, Pageable pageable);
 
-    long countByProductIdAndHiddenFalse(Long productId);
+    @Query("SELECT COUNT(r) FROM ProductReview r WHERE (r.product.id = :productId OR r.product.name IN (SELECT p.name FROM Product p WHERE p.id = :productId)) AND r.hidden = false")
+    long countByProductIdAndHiddenFalse(@Param("productId") Long productId);
 
-    @Query("SELECT AVG(CAST(r.rating AS double)) FROM ProductReview r WHERE r.product.id = :productId AND r.hidden = false")
+    @Query("SELECT AVG(CAST(r.rating AS double)) FROM ProductReview r WHERE (r.product.id = :productId OR r.product.name IN (SELECT p.name FROM Product p WHERE p.id = :productId)) AND r.hidden = false")
     Double findAverageRatingByProductId(@Param("productId") Long productId);
 
     Page<ProductReview> findByBranchIdOrderByCreatedAtDesc(Long branchId, Pageable pageable);

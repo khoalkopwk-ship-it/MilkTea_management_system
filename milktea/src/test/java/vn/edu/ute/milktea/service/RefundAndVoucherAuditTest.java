@@ -68,6 +68,7 @@ public class RefundAndVoucherAuditTest {
     @Mock private PaymentNoticeRepository paymentNoticeRepository;
     @Mock private VoucherRepository voucherRepository;
     @Mock private VoucherUsageHistoryRepository voucherHistoryRepository;
+    @Mock private vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
 
     private CancellationService cancellationService;
     private RefundService refundService;
@@ -94,13 +95,13 @@ public class RefundAndVoucherAuditTest {
         refundService = new RefundService(
                 refundRepository, accountRepository, auditRepository,
                 orderRepository, invoiceRepository, paymentRepository,
-                cancellationRepository, realtimeEventPublisher
+                cancellationRepository, realtimeEventPublisher, staffBranchRepository
         );
 
         paymentService = new PaymentService(
                 invoiceRepository, tableRepository, tableSessionService,
                 paymentRepository, orderRepository, paymentNoticeRepository,
-                accountRepository, auditRepository, realtimeEventPublisher
+                accountRepository, auditRepository, realtimeEventPublisher, staffBranchRepository
         );
     }
 

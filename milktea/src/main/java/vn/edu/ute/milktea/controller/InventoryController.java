@@ -7,6 +7,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.ute.milktea.common.ApiResponse;
+import vn.edu.ute.milktea.common.BusinessException;
+import vn.edu.ute.milktea.common.ErrorCode;
 import vn.edu.ute.milktea.dto.AdminDto;
 import vn.edu.ute.milktea.dto.InventoryDto;
 import vn.edu.ute.milktea.entity.account.Account;
@@ -32,12 +34,32 @@ public class InventoryController {
     private final AccountRepository accountRepository;
     private final vn.edu.ute.milktea.service.branch.BranchService branchService;
 
+    private Long resolveBranchScope(CurrentActor actor, Long requestedBranchId) {
+        if (actor == null) {
+            throw BusinessException.unauthorized(ErrorCode.ACCESS_DENIED, "Yêu cầu đăng nhập");
+        }
+        if (actor.isSystemAdmin()) {
+            return requestedBranchId;
+        }
+        Long staffBranchId = actor.getBranchId();
+        if (staffBranchId == null && (actor.getAssignedBranchIds() == null || actor.getAssignedBranchIds().isEmpty())) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Tài khoản nhân viên chưa được gán chi nhánh hoạt động");
+        }
+        if (requestedBranchId != null) {
+            if (!actor.canAccessBranch(requestedBranchId)) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không thể truy cập dữ liệu của chi nhánh khác");
+            }
+            return requestedBranchId;
+        }
+        return staffBranchId;
+    }
+
     @GetMapping("/stocks")
     public ResponseEntity<ApiResponse<List<InventoryDto.StockItemResponse>>> getStocks(
             @RequestParam(value = "location", defaultValue = "BEP") StockLocation location,
             @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @AuthenticationPrincipal CurrentActor actor) {
-        Long branchId = (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)) ? actor.getBranchId() : branchIdParam;
+        Long branchId = resolveBranchScope(actor, branchIdParam);
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.getStocks(location, branchId)));
     }
 
@@ -49,7 +71,7 @@ public class InventoryController {
             @RequestParam(value = "query", required = false) String query,
             @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @AuthenticationPrincipal CurrentActor actor) {
-        Long branchId = (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)) ? actor.getBranchId() : branchIdParam;
+        Long branchId = resolveBranchScope(actor, branchIdParam);
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.getStocksWithFilter(location, type, alertFilter, query, branchId)));
     }
 
@@ -60,7 +82,7 @@ public class InventoryController {
             @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @AuthenticationPrincipal CurrentActor actor) {
         boolean isManager = actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER);
-        Long branchId = isManager ? actor.getBranchId() : branchIdParam;
+        Long branchId = resolveBranchScope(actor, branchIdParam);
         if (isManager) {
             // Quản lý cơ sở chỉ được điều chỉnh ngưỡng tối thiểu; không đổi tên, tồn kho, hay giá vốn
             requestBody.setName(null);
@@ -85,10 +107,7 @@ public class InventoryController {
                 ? accountRepository.findById(actor.getAccountId()).orElse(null)
                 : null;
 
-        Long branchId = (actor != null && !actor.isSystemAdmin()) ? actor.getBranchId() : (requestBody.getBranchId() != null ? requestBody.getBranchId() : (actor != null ? actor.getBranchId() : null));
-        if (actor != null && !actor.isSystemAdmin() && branchId == null) {
-            throw vn.edu.ute.milktea.common.BusinessException.forbidden(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Tài khoản nhân viên chưa được gán chi nhánh hoạt động");
-        }
+        Long branchId = resolveBranchScope(actor, requestBody.getBranchId());
         requestBody.setBranchId(branchId);
 
         inventoryService.recordPreparation(requestBody, kitchen, key);
@@ -105,7 +124,7 @@ public class InventoryController {
             @RequestParam(value = "all", defaultValue = "false") boolean all,
             @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @AuthenticationPrincipal CurrentActor actor) {
-        Long branchId = (actor != null && !actor.isSystemAdmin()) ? actor.getBranchId() : branchIdParam;
+        Long branchId = resolveBranchScope(actor, branchIdParam);
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.listPreparationBatches(from, to, all, branchId)));
     }
 
@@ -117,7 +136,7 @@ public class InventoryController {
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @AuthenticationPrincipal CurrentActor actor) {
 
-        Long branchId = (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)) ? actor.getBranchId() : branchIdParam;
+        Long branchId = resolveBranchScope(actor, branchIdParam);
         Account account = actor != null ? accountRepository.findById(actor.getAccountId()).orElse(null) : null;
         var response = inventoryService.recordImport(requestBody, account, branchId, idempotencyKey);
         return ResponseEntity.status(201).body(ApiResponse.ok(response));
@@ -127,7 +146,7 @@ public class InventoryController {
     public ResponseEntity<ApiResponse<List<InventoryDto.ImportReceiptResponse>>> listImports(
             @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @AuthenticationPrincipal CurrentActor actor) {
-        Long branchId = (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)) ? actor.getBranchId() : branchIdParam;
+        Long branchId = resolveBranchScope(actor, branchIdParam);
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.listImports(branchId)));
     }
 
@@ -140,11 +159,11 @@ public class InventoryController {
 
         Account account = actor != null ? accountRepository.findById(actor.getAccountId()).orElse(null) : null;
         Long branchId;
-        if (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)) {
-            branchId = actor.getBranchId();
+        if (actor != null && !actor.isSystemAdmin()) {
+            branchId = resolveBranchScope(actor, branchIdParam);
         } else {
-            // ADMIN: áp dụng cho Kho Hàng Tổng (Toàn Chuỗi)
-            branchId = branchService.getOrCreateCentralWarehouse().getId();
+            // ADMIN: áp dụng cho Kho Hàng Tổng hoặc branch được chỉ định
+            branchId = (branchIdParam != null) ? branchIdParam : branchService.getOrCreateCentralWarehouse().getId();
         }
         inventoryService.recordWaste(requestBody, account, branchId);
         return ResponseEntity.status(201).body(ApiResponse.ok(null));
@@ -157,7 +176,7 @@ public class InventoryController {
             @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @AuthenticationPrincipal CurrentActor actor) {
 
-        Long branchId = (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)) ? actor.getBranchId() : branchIdParam;
+        Long branchId = resolveBranchScope(actor, branchIdParam);
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.listMovements(materialId, location, branchId)));
     }
 
@@ -178,26 +197,30 @@ public class InventoryController {
             @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @AuthenticationPrincipal CurrentActor actor) {
 
-        Long branchId = (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER))
-                ? actor.getBranchId()
-                : (branchIdParam != null ? branchIdParam : (requestBody.getBranchId() != null ? requestBody.getBranchId() : branchService.getOrCreateCentralWarehouse().getId()));
+        Long branchId;
+        if (actor != null && !actor.isSystemAdmin()) {
+            branchId = resolveBranchScope(actor, branchIdParam);
+        } else {
+            branchId = (branchIdParam != null) ? branchIdParam
+                    : (requestBody.getBranchId() != null ? requestBody.getBranchId() : branchService.getOrCreateCentralWarehouse().getId());
+        }
         inventoryService.configureThreshold(requestBody, branchId);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
     // === KẾT CA KHO & HAO HỤT ===
 
-    @GetMapping("/shift-settlement/preview")
+    @GetMapping({"/shift-settlement/preview", "/shift-settlements/preview"})
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'KITCHEN')")
     public ResponseEntity<ApiResponse<InventoryDto.ShiftSettlementPreviewResponse>> getShiftSettlementPreview(
             @RequestParam(value = "location", defaultValue = "BEP") StockLocation location,
             @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @AuthenticationPrincipal CurrentActor actor) {
-        Long branchId = (actor != null && !actor.isSystemAdmin()) ? actor.getBranchId() : branchIdParam;
+        Long branchId = resolveBranchScope(actor, branchIdParam);
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.getShiftSettlementPreview(location, branchId)));
     }
 
-    @PostMapping("/shift-settlement")
+    @PostMapping({"/shift-settlement", "/shift-settlements"})
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'KITCHEN')")
     public ResponseEntity<ApiResponse<InventoryDto.ShiftSettlementResponse>> createShiftSettlement(
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
@@ -205,16 +228,13 @@ public class InventoryController {
             @AuthenticationPrincipal CurrentActor actor) {
 
         Account account = actor != null ? accountRepository.findById(actor.getAccountId()).orElse(null) : null;
-        Long branchId = (actor != null && !actor.isSystemAdmin()) ? actor.getBranchId() : (requestBody.getBranchId() != null ? requestBody.getBranchId() : (actor != null ? actor.getBranchId() : null));
-        if (actor != null && !actor.isSystemAdmin() && branchId == null) {
-            throw vn.edu.ute.milktea.common.BusinessException.forbidden(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Tài khoản nhân viên chưa được gán chi nhánh hoạt động");
-        }
+        Long branchId = resolveBranchScope(actor, requestBody.getBranchId());
         requestBody.setBranchId(branchId);
         InventoryDto.ShiftSettlementResponse response = inventoryService.recordShiftSettlement(requestBody, account, idempotencyKey);
         return ResponseEntity.status(201).body(ApiResponse.ok(response));
     }
 
-    @GetMapping("/shift-settlement")
+    @GetMapping({"/shift-settlement", "/shift-settlements"})
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'KITCHEN')")
     public ResponseEntity<ApiResponse<List<InventoryDto.ShiftSettlementResponse>>> listShiftSettlements(
             @RequestParam(value = "location", required = false) StockLocation location,
@@ -223,14 +243,15 @@ public class InventoryController {
             @RequestParam(value = "all", defaultValue = "false") boolean all,
             @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @AuthenticationPrincipal CurrentActor actor) {
-        Long branchId = (actor != null && !actor.isSystemAdmin()) ? actor.getBranchId() : branchIdParam;
+        Long branchId = resolveBranchScope(actor, branchIdParam);
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.listShiftSettlements(location, from, to, all, branchId)));
     }
 
-    @GetMapping("/shift-settlement/{id}")
+    @GetMapping({"/shift-settlement/{id}", "/shift-settlements/{id}"})
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'KITCHEN')")
     public ResponseEntity<ApiResponse<InventoryDto.ShiftSettlementResponse>> getShiftSettlement(
-            @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getShiftSettlement(id)));
+            @PathVariable Long id,
+            @AuthenticationPrincipal CurrentActor actor) {
+        return ResponseEntity.ok(ApiResponse.ok(inventoryService.getShiftSettlement(id, actor)));
     }
 }

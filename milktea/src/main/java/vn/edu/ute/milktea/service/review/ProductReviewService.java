@@ -308,6 +308,7 @@ public class ProductReviewService {
                 .orderItemId(review.getOrderItem() != null ? review.getOrderItem().getId() : null)
                 .productId(review.getProduct() != null ? review.getProduct().getId() : null)
                 .productName(review.getProduct() != null ? review.getProduct().getName() : null)
+                .productSize(review.getProduct() != null ? review.getProduct().getSize() : null)
                 .customerId(review.getAccount() != null ? review.getAccount().getId() : null)
                 .customerName(review.getAccount() != null ? review.getAccount().getFullName() : null)
                 .branchId(review.getBranch() != null ? review.getBranch().getId() : null)

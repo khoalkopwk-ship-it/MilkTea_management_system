@@ -48,9 +48,10 @@ public class CatalogController {
     /**
      * Tìm kiếm và lọc sản phẩm phân trang chuẩn backend (CUS-01).
      */
-    @GetMapping({"/public/products/search", "/catalog/products/search"})
+    @GetMapping({"/public/products/search", "/catalog/products/search", "/catalog/search"})
     public ResponseEntity<ApiResponse<CatalogDto.ProductSearchResponse>> searchProducts(
             @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "q", required = false) String q,
             @RequestParam(value = "categoryId", required = false) Long categoryId,
             @RequestParam(value = "minPrice", required = false) BigDecimal minPrice,
             @RequestParam(value = "maxPrice", required = false) BigDecimal maxPrice,
@@ -58,8 +59,9 @@ public class CatalogController {
             @RequestParam(value = "branchId", required = false) Long branchId,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "12") int size) {
+        String searchKw = (keyword != null && !keyword.isBlank()) ? keyword : q;
         return ResponseEntity.ok(ApiResponse.ok(
-                catalogService.searchProducts(keyword, categoryId, minPrice, maxPrice, sortBy, branchId, page, size)));
+                catalogService.searchProducts(searchKw, categoryId, minPrice, maxPrice, sortBy, branchId, page, size)));
     }
 
     /**
@@ -78,12 +80,26 @@ public class CatalogController {
     /**
      * Bốn danh sách nổi bật: Mới nhất, Bán chạy nhất, Đánh giá cao nhất, Yêu thích nhất (CUS-02 - Top 20).
      */
-    @GetMapping({"/public/products/featured", "/catalog/products/featured"})
+    @GetMapping({"/public/products/featured", "/catalog/products/featured", "/catalog/featured"})
     public ResponseEntity<ApiResponse<CatalogDto.FeaturedProductsResponse>> getFeaturedProducts(
             @RequestParam(value = "type", defaultValue = "newest") String type,
             @RequestParam(value = "branchId", required = false) Long branchId,
             @RequestParam(value = "limit", defaultValue = "20") int limit) {
         return ResponseEntity.ok(ApiResponse.ok(catalogService.getFeaturedProducts(type, branchId, limit)));
+    }
+
+    @GetMapping({"/catalog/top-selling", "/public/top-selling"})
+    public ResponseEntity<ApiResponse<CatalogDto.FeaturedProductsResponse>> getTopSelling(
+            @RequestParam(value = "branchId", required = false) Long branchId,
+            @RequestParam(value = "limit", defaultValue = "20") int limit) {
+        return ResponseEntity.ok(ApiResponse.ok(catalogService.getFeaturedProducts("best_seller", branchId, limit)));
+    }
+
+    @GetMapping({"/catalog/newest", "/public/newest"})
+    public ResponseEntity<ApiResponse<CatalogDto.FeaturedProductsResponse>> getNewest(
+            @RequestParam(value = "branchId", required = false) Long branchId,
+            @RequestParam(value = "limit", defaultValue = "20") int limit) {
+        return ResponseEntity.ok(ApiResponse.ok(catalogService.getFeaturedProducts("newest", branchId, limit)));
     }
 
     private CurrentActor resolveActor(CurrentActor principalActor, HttpServletRequest request) {

@@ -34,6 +34,7 @@ public class OrderDto {
         private List<CartDto.CartItemRequest> remainingCartItems;
         private String voucherCode;
         private String note;
+        private String tableToken; // Token chứng minh đã quét QR bàn hoặc token phiên (V4-01)
     }
 
     @Data

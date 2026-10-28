@@ -67,6 +67,7 @@ public class ReviewDto {
         private Long orderItemId;
         private Long productId;
         private String productName;
+        private String productSize;
         private Long customerId;
         private String customerName;
         private Long branchId;

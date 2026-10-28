@@ -41,15 +41,17 @@ public class PaymentController {
         return ResponseEntity.status(201).body(ApiResponse.ok(response));
     }
 
-    @PostMapping("/cashier/invoices/{id}/payments")
+    @PostMapping({"/cashier/invoices/{id}/payments", "/payments/{id}/record"})
     public ResponseEntity<ApiResponse<PaymentDto.PaymentResponse>> recordInvoicePayment(
             @PathVariable("id") Long invoiceId,
             @Valid @RequestBody PaymentDto.RecordPaymentRequest requestBody,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String xIdempotencyKey,
             @AuthenticationPrincipal CurrentActor actor) {
 
+        String key = (idempotencyKey != null && !idempotencyKey.isBlank()) ? idempotencyKey : xIdempotencyKey;
         Long cashierId = actor != null ? actor.getAccountId() : null;
-        PaymentDto.PaymentResponse response = paymentService.recordReceipt(invoiceId, requestBody, cashierId, idempotencyKey);
+        PaymentDto.PaymentResponse response = paymentService.recordReceipt(invoiceId, requestBody, cashierId, key);
         return ResponseEntity.status(201).body(ApiResponse.ok(response));
     }
 

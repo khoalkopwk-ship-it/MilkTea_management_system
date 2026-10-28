@@ -1,10 +1,8 @@
 -- ============================================================================
 -- SCRIPT KIỂM TRA TÍNH TOÀN VẸN DỮ LIỆU DEMO CHUỖI MILKTEA MULTI-BRANCH
 -- File: database/validation/verify_demo_integrity.sql
+-- Tuân thủ V4-06, V4-09, V4-10: Đúng schema thực tế, fail-fast THROW khi vi phạm
 -- ============================================================================
-
-USE milktea;
-GO
 
 SET NOCOUNT ON;
 
@@ -32,7 +30,7 @@ SELECT @MissingStaff = COUNT(*)
 FROM dbo.TaiKhoan tk
 WHERE tk.Email IN ('admin@milktea.vn', 'manager1@milktea.vn', 'manager2@milktea.vn', 
                    'cashier@milktea.vn', 'cashier2@milktea.vn', 'kitchen@milktea.vn', 'kitchen2@milktea.vn')
-  AND tk.TrangThai = 0;
+  AND tk.HoatDong = 0;
 
 IF @MissingStaff = 0
     PRINT N'   [PASS] Tất cả tài khoản vận hành cốt lõi đều active.';
@@ -59,8 +57,8 @@ BEGIN
     SET @FailCount = @FailCount + 1;
 END
 
--- 3. Kiểm tra Bàn Ăn & Mã QR
-PRINT N'3. Kiểm tra Bàn ăn & Mã QR phân nhánh:';
+-- 3. Kiểm tra Bàn Ăn, Mã QR & Bất biến 1 phiên OPEN / bàn
+PRINT N'3. Kiểm tra Bàn ăn, Mã QR & Phiên bàn:';
 DECLARE @DuplicateQR INT = (
     SELECT COUNT(*) FROM (
         SELECT MaQR FROM dbo.Ban GROUP BY MaQR HAVING COUNT(*) > 1
@@ -72,6 +70,21 @@ IF @DuplicateQR = 0
 ELSE
 BEGIN
     PRINT N'   [FAIL] Phát hiện trùng lặp mã QR bàn: ' + CAST(@DuplicateQR AS NVARCHAR(10));
+    SET @FailCount = @FailCount + 1;
+END
+
+-- Bất biến: Tối đa 1 phiên OPEN trên mỗi bàn
+DECLARE @MultipleOpenSessions INT = (
+    SELECT COUNT(*) FROM (
+        SELECT MaBan FROM dbo.PhienBan WHERE TrangThai = 'OPEN' GROUP BY MaBan HAVING COUNT(*) > 1
+    ) t
+);
+
+IF @MultipleOpenSessions = 0
+    PRINT N'   [PASS] Bất biến: Mỗi bàn có tối đa 1 phiên OPEN tại một thời điểm.';
+ELSE
+BEGIN
+    PRINT N'   [FAIL] Phát hiện bàn có nhiều hơn 1 phiên OPEN: ' + CAST(@MultipleOpenSessions AS NVARCHAR(10));
     SET @FailCount = @FailCount + 1;
 END
 
@@ -98,14 +111,14 @@ DECLARE @OrphanPreps INT = (
     SELECT COUNT(*)
     FROM dbo.CongThucSoChe ctsc
     LEFT JOIN dbo.NguyenLieu nl ON ctsc.MaNLThanhPham = nl.MaNL
-    WHERE nl.MaNL IS NULL OR nl.LoaiNguyenLieu <> 'SO_CHE'
+    WHERE nl.MaNL IS NULL OR nl.Loai <> 'SOCHE'
 );
 
 IF @OrphanPreps = 0
-    PRINT N'   [PASS] 100% công thức sơ chế liên kết đúng nguyên liệu thành phẩm SO_CHE.';
+    PRINT N'   [PASS] 100% công thức sơ chế liên kết đúng nguyên liệu thành phẩm SOCHE.';
 ELSE
 BEGIN
-    PRINT N'   [FAIL] Có ' + CAST(@OrphanPreps AS NVARCHAR(10)) + N' công thức sơ chế không khớp thành phẩm SO_CHE!';
+    PRINT N'   [FAIL] Có ' + CAST(@OrphanPreps AS NVARCHAR(10)) + N' công thức sơ chế không khớp thành phẩm SOCHE!';
     SET @FailCount = @FailCount + 1;
 END
 
@@ -114,21 +127,42 @@ PRINT N'6. Kiểm tra Voucher Khuyến mãi:';
 DECLARE @InvalidVoucher INT = (
     SELECT COUNT(*)
     FROM dbo.Voucher
-    WHERE NgayKetThuc < NgayBatDau OR GioiHanSuDung < SoLuongDaDung
+    WHERE NgayKetThuc < NgayBatDau OR TongSoLuot < SoLuotDaDung
 );
 
 IF @InvalidVoucher = 0
-    PRINT N'   [PASS] Toàn bộ voucher có thời gian và giới hạn sử dụng logic.';
+    PRINT N'   [PASS] 100% voucher có thời gian hợp lệ và số lượt dùng không vượt hạn mức.';
 ELSE
 BEGIN
-    PRINT N'   [FAIL] Có ' + CAST(@InvalidVoucher AS NVARCHAR(10)) + N' voucher sai logic ngày hoặc vượt quota!';
+    PRINT N'   [FAIL] Phát hiện ' + CAST(@InvalidVoucher AS NVARCHAR(10)) + N' voucher sai lệch hạn mức/thời gian!';
     SET @FailCount = @FailCount + 1;
 END
 
-PRINT N'--------------------------------------------------------------------';
-IF @FailCount = 0
-    PRINT N'>>> KẾT LUẬN: TẤT CẢ CÁC MỤC KIỂM TRA ĐỀU ĐẠT CHUẨN [PASS 100%].';
+-- 7. Kiểm tra Bất biến Kết ca kho: TonThucTe = LuongGiuLai + LuongLoaiBo
+PRINT N'7. Kiểm tra tính toàn vẹn kết ca kho:';
+DECLARE @InvalidSettlementItems INT = (
+    SELECT COUNT(*)
+    FROM dbo.ChiTietKetCaKho
+    WHERE ABS(TonThucTe - (LuongGiuLai + LuongLoaiBo)) > 0.001
+);
+
+IF @InvalidSettlementItems = 0
+    PRINT N'   [PASS] 100% bản ghi chi tiết kết ca khớp công thức: TonThucTe = LuongGiuLai + LuongLoaiBo.';
 ELSE
-    PRINT N'>>> KẾT LUẬN: CÓ ' + CAST(@FailCount AS NVARCHAR(10)) + N' MỤC CHƯA ĐẠT. VUI LÒNG KIỂM TRA LẠI!';
+BEGIN
+    PRINT N'   [FAIL] Phát hiện ' + CAST(@InvalidSettlementItems AS NVARCHAR(10)) + N' dòng kết ca sai lệch số học!';
+    SET @FailCount = @FailCount + 1;
+END
+
 PRINT N'====================================================================';
+PRINT N'  TỔNG KẾT TOÀN VẸN DỮ LIỆU DEMO';
+PRINT N'====================================================================';
+
+IF @FailCount > 0
+BEGIN
+    DECLARE @ErrMsg NVARCHAR(250) = N'KIỂM TRA DỮ LIỆU DEMO THẤT BẠI: Có ' + CAST(@FailCount AS NVARCHAR(10)) + N' tiêu chí không đạt!';
+    THROW 50000, @ErrMsg, 1;
+END;
+
+PRINT N'>>> 100% TIÊU CHÍ TOÀN VẸN DỮ LIỆU DEMO ĐẠT CHUẨN.';
 GO

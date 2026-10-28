@@ -24,11 +24,18 @@ public class TableController {
     private final TableContextService tableContextService;
     private final TableSessionService tableSessionService;
     private final DiningTableRepository tableRepository;
+    private final vn.edu.ute.milktea.repository.table.TableSessionRepository sessionRepository;
 
     @GetMapping({"/public/table-context", "/tables/context"})
     public ResponseEntity<ApiResponse<TableDto.TableContextResponse>> getTableContext(
-            @RequestParam(value = "qrCode", required = false) String qrCode) {
+            @RequestParam(value = "qrCode", required = false) String qrCode,
+            @RequestParam(value = "qr", required = false) String qr) {
 
+        String token = (qrCode != null && !qrCode.isBlank()) ? qrCode : qr;
+        return getTableContext(token);
+    }
+
+    public ResponseEntity<ApiResponse<TableDto.TableContextResponse>> getTableContext(String qrCode) {
         if (qrCode == null || qrCode.isBlank()) {
             throw BusinessException.badRequest(ErrorCode.QR_INVALID, "Vui lòng quét mã QR hợp lệ trên bàn");
         }
@@ -144,8 +151,14 @@ public class TableController {
             if (actor.getSessionId() != null && actor.getSessionId().equals(response.getSessionId())) {
                 return;
             }
-            // Customer can view session if they opened it or have session token
-            return;
+            if (actor.getAccountId() != null) {
+                var sessionOpt = sessionRepository.findById(response.getSessionId());
+                if (sessionOpt.isPresent() && sessionOpt.get().getOpenedBy() != null
+                        && actor.getAccountId().equals(sessionOpt.get().getOpenedBy().getId())) {
+                    return;
+                }
+            }
+            throw vn.edu.ute.milktea.common.BusinessException.forbidden(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem thông tin phiên bàn này");
         }
         throw vn.edu.ute.milktea.common.BusinessException.forbidden(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem thông tin phiên bàn này");
     }

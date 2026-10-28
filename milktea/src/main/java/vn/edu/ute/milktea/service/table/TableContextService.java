@@ -55,6 +55,11 @@ public class TableContextService {
                 var issued = guestAccessService.issueTableSessionToken(session, 12);
                 builder.tableToken(issued.rawToken());
             }
+        } else {
+            // Bàn chưa có phiên: cấp Table QR capability token chứng minh đã quét QR thực tế (V4-01)
+            Long bId = (table.getBranch() != null) ? table.getBranch().getId() : null;
+            String qrCapabilityToken = guestAccessService.issueTableQrCapabilityToken(table.getId(), bId, 4);
+            builder.tableToken(qrCapabilityToken);
         }
 
         return builder.build();

@@ -46,6 +46,7 @@ public class InventoryReconciliationAndDedupAuditTest {
     @Mock private RealtimeEventPublisher realtimeEventPublisher;
     @Mock private BranchService branchService;
     @Mock private BranchRepository branchRepository;
+    @Mock private vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
 
     private InventoryService inventoryService;
 
@@ -62,7 +63,8 @@ public class InventoryReconciliationAndDedupAuditTest {
                 batchRepository, null, null, null, null, null, null,
                 importReceiptRepository, importReceiptItemRepository,
                 shiftSettlementRepository, shiftSettlementItemRepository,
-                auditRepository, realtimeEventPublisher, branchService, branchRepository
+                auditRepository, realtimeEventPublisher, branchService, branchRepository,
+                staffBranchRepository
         );
     }
 

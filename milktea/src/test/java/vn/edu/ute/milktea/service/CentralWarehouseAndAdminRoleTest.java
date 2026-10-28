@@ -116,7 +116,8 @@ public class CentralWarehouseAndAdminRoleTest {
                 auditRepository,
                 realtimeEventPublisher,
                 branchService,
-                branchRepository
+                branchRepository,
+                staffBranchRepository
         );
 
         adminService = new AdminService(

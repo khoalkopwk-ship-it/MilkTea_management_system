@@ -79,14 +79,40 @@ public class OrderService {
     private final vn.edu.ute.milktea.service.common.IdempotencyService idempotencyService;
     private final vn.edu.ute.milktea.service.voucher.VoucherService voucherService;
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
+    private final vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
 
-    public void setStaffBranchRepository(vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository) {
-        this.staffBranchRepository = staffBranchRepository;
-    }
     @Transactional
     public OrderDto.OrderResponse createTableOrder(OrderDto.CreateTableOrderRequest request, CurrentActor actor, String idempotencyKey) {
+        DiningTable table = tableRepository.findByIdWithLock(request.getTableId())
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
+        if (!Boolean.TRUE.equals(table.getActive())) {
+            throw BusinessException.badRequest(ErrorCode.TABLE_NOT_FOUND, "Bàn đang ngừng hoạt động");
+        }
+        if (table.getBranch() != null && "KHOTONG".equalsIgnoreCase(table.getBranch().getCode())) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Kho tổng không bán lẻ trực tiếp");
+        }
+
+        boolean isStaffOfBranch = actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN) || actor.hasRole(Role.MANAGER))
+                && actor.canAccessBranch(table.getBranch() != null ? table.getBranch().getId() : null);
+
+        // V4-01: Kiểm tra quyền cơ bản trước khi xử lý (QR capability token, staff hoặc session token)
+        boolean hasValidQr = request.getTableToken() != null && guestAccessService.validateTableQrCapabilityToken(request.getTableToken(), table.getId());
+        boolean hasValidSession = false;
+        if (table.getActiveSessionId() != null) {
+            TableSession activeSession = sessionRepository.findById(table.getActiveSessionId()).orElse(null);
+            if (activeSession != null) {
+                boolean isSessionGuest = actor != null && actor.getSessionId() != null && actor.getSessionId().equals(activeSession.getId());
+                boolean isSessionOpener = actor != null && actor.isAuthenticated() && activeSession.getOpenedBy() != null
+                        && activeSession.getOpenedBy().getId().equals(actor.getAccountId());
+                hasValidSession = isSessionGuest || isSessionOpener;
+            }
+        }
+
+        if (!isStaffOfBranch && !hasValidQr && !hasValidSession) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Cần quét mã QR hợp lệ của bàn để đặt món");
+        }
+
+        // V4-12: Kiểm tra Idempotency replay TRƯỚC KHI kiểm tra phiên bị đổi (khi client retry cùng request)
         Long actorId = actor != null ? actor.getAccountId() : null;
         String voucherStr = (request.getVoucherCode() != null) ? request.getVoucherCode().trim().toUpperCase() : "";
         String payloadJson = "tableId=" + request.getTableId() + ";session=" + request.getExpectedSessionId() + ";voucher=" + voucherStr + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
@@ -96,7 +122,8 @@ public class OrderService {
             var existingOrderId = idempotencyService.checkExisting("CREATE_ORDER", idempotencyKey, fingerprint);
             if (existingOrderId.isPresent()) {
                 Order order = orderRepository.findById(existingOrderId.get()).orElse(null);
-                if (order != null) {
+                if (order != null && order.getSession() != null && order.getSession().getTable() != null
+                        && order.getSession().getTable().getId().equals(table.getId())) {
                     Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
                     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
                     return mapToOrderResponse(order, invoice, items, null, null);
@@ -105,28 +132,41 @@ public class OrderService {
                 var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
                 if (existing.isPresent()) {
                     Order order = existing.get();
-                    Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
-                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-                    return mapToOrderResponse(order, invoice, items, null, null);
+                    if (order.getSession() != null && order.getSession().getTable() != null
+                            && order.getSession().getTable().getId().equals(table.getId())) {
+                        Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
+                        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+                        return mapToOrderResponse(order, invoice, items, null, null);
+                    }
                 }
             }
         }
-        DiningTable table = tableRepository.findByIdWithLock(request.getTableId())
-                .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
-        if (!Boolean.TRUE.equals(table.getActive())) {
-            throw BusinessException.badRequest(ErrorCode.TABLE_NOT_FOUND, "Bàn đang ngừng hoạt động");
+
+        // Nếu không phải idempotency replay, kiểm tra logic mở phiên hoặc đặt thêm món vào phiên
+        if (table.getActiveSessionId() == null) {
+            if (!isStaffOfBranch && !hasValidQr) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Cần quét mã QR hợp lệ của bàn để đặt món");
+            }
+        } else {
+            // Đã có phiên: kiểm tra expectedSessionId và quyền đặt thêm món
+            if (request.getExpectedSessionId() == null) {
+                throw BusinessException.conflict(ErrorCode.TABLE_SESSION_CHANGED, "Bàn đã có khách đang phục vụ. Vui lòng tải lại.");
+            }
+            if (!table.getActiveSessionId().equals(request.getExpectedSessionId())) {
+                throw BusinessException.conflict(ErrorCode.TABLE_SESSION_CHANGED, "Phiên bàn đã thay đổi");
+            }
+            if (!isStaffOfBranch && !hasValidSession) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền đặt thêm món vào phiên bàn này");
+            }
         }
-        if (table.getBranch() != null && "KHOTONG".equalsIgnoreCase(table.getBranch().getCode())) {
-            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Kho tổng không bán lẻ trực tiếp");
-        }
-        // Kiểm tra expectedSessionId
+
+        // Mở phiên mới hoặc lấy phiên hiện có
         TableSession session;
         String rawGuestTableToken = null;
         if (table.getActiveSessionId() == null) {
             if (request.getExpectedSessionId() != null) {
                 throw BusinessException.conflict(ErrorCode.TABLE_SESSION_CHANGED, "Bàn chưa có phiên hoặc phiên đã kết thúc");
             }
-            // Mở phiên mới
             Account opener = (actor != null && actor.isAuthenticated()) ?
                     accountRepository.findById(actor.getAccountId()).orElse(null) : null;
             session = TableSession.builder()
@@ -149,25 +189,8 @@ public class OrderService {
             var issued = guestAccessService.issueTableSessionToken(session, 12);
             rawGuestTableToken = issued.rawToken();
         } else {
-            if (request.getExpectedSessionId() == null) {
-                throw BusinessException.conflict(ErrorCode.TABLE_SESSION_CHANGED, "Bàn đã có khách đang phục vụ. Vui lòng tải lại.");
-            }
-            if (!table.getActiveSessionId().equals(request.getExpectedSessionId())) {
-                throw BusinessException.conflict(ErrorCode.TABLE_SESSION_CHANGED, "Phiên bàn đã thay đổi");
-            }
             session = sessionRepository.findById(table.getActiveSessionId())
                     .orElseThrow(() -> BusinessException.conflict(ErrorCode.TABLE_SESSION_CHANGED, "Không tìm thấy phiên"));
-
-            // F03: Xác thực quyền đặt thêm món vào phiên bàn hiện có
-            boolean isStaffOfBranch = actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN) || actor.hasRole(Role.MANAGER))
-                    && actor.canAccessBranch(table.getBranch().getId());
-            boolean isSessionGuest = actor != null && actor.getSessionId() != null && actor.getSessionId().equals(session.getId());
-            boolean isSessionOpener = actor != null && actor.isAuthenticated() && session.getOpenedBy() != null
-                    && session.getOpenedBy().getId().equals(actor.getAccountId());
-
-            if (!isStaffOfBranch && !isSessionGuest && !isSessionOpener) {
-                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền đặt thêm món vào phiên bàn này");
-            }
         }
         // Tạo đơn hàng và tính giá snapshot
         Account customerAccount = (actor != null && actor.isAuthenticated()) ?
@@ -412,10 +435,11 @@ public class OrderService {
         if (order.getStatus() == OrderStatus.CHO_CHE_BIEN) {
             return;
         }
-        if (order.getStatus() != OrderStatus.CHO_XAC_NHAN) {
+        if (order.getStatus() != OrderStatus.CHO_XAC_NHAN && order.getStatus() != OrderStatus.CHO_THANH_TOAN) {
             throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT,
                     "Không thể xác nhận đơn ở trạng thái: " + order.getStatus());
         }
+        String oldState = order.getStatus().name();
         order.setStatus(OrderStatus.CHO_CHE_BIEN);
         Invoice invoice = invoiceRepository.findByOrderId(order.getId())
                 .orElseThrow(() -> BusinessException.notFound(
@@ -427,7 +451,7 @@ public class OrderService {
                 .orderId(order.getId())
                 .accountId(cashierId)
                 .action("ORDER_CONFIRMED")
-                .beforeState("CHO_XAC_NHAN")
+                .beforeState(oldState)
                 .afterState("CHO_CHE_BIEN")
                 .createdAt(Instant.now())
                 .build());
@@ -596,12 +620,8 @@ public class OrderService {
             }
             if (order.getBranch() != null) {
                 var bp = branchProductRepository.findByBranchIdAndProductId(order.getBranch().getId(), product.getId());
-                if (bp.isPresent()) {
-                    if (Boolean.FALSE.equals(bp.get().getActive()) || Boolean.FALSE.equals(bp.get().getAvailable())) {
-                        throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Món \"" + product.getName() + "\" hiện không phục vụ tại chi nhánh này");
-                    }
-                } else if (!branchProductRepository.findByBranchId(order.getBranch().getId()).isEmpty()) {
-                    throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Món \"" + product.getName() + "\" chưa được phân bổ kinh doanh tại chi nhánh này");
+                if (bp.isEmpty() || Boolean.FALSE.equals(bp.get().getActive()) || Boolean.FALSE.equals(bp.get().getAvailable())) {
+                    throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Món \"" + product.getName() + "\" hiện không phục vụ tại chi nhánh này");
                 }
             }
             OrderItem item = OrderItem.builder()
@@ -631,12 +651,8 @@ public class OrderService {
                     }
                     if (order.getBranch() != null) {
                         var tbp = branchProductRepository.findByBranchIdAndProductId(order.getBranch().getId(), toppingProd.getId());
-                        if (tbp.isPresent()) {
-                            if (Boolean.FALSE.equals(tbp.get().getActive()) || Boolean.FALSE.equals(tbp.get().getAvailable())) {
-                                throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Topping \"" + toppingProd.getName() + "\" hiện không phục vụ tại chi nhánh này");
-                            }
-                        } else if (!branchProductRepository.findByBranchId(order.getBranch().getId()).isEmpty()) {
-                            throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Topping \"" + toppingProd.getName() + "\" chưa được phân bổ kinh doanh tại chi nhánh này");
+                        if (tbp.isEmpty() || Boolean.FALSE.equals(tbp.get().getActive()) || Boolean.FALSE.equals(tbp.get().getAvailable())) {
+                            throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Topping \"" + toppingProd.getName() + "\" hiện không phục vụ tại chi nhánh này");
                         }
                     }
                     OrderItemTopping oit = OrderItemTopping.builder()
@@ -649,85 +665,45 @@ public class OrderService {
                     allToppings.add(oit);
 
                     List<ProductRecipe> tRecipes = recipeRepository.findByIdProductId(toppingProd.getId());
-                    if (!tRecipes.isEmpty()) {
-                        for (ProductRecipe tr : tRecipes) {
-                            BigDecimal normQuantity = tr.getQuantity();
-                            if (normQuantity == null || normQuantity.signum() <= 0) {
-                                Map<String, BigDecimal> tFixed = fixedRecipeService.getIngredients(
-                                        toppingProd.getName(), toppingProd.getSize() != null ? toppingProd.getSize() : "M");
-                                if (tFixed != null) {
-                                    normQuantity = tFixed.get(tr.getMaterial().getName());
-                                }
-                            }
-                            if (normQuantity == null || normQuantity.signum() <= 0) {
-                                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
-                                        "Định lượng không hợp lệ trong công thức topping: " + toppingProd.getName() + " - " + tr.getMaterial().getName());
-                            }
-                            Long matId = tr.getMaterial().getId();
-                            BigDecimal needed = normQuantity.multiply(BigDecimal.valueOf(req.getQuantity()));
-                            aggregatedIngredients.merge(matId, needed, BigDecimal::add);
-                            materialSampleMap.putIfAbsent(matId, tr.getMaterial());
-                        }
-                    } else {
-                        Map<String, BigDecimal> tFixed = fixedRecipeService.getIngredients(
-                                toppingProd.getName(), toppingProd.getSize() != null ? toppingProd.getSize() : "M");
-                        if (tFixed == null || tFixed.isEmpty()) {
+                    if (tRecipes.isEmpty()) {
+                        throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                                "Không tìm thấy công thức định lượng trong hệ thống cho topping: " + toppingProd.getName());
+                    }
+                    for (ProductRecipe tr : tRecipes) {
+                        BigDecimal normQuantity = tr.getQuantity();
+                        if (normQuantity == null || normQuantity.signum() <= 0) {
                             throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
-                                    "Không tìm thấy công thức định lượng cho topping: " + toppingProd.getName());
+                                    "Định lượng không hợp lệ trong công thức topping: " + toppingProd.getName() + " - " + tr.getMaterial().getName());
                         }
-                        for (var fEntry : tFixed.entrySet()) {
-                            Material mat = materialRepository.findByName(fEntry.getKey())
-                                    .orElseThrow(() -> BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
-                                            "Không tìm thấy nguyên liệu \"" + fEntry.getKey() + "\" trong hệ thống cho topping: " + toppingProd.getName()));
-                            BigDecimal needed = fEntry.getValue().multiply(BigDecimal.valueOf(req.getQuantity()));
-                            aggregatedIngredients.merge(mat.getId(), needed, BigDecimal::add);
-                            materialSampleMap.putIfAbsent(mat.getId(), mat);
-                        }
+                        Long matId = tr.getMaterial().getId();
+                        BigDecimal needed = normQuantity.multiply(BigDecimal.valueOf(req.getQuantity()));
+                        aggregatedIngredients.merge(matId, needed, BigDecimal::add);
+                        materialSampleMap.putIfAbsent(matId, tr.getMaterial());
                     }
                 }
             }
             orderItems.add(item);
 
             List<ProductRecipe> recipes = recipeRepository.findByIdProductId(product.getId());
-            if (!recipes.isEmpty()) {
-                Set<String> matched = new HashSet<>();
-                for (ProductRecipe recipe : recipes) {
-                    String materialName = recipe.getMaterial().getName();
-                    if (!matched.add(materialName)) {
-                        continue;
-                    }
-                    BigDecimal normQuantity = recipe.getQuantity();
-                    if (normQuantity == null || normQuantity.signum() <= 0) {
-                        Map<String, BigDecimal> fixedIngredients = fixedRecipeService.getIngredients(
-                                product.getName(), product.getSize());
-                        if (fixedIngredients != null) {
-                            normQuantity = fixedIngredients.get(materialName);
-                        }
-                    }
-                    if (normQuantity == null || normQuantity.signum() <= 0) {
-                        throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
-                                "Định lượng không hợp lệ trong công thức món: " + product.getName() + " - " + materialName);
-                    }
-                    Long matId = recipe.getMaterial().getId();
-                    BigDecimal needed = normQuantity.multiply(BigDecimal.valueOf(req.getQuantity()));
-                    aggregatedIngredients.merge(matId, needed, BigDecimal::add);
-                    materialSampleMap.putIfAbsent(matId, recipe.getMaterial());
+            if (recipes.isEmpty()) {
+                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                        "Không tìm thấy công thức định lượng trong hệ thống cho món: " + product.getName());
+            }
+            Set<String> matched = new HashSet<>();
+            for (ProductRecipe recipe : recipes) {
+                String materialName = recipe.getMaterial().getName();
+                if (!matched.add(materialName)) {
+                    continue;
                 }
-            } else {
-                Map<String, BigDecimal> fixedIngredients = fixedRecipeService.getIngredients(
-                        product.getName(), product.getSize());
-                if (fixedIngredients == null || fixedIngredients.isEmpty()) {
+                BigDecimal normQuantity = recipe.getQuantity();
+                if (normQuantity == null || normQuantity.signum() <= 0) {
                     throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
-                            "Không tìm thấy công thức định lượng cho món: " + product.getName());
+                            "Định lượng không hợp lệ trong công thức món: " + product.getName() + " - " + materialName);
                 }
-                for (var fEntry : fixedIngredients.entrySet()) {
-                    Material mat = materialRepository.findByName(fEntry.getKey())
-                            .orElseThrow(() -> BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
-                                    "Không tìm thấy nguyên liệu \"" + fEntry.getKey() + "\" trong hệ thống cho món: " + product.getName()));
-                    BigDecimal needed = fEntry.getValue().multiply(BigDecimal.valueOf(req.getQuantity()));
-                    aggregatedIngredients.merge(mat.getId(), needed, BigDecimal::add);
-                    materialSampleMap.putIfAbsent(mat.getId(), mat);
-                }
+                Long matId = recipe.getMaterial().getId();
+                BigDecimal needed = normQuantity.multiply(BigDecimal.valueOf(req.getQuantity()));
+                aggregatedIngredients.merge(matId, needed, BigDecimal::add);
+                materialSampleMap.putIfAbsent(matId, recipe.getMaterial());
             }
         }
         if (aggregatedIngredients.isEmpty()) {

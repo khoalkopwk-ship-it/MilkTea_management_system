@@ -54,6 +54,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByCategoryAllowToppingFalseAndActiveTrue();
 
     @EntityGraph(attributePaths = {"category"})
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT p FROM Product p
+        WHERE p.active = true
+          AND p.category.allowTopping = false
+          AND LOWER(p.category.name) LIKE '%topping%'
+        ORDER BY p.id ASC
+        """)
+    List<Product> findToppingProducts();
+
+    @EntityGraph(attributePaths = {"category"})
     List<Product> findByNameIgnoreCaseAndActiveTrue(String name);
 }
 

@@ -107,6 +107,9 @@ try {
     $v6 = Join-Path $migDir "V6__in_store_only_cleanup.sql"
     Execute-SqlScriptFile -Connection $milkteaConn -FilePath $v6 -Description "Bước 3.6: Migration V6 (Chuẩn hóa hệ thống phục vụ tại quán TABLE/COUNTER)"
 
+    $v7 = Join-Path $migDir "V7__invariants_and_integrity_constraints.sql"
+    Execute-SqlScriptFile -Connection $milkteaConn -FilePath $v7 -Description "Bước 3.7: Migration V7 (Bổ sung bất biến và ràng buộc toàn vẹn CSDL)"
+
     # Bước 4: Nạp bộ dữ liệu mẫu chuẩn
     $seedFile = Join-Path $dbDir "sample_data.sql"
     Execute-SqlScriptFile -Connection $milkteaConn -FilePath $seedFile -Description "Bước 4/4: Nạp dữ liệu mẫu Multi-Branch Full Seed (70 món, 10 CT sơ chế, tồn kho, voucher...)"

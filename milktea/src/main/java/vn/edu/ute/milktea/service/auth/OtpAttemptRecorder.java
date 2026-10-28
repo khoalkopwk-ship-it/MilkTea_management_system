@@ -38,15 +38,7 @@ public class OtpAttemptRecorder {
         }
 
         EmailVerificationOtp otp = otpRepository.findById(otpId).orElse(null);
-        if (otp == null) return 0;
-
-        int newAttempts = otp.getAttempts() + 1;
-        otp.setAttempts(newAttempts);
-        if (newAttempts >= maxAttempts) {
-            otp.setRevokedAt(now);
-            log.warn("Mã OTP id={} đã bị thu hồi do nhập sai quá {} lần", otpId, maxAttempts);
-        }
-        otpRepository.saveAndFlush(otp);
-        return newAttempts;
+        if (otp == null) return maxAttempts;
+        return Math.max(otp.getAttempts(), maxAttempts);
     }
 }

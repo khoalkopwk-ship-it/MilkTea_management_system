@@ -149,8 +149,8 @@
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <div class="d-flex align-items-center text-warning">
                             <i class="bi bi-star-fill rating-star me-1"></i>
-                            <span class="fw-bold text-dark me-1" th:text="${product.averageRating > 0 ? product.averageRating : '5.0'}">5.0</span>
-                            <span class="text-muted small">(<span th:text="${product.reviewCount}">0</span> đánh giá)</span>
+                            <span class="fw-bold text-dark me-1" id="headerAvgRating" th:text="${product.averageRating > 0 ? product.averageRating : '5.0'}">5.0</span>
+                            <span class="text-muted small">(<span id="headerReviewCount" th:text="${product.reviewCount}">0</span> đánh giá)</span>
                         </div>
                         <span class="text-muted">|</span>
                         <div class="text-muted small">
@@ -265,9 +265,9 @@
                     <p class="text-muted small mb-0">Các đánh giá xác thực từ khách hàng đã mua món tại cơ sở</p>
                 </div>
                 <div class="text-end">
-                    <span class="h3 fw-bold text-warning mb-0" th:text="${product.averageRating > 0 ? product.averageRating : '5.0'}">5.0</span>
+                    <span class="h3 fw-bold text-warning mb-0" id="detailAvgRatingTag" th:text="${product.averageRating > 0 ? product.averageRating : '5.0'}">5.0</span>
                     <span class="text-muted">/ 5.0</span>
-                    <div class="text-muted small" th:text="${product.reviewCount + ' lượt đánh giá'}">0 lượt đánh giá</div>
+                    <div class="text-muted small" id="detailReviewCountTag" th:text="${product.reviewCount + ' lượt đánh giá'}">0 lượt đánh giá</div>
                 </div>
             </div>
 
@@ -296,6 +296,7 @@
 
             document.addEventListener('DOMContentLoaded', () => {
                 updateDetailPriceTotal();
+                loadReviews(currentProductId);
             });
 
             function onDetailSizeSelected(btn) {
@@ -321,6 +322,7 @@
                 if (addBtn) addBtn.disabled = !isAvail;
 
                 updateDetailPriceTotal();
+                loadReviews(currentProductId);
             }
 
             function toggleDetailTopping(card) {
@@ -433,47 +435,78 @@
             }
 
             // Tải danh sách đánh giá
-            async function loadReviews() {
+            async function loadReviews(prodId) {
+                const targetId = prodId || currentProductId;
                 const container = document.getElementById('reviewsContainer');
+                if (!container) return;
                 try {
-                    const res = await fetch(`/api/v1/reviews/product/${productId}?page=0&size=10`);
+                    const res = await fetch(`/api/v1/reviews/product/${targetId}?page=0&size=20`);
                     const data = await res.json();
-                    if (res.ok && data.success && data.data.items && data.data.items.length > 0) {
+                    if (res.ok && data.success && data.data && data.data.items && data.data.items.length > 0) {
                         let html = '';
                         data.data.items.forEach(r => {
                             let stars = '';
                             for (let i = 1; i <= 5; i++) {
                                 stars += i <= r.rating ? '<i class="bi bi-star-fill text-warning me-1"></i>' : '<i class="bi bi-star text-muted me-1"></i>';
                             }
-                            let mediaHtml = '';
-                            if (r.mediaList && r.mediaList.length > 0) {
-                                mediaHtml = '<div class="d-flex gap-2 mt-2">';
-                                r.mediaList.forEach(m => {
-                                    mediaHtml += `<img src="${m.mediaUrl}" class="rounded border" style="width: 72px; height: 72px; object-fit: cover;" />`;
-                                });
-                                mediaHtml += '</div>';
-                            }
+                            const reviewDate = r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            }) : '';
+                            const customerName = r.customerName || 'Khách hàng';
+                            const initial = customerName.charAt(0).toUpperCase();
+                            const branchInfo = r.branchName ? `<span class="badge bg-light text-secondary border small ms-1"><i class="bi bi-geo-alt me-1"></i>${r.branchName}</span>` : '';
+                            const sizeInfo = r.productSize ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle small ms-1">Size ${r.productSize}</span>` : '';
+
                             html += `
                                 <div class="review-card">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="fw-bold text-dark">${r.customerName || 'Khách hàng'}</span>
-                                        <span class="text-muted small">${new Date(r.createdAt).toLocaleDateString('vi-VN')}</span>
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="rounded-circle text-white fw-bold d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px; font-size: 1rem; background: linear-gradient(135deg, #b86b35, #d9822b);">
+                                                ${initial}
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold text-dark d-flex align-items-center flex-wrap gap-1">
+                                                    <span>${customerName}</span>
+                                                    ${sizeInfo}
+                                                    ${branchInfo}
+                                                </div>
+                                                <div class="small mt-1">${stars}</div>
+                                            </div>
+                                        </div>
+                                        <span class="text-muted small">${reviewDate}</span>
                                     </div>
-                                    <div class="mb-2">${stars}</div>
-                                    <p class="text-dark mb-1">${r.content}</p>
-                                    ${mediaHtml}
+                                    <p class="text-secondary mb-0 mt-2 ps-1" style="white-space: pre-line; line-height: 1.6; font-size: 0.95rem;">${r.content}</p>
                                 </div>
                             `;
                         });
                         container.innerHTML = html;
+
+                        if (data.data.averageRating !== undefined && data.data.averageRating !== null && data.data.averageRating > 0) {
+                            const formattedAvg = (Math.round(data.data.averageRating * 10) / 10).toFixed(1);
+                            const avgEl = document.getElementById('detailAvgRatingTag');
+                            if (avgEl) avgEl.textContent = formattedAvg;
+                            const headerAvgEl = document.getElementById('headerAvgRating');
+                            if (headerAvgEl) headerAvgEl.textContent = formattedAvg;
+                        }
+                        if (data.data.totalReviews !== undefined) {
+                            const countEl = document.getElementById('detailReviewCountTag');
+                            if (countEl) countEl.textContent = `${data.data.totalReviews} lượt đánh giá`;
+                            const headerCountEl = document.getElementById('headerReviewCount');
+                            if (headerCountEl) headerCountEl.textContent = data.data.totalReviews;
+                        }
                     } else {
-                        container.innerHTML = '<div class="text-center py-4 text-muted">Chưa có đánh giá nào cho món uống này. Hãy là người đầu tiên trải nghiệm và chia sẻ nhé!</div>';
+                        container.innerHTML = '<div class="text-center py-5 text-muted"><i class="bi bi-chat-heart text-warning fs-1 d-block mb-2 opacity-75"></i>Chưa có đánh giá nào cho món uống này.<br><small class="text-secondary">Hãy là người đầu tiên thưởng thức và chia sẻ cảm nhận nhé!</small></div>';
                     }
                 } catch (e) {
-                    container.innerHTML = '<div class="text-center py-4 text-muted">Không thể tải danh sách đánh giá lúc này.</div>';
+                    console.error('Lỗi tải đánh giá:', e);
+                    container.innerHTML = '<div class="text-center py-4 text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Không thể tải danh sách đánh giá lúc này. Vui lòng thử lại sau.</div>';
                 }
             }
-            loadReviews();
+            loadReviews(currentProductId);
         </script>
     </div>
 </body>

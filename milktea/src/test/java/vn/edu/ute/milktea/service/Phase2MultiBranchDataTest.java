@@ -40,12 +40,12 @@ class Phase2MultiBranchDataTest {
     }
 
     @Test
-    @DisplayName("Actor Scoping: Khách bàn TABLE_GUEST bị giới hạn trong chi nhánh của bàn đó")
+    @DisplayName("Actor Scoping: Khách bàn TABLE_GUEST không có quyền canAccessBranch nghiệp vụ staff")
     void testTableGuestBranchScoping() {
         CurrentActor guestBranch2 = CurrentActor.tableGuest(50L, 10L, 2L);
 
         assertEquals(2L, guestBranch2.getBranchId());
-        assertTrue(guestBranch2.canAccessBranch(2L));
+        assertFalse(guestBranch2.canAccessBranch(2L), "Khách bàn không được phép canAccessBranch nghiệp vụ");
         assertFalse(guestBranch2.canAccessBranch(1L));
     }
 

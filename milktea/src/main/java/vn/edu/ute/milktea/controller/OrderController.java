@@ -25,10 +25,19 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> createTableOrder(
             @Valid @RequestBody OrderDto.CreateTableOrderRequest requestBody,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String xIdempotencyKey,
             HttpServletRequest request) {
 
+        String key = (idempotencyKey != null && !idempotencyKey.isBlank()) ? idempotencyKey : xIdempotencyKey;
         CurrentActor actor = (CurrentActor) request.getAttribute(JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
-        OrderDto.OrderResponse response = orderService.createTableOrder(requestBody, actor, idempotencyKey);
+        if (requestBody.getTableToken() == null || requestBody.getTableToken().isBlank()) {
+            String token = request.getHeader("X-Table-Session-Token");
+            if (token == null || token.isBlank()) token = request.getHeader("X-Table-Token");
+            if (token != null && !token.isBlank()) {
+                requestBody.setTableToken(token);
+            }
+        }
+        OrderDto.OrderResponse response = orderService.createTableOrder(requestBody, actor, key);
         return ResponseEntity.status(201).body(ApiResponse.ok(response));
     }
 
@@ -36,9 +45,11 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> createCounterOrder(
             @Valid @RequestBody OrderDto.CreateCounterOrderRequest requestBody,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String xIdempotencyKey,
             @AuthenticationPrincipal CurrentActor actor) {
 
-        OrderDto.OrderResponse response = orderService.createCounterOrder(requestBody, actor, idempotencyKey);
+        String key = (idempotencyKey != null && !idempotencyKey.isBlank()) ? idempotencyKey : xIdempotencyKey;
+        OrderDto.OrderResponse response = orderService.createCounterOrder(requestBody, actor, key);
         return ResponseEntity.status(201).body(ApiResponse.ok(response));
     }
 

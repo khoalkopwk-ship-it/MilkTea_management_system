@@ -24,10 +24,7 @@
 --      - Trải nghiệm khách hàng: Yêu thích (SanPhamYeuThich) & Đánh giá (DanhGia)
 -- ============================================================================
 
-IF SERVERPROPERTY('EngineEdition') <> 5 AND DB_NAME() <> 'milktea'
-BEGIN
-    USE milktea;
-END
+-- Chạy trên context database hiện tại (hỗ trợ cả milktea và milktea_test)
 GO
 
 SET ANSI_NULLS ON;
@@ -744,7 +741,7 @@ DECLARE @cn2Id BIGINT = (SELECT MaCN FROM dbo.ChiNhanh WHERE MaDinhDanh = 'CN02'
 
 -- 1. CHAOMUNG (Giảm 20k toàn chuỗi)
 INSERT INTO dbo.Voucher (MaCode, TenVoucher, MoTa, LoaiGiamGia, GiaTriGiam, GiaTriDonToiThieu, TongSoLuot, SoLuotDaDung, SoLuotMoiKhach, ApDungToanChuoi, NgayBatDau, NgayKetThuc, KichHoat)
-VALUES ('CHAOMUNG', N'Ưu Đãi Chào Bạn Mới', N'Giảm 20.000đ cho đơn hàng từ 50.000đ toàn chuỗi', 'FIXED_AMOUNT', 20000.00, 50000.00, 2000, 0, 5, 1, DATEADD(DAY, -30, SYSUTCDATETIME()), DATEADD(MONTH, 3, SYSUTCDATETIME()), 1);
+VALUES ('CHAOMUNG', N'Ưu Đãi Chào Bạn Mới', N'Giảm 20.000đ cho đơn hàng từ 50.000đ toàn chuỗi', 'FIXED_AMOUNT', 20000.00, 50000.00, 2000, 0, 20, 1, DATEADD(DAY, -30, SYSUTCDATETIME()), DATEADD(MONTH, 3, SYSUTCDATETIME()), 1);
 
 -- 2. MILKTEA10 (Giảm 10% trần 30k)
 INSERT INTO dbo.Voucher (MaCode, TenVoucher, MoTa, LoaiGiamGia, GiaTriGiam, GiamToiDa, GiaTriDonToiThieu, TongSoLuot, SoLuotDaDung, SoLuotMoiKhach, ApDungToanChuoi, NgayBatDau, NgayKetThuc, KichHoat)
@@ -1069,16 +1066,34 @@ BEGIN
             DECLARE @tableNo INT = ((@oIdx - 1) % 10) + 1;
             DECLARE @tableId BIGINT = (SELECT TOP 1 MaBan FROM dbo.Ban WHERE MaCN = @targetBranch AND TenBan LIKE N'%' + RIGHT('0' + CAST(@tableNo AS VARCHAR(2)), 2));
             
-            DECLARE @sessionStatus VARCHAR(8) = CASE WHEN @dayOffset = 0 AND @status IN ('DANG_CHE_BIEN', 'CHO_CHE_BIEN') THEN 'OPEN' ELSE 'CLOSED' END;
+            DECLARE @sessionStatus VARCHAR(8) = 'CLOSED';
+            -- Chỉ mở tối đa 1 phiên OPEN trên mỗi bàn (Bàn 01 hôm nay đang phục vụ)
+            IF @dayOffset = 0 AND @tableNo = 1 AND @status IN ('DANG_CHE_BIEN', 'CHO_CHE_BIEN')
+                AND NOT EXISTS (SELECT 1 FROM dbo.PhienBan WHERE MaBan = @tableId AND TrangThai = 'OPEN')
+            BEGIN
+                SET @sessionStatus = 'OPEN';
+            END;
             
             INSERT INTO dbo.PhienBan (MaBan, TrangThai, MoLuc, DongLuc, NguoiMo, NguoiDong, Version)
             VALUES (@tableId, @sessionStatus, @createTime, CASE WHEN @sessionStatus = 'CLOSED' THEN @finishTime ELSE NULL END, @customer, CASE WHEN @sessionStatus = 'CLOSED' THEN @cashier ELSE NULL END, 0);
             SET @phienId = SCOPE_IDENTITY();
 
             IF @sessionStatus = 'OPEN'
+            BEGIN
                 UPDATE dbo.Ban SET TrangThai = 'CO_KHACH', MaPhienDangMo = @phienId WHERE MaBan = @tableId;
+                IF NOT EXISTS (SELECT 1 FROM dbo.GioPhien WHERE MaPhien = @phienId)
+                BEGIN
+                    INSERT INTO dbo.GioPhien (MaPhien, Version, SuaLuc)
+                    VALUES (@phienId, 0, @createTime);
+                END;
+            END
             ELSE
-                UPDATE dbo.Ban SET TrangThai = 'TRONG', MaPhienDangMo = NULL WHERE MaBan = @tableId;
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.PhienBan WHERE MaBan = @tableId AND TrangThai = 'OPEN')
+                BEGIN
+                    UPDATE dbo.Ban SET TrangThai = 'TRONG', MaPhienDangMo = NULL WHERE MaBan = @tableId;
+                END;
+            END;
         END;
 
         -- Áp dụng Voucher mẫu cho một số đơn
@@ -1153,11 +1168,24 @@ BEGIN
         DECLARE @finalPay DECIMAL(18,2) = @subTotal - @voucherDiscount;
         IF @finalPay < 0 SET @finalPay = 0;
 
-        -- Tạo Hóa đơn
+        -- Tạo Hóa đơn: Tách đúng tiền giảm cửa hàng (TienGiam) và voucher (TienGiamVoucher)
         DECLARE @invStatus VARCHAR(12) = CASE WHEN @status = 'DA_HUY' THEN 'DA_HUY' ELSE 'HIEU_LUC' END;
         INSERT INTO dbo.HoaDon (MaDH, TongTien, TienGiam, PhaiTra, TyLeGiamChot, LoaiGiamChot, GiaTriGiamChot, TrangThai, LapLuc, HuyLuc, MaVoucher, MaCodeVoucher, TienGiamVoucher)
-        VALUES (@curDhId, @subTotal, @voucherDiscount, @finalPay, 0.00, 'PERCENT', 0.00, @invStatus, @createTime, CASE WHEN @status = 'DA_HUY' THEN @finishTime ELSE NULL END, @applyVoucher, @voucherCode, @voucherDiscount);
+        VALUES (@curDhId, @subTotal, 0.00, @finalPay, 0.00, 'PERCENT', 0.00, @invStatus, @createTime, CASE WHEN @status = 'DA_HUY' THEN @finishTime ELSE NULL END, @applyVoucher, @voucherCode, @voucherDiscount);
         DECLARE @curHdId BIGINT = SCOPE_IDENTITY();
+
+        -- Snapshot định mức tiêu hao nguyên liệu (DinhMucDonHang) theo công thức thực tế
+        INSERT INTO dbo.DinhMucDonHang (MaDH, MaNL, TongLuong, LoaiChot, DonViChot)
+        SELECT 
+            @curDhId,
+            ctm.MaNL,
+            SUM(ctm.DinhLuong),
+            MAX(nl.Loai),
+            MAX(nl.DonVi)
+        FROM dbo.CongThucMon ctm
+        JOIN dbo.NguyenLieu nl ON ctm.MaNL = nl.MaNL
+        WHERE ctm.MaMon IN (@d1Ma, @tp1Ma, CASE WHEN @oIdx % 2 = 0 THEN @d2Ma ELSE -1 END)
+        GROUP BY ctm.MaNL;
 
         -- Thanh toán & Trừ kho nếu là đơn Hoàn thành
         IF @status = 'HOAN_THANH'
@@ -1168,9 +1196,32 @@ BEGIN
             INSERT INTO dbo.ThanhToan (MaHD, PhuongThuc, SoTien, ThamChieu, NguoiThu, ThuLuc, MaYeuCau)
             VALUES (@curHdId, @payMethod, @finalPay, @refCode, @cashier, @finishTime, 'PAY-' + @orderKey);
 
-            -- Trừ kho Bếp theo định mức đơn hàng
-            INSERT INTO dbo.LichSuKho (MaCN, MaNL, ViTri, Loai, LuongBienDong, TonTruoc, TonSau, NguonLoai, NguonMa, NguoiLap, TaoLuc, LyDo)
-            VALUES (@targetBranch, @nlCotTraDen, 'BEP', 'XUAT', -150.000, 10000.000, 9850.000, 'ORDER', @curDhId, @chef, @finishTime, N'Pha chế Đơn hàng #' + CAST(@curDhId AS VARCHAR(10)));
+            -- Trừ kho Bếp/Kho thực tế theo DinhMucDonHang và ghi nhận LichSuKho liên tục
+            DECLARE @curNlId BIGINT, @curTongLuong DECIMAL(18,3), @curLoaiNL VARCHAR(12), @curDonVi NVARCHAR(20);
+            DECLARE curDMDH CURSOR LOCAL FAST_FORWARD FOR
+                SELECT MaNL, TongLuong, LoaiChot, DonViChot FROM dbo.DinhMucDonHang WHERE MaDH = @curDhId;
+            OPEN curDMDH;
+            FETCH NEXT FROM curDMDH INTO @curNlId, @curTongLuong, @curLoaiNL, @curDonVi;
+            WHILE @@FETCH_STATUS = 0
+            BEGIN
+                DECLARE @loc VARCHAR(8) = CASE WHEN @curLoaiNL = 'SOCHE' THEN 'BEP' ELSE 'KHO' END;
+                DECLARE @curBeforeQty DECIMAL(18,3) = 0.000;
+                SELECT @curBeforeQty = SoLuong FROM dbo.TonNguyenLieu WHERE MaCN = @targetBranch AND MaNL = @curNlId AND ViTri = @loc;
+                IF @curBeforeQty IS NULL SET @curBeforeQty = 1000.000;
+                DECLARE @curAfterQty DECIMAL(18,3) = @curBeforeQty - @curTongLuong;
+                IF @curAfterQty < 0 SET @curAfterQty = 0.000;
+
+                UPDATE dbo.TonNguyenLieu 
+                SET SoLuong = @curAfterQty
+                WHERE MaCN = @targetBranch AND MaNL = @curNlId AND ViTri = @loc;
+
+                INSERT INTO dbo.LichSuKho (MaCN, MaNL, ViTri, Loai, LuongBienDong, TonTruoc, TonSau, NguonLoai, NguonMa, NguoiLap, TaoLuc, LyDo)
+                VALUES (@targetBranch, @curNlId, @loc, 'XUAT', -@curTongLuong, @curBeforeQty, @curBeforeQty - @curTongLuong, 'ORDER', @curDhId, @chef, @finishTime, N'Pha chế Đơn hàng #' + CAST(@curDhId AS VARCHAR(10)));
+
+                FETCH NEXT FROM curDMDH INTO @curNlId, @curTongLuong, @curLoaiNL, @curDonVi;
+            END;
+            CLOSE curDMDH;
+            DEALLOCATE curDMDH;
 
             -- Ghi nhận lịch sử voucher
             IF @applyVoucher IS NOT NULL AND @customer IS NOT NULL

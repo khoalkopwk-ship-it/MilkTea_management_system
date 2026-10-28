@@ -101,26 +101,37 @@ public class SecurityConfig {
                                 "/api/v1/admin/branches/**",
                                 "/api/v1/admin/refunds/*/decision"
                         ).hasRole("ADMIN")
-                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "MANAGER")
-                        .requestMatchers("/api/v1/cashier/**").hasRole("CASHIER")
-                        .requestMatchers("/api/v1/kitchen/**").hasAnyRole("KITCHEN", "CHEF")
-                        .requestMatchers("/api/v1/inventory/**").hasAnyRole("ADMIN", "KITCHEN", "CASHIER", "MANAGER")
+                        .requestMatchers("/api/v1/admin", "/api/v1/admin/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/api/v1/cashier", "/api/v1/cashier/**").hasAnyRole("CASHIER", "MANAGER", "ADMIN")
+                        .requestMatchers("/api/v1/kitchen", "/api/v1/kitchen/**").hasAnyRole("KITCHEN", "CHEF", "MANAGER", "ADMIN")
+                        .requestMatchers("/api/v1/inventory", "/api/v1/inventory/**").hasAnyRole("ADMIN", "KITCHEN", "CASHIER", "MANAGER")
                         .requestMatchers("/api/v1/orders/counter").hasAnyRole("CASHIER", "ADMIN", "MANAGER")
                         // 3. Public, Customer & Guest routes
                         .requestMatchers(
+                                "/api/v1/auth",
                                 "/api/v1/auth/**",
+                                "/api/v1/public",
                                 "/api/v1/public/**",
                                 "/api/v1/branches",
                                 "/api/v1/branches/**",
+                                "/api/v1/catalog",
                                 "/api/v1/catalog/**",
+                                "/api/v1/tables",
                                 "/api/v1/tables/**",
+                                "/api/v1/table-sessions",
                                 "/api/v1/table-sessions/**",
-                                "/api/v1/orders/table",
+                                "/api/v1/orders",
                                 "/api/v1/orders/**",
+                                "/api/v1/customer",
                                 "/api/v1/customer/**",
+                                "/api/v1/favorites",
                                 "/api/v1/favorites/**",
+                                "/api/v1/reviews",
                                 "/api/v1/reviews/**",
-                                "/api/v1/vouchers/**"
+                                "/api/v1/vouchers",
+                                "/api/v1/vouchers/**",
+                                "/api/v1/payments",
+                                "/api/v1/payments/**"
                         ).permitAll()
                         // Everything else authenticated
                         .anyRequest().authenticated()

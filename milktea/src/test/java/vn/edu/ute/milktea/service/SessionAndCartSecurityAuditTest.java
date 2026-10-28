@@ -63,7 +63,7 @@ public class SessionAndCartSecurityAuditTest {
         branch1 = Branch.builder().id(1L).code("CN01").name("Chi nhánh 1").build();
         branch2 = Branch.builder().id(2L).code("CN02").name("Chi nhánh 2").build();
 
-        tableController = new TableController(tableContextService, tableSessionService, tableRepository);
+        tableController = new TableController(tableContextService, tableSessionService, tableRepository, sessionRepository);
         authService = new AuthService(
                 accountRepository, passwordResetTokenRepository, passwordEncoder,
                 jwtService, guestAccessService, otpService, mailService

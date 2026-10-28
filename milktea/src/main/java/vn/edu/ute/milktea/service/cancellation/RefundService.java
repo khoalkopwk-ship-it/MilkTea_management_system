@@ -28,6 +28,7 @@ public class RefundService {
     private final vn.edu.ute.milktea.repository.payment.PaymentRepository paymentRepository;
     private final vn.edu.ute.milktea.repository.cancellation.CancellationRequestRepository cancellationRepository;
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher publisher;
+    private final vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
 
     @Transactional
     public vn.edu.ute.milktea.dto.CancellationDto.RefundResponse requestBankRefund(Long orderId, Long cashierId) {
@@ -237,13 +238,6 @@ public class RefundService {
     @Transactional
     public void decideRefund(Long refundId, boolean approved, String reason, Long adminId) {
         decideRefund(refundId, approved, reason, null, adminId);
-    }
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
-
-    public void setStaffBranchRepository(vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository) {
-        this.staffBranchRepository = staffBranchRepository;
     }
 
     @Transactional
