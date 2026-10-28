@@ -610,7 +610,7 @@
                                         Hồ sơ cá nhân
                                     </a>
                                 </li>
-                                <li>
+                                <li sec:authorize="hasRole('CUSTOMER')">
                                     <a class="dropdown-item" th:href="@{/favorites}">
                                         <i class="bi bi-heart-fill me-2 text-danger"></i>
                                         Món uống yêu thích

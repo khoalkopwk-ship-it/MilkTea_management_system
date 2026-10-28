@@ -129,8 +129,39 @@
 }
 
 .dashboard-page .dashboard-date-field {
-    width: 155px;
+    width: 175px;
     min-width: 0;
+    flex-shrink: 0;
+}
+
+/* Phạm vi cơ sở rộng hơn để hiển thị tên chi nhánh */
+.dashboard-page .dashboard-date-field:first-child {
+    width: 235px;
+}
+
+/* Select và input luôn nằm trong phạm vi cột */
+.dashboard-page .dashboard-date-field .form-select,
+.dashboard-page .dashboard-date-field .form-control {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0 !important;
+    box-sizing: border-box;
+}
+
+/* Cho bộ lọc tự xuống dòng khi thiếu không gian */
+.dashboard-page .dashboard-date-filter {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* Giữ nguyên bố cục khi màn hình nhỏ */
+@media (max-width: 1200px) {
+    .dashboard-page .dashboard-heading-actions {
+        width: 100%;
+        margin-left: 0;
+    }
 }
 
 .dashboard-page .dashboard-date-field .form-label {
