@@ -2936,14 +2936,20 @@
 
                     setTimeout(() => {
                         const role = data.role || (data.user && data.user.role);
+                        const hasValidRedirect = redirect && !redirect.includes('/login');
                         if (role === 'ADMIN') {
-                            window.location.href = '/admin';
+                            window.location.href = hasValidRedirect && redirect.startsWith('/admin') ? redirect : '/admin';
+                        } else if (role === 'MANAGER') {
+                            const isAllowedManagerRedirect = hasValidRedirect &&
+                                (redirect.startsWith('/admin') || redirect.startsWith('/cashier') || redirect.startsWith('/kitchen')) &&
+                                !redirect.startsWith('/admin/settings') && !redirect.startsWith('/admin/vouchers');
+                            window.location.href = isAllowedManagerRedirect ? redirect : '/admin';
                         } else if (role === 'CASHIER') {
-                            window.location.href = '/cashier';
+                            window.location.href = hasValidRedirect && redirect.startsWith('/cashier') ? redirect : '/cashier';
                         } else if (role === 'KITCHEN') {
-                            window.location.href = '/kitchen';
+                            window.location.href = hasValidRedirect && redirect.startsWith('/kitchen') ? redirect : '/kitchen';
                         } else {
-                            let targetUrl = (redirect && !redirect.includes('/login')) ? redirect : '/';
+                            let targetUrl = hasValidRedirect ? redirect : '/';
 
                             let savedTableQr = null;
                             let savedTableId = null;

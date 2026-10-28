@@ -17,6 +17,11 @@ import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 import vn.edu.ute.milktea.service.media.ProductImageService;
 
+import vn.edu.ute.milktea.common.ErrorCode;
+import vn.edu.ute.milktea.entity.account.Role;
+import vn.edu.ute.milktea.common.BusinessException;
+import vn.edu.ute.milktea.service.branch.BranchService;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -30,24 +35,47 @@ public class AdminController {
     private final InventoryService inventoryService;
     private final ProductImageService productImageService;
     private final vn.edu.ute.milktea.service.cancellation.RefundService refundService;
+    private final BranchService branchService;
+
+    private Long resolveManagerBranchId(CurrentActor actor) {
+        return resolveManagerBranchId(actor, null);
+    }
+
+    private Long resolveManagerBranchId(CurrentActor actor, Long branchIdParam) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            if (actor.getBranchId() == null) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở chưa được phân công chi nhánh hoạt động");
+            }
+            return actor.getBranchId();
+        }
+        return branchIdParam;
+    }
 
     // ==========================================
     // 1. QUẢN LÝ NHÂN VIÊN
     // ==========================================
     @GetMapping("/accounts")
-    public ResponseEntity<ApiResponse<List<AdminDto.StaffResponse>>> listStaffAccounts() {
-        return ResponseEntity.ok(ApiResponse.ok(adminService.listStaffAccounts()));
+    public ResponseEntity<ApiResponse<List<AdminDto.StaffResponse>>> listStaffAccounts(
+            @RequestParam(value = "branchId", required = false) Long branchIdParam,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long branchId = resolveManagerBranchId(actor, branchIdParam);
+        return ResponseEntity.ok(ApiResponse.ok(adminService.listStaffAccounts(branchId)));
     }
 
     @GetMapping("/accounts/{id}")
-    public ResponseEntity<ApiResponse<AdminDto.StaffResponse>> getStaffAccount(@PathVariable("id") Long id) {
-        return ResponseEntity.ok(ApiResponse.ok(adminService.getStaffAccount(id)));
+    public ResponseEntity<ApiResponse<AdminDto.StaffResponse>> getStaffAccount(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long branchId = resolveManagerBranchId(actor);
+        return ResponseEntity.ok(ApiResponse.ok(adminService.getStaffAccount(id, branchId)));
     }
 
     @PostMapping("/accounts")
     public ResponseEntity<ApiResponse<AdminDto.StaffResponse>> createStaffAccount(
-            @Valid @RequestBody AdminDto.CreateStaffRequest request) {
-        return ResponseEntity.status(201).body(ApiResponse.ok(adminService.createStaffAccount(request)));
+            @Valid @RequestBody AdminDto.CreateStaffRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long branchId = resolveManagerBranchId(actor);
+        return ResponseEntity.status(201).body(ApiResponse.ok(adminService.createStaffAccount(request, branchId)));
     }
 
     @PutMapping("/accounts/{id}")
@@ -56,7 +84,8 @@ public class AdminController {
             @Valid @RequestBody AdminDto.UpdateStaffRequest request,
             @AuthenticationPrincipal CurrentActor actor) {
         Long currentAdminId = actor != null ? actor.getAccountId() : null;
-        return ResponseEntity.ok(ApiResponse.ok(adminService.updateStaffAccount(id, request, currentAdminId)));
+        Long branchId = resolveManagerBranchId(actor);
+        return ResponseEntity.ok(ApiResponse.ok(adminService.updateStaffAccount(id, request, currentAdminId, branchId)));
     }
 
     @PostMapping(value = "/accounts/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -64,6 +93,9 @@ public class AdminController {
             @PathVariable("id") Long id,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            adminService.getStaffAccount(id, resolveManagerBranchId(actor));
+        }
         String avatarUrl = productImageService.uploadAvatarImage(id, file);
         return ResponseEntity.ok(ApiResponse.ok(Map.of("avatarUrl", avatarUrl)));
     }
@@ -74,8 +106,9 @@ public class AdminController {
             @RequestBody(required = false) Map<String, Boolean> body,
             @AuthenticationPrincipal CurrentActor actor) {
         Long currentAdminId = actor != null ? actor.getAccountId() : null;
+        Long branchId = resolveManagerBranchId(actor);
         boolean active = body != null && Boolean.TRUE.equals(body.get("active"));
-        return ResponseEntity.ok(ApiResponse.ok(adminService.toggleStaffStatus(id, active, currentAdminId)));
+        return ResponseEntity.ok(ApiResponse.ok(adminService.toggleStaffStatus(id, active, currentAdminId, branchId)));
     }
 
     @DeleteMapping("/accounts/{id}")
@@ -83,12 +116,13 @@ public class AdminController {
             @PathVariable("id") Long id,
             @AuthenticationPrincipal CurrentActor actor) {
         Long currentAdminId = actor != null ? actor.getAccountId() : null;
-        adminService.deleteStaffAccount(id, currentAdminId);
+        Long branchId = resolveManagerBranchId(actor);
+        adminService.deleteStaffAccount(id, currentAdminId, branchId);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
     // ==========================================
-    // 2. QUẢN LÝ DANH MỤC
+    // 2. QUẢN LÝ DANH MỤC (CHỈ ADMIN HỆ THỐNG - F18)
     // ==========================================
     @GetMapping("/categories")
     public ResponseEntity<ApiResponse<List<AdminDto.CategoryResponse>>> listCategories() {
@@ -102,19 +136,32 @@ public class AdminController {
 
     @PostMapping("/categories")
     public ResponseEntity<ApiResponse<AdminDto.CategoryResponse>> createCategory(
-            @Valid @RequestBody AdminDto.CategoryRequest request) {
+            @Valid @RequestBody AdminDto.CategoryRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && !actor.hasRole(Role.ADMIN)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Chỉ Quản trị viên hệ thống (ADMIN) mới có quyền tạo danh mục món");
+        }
         return ResponseEntity.status(201).body(ApiResponse.ok(adminService.createCategory(request)));
     }
 
     @PutMapping("/categories/{id}")
     public ResponseEntity<ApiResponse<AdminDto.CategoryResponse>> updateCategory(
             @PathVariable("id") Long id,
-            @Valid @RequestBody AdminDto.CategoryRequest request) {
+            @Valid @RequestBody AdminDto.CategoryRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && !actor.hasRole(Role.ADMIN)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Chỉ Quản trị viên hệ thống (ADMIN) mới có quyền sửa danh mục món");
+        }
         return ResponseEntity.ok(ApiResponse.ok(adminService.updateCategory(id, request)));
     }
 
     @DeleteMapping("/categories/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteCategory(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && !actor.hasRole(Role.ADMIN)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Chỉ Quản trị viên hệ thống (ADMIN) mới có quyền xóa danh mục món");
+        }
         adminService.deleteCategory(id);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
@@ -128,18 +175,22 @@ public class AdminController {
             @RequestParam(value = "active", required = false) Boolean active,
             @RequestParam(value = "q", required = false) String query,
             @RequestParam(value = "page", required = false) Integer page,
-            @RequestParam(value = "limit", required = false) Integer limit) {
+            @RequestParam(value = "limit", required = false) Integer limit,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long branchId = resolveManagerBranchId(actor);
         if (page != null || limit != null || categoryId != null || active != null || (query != null && !query.isBlank())) {
             int p = page != null ? page : 1;
             int l = limit != null ? limit : 10;
-            return ResponseEntity.ok(ApiResponse.ok(adminService.searchProducts(categoryId, active, query, p, l)));
+            return ResponseEntity.ok(ApiResponse.ok(adminService.searchProducts(categoryId, active, query, p, l, branchId)));
         }
-        return ResponseEntity.ok(ApiResponse.ok(adminService.listProducts()));
+        return ResponseEntity.ok(ApiResponse.ok(adminService.listProducts(branchId)));
     }
 
     @GetMapping("/documents/refunds/pending-count")
-    public ResponseEntity<ApiResponse<Map<String, Long>>> getPendingRefundsCount() {
-        long count = refundService.getRefunds(vn.edu.ute.milktea.entity.cancellation.RefundStatus.CHO_DUYET).size();
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getPendingRefundsCount(
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long branchId = (actor != null && actor.hasRole(Role.MANAGER)) ? actor.getBranchId() : null;
+        long count = refundService.getRefunds(vn.edu.ute.milktea.entity.cancellation.RefundStatus.CHO_DUYET, branchId).size();
         return ResponseEntity.ok(ApiResponse.ok(Map.of("pendingCount", count)));
     }
 
@@ -150,19 +201,32 @@ public class AdminController {
 
     @PostMapping("/products")
     public ResponseEntity<ApiResponse<AdminDto.ProductResponse>> createProduct(
-            @Valid @RequestBody AdminDto.ProductRequest request) {
+            @Valid @RequestBody AdminDto.ProductRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở không có quyền thêm món mới");
+        }
         return ResponseEntity.status(201).body(ApiResponse.ok(adminService.createProduct(request)));
     }
 
     @PutMapping("/products/{id}")
     public ResponseEntity<ApiResponse<AdminDto.ProductResponse>> updateProduct(
             @PathVariable("id") Long id,
-            @Valid @RequestBody AdminDto.ProductRequest request) {
+            @Valid @RequestBody AdminDto.ProductRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở không có quyền chỉnh sửa tên, size, giá bán của món");
+        }
         return ResponseEntity.ok(ApiResponse.ok(adminService.updateProduct(id, request)));
     }
 
     @DeleteMapping("/products/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteProduct(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở không có quyền xóa món");
+        }
         adminService.deleteProduct(id);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
@@ -175,52 +239,101 @@ public class AdminController {
     @PutMapping("/products/{id}/recipe")
     public ResponseEntity<ApiResponse<AdminDto.ProductRecipeResponse>> updateProductRecipe(
             @PathVariable("id") Long id,
-            @Valid @RequestBody AdminDto.UpdateProductRecipeRequest request) {
+            @Valid @RequestBody AdminDto.UpdateProductRecipeRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở không có quyền chỉnh sửa công thức món");
+        }
         return ResponseEntity.ok(ApiResponse.ok(adminService.updateProductRecipe(id, request)));
     }
 
     @PostMapping(value = "/products/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<AdminDto.ProductImageView>> uploadProductImage(
             @PathVariable("id") Long id,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở không có quyền đổi ảnh món");
+        }
         return ResponseEntity.ok(ApiResponse.ok(productImageService.uploadProductImage(id, file)));
+    }
+
+    @PostMapping("/products/{id}/toggle-status")
+    public ResponseEntity<ApiResponse<Void>> toggleProductStatus(
+            @PathVariable("id") Long id,
+            @RequestBody(required = false) Map<String, Boolean> body,
+            @AuthenticationPrincipal CurrentActor actor) {
+        boolean active = body != null && Boolean.TRUE.equals(body.get("active"));
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            branchService.updateProductAvailability(resolveManagerBranchId(actor), id, active, actor);
+        } else {
+            adminService.toggleProductStatus(id, active);
+        }
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
     // ==========================================
     // 4. QUẢN LÝ BÀN
     // ==========================================
+    private void checkNotAdminForTables(CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.ADMIN)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản trị viên toàn chuỗi không quản lý sơ đồ bàn và mã QR");
+        }
+    }
+
     @GetMapping("/tables")
-    public ResponseEntity<ApiResponse<List<AdminDto.TableResponse>>> listTables() {
-        return ResponseEntity.ok(ApiResponse.ok(adminService.listTables()));
+    public ResponseEntity<ApiResponse<List<AdminDto.TableResponse>>> listTables(
+            @AuthenticationPrincipal CurrentActor actor) {
+        checkNotAdminForTables(actor);
+        Long branchId = resolveManagerBranchId(actor);
+        return ResponseEntity.ok(ApiResponse.ok(adminService.listTables(branchId)));
     }
 
     @GetMapping("/tables/{id}")
-    public ResponseEntity<ApiResponse<AdminDto.TableResponse>> getTable(@PathVariable("id") Long id) {
-        return ResponseEntity.ok(ApiResponse.ok(adminService.getTable(id)));
+    public ResponseEntity<ApiResponse<AdminDto.TableResponse>> getTable(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CurrentActor actor) {
+        checkNotAdminForTables(actor);
+        Long branchId = resolveManagerBranchId(actor);
+        return ResponseEntity.ok(ApiResponse.ok(adminService.getTable(id, branchId)));
     }
 
     @PostMapping("/tables")
     public ResponseEntity<ApiResponse<AdminDto.TableResponse>> createTable(
-            @Valid @RequestBody AdminDto.TableRequest request) {
-        return ResponseEntity.status(201).body(ApiResponse.ok(adminService.createTable(request)));
+            @Valid @RequestBody AdminDto.TableRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        checkNotAdminForTables(actor);
+        Long branchId = resolveManagerBranchId(actor);
+        return ResponseEntity.status(201).body(ApiResponse.ok(adminService.createTable(request, branchId)));
     }
 
     @PutMapping("/tables/{id}")
     public ResponseEntity<ApiResponse<AdminDto.TableResponse>> updateTable(
             @PathVariable("id") Long id,
-            @Valid @RequestBody AdminDto.TableRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(adminService.updateTable(id, request)));
+            @Valid @RequestBody AdminDto.TableRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        checkNotAdminForTables(actor);
+        Long branchId = resolveManagerBranchId(actor);
+        return ResponseEntity.ok(ApiResponse.ok(adminService.updateTable(id, request, branchId)));
     }
 
     @DeleteMapping("/tables/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteTable(@PathVariable("id") Long id) {
-        adminService.deleteTable(id);
+    public ResponseEntity<ApiResponse<Void>> deleteTable(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CurrentActor actor) {
+        checkNotAdminForTables(actor);
+        Long branchId = resolveManagerBranchId(actor);
+        adminService.deleteTable(id, branchId);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
     @GetMapping("/tables/{id}/qr")
-    public ResponseEntity<ApiResponse<Map<String, String>>> getTableQr(@PathVariable("id") Long id) {
-        String qr = adminService.getTableQr(id);
+    public ResponseEntity<ApiResponse<Map<String, String>>> getTableQr(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CurrentActor actor) {
+        checkNotAdminForTables(actor);
+        Long branchId = resolveManagerBranchId(actor);
+        String qr = adminService.getTableQr(id, branchId);
         return ResponseEntity.ok(ApiResponse.ok(Map.of("qrCode", qr)));
     }
 
@@ -251,7 +364,12 @@ public class AdminController {
     }
 
     @DeleteMapping("/materials/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteMaterial(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteMaterial(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý chi nhánh không có quyền xóa nguyên liệu");
+        }
         adminService.deleteMaterial(id);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
@@ -260,30 +378,52 @@ public class AdminController {
     // 6. QUẢN LÝ CÔNG THỨC SƠ CHẾ
     // ==========================================
     @GetMapping("/preparation-recipes")
-    public ResponseEntity<ApiResponse<List<AdminDto.PreparationRecipeResponse>>> listPreparationRecipes() {
+    public ResponseEntity<ApiResponse<List<AdminDto.PreparationRecipeResponse>>> listPreparationRecipes(
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý chi nhánh không có quyền xem cấu hình định mức sơ chế");
+        }
         return ResponseEntity.ok(ApiResponse.ok(adminService.listPreparationRecipes()));
     }
 
     @GetMapping("/preparation-recipes/{id}")
-    public ResponseEntity<ApiResponse<AdminDto.PreparationRecipeResponse>> getPreparationRecipe(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiResponse<AdminDto.PreparationRecipeResponse>> getPreparationRecipe(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý chi nhánh không có quyền xem cấu hình định mức sơ chế");
+        }
         return ResponseEntity.ok(ApiResponse.ok(adminService.getPreparationRecipe(id)));
     }
 
     @PostMapping("/preparation-recipes")
     public ResponseEntity<ApiResponse<AdminDto.PreparationRecipeResponse>> createPreparationRecipe(
-            @Valid @RequestBody AdminDto.CreatePreparationRecipeRequest request) {
+            @Valid @RequestBody AdminDto.CreatePreparationRecipeRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý chi nhánh không có quyền cấu hình định mức sơ chế");
+        }
         return ResponseEntity.status(201).body(ApiResponse.ok(adminService.createPreparationRecipe(request)));
     }
 
     @PutMapping("/preparation-recipes/{id}")
     public ResponseEntity<ApiResponse<AdminDto.PreparationRecipeResponse>> updatePreparationRecipe(
             @PathVariable("id") Long id,
-            @Valid @RequestBody AdminDto.CreatePreparationRecipeRequest request) {
+            @Valid @RequestBody AdminDto.CreatePreparationRecipeRequest request,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý chi nhánh không có quyền cấu hình định mức sơ chế");
+        }
         return ResponseEntity.ok(ApiResponse.ok(adminService.updatePreparationRecipe(id, request)));
     }
 
     @DeleteMapping("/preparation-recipes/{id}")
-    public ResponseEntity<ApiResponse<Void>> deletePreparationRecipe(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletePreparationRecipe(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý chi nhánh không có quyền cấu hình định mức sơ chế");
+        }
         adminService.deletePreparationRecipe(id);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
@@ -295,10 +435,15 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> updateStockThreshold(
             @PathVariable("materialId") Long materialId,
             @PathVariable("location") StockLocation location,
-            @RequestBody Map<String, BigDecimal> body) {
+            @RequestParam(value = "branchId", required = false) Long branchIdParam,
+            @RequestBody Map<String, BigDecimal> body,
+            @AuthenticationPrincipal CurrentActor actor) {
 
+        Long branchId = (actor != null && actor.hasRole(Role.MANAGER))
+                ? resolveManagerBranchId(actor)
+                : (branchIdParam != null ? branchIdParam : branchService.getOrCreateCentralWarehouse().getId());
         BigDecimal threshold = body.getOrDefault("threshold", BigDecimal.ZERO);
-        inventoryService.configureThreshold(new InventoryDto.UpdateThresholdRequest(materialId, location, threshold));
+        inventoryService.configureThreshold(new InventoryDto.UpdateThresholdRequest(branchId, materialId, location, threshold), branchId);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

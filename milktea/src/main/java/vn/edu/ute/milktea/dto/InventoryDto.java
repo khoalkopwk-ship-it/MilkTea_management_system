@@ -79,6 +79,8 @@ public class InventoryDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class UpdateThresholdRequest {
+        private Long branchId;
+
         @NotNull(message = "Mã nguyên liệu không được để trống")
         private Long materialId;
 
@@ -88,6 +90,10 @@ public class InventoryDto {
         @NotNull(message = "Ngưỡng cảnh báo không được để trống")
         @DecimalMin(value = "0.0", message = "Ngưỡng không được âm")
         private BigDecimal threshold;
+
+        public UpdateThresholdRequest(Long materialId, StockLocation location, BigDecimal threshold) {
+            this(null, materialId, location, threshold);
+        }
     }
 
     @Data
@@ -112,6 +118,7 @@ public class InventoryDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CreatePreparationBatchRequest {
+        private Long branchId;
         private Long recipeId;
         private Long outputMaterialId;
         private Long recipeVersion;
@@ -142,6 +149,8 @@ public class InventoryDto {
     @AllArgsConstructor
     public static class PreparationBatchResponse {
         private Long id;
+        private Long branchId;
+        private String branchName;
         private java.time.Instant postedAt;
         private Long recipeId;
         private String recipeName;
@@ -180,7 +189,6 @@ public class InventoryDto {
         @DecimalMin(value = "0.001", message = "Số lượng nhập phải lớn hơn 0")
         private BigDecimal quantity;
 
-        @NotNull(message = "Đơn giá không được để trống")
         @DecimalMin(value = "0.0", message = "Đơn giá không được âm")
         private BigDecimal unitPrice;
     }
@@ -192,6 +200,7 @@ public class InventoryDto {
     public static class CreateImportReceiptRequest {
         private String reason;
         private String supplier;
+        private Long branchId;
 
         @NotEmpty(message = "Danh sách nguyên liệu nhập không được rỗng")
         private List<ImportItemRequest> items;
@@ -203,6 +212,8 @@ public class InventoryDto {
     @AllArgsConstructor
     public static class ImportReceiptResponse {
         private Long id;
+        private Long branchId;
+        private String branchName;
         private String reason;
         private String supplier;
         private String status;
@@ -289,6 +300,8 @@ public class InventoryDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CreateShiftSettlementRequest {
+        private Long branchId;
+
         @NotNull(message = "Vị trí không được để trống")
         private StockLocation location;
 
@@ -323,6 +336,8 @@ public class InventoryDto {
     @AllArgsConstructor
     public static class ShiftSettlementResponse {
         private Long id;
+        private Long branchId;
+        private String branchName;
         private StockLocation location;
         private java.time.Instant closedAt;
         private String closedByEmail;

@@ -281,10 +281,15 @@ const AdminApp = (() => {
     }
 
     // === 3. QUẢN LÝ BÀN ===
-    async function createTable(name) {
+    async function createTable(name, branchId) {
         if (!name || !name.trim()) return;
         try {
-            await MilkTeaApi.post('/api/v1/admin/tables', { name: name.trim() });
+            const payload = { name: name.trim() };
+            const effectiveBranchId = branchId || (window.IS_MANAGER ? window.MANAGER_BRANCH_ID : null);
+            if (effectiveBranchId) {
+                payload.branchId = Number(effectiveBranchId);
+            }
+            await MilkTeaApi.post('/api/v1/admin/tables', payload);
             MilkTeaApi.showToast('Thêm bàn mới thành công!', 'success');
             setTimeout(() => window.location.reload(), 500);
         } catch (e) {
@@ -337,14 +342,18 @@ const AdminApp = (() => {
     }
 
     // === 5. KHO & CHỨNG TỪ ===
-    async function submitImport(supplier, reason, items) {
+    async function submitImport(supplier, reason, items, branchId) {
         try {
-            await MilkTeaApi.post('/api/v1/inventory/imports', {
+            const payload = {
                 supplier,
                 reason,
                 items
-            });
-            MilkTeaApi.showToast('Nhập kho thành công! Đã tăng tồn kho KHO.', 'success');
+            };
+            if (branchId) {
+                payload.branchId = branchId;
+            }
+            await MilkTeaApi.post('/api/v1/inventory/imports', payload);
+            MilkTeaApi.showToast('Nhập kho thành công!', 'success');
             const modalEl = document.getElementById('importModal');
             if (modalEl) {
                 const modal = bootstrap.Modal.getInstance(modalEl);
@@ -361,14 +370,18 @@ const AdminApp = (() => {
         }
     }
 
-    async function submitWaste(location, reason, items) {
+    async function submitWaste(location, reason, items, branchId) {
         try {
-            await MilkTeaApi.post('/api/v1/inventory/waste', {
+            let url = '/api/v1/inventory/waste';
+            if (branchId) {
+                url += `?branchId=${encodeURIComponent(branchId)}`;
+            }
+            await MilkTeaApi.post(url, {
                 location: 'KHO',
                 reason,
                 items
             });
-            MilkTeaApi.showToast('Ghi nhận hao hụt thành công! Đã giảm tồn kho KHO.', 'success');
+            MilkTeaApi.showToast('Ghi nhận hao hụt thành công!', 'success');
             const modalEl = document.getElementById('wasteModal');
             if (modalEl) {
                 const modal = bootstrap.Modal.getInstance(modalEl);
@@ -382,9 +395,13 @@ const AdminApp = (() => {
         }
     }
 
-    async function adjustRawMaterial(materialId, name, quantity, averageImportPrice, threshold, reason) {
+    async function adjustRawMaterial(materialId, name, quantity, averageImportPrice, threshold, reason, branchId) {
         try {
-            await MilkTeaApi.put('/api/v1/inventory/stocks/adjust', {
+            let url = '/api/v1/inventory/stocks/adjust';
+            if (branchId) {
+                url += `?branchId=${encodeURIComponent(branchId)}`;
+            }
+            await MilkTeaApi.put(url, {
                 materialId,
                 name,
                 quantity,
@@ -419,14 +436,18 @@ const AdminApp = (() => {
         }
 
         try {
-            await MilkTeaApi.put(
-                '/api/v1/inventory/stocks/threshold',
-                {
-                    materialId: Number(materialId),
-                    location: location,
-                    threshold: value
-                }
-            );
+            const branchSelect = document.getElementById('inventoryBranchSelect') || document.getElementById('branchFilter');
+            const branchId = window.IS_MANAGER ? window.MANAGER_BRANCH_ID : (branchSelect ? branchSelect.value : null);
+            const payload = {
+                materialId: Number(materialId),
+                location: location,
+                threshold: value
+            };
+            if (branchId) {
+                payload.branchId = Number(branchId);
+            }
+            const url = '/api/v1/inventory/stocks/threshold' + (branchId ? `?branchId=${encodeURIComponent(branchId)}` : '');
+            await MilkTeaApi.put(url, payload);
 
             MilkTeaApi.showToast(
                 'Cập nhật ngưỡng cảnh báo thành công!',
@@ -583,17 +604,31 @@ const AdminApp = (() => {
                 <td class="fw-bold product-price">${priceFormatted}</td>
                 <td>${statusBadge}</td>
                 <td>
-                    <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2"
-                                onclick="AdminApp.openProductFullConfig(${p.id})" title="Cấu hình & Công thức">
-                            <i class="bi bi-sliders me-1"></i> Cấu hình
-                        </button>
-                        <label class="btn btn-sm btn-outline-info rounded-pill px-2 mb-0" title="Đổi ảnh Cloudinary">
-                            <i class="bi bi-cloud-arrow-up"></i>
-                            <input type="file" class="d-none" accept="image/jpeg,image/png,image/webp"
-                                   onchange="AdminApp.uploadProductImage(${p.id}, this)">
-                        </label>
-                    </div>
+                    ${window.IS_MANAGER
+                        ? `<div class="d-flex align-items-center gap-2">
+                            ${p.active
+                                ? `<button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-2"
+                                        onclick="AdminApp.toggleProductStatus(${p.id}, false)">
+                                        <i class="bi bi-pause-circle me-1"></i> Ngừng bán
+                                   </button>`
+                                : `<button type="button" class="btn btn-sm btn-outline-success rounded-pill px-2"
+                                        onclick="AdminApp.toggleProductStatus(${p.id}, true)">
+                                        <i class="bi bi-play-circle me-1"></i> Mở bán
+                                   </button>`
+                            }
+                           </div>`
+                        : `<div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                    onclick="AdminApp.openProductFullConfig(${p.id})" title="Cấu hình & Công thức">
+                                <i class="bi bi-sliders me-1"></i> Cấu hình
+                            </button>
+                            <label class="btn btn-sm btn-outline-info rounded-pill px-2 mb-0" title="Đổi ảnh Cloudinary">
+                                <i class="bi bi-cloud-arrow-up"></i>
+                                <input type="file" class="d-none" accept="image/jpeg,image/png,image/webp"
+                                       onchange="AdminApp.uploadProductImage(${p.id}, this)">
+                            </label>
+                           </div>`
+                    }
                 </td>
             </tr>`;
         }).join('');
@@ -828,9 +863,20 @@ const AdminApp = (() => {
             await loadProducts(currentProductPage);
         } catch (e) {
             console.error(e);
-            MilkTeaApi.showToast('Lỗi lưu cấu hình: ' + (e.message || ''), 'error');
+            MilkTeaApi.showToast('Lỗi lưu cấu hình: ' + (e.message || ''), 'danger');
         } finally {
             if (btnSave) btnSave.disabled = false;
+        }
+    }
+
+    async function toggleProductStatus(productId, active) {
+        try {
+            await MilkTeaApi.post(`/api/v1/admin/products/${productId}/toggle-status`, { active });
+            MilkTeaApi.showToast(active ? 'Đã kích hoạt bán sản phẩm' : 'Đã chuyển món sang ngừng bán', 'success');
+            await loadProducts(currentProductPage);
+        } catch (err) {
+            console.error(err);
+            MilkTeaApi.showToast(err.message || 'Không thể thay đổi trạng thái món', 'danger');
         }
     }
 
@@ -861,6 +907,7 @@ const AdminApp = (() => {
         deleteFullConfigRecipeRow,
         updateFullConfigRecipeQty,
         saveProductFullConfig,
-        refreshAdminRefundBadge
+        refreshAdminRefundBadge,
+        toggleProductStatus
     };
 })();

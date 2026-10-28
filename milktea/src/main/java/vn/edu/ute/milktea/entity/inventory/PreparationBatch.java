@@ -23,6 +23,10 @@ public class PreparationBatch {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MaCN", nullable = false)
+    private vn.edu.ute.milktea.entity.branch.Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "MaCTSC", nullable = false)
     private PreparationRecipe recipe;
 

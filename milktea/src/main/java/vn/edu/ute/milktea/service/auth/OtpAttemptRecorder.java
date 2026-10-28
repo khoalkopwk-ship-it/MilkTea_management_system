@@ -26,13 +26,24 @@ public class OtpAttemptRecorder {
     public int recordFailedAttempt(Long otpId, int maxAttempts) {
         if (otpId == null) return 0;
 
+        Instant now = Instant.now();
+        int affected = otpRepository.incrementAttemptsAtomically(otpId, now);
+        if (affected > 0) {
+            EmailVerificationOtp otp = otpRepository.findById(otpId).orElse(null);
+            int attempts = otp != null ? otp.getAttempts() : maxAttempts;
+            if (attempts >= maxAttempts) {
+                log.warn("Mã OTP id={} đã bị thu hồi do nhập sai quá {} lần", otpId, maxAttempts);
+            }
+            return attempts;
+        }
+
         EmailVerificationOtp otp = otpRepository.findById(otpId).orElse(null);
         if (otp == null) return 0;
 
         int newAttempts = otp.getAttempts() + 1;
         otp.setAttempts(newAttempts);
         if (newAttempts >= maxAttempts) {
-            otp.setRevokedAt(Instant.now());
+            otp.setRevokedAt(now);
             log.warn("Mã OTP id={} đã bị thu hồi do nhập sai quá {} lần", otpId, maxAttempts);
         }
         otpRepository.saveAndFlush(otp);

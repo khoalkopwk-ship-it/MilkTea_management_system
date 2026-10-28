@@ -566,7 +566,8 @@
         <div class="row">
             <div class="col-lg-auto mb-4 admin-sidebar-column">
                 <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
-                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase"
+                        th:text="${isManager != null and isManager} ? 'Quản lý chi nhánh' : 'Quản trị hệ thống'">
                         Quản trị hệ thống
                     </h6>
 
@@ -578,7 +579,7 @@
                         <i class="bi bi-cup-hot-fill"></i> Món &amp; danh mục
                     </a>
 
-                    <a th:href="@{/admin/tables}" class="admin-nav-link">
+                    <a th:if="${isManager != null and isManager}" th:href="@{/admin/tables}" class="admin-nav-link">
                         <i class="bi bi-grid-3x3-gap-fill"></i> Sơ đồ bàn &amp; QR
                     </a>
 
@@ -600,8 +601,12 @@
                         <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
                     </a>
 
-                    <a th:href="@{/admin/settings}" class="admin-nav-link">
-                        <i class="bi bi-gear-fill"></i> Cài đặt &amp; giảm giá
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/vouchers}" class="admin-nav-link">
+                        <i class="bi bi-ticket-perforated-fill"></i> Khuyến mãi &amp; Voucher
+                    </a>
+
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/settings}" class="admin-nav-link">
+                        <i class="bi bi-gear-fill"></i> Cài đặt
                     </a>
                 </div>
             </div>
@@ -623,7 +628,7 @@
 
                 <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
                     <div class="row g-2 align-items-center">
-                        <div class="col-md-7">
+                        <div class="col-md-5">
                             <div class="input-group">
                                 <span class="input-group-text bg-white border-end-0">
                                     <i class="bi bi-search text-muted"></i>
@@ -634,10 +639,20 @@
                             </div>
                         </div>
 
-                        <div class="col-md-5">
-                            <select id="staffRoleFilter" class="form-select" onchange="filterStaffList()">
+                        <div class="col-md-3">
+                            <select id="staffBranchFilter" class="form-select rounded-3" onchange="loadStaffList('filter')" th:disabled="${isManager}">
+                                <option th:unless="${isManager}" value="">Tất cả chi nhánh</option>
+                                <option th:each="b : ${branches}" th:value="${b.id}"
+                                    th:text="${b.name + ' (' + b.code + ')'}"
+                                    th:selected="${isManager and managerBranchId != null and managerBranchId == b.id}"></option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <select id="staffRoleFilter" class="form-select rounded-3" onchange="filterStaffList()">
                                 <option value="">Tất cả vai trò nhân viên</option>
                                 <option value="ADMIN">Quản trị viên (ADMIN)</option>
+                                <option value="MANAGER">Quản lý chi nhánh (MANAGER)</option>
                                 <option value="CASHIER">Thu ngân (CASHIER)</option>
                                 <option value="KITCHEN">Bếp (KITCHEN)</option>
                             </select>
@@ -707,7 +722,15 @@
                             <select id="staffRole" class="form-select rounded-3">
                                 <option value="CASHIER">Thu ngân (CASHIER)</option>
                                 <option value="KITCHEN">Bếp (KITCHEN)</option>
-                                <option value="ADMIN">Quản trị viên (ADMIN)</option>
+                                <option th:unless="${isManager}" value="ADMIN">Quản trị viên (ADMIN)</option>
+                            </select>
+                        </div>
+
+                        <div th:unless="${isManager}" class="mb-3" id="staffBranchGroup">
+                            <label class="form-label small fw-semibold">Chi nhánh công tác:</label>
+                            <select id="staffBranch" class="form-select rounded-3">
+                                <option th:each="b : ${branches}" th:if="${b.code != 'KHOTONG'}" th:value="${b.id}"
+                                    th:text="${b.name + ' (' + b.code + ')'}"></option>
                             </select>
                         </div>
 
@@ -758,7 +781,7 @@
                             <select id="editStaffRole" class="form-select rounded-3">
                                 <option value="CASHIER">Thu ngân (CASHIER)</option>
                                 <option value="KITCHEN">Bếp (KITCHEN)</option>
-                                <option value="ADMIN">Quản trị viên (ADMIN)</option>
+                                <option th:unless="${isManager}" value="ADMIN">Quản trị viên (ADMIN)</option>
                             </select>
                         </div>
 
@@ -921,7 +944,12 @@
 
             async function loadStaffList(reason = 'auto') {
                 try {
-                    const data = await MilkTeaApi.get('/api/v1/admin/accounts');
+                    const branchId = document.getElementById('staffBranchFilter')?.value || '';
+                    let url = '/api/v1/admin/accounts';
+                    if (branchId) {
+                        url += `?branchId=${encodeURIComponent(branchId)}`;
+                    }
+                    const data = await MilkTeaApi.get(url);
                     const nextStaff = (data || []).filter(s => s.role !== 'CUSTOMER');
 
                     const changedIds = staffChangedIds(allStaff, nextStaff);
@@ -954,6 +982,8 @@
 
                 const roleFilter =
                     document.getElementById('staffRoleFilter')?.value || '';
+                const branchFilter =
+                    document.getElementById('staffBranchFilter')?.value || '';
 
                 const filtered = allStaff.filter(s => {
                     const matchSearch = !search
@@ -962,8 +992,9 @@
                         || (s.phone && s.phone.includes(search));
 
                     const matchRole = !roleFilter || s.role === roleFilter;
+                    const matchBranch = !branchFilter || String(s.branchId) === String(branchFilter);
 
-                    return matchSearch && matchRole;
+                    return matchSearch && matchRole && matchBranch;
                 });
 
                 renderStaffTable(filtered);
@@ -1169,13 +1200,20 @@
                 }
 
                 try {
-                    await MilkTeaApi.post('/api/v1/admin/accounts', {
+                    const branchSelect = document.getElementById('staffBranch');
+                    const branchId = branchSelect ? Number(branchSelect.value) : null;
+                    const payload = {
                         fullName: fn,
                         email: em,
                         password: pw,
                         phone: ph,
                         role: ro
-                    });
+                    };
+                    if (branchId) {
+                        payload.branchId = branchId;
+                    }
+
+                    await MilkTeaApi.post('/api/v1/admin/accounts', payload);
 
                     MilkTeaApi.showToast(
                         'Tạo tài khoản nhân viên thành công!',

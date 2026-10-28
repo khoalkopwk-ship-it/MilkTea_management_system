@@ -24,6 +24,9 @@ public class StaffPageController {
     private final ProductRepository productRepository;
     private final DiningTableRepository tableRepository;
     private final MaterialRepository materialRepository;
+    private final vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository;
+    private final vn.edu.ute.milktea.service.branch.BranchService branchService;
+    private final vn.edu.ute.milktea.service.admin.AdminService adminService;
 
     @org.springframework.beans.factory.annotation.Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
@@ -40,12 +43,15 @@ public class StaffPageController {
 
     @GetMapping("/cashier")
     public String cashierPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
-        if (actor == null || (actor.getRole() != Role.CASHIER && actor.getRole() != Role.ADMIN)) {
+        if (actor == null || actor.getRole() != Role.CASHIER) {
             return "redirect:/login?redirect=/cashier";
         }
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         model.addAttribute("settings", settings);
         model.addAttribute("actor", actor);
+        if (actor.getBranchId() != null) {
+            branchRepository.findById(actor.getBranchId()).ifPresent(b -> model.addAttribute("currentBranch", b));
+        }
         model.addAttribute("categories", categoryRepository.findAllByActiveTrue());
         model.addAttribute("products", productRepository.findAllByActiveTrue());
         model.addAttribute("tables", tableRepository.findByActiveTrueOrderByIdAsc());
@@ -54,13 +60,24 @@ public class StaffPageController {
 
     @GetMapping("/kitchen")
     public String kitchenPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
-        if (actor == null || (actor.getRole() != Role.KITCHEN && actor.getRole() != Role.ADMIN)) {
+        if (actor == null || (actor.getRole() != Role.KITCHEN && actor.getRole() != Role.ADMIN && actor.getRole() != Role.MANAGER)) {
             return "redirect:/login?redirect=/kitchen";
         }
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         model.addAttribute("settings", settings);
         model.addAttribute("actor", actor);
+        if (actor.getBranchId() != null) {
+            branchRepository.findById(actor.getBranchId()).ifPresent(b -> model.addAttribute("currentBranch", b));
+        }
         return "kitchen/orders";
+    }
+
+    private boolean isStaffAdmin(CurrentActor actor) {
+        return actor != null && actor.getRole() == Role.ADMIN;
+    }
+
+    private boolean isManagerOrAdmin(CurrentActor actor) {
+        return actor != null && (actor.getRole() == Role.ADMIN || actor.getRole() == Role.MANAGER);
     }
 
     @GetMapping("/admin")
@@ -68,7 +85,7 @@ public class StaffPageController {
             @RequestParam(value = "section", required = false) String section,
             @AuthenticationPrincipal CurrentActor actor,
             Model model) {
-        if (actor == null || actor.getRole() != Role.ADMIN) {
+        if (!isManagerOrAdmin(actor)) {
             return "redirect:/login?redirect=/admin";
         }
         if ("catalog".equalsIgnoreCase(section)) {
@@ -87,99 +104,151 @@ public class StaffPageController {
             return adminReportsPage(actor, model);
         } else if ("settings".equalsIgnoreCase(section)) {
             return adminSettingsPage(actor, model);
+        } else if ("vouchers".equalsIgnoreCase(section)) {
+            return adminVouchersPage(actor, model);
         }
         return adminReportsPage(actor, model);
     }
 
+    @GetMapping("/admin/vouchers")
+    public String adminVouchersPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
+        if (!isStaffAdmin(actor)) {
+            return "redirect:/admin";
+        }
+        GlobalSettings settings = settingsRepository.findById(1).orElse(null);
+        model.addAttribute("settings", settings);
+        model.addAttribute("actor", actor);
+        model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
+        model.addAttribute("branches", branchRepository.findAll());
+        return "admin/vouchers";
+    }
+
     @GetMapping("/admin/catalog")
     public String adminCatalogPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
-        if (actor == null || actor.getRole() != Role.ADMIN) {
+        if (!isManagerOrAdmin(actor)) {
             return "redirect:/login?redirect=/admin/catalog";
         }
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         model.addAttribute("settings", settings);
         model.addAttribute("actor", actor);
         model.addAttribute("categories", categoryRepository.findAll());
-        model.addAttribute(
-            "products",
-            productRepository.findAllByOrderByIdAsc()
-        );
+        Long branchId = (actor != null && actor.getRole() == Role.MANAGER) ? actor.getBranchId() : null;
+        model.addAttribute("products", adminService.listProducts(branchId));
         model.addAttribute("materials", materialRepository.findAllByActiveTrue());
+        model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
+        model.addAttribute("managerBranchId", actor != null ? actor.getBranchId() : null);
+        model.addAttribute("branches", branchRepository.findAll());
+        model.addAttribute("centralWarehouse", branchService.getOrCreateCentralWarehouse());
         return "admin/catalog";
     }
 
     @GetMapping("/admin/tables")
     public String adminTablesPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
-        if (actor == null || actor.getRole() != Role.ADMIN) {
+        if (!isManagerOrAdmin(actor)) {
             return "redirect:/login?redirect=/admin/tables";
+        }
+        if (actor != null && actor.getRole() == Role.ADMIN) {
+            return "redirect:/admin/reports";
         }
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         model.addAttribute("settings", settings);
         model.addAttribute("actor", actor);
         model.addAttribute("baseUrl", baseUrl);
-        model.addAttribute("tables", tableRepository.findAll());
+        if (actor.getRole() == Role.MANAGER && actor.getBranchId() != null) {
+            model.addAttribute("tables", tableRepository.findByBranchIdOrderByIdAsc(actor.getBranchId()));
+        } else {
+            model.addAttribute("tables", tableRepository.findAll());
+        }
+        model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
+        model.addAttribute("managerBranchId", actor != null ? actor.getBranchId() : null);
+        model.addAttribute("branches", branchRepository.findAll());
         return "admin/tables";
     }
+
     @GetMapping("/admin/orders")
     public String adminOrdersPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
-        if (actor == null || actor.getRole() != Role.ADMIN) {
+        if (!isManagerOrAdmin(actor)) {
             return "redirect:/login?redirect=/admin/orders";
         }
         model.addAttribute("settings", settingsRepository.findById(1).orElse(null));
         model.addAttribute("actor", actor);
         model.addAttribute("pageTitle", "Quản lý đơn hàng");
+        model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
+        model.addAttribute("managerBranchId", actor != null ? actor.getBranchId() : null);
+        model.addAttribute("branches", branchRepository.findAll());
+        model.addAttribute("centralWarehouse", branchService.getOrCreateCentralWarehouse());
         return "admin/orders";
     }
 
     @GetMapping("/admin/staff")
     public String adminStaffPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
-        if (actor == null || actor.getRole() != Role.ADMIN) {
+        if (!isManagerOrAdmin(actor)) {
             return "redirect:/login?redirect=/admin/staff";
         }
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         model.addAttribute("settings", settings);
         model.addAttribute("actor", actor);
+        model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
+        model.addAttribute("managerBranchId", actor != null ? actor.getBranchId() : null);
+        model.addAttribute("branches", branchRepository.findAll());
+        model.addAttribute("centralWarehouse", branchService.getOrCreateCentralWarehouse());
         return "admin/staff";
     }
 
     @GetMapping("/admin/inventory")
     public String adminInventoryPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
-        if (actor == null || actor.getRole() != Role.ADMIN) {
+        if (!isManagerOrAdmin(actor)) {
             return "redirect:/login?redirect=/admin/inventory";
         }
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         model.addAttribute("settings", settings);
         model.addAttribute("actor", actor);
         model.addAttribute("materials", materialRepository.findAll());
+        model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
+        model.addAttribute("managerBranchId", actor != null ? actor.getBranchId() : null);
+        model.addAttribute("branches", branchRepository.findAll());
+        model.addAttribute("centralWarehouse", branchService.getOrCreateCentralWarehouse());
         return "admin/inventory";
     }
 
     @GetMapping("/admin/reports")
     public String adminReportsPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
-        if (actor == null || actor.getRole() != Role.ADMIN) {
+        if (!isManagerOrAdmin(actor)) {
             return "redirect:/login?redirect=/admin/reports";
         }
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         model.addAttribute("settings", settings);
         model.addAttribute("actor", actor);
+        model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
+        model.addAttribute("managerBranchId", actor != null ? actor.getBranchId() : null);
+        model.addAttribute("branches", branchRepository.findAll());
+        model.addAttribute("centralWarehouse", branchService.getOrCreateCentralWarehouse());
         return "admin/reports";
     }
 
     @GetMapping("/admin/documents")
     public String documentsPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
+        if (!isManagerOrAdmin(actor)) {
+            return "redirect:/login?redirect=/admin/documents";
+        }
         model.addAttribute("settings", settingsRepository.findById(1).orElse(null));
         model.addAttribute("actor", actor);
+        model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
+        model.addAttribute("managerBranchId", actor != null ? actor.getBranchId() : null);
+        model.addAttribute("branches", branchRepository.findAll());
+        model.addAttribute("centralWarehouse", branchService.getOrCreateCentralWarehouse());
         return "admin/documents";
     }
 
     @GetMapping("/admin/settings")
     public String adminSettingsPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
-        if (actor == null || actor.getRole() != Role.ADMIN) {
-            return "redirect:/login?redirect=/admin/settings";
+        if (!isStaffAdmin(actor)) {
+            return "redirect:/admin";
         }
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         model.addAttribute("settings", settings);
         model.addAttribute("actor", actor);
+        model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
         return "admin/settings";
     }
 }

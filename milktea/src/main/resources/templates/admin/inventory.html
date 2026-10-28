@@ -706,14 +706,17 @@
         <div class="row">
             <div class="col-lg-auto mb-4 admin-sidebar-column">
                 <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
-                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">Quản trị hệ thống</h6>
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase"
+                        th:text="${isManager != null and isManager} ? 'Quản lý chi nhánh' : 'Quản trị hệ thống'">
+                        Quản trị hệ thống
+                    </h6>
                     <a th:href="@{/admin/reports}" class="admin-nav-link">
                         <i class="bi bi-graph-up-arrow"></i> Báo cáo doanh thu
                     </a>
                     <a th:href="@{/admin/catalog}" class="admin-nav-link">
                         <i class="bi bi-cup-hot-fill"></i> Món &amp; danh mục
                     </a>
-                    <a th:href="@{/admin/tables}" class="admin-nav-link">
+                    <a th:if="${isManager != null and isManager}" th:href="@{/admin/tables}" class="admin-nav-link">
                         <i class="bi bi-grid-3x3-gap-fill"></i> Sơ đồ bàn &amp; QR
                     </a>
                     <a th:href="@{/admin/orders}" class="admin-nav-link">
@@ -730,8 +733,11 @@
                         <span><i class="bi bi-files me-1"></i> Chứng từ</span>
                         <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
                     </a>
-                    <a th:href="@{/admin/settings}" class="admin-nav-link">
-                        <i class="bi bi-gear-fill"></i> Cài đặt &amp; giảm giá
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/vouchers}" class="admin-nav-link">
+                        <i class="bi bi-ticket-perforated-fill"></i> Khuyến mãi &amp; Voucher
+                    </a>
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/settings}" class="admin-nav-link">
+                        <i class="bi bi-gear-fill"></i> Cài đặt
                     </a>
                 </div>
             </div>
@@ -739,15 +745,32 @@
             <div class="col admin-content-column">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
                     <div>
-                        <h3 class="brand-font mb-1">Quản lý nguyên liệu kho</h3>
-                        <p class="text-muted small mb-0">
-                            Theo dõi nguyên liệu, nhập kho và quản lý hao hụt
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-primary bg-opacity-10 text-primary fw-bold rounded-pill px-3 py-1" id="inventoryScopeBadge">
+                                <i class="bi bi-building me-1"></i><span id="inventoryScopeText" th:text="${isManager != null and isManager} ? 'Kho Chi Nhánh' : 'Kho Hàng Tổng (Toàn Chuỗi)'">Kho Hàng Tổng (Toàn Chuỗi)</span>
+                            </span>
+                        </div>
+                        <h3 class="brand-font mb-1" id="inventoryPageTitle" th:text="${isManager != null and isManager} ? 'Kho Chi Nhánh' : 'Quản lý nguyên liệu Kho Tổng'">Quản lý nguyên liệu Kho Tổng</h3>
+                        <p class="text-muted small mb-0" id="inventoryPageDesc" th:text="${isManager != null and isManager} ? 'Nhập nguyên liệu từ Kho Hàng Tổng và theo dõi định mức tồn kho chi nhánh' : 'Kho trung tâm lưu trữ và cung cấp nguyên liệu thô cho toàn hệ thống chi nhánh'">
+                            Kho trung tâm lưu trữ và cung cấp nguyên liệu thô cho toàn hệ thống chi nhánh
                         </p>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-primary rounded-pill px-3" data-bs-toggle="modal"
-                            data-bs-target="#importModal">
-                            <i class="bi bi-box-arrow-in-down me-1"></i> Nhập kho
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <div class="me-1" style="min-width: 220px;">
+                            <select id="inventoryBranchSelect" class="form-select form-select-sm rounded-pill fw-semibold border-primary-subtle"
+                                    th:attr="data-is-manager=${isManager},data-manager-branch=${managerBranchId}"
+                                    th:disabled="${isManager}"
+                                    onchange="onInventoryBranchChange()">
+                                <option th:unless="${isManager}" value="KHOTONG" th:attr="data-branch-id=${centralWarehouse?.id}">Kho Hàng Tổng (Toàn Chuỗi)</option>
+                                <option th:each="b : ${branches}"
+                                        th:if="${b.code != 'KHOTONG'}"
+                                        th:value="${b.id}"
+                                        th:text="${b.name + ' (' + b.code + ')'}"
+                                        th:selected="${isManager and managerBranchId != null and managerBranchId == b.id}"></option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary rounded-pill px-3" onclick="openImportModal()">
+                            <i class="bi bi-box-arrow-in-down me-1"></i> <span id="btnImportText" th:text="${isManager != null and isManager} ? 'Nhập từ Kho Tổng' : 'Nhập kho NCC'">Nhập kho NCC</span>
                         </button>
                         <button type="button" class="btn btn-outline-danger rounded-pill px-3" data-bs-toggle="modal"
                             data-bs-target="#wasteModal">
@@ -763,7 +786,7 @@
                             <i class="bi bi-box-seam me-1"></i> Tồn kho
                         </button>
                     </li>
-                    <li class="nav-item" role="presentation">
+                    <li th:if="${actor == null or actor.role.name() == 'ADMIN'}" class="nav-item" role="presentation">
                         <button class="nav-link rounded-pill border px-3" id="tab-recipe-btn" data-bs-toggle="pill"
                             data-bs-target="#tab-recipe-pane" type="button" role="tab"
                             onclick="loadPreparationRecipesAdmin()">
@@ -777,7 +800,7 @@
                         <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
                             <div class="card-header bg-white p-3">
                                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
-                                    <h5 class="fw-bold mb-0">
+                                    <h5 class="fw-bold mb-0" id="stockCardHeaderTitle">
                                         <i class="bi bi-boxes text-primary me-2"></i>Tồn kho nguyên liệu thô (Kho tổng)
                                     </h5>
                                 </div>
@@ -844,7 +867,7 @@
                         </div>
                     </div>
 
-                    <div class="tab-pane fade" id="tab-recipe-pane" role="tabpanel">
+                    <div th:if="${actor == null or actor.role.name() == 'ADMIN'}" class="tab-pane fade" id="tab-recipe-pane" role="tabpanel">
                         <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
                             <div class="card-header bg-white p-3">
                                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
@@ -902,11 +925,14 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                     <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title brand-font">Tạo phiếu nhập kho (KHO)</h5>
+                        <h5 class="modal-title brand-font" id="importModalTitle">Tạo phiếu nhập Kho Tổng từ NCC</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body p-4">
-                        <div class="mb-3">
+                        <div id="importBranchNotice" class="alert alert-info py-2 px-3 small rounded-3 mb-3 d-none">
+                            <i class="bi bi-info-circle me-1"></i>Phiếu nhập sẽ tự động lấy nguyên liệu từ <b>Kho Hàng Tổng</b> và kế thừa giá vốn hiện tại. Nếu Kho Hàng Tổng không đủ hàng, hệ thống sẽ cảnh báo.
+                        </div>
+                        <div class="mb-3" id="importSupplierGroup">
                             <label class="form-label small fw-semibold">Nhà cung cấp:</label>
                             <input type="text" id="importSupplier" class="form-control rounded-3"
                                 placeholder="Tên nhà cung cấp...">
@@ -919,7 +945,7 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="form-label small fw-semibold mb-0">Nguyên liệu nhập:</label>
-                                <div class="form-check form-switch mb-0">
+                                <div class="form-check form-switch mb-0" id="importNewMaterialSwitchGroup">
                                     <input class="form-check-input" type="checkbox" id="importNewMaterialToggle" onchange="toggleImportMaterialMode()">
                                     <label class="form-check-label small" for="importNewMaterialToggle">Nhập nguyên liệu mới</label>
                                 </div>
@@ -947,12 +973,12 @@
                             </div>
                         </div>
                         <div class="row g-2 mb-4">
-                            <div class="col-6">
+                            <div class="col-6" id="importQuantityCol">
                                 <label class="form-label small fw-semibold">Số lượng nhập:</label>
                                 <input type="number" step="0.01" id="importQuantity" class="form-control rounded-3"
                                     placeholder="10">
                             </div>
-                            <div class="col-6">
+                            <div class="col-6" id="importUnitPriceGroup">
                                 <label class="form-label small fw-semibold">Đơn giá (VND):</label>
                                 <input type="number" id="importUnitPrice" class="form-control rounded-3"
                                     placeholder="50000">
@@ -979,10 +1005,17 @@
                     <div class="modal-body p-4">
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Vị trí ghi nhận hao hụt:</label>
-                            <div
+                            <div th:if="${isManager}"
                                 class="form-control bg-light rounded-3 d-flex align-items-center justify-content-between">
                                 <span class="fw-semibold text-primary">
-                                    <i class="bi bi-box-seam me-1"></i> Kho tổng (KHO)
+                                    <i class="bi bi-shop me-1"></i> Kho Chi Nhánh
+                                </span>
+                                <span class="badge bg-primary">Chi nhánh hiện tại</span>
+                            </div>
+                            <div th:unless="${isManager}"
+                                class="form-control bg-light rounded-3 d-flex align-items-center justify-content-between">
+                                <span class="fw-semibold text-primary">
+                                    <i class="bi bi-box-seam me-1"></i> Kho Hàng Tổng (Toàn Chuỗi)
                                 </span>
                                 <span class="badge bg-secondary">Cố định Kho tổng</span>
                             </div>
@@ -1054,7 +1087,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="mb-3">
+                            <div class="mb-3" id="editStockCostPriceGroup">
                                 <label class="form-label small fw-semibold">Giá nhập trung bình (đồng / đơn vị):</label>
                                 <div class="input-group">
                                     <input type="number" step="any" min="0" id="editStockCostPrice"
@@ -1063,6 +1096,9 @@
                                 </div>
                                 <small class="text-muted d-block mt-1">
                                     Hiện tại: <span id="currentStockPriceLabel" class="fw-semibold">0 VND</span>
+                                    <span id="costPriceReadOnlyHint" class="text-warning fw-semibold ms-2 d-none">
+                                        <i class="bi bi-lock-fill me-1"></i>Giá vốn do Kho tổng quản lý
+                                    </span>
                                 </small>
                             </div>
                             <div class="mb-4">
@@ -1202,6 +1238,14 @@
                 try {
                     const mats = await MilkTeaApi.get('/api/v1/admin/materials');
                     adminMaterialsList = mats || [];
+                    const outputSel = document.getElementById('recipeOutputMaterialSelect');
+                    if (outputSel && Array.isArray(adminMaterialsList)) {
+                        const currentVal = outputSel.value;
+                        const socheMats = adminMaterialsList.filter(m => m.type === 'SOCHE');
+                        outputSel.innerHTML = '<option value="">-- Chọn thành phẩm sơ chế --</option>' +
+                            socheMats.map(m => `<option value="${m.id}" data-unit="${MilkTeaReceipts.esc(m.unit)}">${MilkTeaReceipts.esc(m.name)} (${MilkTeaReceipts.esc(m.unit)})</option>`).join('');
+                        if (currentVal) outputSel.value = currentVal;
+                    }
                 } catch (e) {
                     console.warn('Lỗi tải danh mục nguyên liệu:', e);
                 }
@@ -1501,6 +1545,99 @@
                 loadStockData();
             }
 
+            function isManagerRole() {
+                const branchSel = document.getElementById('inventoryBranchSelect');
+                return branchSel?.getAttribute('data-is-manager') === 'true';
+            }
+
+            function isCurrentCentralWarehouse() {
+                const branchSel = document.getElementById('inventoryBranchSelect');
+                if (!branchSel) return true;
+                return branchSel.value === 'KHOTONG';
+            }
+
+            function getSelectedBranchId() {
+                const branchSel = document.getElementById('inventoryBranchSelect');
+                if (!branchSel) return null;
+                const val = branchSel.value;
+                if (val === 'KHOTONG') return null;
+                return parseInt(val) || null;
+            }
+
+            function onInventoryBranchChange() {
+                const isCentral = isCurrentCentralWarehouse();
+                const scopeText = document.getElementById('inventoryScopeText');
+                const pageTitle = document.getElementById('inventoryPageTitle');
+                const pageDesc = document.getElementById('inventoryPageDesc');
+                const btnImportText = document.getElementById('btnImportText');
+                const stockCardHeaderTitle = document.getElementById('stockCardHeaderTitle');
+
+                if (scopeText) {
+                    scopeText.textContent = isCentral ? 'Kho Hàng Tổng (Toàn Chuỗi)' : 'Kho Chi Nhánh';
+                }
+                if (pageTitle) {
+                    pageTitle.textContent = isCentral ? 'Quản lý nguyên liệu Kho Tổng' : 'Quản lý kho chi nhánh';
+                }
+                if (pageDesc) {
+                    pageDesc.textContent = isCentral
+                        ? 'Kho trung tâm lưu trữ và cung cấp nguyên liệu thô cho toàn hệ thống chi nhánh'
+                        : 'Nhập nguyên liệu từ Kho Hàng Tổng và theo dõi định mức tồn kho chi nhánh';
+                }
+                if (btnImportText) {
+                    btnImportText.textContent = isCentral ? 'Nhập kho NCC' : 'Nhập từ Kho Tổng';
+                }
+                if (stockCardHeaderTitle) {
+                    stockCardHeaderTitle.innerHTML = isCentral
+                        ? '<i class="bi bi-boxes text-primary me-2"></i>Tồn kho nguyên liệu thô (Kho tổng)'
+                        : '<i class="bi bi-boxes text-primary me-2"></i>Tồn kho nguyên liệu thô (Chi nhánh)';
+                }
+
+                loadStockData();
+            }
+
+            function openImportModal() {
+                const isCentral = isCurrentCentralWarehouse();
+                const modalTitle = document.getElementById('importModalTitle');
+                const branchNotice = document.getElementById('importBranchNotice');
+                const supGroup = document.getElementById('importSupplierGroup');
+                const newMatSwitch = document.getElementById('importNewMaterialSwitchGroup');
+                const unitPriceGroup = document.getElementById('importUnitPriceGroup');
+                const qtyCol = document.getElementById('importQuantityCol');
+                const supInput = document.getElementById('importSupplier');
+                const reasonInput = document.getElementById('importReason');
+                const priceInput = document.getElementById('importUnitPrice');
+                const newToggle = document.getElementById('importNewMaterialToggle');
+
+                if (newToggle && newToggle.checked) {
+                    newToggle.checked = false;
+                    toggleImportMaterialMode();
+                }
+
+                if (isCentral) {
+                    if (modalTitle) modalTitle.textContent = 'Tạo phiếu nhập Kho Tổng từ NCC';
+                    if (branchNotice) branchNotice.classList.add('d-none');
+                    if (supGroup) supGroup.classList.remove('d-none');
+                    if (newMatSwitch) newMatSwitch.classList.remove('d-none');
+                    if (unitPriceGroup) unitPriceGroup.classList.remove('d-none');
+                    if (qtyCol) qtyCol.className = 'col-6';
+                    if (supInput) supInput.value = '';
+                    if (reasonInput) reasonInput.value = '';
+                    if (priceInput) priceInput.value = '';
+                } else {
+                    if (modalTitle) modalTitle.textContent = 'Nhập nguyên liệu từ Kho Hàng Tổng';
+                    if (branchNotice) branchNotice.classList.remove('d-none');
+                    if (supGroup) supGroup.classList.add('d-none');
+                    if (newMatSwitch) newMatSwitch.classList.add('d-none');
+                    if (unitPriceGroup) unitPriceGroup.classList.add('d-none');
+                    if (qtyCol) qtyCol.className = 'col-12';
+                    if (reasonInput) reasonInput.value = 'Chuyển hàng từ Kho Hàng Tổng về chi nhánh';
+                    if (priceInput) priceInput.value = '0';
+                }
+
+                const modal = new bootstrap.Modal(document.getElementById('importModal'));
+                modal.show();
+            }
+
             function onStockSearchInput() {
                 loadStockData();
             }
@@ -1508,8 +1645,12 @@
             async function loadStockData() {
                 const query = document.getElementById('stockSearch')?.value?.trim() || '';
                 const alertFilter = currentAlertFilter;
+                const branchId = getSelectedBranchId();
 
                 let url = `/api/v1/inventory/stocks/summary?location=KHO&type=THO&alertFilter=${encodeURIComponent(alertFilter)}`;
+                if (branchId) {
+                    url += `&branchId=${encodeURIComponent(branchId)}`;
+                }
                 if (query) url += `&query=${encodeURIComponent(query)}`;
 
                 try {
@@ -1533,8 +1674,12 @@
 
             function renderStockTable(items) {
                 const tbody = document.getElementById('inventoryStockBody');
+                const isCentral = isCurrentCentralWarehouse();
+                const isManager = isManagerRole();
+
                 if (!items || items.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Không tìm thấy nguyên liệu thô phù hợp tại Kho tổng.</td></tr>';
+                    const locName = isCentral ? 'Kho Tổng' : 'chi nhánh';
+                    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">Không tìm thấy nguyên liệu thô phù hợp tại ${locName}.</td></tr>`;
                     return;
                 }
 
@@ -1561,6 +1706,14 @@
                         ? `<b>${thVal}</b> <small class="text-muted">${MilkTeaReceipts.esc(s.unit || '')}</small>`
                         : `<span class="text-muted fst-italic">Chưa đặt</span>`;
 
+                    const deleteBtn = (!isManager && isCentral) ? `
+                        <button class="btn btn-sm btn-outline-danger rounded-pill px-2"
+                                title="Ngừng sử dụng"
+                                onclick="deleteMaterial(${s.materialId}, '${MilkTeaReceipts.esc(s.materialName)}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    ` : '';
+
                     return `
                     <tr class="${rowClass}">
                         <td class="text-center fw-bold text-muted">${idx + 1}</td>
@@ -1577,11 +1730,7 @@
                                         onclick="openEditStockModal(${s.materialId})">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger rounded-pill px-2"
-                                        title="Ngừng sử dụng"
-                                        onclick="deleteMaterial(${s.materialId}, '${MilkTeaReceipts.esc(s.materialName)}')">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                ${deleteBtn}
                             </div>
                         </td>
                     </tr>
@@ -1594,22 +1743,62 @@
                 if (!item) return;
 
                 currentEditingStockItem = item;
+                const isCentral = isCurrentCentralWarehouse();
+                const isManager = isManagerRole();
+
+                const modalTitle = document.getElementById('editStockModalTitle');
+                if (modalTitle) {
+                    if (isManager) {
+                        modalTitle.innerHTML = '<i class="bi bi-bell me-1"></i> Điều chỉnh ngưỡng cảnh báo chi nhánh';
+                    } else {
+                        modalTitle.innerHTML = isCentral
+                            ? '<i class="bi bi-pencil-square me-1"></i> Chỉnh sửa nguyên liệu Kho Tổng'
+                            : '<i class="bi bi-pencil-square me-1"></i> Chỉnh sửa nguyên liệu Chi nhánh';
+                    }
+                }
+
+                const nameInput = document.getElementById('editStockMaterialName');
+                const qtyInput = document.getElementById('editStockQuantity');
+                const costPriceInput = document.getElementById('editStockCostPrice');
+                const thresholdInput = document.getElementById('editStockThreshold');
+                const reasonInput = document.getElementById('editStockReason');
+                const readOnlyHint = document.getElementById('costPriceReadOnlyHint');
+
                 document.getElementById('editStockMaterialId').value = item.materialId;
-                document.getElementById('editStockMaterialName').value = item.materialName || '';
+                nameInput.value = item.materialName || '';
                 document.getElementById('editStockUnitSpan').textContent = item.unit || 'đv';
                 document.getElementById('editStockUnitSpan2').textContent = item.unit || 'đv';
 
-                document.getElementById('editStockQuantity').value = item.quantity != null ? item.quantity : 0;
+                qtyInput.value = item.quantity != null ? item.quantity : 0;
                 document.getElementById('currentStockQtyLabel').textContent = `${item.quantity != null ? item.quantity : 0} ${item.unit || ''}`;
 
                 const avgPrice = item.averageImportPrice != null ? item.averageImportPrice : item.averagePrice;
-                document.getElementById('editStockCostPrice').value = avgPrice != null ? avgPrice : '';
+                costPriceInput.value = avgPrice != null ? avgPrice : '';
                 document.getElementById('currentStockPriceLabel').textContent = avgPrice != null ? `${MilkTeaApi.formatVND(avgPrice)} / ${item.unit || ''}` : 'Chưa có';
 
                 const thVal = item.threshold != null ? item.threshold : item.minThreshold;
-                document.getElementById('editStockThreshold').value = thVal != null ? thVal : '';
+                thresholdInput.value = thVal != null ? thVal : '';
+                reasonInput.value = '';
 
-                document.getElementById('editStockReason').value = '';
+                if (isManager) {
+                    nameInput.disabled = true;
+                    qtyInput.disabled = true;
+                    costPriceInput.disabled = true;
+                    reasonInput.disabled = true;
+                    thresholdInput.disabled = false;
+                    if (readOnlyHint) {
+                        readOnlyHint.innerHTML = '<i class="bi bi-lock-fill me-1"></i>Quản lý cơ sở chỉ điều chỉnh Ngưỡng tối thiểu';
+                        readOnlyHint.classList.remove('d-none');
+                    }
+                    setTimeout(() => thresholdInput.focus(), 300);
+                } else {
+                    nameInput.disabled = false;
+                    qtyInput.disabled = false;
+                    costPriceInput.disabled = false;
+                    reasonInput.disabled = false;
+                    thresholdInput.disabled = false;
+                    if (readOnlyHint) readOnlyHint.classList.add('d-none');
+                }
 
                 const modal = new bootstrap.Modal(document.getElementById('editStockModal'));
                 modal.show();
@@ -1618,7 +1807,29 @@
             async function submitAdjustStock() {
                 if (!currentEditingStockItem) return;
 
+                const isCentral = isCurrentCentralWarehouse();
+                const isManager = isManagerRole();
+                const targetBranchId = getSelectedBranchId();
                 const materialId = parseInt(document.getElementById('editStockMaterialId').value);
+
+                if (isManager) {
+                    const thresholdVal = document.getElementById('editStockThreshold').value;
+                    const threshold = thresholdVal !== '' ? parseFloat(thresholdVal) : null;
+                    if (threshold !== null && (isNaN(threshold) || threshold < 0)) {
+                        MilkTeaApi.showToast('Ngưỡng tối thiểu không được âm', 'warning');
+                        return;
+                    }
+                    const btn = document.getElementById('btnSaveStockAdjust');
+                    if (btn) btn.disabled = true;
+                    try {
+                        await AdminApp.adjustRawMaterial(materialId, null, null, null, threshold, 'Điều chỉnh ngưỡng cảnh báo', targetBranchId);
+                    } finally {
+                        if (btn) btn.disabled = false;
+                    }
+                    return;
+                }
+
+                // ROLE ADMIN: Toàn quyền chỉnh sửa (Tên, Tồn kho, Giá vốn, Ngưỡng)
                 const name = document.getElementById('editStockMaterialName').value.trim();
                 const quantityVal = document.getElementById('editStockQuantity').value;
                 const costPriceVal = document.getElementById('editStockCostPrice').value;
@@ -1665,7 +1876,7 @@
                 if (btn) btn.disabled = true;
 
                 try {
-                    await AdminApp.adjustRawMaterial(materialId, name, quantity, costPrice, threshold, reason);
+                    await AdminApp.adjustRawMaterial(materialId, name, quantity, costPrice, threshold, reason, targetBranchId);
                 } finally {
                     if (btn) btn.disabled = false;
                 }
@@ -1722,40 +1933,63 @@
             }
 
             function submitImportForm() {
-                const sup = document.getElementById('importSupplier').value.trim();
+                const isCentral = isCurrentCentralWarehouse();
+                const targetBranchId = getSelectedBranchId();
                 const reas = document.getElementById('importReason').value.trim();
-                const isNew = document.getElementById('importNewMaterialToggle') && document.getElementById('importNewMaterialToggle').checked;
                 const qty = parseFloat(document.getElementById('importQuantity').value);
-                const price = parseFloat(document.getElementById('importUnitPrice').value);
 
                 if (isNaN(qty) || qty <= 0) {
                     MilkTeaApi.showToast('Số lượng nhập phải lớn hơn 0', 'warning');
                     return;
                 }
-                if (isNaN(price) || price < 0) {
-                    MilkTeaApi.showToast('Đơn giá nhập không được âm', 'warning');
-                    return;
-                }
 
-                let itemPayload;
-                if (isNew) {
-                    const matName = document.getElementById('importNewMaterialName').value.trim();
-                    const matUnit = (document.getElementById('importNewMaterialUnit').value.trim()) || 'kg';
-                    if (!matName) {
-                        MilkTeaApi.showToast('Vui lòng nhập tên nguyên liệu mới', 'warning');
+                if (isCentral) {
+                    const sup = document.getElementById('importSupplier').value.trim();
+                    const price = parseFloat(document.getElementById('importUnitPrice').value);
+                    const isNew = document.getElementById('importNewMaterialToggle') && document.getElementById('importNewMaterialToggle').checked;
+
+                    if (!sup) {
+                        MilkTeaApi.showToast('Vui lòng nhập tên nhà cung cấp', 'warning');
                         return;
                     }
-                    itemPayload = { materialName: matName, unit: matUnit, quantity: qty, unitPrice: price };
+                    if (isNaN(price) || price < 0) {
+                        MilkTeaApi.showToast('Đơn giá nhập không được âm', 'warning');
+                        return;
+                    }
+
+                    let itemPayload;
+                    if (isNew) {
+                        const matName = document.getElementById('importNewMaterialName').value.trim();
+                        const matUnit = (document.getElementById('importNewMaterialUnit').value.trim()) || 'kg';
+                        if (!matName) {
+                            MilkTeaApi.showToast('Vui lòng nhập tên nguyên liệu mới', 'warning');
+                            return;
+                        }
+                        itemPayload = { materialName: matName, unit: matUnit, quantity: qty, unitPrice: price };
+                    } else {
+                        const matId = parseInt(document.getElementById('importMaterialSelect').value);
+                        if (!matId) {
+                            MilkTeaApi.showToast('Vui lòng chọn nguyên liệu nhập', 'warning');
+                            return;
+                        }
+                        itemPayload = { materialId: matId, quantity: qty, unitPrice: price };
+                    }
+
+                    AdminApp.submitImport(sup, reas, [itemPayload], targetBranchId);
                 } else {
                     const matId = parseInt(document.getElementById('importMaterialSelect').value);
                     if (!matId) {
-                        MilkTeaApi.showToast('Vui lòng chọn nguyên liệu nhập', 'warning');
+                        MilkTeaApi.showToast('Vui lòng chọn nguyên liệu cần nhập từ Kho Tổng', 'warning');
                         return;
                     }
-                    itemPayload = { materialId: matId, quantity: qty, unitPrice: price };
-                }
+                    if (!reas) {
+                        MilkTeaApi.showToast('Vui lòng nhập lý do nhập kho', 'warning');
+                        return;
+                    }
 
-                AdminApp.submitImport(sup, reas, [itemPayload]);
+                    const itemPayload = { materialId: matId, quantity: qty };
+                    AdminApp.submitImport('Kho Hàng Tổng', reas, [itemPayload], targetBranchId);
+                }
             }
 
             document.addEventListener('DOMContentLoaded', () => {
@@ -1776,6 +2010,7 @@
             });
 
             function submitWasteForm() {
+                const targetBranchId = getSelectedBranchId();
                 const reas = document.getElementById('wasteReason').value.trim();
                 const matId = parseInt(document.getElementById('wasteMaterialSelect').value);
                 const qty = parseFloat(document.getElementById('wasteQuantity').value);
@@ -1793,7 +2028,7 @@
                     return;
                 }
 
-                AdminApp.submitWaste('KHO', reas, [{ materialId: matId, quantity: qty }]);
+                AdminApp.submitWaste('KHO', reas, [{ materialId: matId, quantity: qty }], targetBranchId);
             }
         </script>
 

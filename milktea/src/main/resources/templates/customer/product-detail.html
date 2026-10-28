@@ -82,6 +82,31 @@
                 border-bottom: 1px solid var(--border-color);
                 padding: 1.25rem 0;
             }
+            .detail-topping-card {
+                background: #ffffff;
+                transition: all 0.2s ease;
+                user-select: none;
+                border-color: #e5e7eb !important;
+                border-width: 1.5px !important;
+            }
+            .detail-topping-card:hover {
+                border-color: #b86b35 !important;
+                background: #fffbf7;
+            }
+            .detail-topping-card.selected {
+                border-color: #b86b35 !important;
+                background: #fdf5ee !important;
+                box-shadow: 0 0 0 1px #b86b35;
+            }
+            .cursor-pointer {
+                cursor: pointer;
+            }
+            .detail-topping-checkbox {
+                accent-color: #b86b35;
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+            }
             .review-card:last-child {
                 border-bottom: none;
             }
@@ -138,33 +163,81 @@
 
                     <!-- Giá tiền -->
                     <div class="mb-4">
-                        <span class="price-tag" th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT') + ' đ'}">35,000 đ</span>
-                        <span class="text-muted small ms-1" th:if="${product.size}" th:text="'(Size ' + ${product.size} + ')'"></span>
+                        <span class="price-tag" id="detailPriceTag" th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT') + ' đ'}">35,000 đ</span>
+                        <span class="text-muted small ms-1" id="detailSizeBadge" th:if="${product.size}" th:text="'(Size ' + ${product.size} + ')'"></span>
                     </div>
 
                     <!-- Mô tả -->
                     <p class="text-muted mb-4" th:text="${product.description ?: 'Hương vị trà sữa thơm béo, đậm đà được pha chế từ nguyên liệu tươi ngon nhất.'}">Mô tả món</p>
 
-                    <!-- Lựa chọn Size -->
-                    <div class="mb-4" th:if="${product.availableSizes != null and not #lists.isEmpty(product.availableSizes)}">
-                        <label class="form-label fw-bold text-dark mb-2">Chọn kích cỡ (Size):</label>
-                        <div class="d-flex gap-2">
-                            <button type="button" th:each="s : ${product.availableSizes}" 
-                                    th:class="${s == product.size} ? 'btn btn-outline-warning active px-3' : 'btn btn-outline-secondary px-3'"
-                                    th:text="${s}">M</button>
+                    <!-- Lựa chọn Size & Giá tiền tương ứng -->
+                    <div class="mb-4" th:if="${product.sizeOptions != null and not #lists.isEmpty(product.sizeOptions)}">
+                        <label class="form-label fw-bold text-dark mb-2">Chọn kích cỡ &amp; giá tiền (Size):</label>
+                        <div class="d-flex flex-wrap gap-2" id="detailSizeContainer">
+                            <button type="button" th:each="so : ${product.sizeOptions}" 
+                                    th:class="${so.id == product.id} ? 'btn btn-outline-warning active px-3 py-2 fw-semibold rounded-pill size-option-btn' : 'btn btn-outline-secondary px-3 py-2 fw-semibold rounded-pill size-option-btn'"
+                                    th:attr="data-id=${so.id}, data-size=${so.size}, data-price=${so.price}, data-available=${so.available}"
+                                    onclick="onDetailSizeSelected(this)">
+                                <span th:text="'Size ' + ${so.size}">Size M</span>
+                                <span class="small ms-1 fw-bold text-warning" th:text="'· ' + ${#numbers.formatDecimal(so.price, 0, 'COMMA', 0, 'POINT') + ' đ'}">· 25.000 đ</span>
+                            </button>
                         </div>
                     </div>
 
                     <!-- Toppings nếu có -->
                     <div class="mb-4" th:if="${product.allowTopping and product.toppings != null and not #lists.isEmpty(product.toppings)}">
-                        <label class="form-label fw-bold text-dark mb-2">Topping đi kèm:</label>
-                        <div class="row g-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-bold text-dark mb-0">
+                                <i class="bi bi-plus-circle me-1 text-warning"></i>Chọn thêm Topping (Tùy chọn):
+                            </label>
+                            <span class="small text-muted" id="selectedToppingsCount">Đã chọn: 0</span>
+                        </div>
+                        <div class="row g-2" id="detailToppingsContainer">
                             <div class="col-6 col-sm-4" th:each="t : ${product.toppings}">
-                                <div class="border rounded p-2 text-center small bg-light">
-                                    <div class="fw-semibold text-dark text-truncate" th:text="${t.name}">Trân châu đen</div>
-                                    <div class="text-muted" th:text="${'+ ' + #numbers.formatDecimal(t.price, 0, 'COMMA', 0, 'POINT') + ' đ'}">+ 5,000 đ</div>
+                                <div class="detail-topping-card p-2 rounded-3 border d-flex align-items-center gap-2 cursor-pointer position-relative"
+                                     role="button"
+                                     th:attr="data-id=${t.id}, data-name=${t.name}, data-price=${t.price}"
+                                     onclick="toggleDetailTopping(this)">
+                                    <input type="checkbox" class="form-check-input detail-topping-checkbox m-0" 
+                                           th:id="'detailTopping_' + ${t.id}"
+                                           onclick="event.stopPropagation(); toggleDetailTopping(this.closest('.detail-topping-card'))" />
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <div class="fw-semibold text-dark text-truncate small" th:text="${t.name}">Trân châu đen</div>
+                                        <div class="text-warning small fw-bold" th:text="${'+ ' + #numbers.formatDecimal(t.price, 0, 'COMMA', 0, 'POINT') + ' ₫'}">+ 5.000 ₫</div>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Số lượng và Ghi chú món -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-5">
+                            <label class="form-label fw-bold text-dark mb-1 small">Số lượng:</label>
+                            <div class="input-group">
+                                <button class="btn btn-outline-secondary" type="button" onclick="adjustDetailQuantity(-1)">
+                                    <i class="bi bi-dash"></i>
+                                </button>
+                                <input type="number" id="detailQuantityInput" class="form-control text-center fw-bold" value="1" min="1" max="99" onchange="updateDetailPriceTotal()">
+                                <button class="btn btn-outline-secondary" type="button" onclick="adjustDetailQuantity(1)">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-sm-7">
+                            <label class="form-label fw-bold text-dark mb-1 small">Ghi chú (đá, đường...):</label>
+                            <input type="text" id="detailNoteInput" class="form-control" placeholder="Ví dụ: 50% ngọt, ít đá..." maxlength="150">
+                        </div>
+                    </div>
+
+                    <!-- Tổng thanh toán dự kiến cho món -->
+                    <div class="p-3 bg-light rounded-3 mb-4 border d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted small d-block">Tổng tạm tính cho món:</span>
+                            <span class="small text-muted" id="detailCalculationBreakdown"></span>
+                        </div>
+                        <div class="text-end">
+                            <span class="fs-4 fw-bold text-danger" id="detailTotalPriceTag">35,000 ₫</span>
                         </div>
                     </div>
 
@@ -173,8 +246,9 @@
                         <a th:href="@{/menu(branchId=${branchId})}" class="btn btn-outline-secondary px-4 py-2 rounded-pill">
                             <i class="bi bi-arrow-left me-1"></i>Xem Menu
                         </a>
-                        <button type="button" class="btn btn-warning px-4 py-2 rounded-pill text-white fw-bold flex-grow-1"
+                        <button type="button" id="btnDetailAddToCart" class="btn btn-warning px-4 py-2 rounded-pill text-white fw-bold flex-grow-1"
                                 style="background: linear-gradient(135deg, #b86b35, #9e5524); border: none;"
+                                onclick="addCurrentProductToCart()"
                                 th:disabled="${!product.available}">
                             <i class="bi bi-bag-plus me-1"></i>Thêm vào giỏ hàng
                         </button>
@@ -208,10 +282,126 @@
     </div>
 
     <div th:fragment="scripts">
+        <script th:src="@{/js/customer/customer.js}"></script>
         <script th:inline="javascript">
-            const productId = /*[[${product.id}]]*/ 1;
+            let currentProductId = /*[[${product.id}]]*/ 1;
+            let currentPrice = /*[[${product.price}]]*/ 0;
+            let currentSize = /*[[${product.size}]]*/ 'M';
+            const productName = /*[[${product.name}]]*/ '';
+            const productImg = /*[[${product.imageUrl}]]*/ '';
+            const categoryName = /*[[${product.categoryName}]]*/ '';
             const btnFav = document.getElementById('btnToggleFavorite');
             const heartIcon = document.getElementById('heartIcon');
+            let selectedToppings = [];
+
+            document.addEventListener('DOMContentLoaded', () => {
+                updateDetailPriceTotal();
+            });
+
+            function onDetailSizeSelected(btn) {
+                document.querySelectorAll('#detailSizeContainer .size-option-btn').forEach(b => {
+                    b.classList.remove('active', 'btn-outline-warning');
+                    b.classList.add('btn-outline-secondary');
+                });
+                btn.classList.add('active', 'btn-outline-warning');
+                btn.classList.remove('btn-outline-secondary');
+
+                currentProductId = Number(btn.getAttribute('data-id'));
+                currentSize = btn.getAttribute('data-size');
+                currentPrice = Number(btn.getAttribute('data-price'));
+                const isAvail = btn.getAttribute('data-available') !== 'false';
+
+                const priceTag = document.getElementById('detailPriceTag');
+                if (priceTag) priceTag.textContent = Number(currentPrice).toLocaleString('vi-VN') + ' đ';
+
+                const sizeBadge = document.getElementById('detailSizeBadge');
+                if (sizeBadge) sizeBadge.textContent = '(Size ' + currentSize + ')';
+
+                const addBtn = document.getElementById('btnDetailAddToCart');
+                if (addBtn) addBtn.disabled = !isAvail;
+
+                updateDetailPriceTotal();
+            }
+
+            function toggleDetailTopping(card) {
+                if (!card) return;
+                const checkbox = card.querySelector('.detail-topping-checkbox');
+                const id = Number(card.getAttribute('data-id'));
+                const name = card.getAttribute('data-name');
+                const price = Number(card.getAttribute('data-price'));
+
+                const isSelected = card.classList.toggle('selected');
+                if (checkbox) checkbox.checked = isSelected;
+
+                if (isSelected) {
+                    if (!selectedToppings.some(t => t.id === id)) {
+                        selectedToppings.push({ id, name, price });
+                    }
+                } else {
+                    selectedToppings = selectedToppings.filter(t => t.id !== id);
+                }
+
+                const countEl = document.getElementById('selectedToppingsCount');
+                if (countEl) countEl.textContent = `Đã chọn: ${selectedToppings.length}`;
+
+                updateDetailPriceTotal();
+            }
+
+            function adjustDetailQuantity(delta) {
+                const input = document.getElementById('detailQuantityInput');
+                if (!input) return;
+                let val = parseInt(input.value) || 1;
+                val = Math.max(1, Math.min(99, val + delta));
+                input.value = val;
+                updateDetailPriceTotal();
+            }
+
+            function updateDetailPriceTotal() {
+                const qtyInput = document.getElementById('detailQuantityInput');
+                const qty = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+                const toppingTotal = selectedToppings.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+                const unitTotal = (Number(currentPrice) || 0) + toppingTotal;
+                const grandTotal = unitTotal * qty;
+
+                const totalEl = document.getElementById('detailTotalPriceTag');
+                if (totalEl) totalEl.textContent = grandTotal.toLocaleString('vi-VN') + ' ₫';
+
+                const breakdownEl = document.getElementById('detailCalculationBreakdown');
+                if (breakdownEl) {
+                    let text = `Size ${currentSize}: ${Number(currentPrice).toLocaleString('vi-VN')} ₫`;
+                    if (toppingTotal > 0) {
+                        text += ` + ${toppingTotal.toLocaleString('vi-VN')} ₫ (${selectedToppings.length} topping)`;
+                    }
+                    if (qty > 1) {
+                        text += ` × ${qty} ly`;
+                    }
+                    breakdownEl.textContent = text;
+                }
+            }
+
+            function addCurrentProductToCart() {
+                const qtyInput = document.getElementById('detailQuantityInput');
+                const quantity = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+                const noteInput = document.getElementById('detailNoteInput');
+                const note = (noteInput ? noteInput.value : '').trim();
+
+                const item = {
+                    id: currentProductId,
+                    name: productName,
+                    size: currentSize,
+                    price: currentPrice,
+                    img: productImg,
+                    categoryName: categoryName
+                };
+
+                if (typeof CustomerApp !== 'undefined' && CustomerApp.addToCart) {
+                    CustomerApp.addToCart(item, quantity, note, selectedToppings);
+                    const toppingText = selectedToppings.length > 0 ? ` + ${selectedToppings.length} topping` : '';
+                    MilkTeaApi.showToast(`Đã thêm ${productName} (Size ${currentSize}${toppingText}) x${quantity} vào giỏ hàng!`, 'success');
+                } else {
+                    window.location.href = `/cart`;
+                }
+            }
 
             if (btnFav) {
                 btnFav.addEventListener('click', async () => {
@@ -221,7 +411,7 @@
                         const headers = { 'Content-Type': 'application/json' };
                         if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
 
-                        const res = await fetch(`/api/v1/favorites/${productId}`, {
+                        const res = await fetch(`/api/v1/favorites/${currentProductId}`, {
                             method: 'POST',
                             headers: headers
                         });
@@ -234,7 +424,7 @@
                                 heartIcon.className = 'bi bi-heart';
                             }
                         } else if (res.status === 401) {
-                            window.location.href = `/login?redirect=/products/${productId}`;
+                            window.location.href = `/login?redirect=/products/${currentProductId}`;
                         }
                     } catch (e) {
                         console.error('Lỗi toggle favorite:', e);

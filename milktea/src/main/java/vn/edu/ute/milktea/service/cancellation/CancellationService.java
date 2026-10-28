@@ -97,6 +97,11 @@ public class CancellationService {
                     .createdAt(Instant.now())
                     .build());
 
+            // Nếu đơn đã thanh toán (CHO_XAC_NHAN trả trước hoặc CHO_CHE_BIEN), tự động tạo yêu cầu hoàn tiền
+            if (isPaid && invoice != null) {
+                createRefundIfPaid(cancelReq, invoice, actor != null ? actor.getAccountId() : null);
+            }
+
             publish(order);
             return CancellationDto.CancellationResponse.builder()
                     .id(cancelReq.getId())
@@ -146,7 +151,12 @@ public class CancellationService {
         if (actor == null) {
             return false;
         }
-        if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)) return true;
+        if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)) {
+            return true;
+        }
+        if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)) {
+            return order.getBranch() != null && actor.canAccessBranch(order.getBranch().getId());
+        }
         if (actor.getAccountId() != null && order.getAccount() != null) {
             return actor.getAccountId().equals(order.getAccount().getId());
         }
@@ -157,7 +167,7 @@ public class CancellationService {
     }
 
     @Transactional
-    public void decideCancellation(Long requestId, CancellationDto.DecideCancellationRequest request, Long cashierId) {
+    public void decideCancellation(Long requestId, CancellationDto.DecideCancellationRequest request, CurrentActor actor) {
         CancellationRequest cancelReq = cancellationRepository.findById(requestId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy yêu cầu hủy"));
 
@@ -168,10 +178,19 @@ public class CancellationService {
         Order order = orderRepository.findByIdWithLock(cancelReq.getOrder().getId())
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
 
-        entityManager.refresh(cancelReq);
+        if (actor != null && !actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)) {
+            if (!canActorAccessOrder(order, actor)) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền duyệt hủy đơn ngoài chi nhánh");
+            }
+        }
+
+        if (entityManager != null) {
+            entityManager.refresh(cancelReq);
+        }
         if (cancelReq.getStatus() != CancellationStatus.CHO) {
             throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Yêu cầu hủy đã được xử lý");
         }
+        Long cashierId = actor != null ? actor.getAccountId() : null;
         Account cashier = cashierId != null ? accountRepository.findById(cashierId).orElse(null) : null;
         cancelReq.setDecidedBy(cashier);
         cancelReq.setDecidedAt(Instant.now());
@@ -190,6 +209,7 @@ public class CancellationService {
 
             // Cập nhật hóa đơn sang DA_HUY
             Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
+            boolean isPaid = invoice != null && paymentRepository.existsByInvoiceId(invoice.getId());
             if (invoice != null) {
                 invoice.setStatus(InvoiceStatus.DA_HUY);
                 invoice.setCancelledAt(Instant.now());
@@ -198,6 +218,11 @@ public class CancellationService {
 
             if (voucherService != null) {
                 voucherService.releaseVoucherFromOrder(order, request.getReason());
+            }
+
+            // F15: Nếu đơn đã thanh toán được duyệt hủy, sinh yêu cầu hoàn tiền
+            if (isPaid && invoice != null) {
+                createRefundIfPaid(cancelReq, invoice, cashierId);
             }
 
             auditRepository.save(BusinessAudit.builder()
@@ -258,9 +283,19 @@ public class CancellationService {
 
     @Transactional(readOnly = true)
     public java.util.List<CancellationDto.CancellationResponse> getCancellationRequests(CancellationStatus status) {
+        return getCancellationRequests(status, null);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<CancellationDto.CancellationResponse> getCancellationRequests(CancellationStatus status, Long branchId) {
         java.util.List<CancellationRequest> list = status != null ?
                 cancellationRepository.findByStatus(status) :
                 cancellationRepository.findAll();
+        if (branchId != null) {
+            list = list.stream()
+                    .filter(c -> c.getOrder() != null && c.getOrder().getBranch() != null && c.getOrder().getBranch().getId().equals(branchId))
+                    .toList();
+        }
         return list.stream().map(c -> CancellationDto.CancellationResponse.builder()
                 .id(c.getId())
                 .orderId(c.getOrder().getId())

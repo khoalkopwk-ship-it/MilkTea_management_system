@@ -43,48 +43,45 @@ const CustomerApp = (() => {
         localStorage.removeItem(getLocalCartStorageKey());
     }
 
-    // Khởi tạo ngữ cảnh bàn
-    async function initContext(qrCodeParam, tableParam) {
+    // Khởi tạo ngữ cảnh bàn qua mã QR bàn
+    async function initContext(qrCodeParam) {
         let qr = qrCodeParam;
         const urlParams = new URLSearchParams(window.location.search);
         if (!qr) qr = urlParams.get('qr');
-        let table = tableParam || urlParams.get('table');
 
         // Nếu URL không có, thử phục hồi từ cookie hoặc localStorage
-        if (!qr && !table) {
+        if (!qr) {
             const cookies = document.cookie.split(';');
             for (let c of cookies) {
                 const parts = c.trim().split('=');
                 if (parts[0] === 'MILKTEA_TABLE_QR' && parts[1]) qr = decodeURIComponent(parts[1]);
-                else if (parts[0] === 'MILKTEA_TABLE_ID' && parts[1]) table = decodeURIComponent(parts[1]);
             }
             if (!qr) qr = localStorage.getItem('milktea.lastTableQr');
-            if (!table) table = localStorage.getItem('milktea.lastTableId');
         }
 
-        if (qr || table) {
+        if (qr) {
             try {
-                let url = '/api/v1/public/table-context?';
-                if (qr) url += 'qrCode=' + encodeURIComponent(qr);
-                else if (table) url += 'table=' + encodeURIComponent(table);
+                let url = '/api/v1/public/table-context?qrCode=' + encodeURIComponent(qr);
 
                 const ctx = await MilkTeaApi.get(url);
                 if (ctx) {
                     window.MilkTeaContext.tableId = ctx.tableId;
                     window.MilkTeaContext.tableName = ctx.tableName;
                     window.MilkTeaContext.qrCode = ctx.qrCode;
+                    window.MilkTeaContext.branchId = ctx.branchId;
+                    window.MilkTeaContext.branchName = ctx.branchName;
                     window.MilkTeaContext.sessionId = ctx.sessionId;
                     window.MilkTeaContext.sessionStatus = ctx.sessionStatus;
                     window.MilkTeaContext.tableToken = ctx.tableToken;
 
                     if (ctx.qrCode) localStorage.setItem('milktea.lastTableQr', ctx.qrCode);
-                    if (ctx.tableId) localStorage.setItem('milktea.lastTableId', ctx.tableId);
 
                     // Cập nhật nhãn bàn trên navbar nếu đang ẩn
                     const badgeContainer = document.getElementById('navbarTableBadgeContainer');
                     const nameEl = document.getElementById('navbarTableName');
                     if (badgeContainer && nameEl && ctx.tableName) {
-                        nameEl.textContent = ctx.tableName;
+                        const displayName = (ctx.branchName ? ctx.branchName + ' · ' : '') + ctx.tableName;
+                        nameEl.textContent = displayName;
                         badgeContainer.style.display = 'flex';
                         badgeContainer.classList.remove('d-none');
                     }
@@ -101,7 +98,6 @@ const CustomerApp = (() => {
             }
         }
 
-        if (!window.MilkTeaContext.tableId) window.MilkTeaContext.counterToken = sessionStorage.getItem('milktea.counterToken');
         loadLocalCart();
         updateCartBadge();
         setupRealtimeListeners();
@@ -379,23 +375,25 @@ const CustomerApp = (() => {
 
             const hasTableContext = !!window.MilkTeaContext.tableId;
             const vCode = appliedVoucher ? (appliedVoucher.voucherCode || appliedVoucher.code) : null;
-            const payload = hasTableContext
-                ? {
-                    tableId: window.MilkTeaContext.tableId,
-                    expectedSessionId: window.MilkTeaContext.sessionId,
-                    items: items,
-                    remainingCartItems: [],
-                    voucherCode: vCode
-                }
-                : {
-                    items: items,
-                    voucherCode: vCode
-                };
+            let order;
 
-            const order = await MilkTeaApi.post(
-                hasTableContext ? '/api/v1/orders/table' : '/api/v1/orders/counter',
-                payload
-            );
+            if (!hasTableContext) {
+                MilkTeaApi.showToast('Vui lòng quét mã QR tại bàn để gửi đơn hàng, hoặc gọi món trực tiếp tại quầy thu ngân', 'warning');
+                if (btn) btn.disabled = false;
+                return;
+            }
+
+            const note = document.getElementById('orderNoteInput')?.value?.trim();
+            const payload = {
+                tableId: window.MilkTeaContext.tableId,
+                expectedSessionId: window.MilkTeaContext.sessionId,
+                items: items,
+                remainingCartItems: [],
+                voucherCode: vCode,
+                note: note || undefined
+            };
+            order = await MilkTeaApi.post('/api/v1/orders/table', payload);
+
             MilkTeaApi.showToast('Đặt đơn thành công! Đang chuyển hướng...', 'success');
 
             // Cập nhật context phiên nếu là đơn đầu tiên mở phiên

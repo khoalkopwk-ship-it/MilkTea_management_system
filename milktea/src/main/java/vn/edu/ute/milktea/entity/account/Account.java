@@ -56,6 +56,9 @@ public class Account {
     @Column(name = "AvatarPublicId", length = 255)
     private String avatarPublicId;
 
+    @Transient
+    private vn.edu.ute.milktea.entity.branch.Branch branch;
+
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {
@@ -70,5 +73,9 @@ public class Account {
         if (tokenVersion == null) {
             tokenVersion = 1L;
         }
+    }
+
+    public boolean hasRole(Role targetRole) {
+        return this.role == targetRole;
     }
 }

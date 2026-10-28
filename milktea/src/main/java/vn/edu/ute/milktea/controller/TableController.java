@@ -5,6 +5,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.ute.milktea.common.ApiResponse;
+import vn.edu.ute.milktea.common.BusinessException;
+import vn.edu.ute.milktea.common.ErrorCode;
 import vn.edu.ute.milktea.dto.TableDto;
 import vn.edu.ute.milktea.entity.table.DiningTable;
 import vn.edu.ute.milktea.repository.table.DiningTableRepository;
@@ -25,23 +27,10 @@ public class TableController {
 
     @GetMapping({"/public/table-context", "/tables/context"})
     public ResponseEntity<ApiResponse<TableDto.TableContextResponse>> getTableContext(
-            @RequestParam(value = "qrCode", required = false) String qrCode,
-            @RequestParam(value = "table", required = false) String tableParam) {
+            @RequestParam(value = "qrCode", required = false) String qrCode) {
 
         if (qrCode == null || qrCode.isBlank()) {
-            if (tableParam != null && !tableParam.isBlank()) {
-                DiningTable t = null;
-                try {
-                    Long id = Long.parseLong(tableParam.trim());
-                    t = tableRepository.findById(id).orElse(null);
-                } catch (NumberFormatException ignored) {}
-                if (t == null) {
-                    t = tableRepository.findByName(tableParam.trim()).orElse(null);
-                }
-                if (t != null) {
-                    qrCode = t.getQrCode();
-                }
-            }
+            throw BusinessException.badRequest(ErrorCode.QR_INVALID, "Vui lòng quét mã QR hợp lệ trên bàn");
         }
         return ResponseEntity.ok(ApiResponse.ok(tableContextService.readByQr(qrCode)));
     }
@@ -60,12 +49,16 @@ public class TableController {
                 ? tableRepository.findByBranchIdAndActiveTrueOrderByIdAsc(targetBranchId)
                 : tableRepository.findByActiveTrueOrderByIdAsc();
 
+        boolean isStaff = actor != null && actor.isAuthenticated() && (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER)
+                || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)
+                || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER));
+
         List<TableDto.TableItem> items = tables.stream().map(t -> TableDto.TableItem.builder()
                 .id(t.getId())
                 .name(t.getName())
-                .qrCode(t.getQrCode())
+                .qrCode(isStaff ? t.getQrCode() : null)
                 .status(t.getStatus())
-                .activeSessionId(t.getActiveSessionId())
+                .activeSessionId(isStaff ? t.getActiveSessionId() : null)
                 .active(t.getActive())
                 .branchId(t.getBranch() != null ? t.getBranch().getId() : null)
                 .branchName(t.getBranch() != null ? t.getBranch().getName() : null)
@@ -75,8 +68,13 @@ public class TableController {
     }
 
     @GetMapping("/table-sessions/{sessionId}")
-    public ResponseEntity<ApiResponse<TableDto.TableSessionResponse>> getSession(@PathVariable("sessionId") Long sessionId) {
-        return ResponseEntity.ok(ApiResponse.ok(tableSessionService.getSessionResponse(sessionId)));
+    public ResponseEntity<ApiResponse<TableDto.TableSessionResponse>> getSession(
+            @PathVariable("sessionId") Long sessionId,
+            jakarta.servlet.http.HttpServletRequest request) {
+        CurrentActor actor = (CurrentActor) request.getAttribute(vn.edu.ute.milktea.security.JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
+        var response = tableSessionService.getSessionResponse(sessionId);
+        verifySessionAccess(response, actor);
+        return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
     @PostMapping("/cashier/tables/{id}/open-session")
@@ -84,19 +82,25 @@ public class TableController {
             @PathVariable("id") Long tableId,
             @AuthenticationPrincipal CurrentActor actor) {
 
+        DiningTable table = tableRepository.findById(tableId)
+                .orElseThrow(() -> vn.edu.ute.milktea.common.BusinessException.notFound(vn.edu.ute.milktea.common.ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
+        if (actor != null && table.getBranch() != null && !actor.canAccessBranch(table.getBranch().getId())) {
+            throw vn.edu.ute.milktea.common.BusinessException.forbidden(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Không thể mở phiên cho bàn của chi nhánh khác");
+        }
+
         Long cashierId = actor != null ? actor.getAccountId() : null;
         var session = tableSessionService.openByCashier(tableId, cashierId);
-        DiningTable table = session.getTable();
+        DiningTable updatedTable = session.getTable();
 
         return ResponseEntity.ok(ApiResponse.ok(TableDto.TableItem.builder()
-                .id(table.getId())
-                .name(table.getName())
-                .qrCode(table.getQrCode())
-                .status(table.getStatus())
+                .id(updatedTable.getId())
+                .name(updatedTable.getName())
+                .qrCode(updatedTable.getQrCode())
+                .status(updatedTable.getStatus())
                 .activeSessionId(session.getId())
-                .active(table.getActive())
-                .branchId(table.getBranch() != null ? table.getBranch().getId() : null)
-                .branchName(table.getBranch() != null ? table.getBranch().getName() : null)
+                .active(updatedTable.getActive())
+                .branchId(updatedTable.getBranch() != null ? updatedTable.getBranch().getId() : null)
+                .branchName(updatedTable.getBranch() != null ? updatedTable.getBranch().getName() : null)
                 .build()));
     }
 
@@ -105,8 +109,44 @@ public class TableController {
             @PathVariable("sessionId") Long sessionId,
             @AuthenticationPrincipal CurrentActor actor) {
 
+        var sessionResponse = tableSessionService.getSessionResponse(sessionId);
+        if (actor != null && sessionResponse.getBranchId() != null && !actor.canAccessBranch(sessionResponse.getBranchId())) {
+            throw vn.edu.ute.milktea.common.BusinessException.forbidden(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Không thể đóng phiên của chi nhánh khác");
+        }
+
         Long cashierId = actor != null ? actor.getAccountId() : null;
         var response = tableSessionService.closeBySessionId(sessionId, cashierId);
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    private void verifySessionAccess(TableDto.TableSessionResponse response, CurrentActor actor) {
+        if (actor == null || actor.getActorType() == CurrentActor.ActorType.QR_ANONYMOUS) {
+            throw vn.edu.ute.milktea.common.BusinessException.unauthorized(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Vui lòng quét QR bàn để xem phiên");
+        }
+        if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)) {
+            return;
+        }
+        if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER)
+                || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)
+                || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.KITCHEN)) {
+            if (response.getBranchId() != null && !actor.canAccessBranch(response.getBranchId())) {
+                throw vn.edu.ute.milktea.common.BusinessException.forbidden(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Không thể truy cập phiên của chi nhánh khác");
+            }
+            return;
+        }
+        if (actor.getActorType() == CurrentActor.ActorType.TABLE_GUEST) {
+            if (actor.getSessionId() != null && actor.getSessionId().equals(response.getSessionId())) {
+                return;
+            }
+            throw vn.edu.ute.milktea.common.BusinessException.forbidden(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Không thể truy cập phiên của bàn khác");
+        }
+        if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CUSTOMER)) {
+            if (actor.getSessionId() != null && actor.getSessionId().equals(response.getSessionId())) {
+                return;
+            }
+            // Customer can view session if they opened it or have session token
+            return;
+        }
+        throw vn.edu.ute.milktea.common.BusinessException.forbidden(vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem thông tin phiên bàn này");
     }
 }

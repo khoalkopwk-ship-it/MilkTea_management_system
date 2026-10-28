@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface ImportReceiptRepository extends JpaRepository<ImportReceipt, Long> {
     List<ImportReceipt> findByStatus(DocumentStatus status);
+    java.util.Optional<ImportReceipt> findByIdempotencyKey(String idempotencyKey);
 }

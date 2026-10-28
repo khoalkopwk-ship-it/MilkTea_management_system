@@ -113,12 +113,20 @@ public class ProductReviewService {
                 .build();
 
         if (req.getMediaList() != null && !req.getMediaList().isEmpty()) {
+            if (req.getMediaList().size() > 5) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Mỗi đánh giá chỉ được đính kèm tối đa 5 hình ảnh");
+            }
             List<ReviewMedia> mediaEntities = new ArrayList<>();
             for (ReviewDto.MediaItemRequest mReq : req.getMediaList()) {
                 if (mReq.getMediaUrl() != null && !mReq.getMediaUrl().isBlank()) {
+                    String url = mReq.getMediaUrl().trim();
+                    if (!isValidReviewMediaUrl(url)) {
+                        throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                                "URL hình ảnh đính kèm không hợp lệ hoặc không an toàn: " + url);
+                    }
                     ReviewMedia media = ReviewMedia.builder()
                             .review(review)
-                            .url(mReq.getMediaUrl().trim())
+                            .url(url)
                             .mediaType(mReq.getMediaType() != null ? mReq.getMediaType() : ReviewMediaType.IMAGE)
                             .build();
                     mediaEntities.add(media);
@@ -129,6 +137,14 @@ public class ProductReviewService {
 
         ProductReview saved = productReviewRepository.save(review);
         return mapReviewToDto(saved);
+    }
+
+    private boolean isValidReviewMediaUrl(String url) {
+        if (url == null || url.length() > 500) {
+            return false;
+        }
+        return url.startsWith("https://") || url.startsWith("http://")
+                || url.startsWith("/images/reviews/") || url.startsWith("/static/");
     }
 
     @Transactional(readOnly = true)

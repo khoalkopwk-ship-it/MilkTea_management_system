@@ -20,7 +20,7 @@ public class BranchController {
 
     private final BranchService branchService;
 
-    @GetMapping("/public/branches")
+    @GetMapping({"/branches", "/public/branches"})
     public ResponseEntity<ApiResponse<List<BranchDto.BranchResponse>>> getActiveBranches() {
         return ResponseEntity.ok(ApiResponse.ok(branchService.getActiveBranches()));
     }
@@ -39,5 +39,29 @@ public class BranchController {
             @AuthenticationPrincipal CurrentActor actor) {
         branchService.updateProductAvailability(branchId, productId, request.getAvailable(), actor);
         return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
+    @PostMapping("/admin/branches")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BranchDto.BranchResponse>> createBranch(
+            @Valid @RequestBody BranchDto.CreateBranchRequest request) {
+        return ResponseEntity.status(201).body(ApiResponse.ok(branchService.createBranch(request)));
+    }
+
+    @PutMapping("/admin/branches/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BranchDto.BranchResponse>> updateBranch(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody BranchDto.UpdateBranchRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(branchService.updateBranch(id, request)));
+    }
+
+    @PostMapping("/admin/branches/{id}/toggle-active")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BranchDto.BranchResponse>> toggleBranchStatus(
+            @PathVariable("id") Long id,
+            @RequestBody(required = false) java.util.Map<String, Boolean> body) {
+        boolean active = body != null && Boolean.TRUE.equals(body.get("active"));
+        return ResponseEntity.ok(ApiResponse.ok(branchService.toggleBranchStatus(id, active)));
     }
 }

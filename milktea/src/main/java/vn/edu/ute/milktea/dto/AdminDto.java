@@ -36,6 +36,8 @@ public class AdminDto {
 
         @NotNull(message = "Vai trò không được để trống")
         private Role role;
+
+        private Long branchId;
     }
 
     @Data
@@ -48,6 +50,7 @@ public class AdminDto {
         private String phone;
         private Role role;
         private Boolean active;
+        private Long branchId;
     }
 
     @Data
@@ -62,6 +65,8 @@ public class AdminDto {
         private Role role;
         private Boolean active;
         private Instant createdAt;
+        private Long branchId;
+        private String branchName;
     }
 
     // === DANH MỤC ===
@@ -126,6 +131,12 @@ public class AdminDto {
         private BigDecimal price;
         private String imageUrl;
         private Boolean active;
+
+        public CategoryView getCategory() {
+            return categoryName != null ? new CategoryView(categoryId, categoryName) : null;
+        }
+
+        public record CategoryView(Long id, String name) {}
     }
 
     @Data
@@ -194,6 +205,7 @@ public class AdminDto {
         @NotBlank(message = "Tên bàn không được để trống")
         private String name;
         private Boolean active;
+        private Long branchId;
     }
 
     @Data
@@ -207,6 +219,8 @@ public class AdminDto {
         private TableStatus status;
         private Long activeSessionId;
         private Boolean active;
+        private Long branchId;
+        private String branchName;
     }
 
     // === NGUYÊN LIỆU ===

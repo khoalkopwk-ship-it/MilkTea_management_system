@@ -19,4 +19,7 @@ public interface TableSessionRepository extends JpaRepository<TableSession, Long
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM TableSession s WHERE s.id = :id")
     Optional<TableSession> findByIdWithLock(@Param("id") Long id);
+
+    @Query("SELECT COUNT(s) FROM TableSession s WHERE s.table.branch.id = :branchId AND s.status = :status")
+    long countByBranchIdAndStatus(@Param("branchId") Long branchId, @Param("status") TableSessionStatus status);
 }

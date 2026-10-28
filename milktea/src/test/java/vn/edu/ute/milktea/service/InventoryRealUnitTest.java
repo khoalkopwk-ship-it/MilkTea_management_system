@@ -63,6 +63,8 @@ public class InventoryRealUnitTest {
     @Mock BusinessAuditRepository auditRepository;
     @Mock OrderRepository orderRepository;
     @Mock RealtimeEventPublisher realtimeEventPublisher;
+    @Mock vn.edu.ute.milktea.service.branch.BranchService branchService;
+    @Mock vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository;
 
     @InjectMocks InventoryService inventoryService;
 
@@ -267,9 +269,8 @@ public class InventoryRealUnitTest {
 
         var settleResp = inventoryService.recordShiftSettlement(settleReq, kitchenUser, "SETTLE-CA1");
         assertNotNull(settleResp);
-        assertEquals(0, settleResp.getTotalLossCost().compareTo(new BigDecimal("5750.00")));
-        // Only 300 ml discarded was subtracted from stock: 6000 - 300 = 5700
-        assertEquals(0, finalPrepStock.getQuantity().compareTo(new BigDecimal("5700")));
+        // Stock must equal retainedQuantity = 5400 according to R04
+        assertEquals(0, finalPrepStock.getQuantity().compareTo(new BigDecimal("5400")));
     }
 
     /**

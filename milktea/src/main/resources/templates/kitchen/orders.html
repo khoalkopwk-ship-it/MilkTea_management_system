@@ -6,7 +6,11 @@
 </head>
 
 <body>
-    <div th:fragment="content" class="container-fluid py-3 px-lg-4 kitchen-page">
+    <div th:fragment="content" class="container-fluid py-3 px-lg-4 kitchen-page"
+         id="kitchenWorkspace"
+         th:data-role="${actor != null ? actor.role : 'KITCHEN'}"
+         th:data-branch-id="${actor != null ? actor.branchId : ''}"
+         th:data-branch-name="${currentBranch != null ? currentBranch.name : ''}">
 
         <style>
             .kitchen-page {

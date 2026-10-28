@@ -53,9 +53,15 @@ public class ReportService {
     private final StockMovementRepository stockMovementRepository;
     private final ShiftSettlementItemRepository shiftSettlementItemRepository;
     private final StockRepository stockRepository;
+    private final vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository;
 
     @Transactional(readOnly = true)
     public ReportDto.RevenueReportView getRevenueReport(LocalDate fromDate, LocalDate toDate) {
+        return getRevenueReport(null, fromDate, toDate);
+    }
+
+    @Transactional(readOnly = true)
+    public ReportDto.RevenueReportView getRevenueReport(Long branchId, LocalDate fromDate, LocalDate toDate) {
         if (fromDate == null) fromDate = LocalDate.now(VIETNAM_ZONE).minusDays(30);
         if (toDate == null) toDate = LocalDate.now(VIETNAM_ZONE);
 
@@ -63,13 +69,17 @@ public class ReportService {
         Instant endInstant = toDate.plusDays(1).atStartOfDay(VIETNAM_ZONE).toInstant();
 
         // 1. Thực thu (Payments completed trong khoảng)
-        List<Payment> payments = paymentRepository.findByPaidAtBetween(startInstant, endInstant);
+        List<Payment> payments = branchId == null
+                ? paymentRepository.findByPaidAtBetween(startInstant, endInstant)
+                : paymentRepository.findByPaidAtBetweenAndBranchId(startInstant, endInstant, branchId);
         BigDecimal received = payments.stream()
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // 2. Thực hoàn (Refunds DA_HOAN trong khoảng)
-        List<RefundRequest> refunds = refundRepository.findCompletedRefundsBetween(startInstant, endInstant);
+        List<RefundRequest> refunds = branchId == null
+                ? refundRepository.findCompletedRefundsBetween(startInstant, endInstant)
+                : refundRepository.findCompletedRefundsBetweenAndBranchId(startInstant, endInstant, branchId);
         BigDecimal refunded = refunds.stream()
                 .map(RefundRequest::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -78,7 +88,9 @@ public class ReportService {
         BigDecimal netReceived = received.subtract(refunded);
 
         // 4. Doanh số đơn hoàn thành (completedOrderValue)
-        var completedOrders = orderRepository.findByStatusInOrderByCreatedAtAsc(List.of(OrderStatus.HOAN_THANH));
+        var completedOrders = branchId == null
+                ? orderRepository.findByStatusInOrderByCreatedAtAsc(List.of(OrderStatus.HOAN_THANH))
+                : orderRepository.findByBranchIdAndStatusInOrderByCreatedAtAsc(branchId, List.of(OrderStatus.HOAN_THANH));
         BigDecimal completedOrderValue = BigDecimal.ZERO;
         for (var ord : completedOrders) {
             if (ord.getCompletedAt() != null &&
@@ -96,15 +108,23 @@ public class ReportService {
         BigDecimal currentOutstanding = BigDecimal.ZERO;
         for (Invoice inv : allInvoices) {
             if (inv.getStatus() == InvoiceStatus.HIEU_LUC) {
-                if (!paymentRepository.existsByInvoiceId(inv.getId())) {
-                    currentOutstanding = currentOutstanding.add(inv.getTotalAmount());
+                if (branchId == null || (inv.getOrder() != null && inv.getOrder().getBranch() != null && branchId.equals(inv.getOrder().getBranch().getId()))) {
+                    if (!paymentRepository.existsByInvoiceId(inv.getId())) {
+                        currentOutstanding = currentOutstanding.add(inv.getTotalAmount());
+                    }
                 }
             }
         }
 
+        String branchName = branchId != null
+                ? branchRepository.findById(branchId).map(vn.edu.ute.milktea.entity.branch.Branch::getName).orElse("Chi nhánh #" + branchId)
+                : "Toàn chuỗi hệ thống";
+
         return ReportDto.RevenueReportView.builder()
                 .fromDate(fromDate)
                 .toDate(toDate)
+                .branchId(branchId)
+                .branchName(branchName)
                 .currency("VND")
                 .received(received)
                 .refunded(refunded)
@@ -116,7 +136,14 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public ReportDto.OrderReportView getOrderReport(LocalDate fromDate, LocalDate toDate) {
-        var allOrders = orderRepository.findAll();
+        return getOrderReport(null, fromDate, toDate);
+    }
+
+    @Transactional(readOnly = true)
+    public ReportDto.OrderReportView getOrderReport(Long branchId, LocalDate fromDate, LocalDate toDate) {
+        var allOrders = branchId == null
+                ? orderRepository.findAll()
+                : orderRepository.findByBranchIdOrderByCreatedAtDesc(branchId);
         java.util.Map<String, Long> counts = new java.util.HashMap<>();
         for (OrderStatus st : OrderStatus.values()) {
             counts.put(st.name(), 0L);
@@ -140,7 +167,13 @@ public class ReportService {
     }
     
     @Transactional(readOnly = true)
+    public ReportDto.DashboardSummary getDashboardSummary(LocalDate fromDate, LocalDate toDate) {
+        return getDashboardSummary(null, fromDate, toDate);
+    }
+
+    @Transactional(readOnly = true)
     public ReportDto.DashboardSummary getDashboardSummary(
+            Long branchId,
             LocalDate fromDate,
             LocalDate toDate) {
 
@@ -172,7 +205,7 @@ public class ReportService {
 
         // 2. Tái sử dụng báo cáo doanh thu
         ReportDto.RevenueReportView revenue =
-                getRevenueReport(fromDate, toDate);
+                getRevenueReport(branchId, fromDate, toDate);
 
         BigDecimal received = revenue.getReceived();
         BigDecimal refunded = revenue.getRefunded();
@@ -181,7 +214,7 @@ public class ReportService {
 
         // 3. Tổng số đơn hàng trong khoảng ngày
         ReportDto.OrderReportView orderReport =
-                getOrderReport(fromDate, toDate);
+                getOrderReport(branchId, fromDate, toDate);
 
         Map<String, Long> counts = orderReport.getCounts();
 
@@ -197,15 +230,17 @@ public class ReportService {
         List<Invoice> invoices = invoiceRepository.findAll();
 
         for (Invoice invoice : invoices) {
-
             if (invoice.getStatus() != InvoiceStatus.HIEU_LUC) {
                 continue;
             }
 
             var order = invoice.getOrder();
 
-            if (order == null ||
-                    order.getStatus() == OrderStatus.DA_HUY) {
+            if (order == null || order.getStatus() == OrderStatus.DA_HUY) {
+                continue;
+            }
+
+            if (branchId != null && (order.getBranch() == null || !branchId.equals(order.getBranch().getId()))) {
                 continue;
             }
 
@@ -226,14 +261,12 @@ public class ReportService {
         }
 
         // 5. Tổng chi phí hao hụt nguyên liệu cuối ca
-        List<ShiftSettlement> settlements =
-                shiftSettlementRepository
-                        .findByClosedAtBetweenOrderByClosedAtDesc(
-                                startInstant,
-                                endInstant.minusNanos(1)
-                        );
+        List<ShiftSettlement> settlements = branchId == null
+                ? shiftSettlementRepository.findByClosedAtBetweenOrderByClosedAtDesc(
+                        startInstant, endInstant.minusNanos(1))
+                : shiftSettlementRepository.findByClosedAtBetweenAndBranchId(
+                        startInstant, endInstant.minusNanos(1), branchId);
 
-        
         // Chi phí nguyên liệu loại bỏ khi kết ca
         BigDecimal settlementWasteCost = settlements.stream()
                 .map(ShiftSettlement::getTotalLossCost)
@@ -244,7 +277,8 @@ public class ReportService {
         BigDecimal manualWasteCost = stockMovementRepository.sumManualWasteCost(
                 StockMovementType.HAO_HUT,
                 startInstant,
-                endInstant
+                endInstant,
+                branchId
         );
 
         if (manualWasteCost == null) {
@@ -264,12 +298,19 @@ public class ReportService {
                 .unpaidAmount(unpaidAmount)
                 .wasteCost(wasteCost)
                 .unpricedWasteCount(stockMovementRepository.countUnpricedManualWaste(
-                        StockMovementType.HAO_HUT, startInstant, endInstant))
+                        StockMovementType.HAO_HUT, startInstant, endInstant, branchId))
                 .build();
     }
-    //phương thức thống kê doanh thu theo ngày 
+
+    // Phương thức thống kê doanh thu theo ngày
+    @Transactional(readOnly = true)
+    public List<ReportDto.RevenueByDay> getDashboardRevenueByDay(LocalDate fromDate, LocalDate toDate) {
+        return getDashboardRevenueByDay(null, fromDate, toDate);
+    }
+
     @Transactional(readOnly = true)
     public List<ReportDto.RevenueByDay> getDashboardRevenueByDay(
+            Long branchId,
             LocalDate fromDate,
             LocalDate toDate) {
 
@@ -286,7 +327,11 @@ public class ReportService {
             refundedByDay.put(day, BigDecimal.ZERO);
         }
 
-        for (Payment payment : paymentRepository.findByPaidAtBetween(start, end)) {
+        List<Payment> payments = branchId == null
+                ? paymentRepository.findByPaidAtBetween(start, end)
+                : paymentRepository.findByPaidAtBetweenAndBranchId(start, end, branchId);
+
+        for (Payment payment : payments) {
             if (payment.getPaidAt() == null || payment.getAmount() == null) {
                 continue;
             }
@@ -297,7 +342,11 @@ public class ReportService {
             receivedByDay.merge(day, payment.getAmount(), BigDecimal::add);
         }
 
-        for (RefundRequest refund : refundRepository.findCompletedRefundsBetween(start, end)) {
+        List<RefundRequest> refunds = branchId == null
+                ? refundRepository.findCompletedRefundsBetween(start, end)
+                : refundRepository.findCompletedRefundsBetweenAndBranchId(start, end, branchId);
+
+        for (RefundRequest refund : refunds) {
             if (refund.getRefundedAt() == null || refund.getAmount() == null) {
                 continue;
             }
@@ -324,10 +373,16 @@ public class ReportService {
 
         return result;
     }
-//phương thức thống kê trạng thái đơn
+
+    // Phương thức thống kê trạng thái đơn
+    @Transactional(readOnly = true)
+    public List<ReportDto.OrderStatusStatistic> getDashboardOrderStatuses(LocalDate fromDate, LocalDate toDate) {
+        return getDashboardOrderStatuses(null, fromDate, toDate);
+    }
 
     @Transactional(readOnly = true)
     public List<ReportDto.OrderStatusStatistic> getDashboardOrderStatuses(
+            Long branchId,
             LocalDate fromDate,
             LocalDate toDate) {
 
@@ -341,7 +396,7 @@ public class ReportService {
             counts.put(status, 0L);
         }
 
-        for (Object[] row : orderRepository.countOrdersByStatusBetween(start, end)) {
+        for (Object[] row : orderRepository.countOrdersByStatusBetween(start, end, branchId)) {
             counts.put((OrderStatus) row[0], ((Number) row[1]).longValue());
         }
 
@@ -367,10 +422,16 @@ public class ReportService {
 
         return result;
     }
-//top 5 món bán chạy 
+
+    // Top 5 món bán chạy 
+    @Transactional(readOnly = true)
+    public List<ReportDto.TopSellingProduct> getDashboardTopProducts(LocalDate fromDate, LocalDate toDate) {
+        return getDashboardTopProducts(null, fromDate, toDate);
+    }
 
     @Transactional(readOnly = true)
     public List<ReportDto.TopSellingProduct> getDashboardTopProducts(
+            Long branchId,
             LocalDate fromDate,
             LocalDate toDate) {
 
@@ -382,6 +443,7 @@ public class ReportService {
                 start,
                 end,
                 OrderStatus.DA_HUY,
+                branchId,
                 PageRequest.of(0, 5)
         ).stream()
         .map(row -> ReportDto.TopSellingProduct.builder()
@@ -392,70 +454,41 @@ public class ReportService {
                 .build())
         .toList();
     }
-//top 5 nguyên liệu hao hụt ngoài định mức nhiều nhất 
 
-    
-@Transactional(readOnly = true)
-public List<ReportDto.TopWasteMaterial> getDashboardTopWasteMaterials(
-        LocalDate fromDate,
-        LocalDate toDate) {
-
-    Instant start = fromDate.atStartOfDay(VIETNAM_ZONE).toInstant();
-    Instant end = toDate.plusDays(1)
-            .atStartOfDay(VIETNAM_ZONE).toInstant();
-
-    Map<Long, ReportDto.TopWasteMaterial> totals = new HashMap<>();
-
-    // 1. Hao hụt khi kết ca
-    List<Object[]> settlementRows =
-            shiftSettlementItemRepository.findAllWasteMaterialsBetween(
-                    start, end);
-
-    for (Object[] row : settlementRows) {
-        Long materialId = ((Number) row[0]).longValue();
-        String materialName = (String) row[1];
-        String unit = (String) row[2];
-
-        BigDecimal quantity = row[3] == null
-                ? BigDecimal.ZERO : (BigDecimal) row[3];
-
-        BigDecimal cost = row[4] == null
-                ? BigDecimal.ZERO : (BigDecimal) row[4];
-
-        totals.put(materialId, ReportDto.TopWasteMaterial.builder()
-                .materialId(materialId)
-                .materialName(materialName)
-                .unit(unit)
-                .discardedQuantity(quantity)
-                .lossCost(cost)
-                .build());
+    // Top 5 nguyên liệu hao hụt ngoài định mức nhiều nhất 
+    @Transactional(readOnly = true)
+    public List<ReportDto.TopWasteMaterial> getDashboardTopWasteMaterials(LocalDate fromDate, LocalDate toDate) {
+        return getDashboardTopWasteMaterials(null, fromDate, toDate);
     }
 
-    // 2. Hao hụt thủ công: nguyên liệu hư hỏng, hết hạn
-    List<StockMovement> manualWaste =
-            stockMovementRepository.findManualWasteBetween(
-                    StockMovementType.HAO_HUT,
-                    start,
-                    end
-            );
+    @Transactional(readOnly = true)
+    public List<ReportDto.TopWasteMaterial> getDashboardTopWasteMaterials(
+            Long branchId,
+            LocalDate fromDate,
+            LocalDate toDate) {
 
-    for (StockMovement movement : manualWaste) {
+        Instant start = fromDate.atStartOfDay(VIETNAM_ZONE).toInstant();
+        Instant end = toDate.plusDays(1)
+                .atStartOfDay(VIETNAM_ZONE).toInstant();
 
-        // Bản ghi cũ chưa có giá vốn thì không tự ước tính.
-        if (movement.getLossCost() == null) {
-            continue;
-        }
+        Map<Long, ReportDto.TopWasteMaterial> totals = new HashMap<>();
 
-        Long materialId = movement.getMaterial().getId();
-        String materialName = movement.getMaterial().getName();
-        String unit = movement.getMaterial().getUnit();
+        // 1. Hao hụt khi kết ca
+        List<Object[]> settlementRows =
+                shiftSettlementItemRepository.findAllWasteMaterialsBetween(
+                        start, end, branchId);
 
-        BigDecimal quantity = movement.getDeltaQuantity().abs();
-        BigDecimal cost = movement.getLossCost();
+        for (Object[] row : settlementRows) {
+            Long materialId = ((Number) row[0]).longValue();
+            String materialName = (String) row[1];
+            String unit = (String) row[2];
 
-        ReportDto.TopWasteMaterial existing = totals.get(materialId);
+            BigDecimal quantity = row[3] == null
+                    ? BigDecimal.ZERO : (BigDecimal) row[3];
 
-        if (existing == null) {
+            BigDecimal cost = row[4] == null
+                    ? BigDecimal.ZERO : (BigDecimal) row[4];
+
             totals.put(materialId, ReportDto.TopWasteMaterial.builder()
                     .materialId(materialId)
                     .materialName(materialName)
@@ -463,133 +496,186 @@ public List<ReportDto.TopWasteMaterial> getDashboardTopWasteMaterials(
                     .discardedQuantity(quantity)
                     .lossCost(cost)
                     .build());
-        } else {
-            existing.setDiscardedQuantity(
-                    existing.getDiscardedQuantity().add(quantity)
+        }
+
+        // 2. Hao hụt thủ công: nguyên liệu hư hỏng, hết hạn
+        List<StockMovement> manualWaste =
+                stockMovementRepository.findManualWasteBetween(
+                        StockMovementType.HAO_HUT,
+                        start,
+                        end,
+                        branchId
+                );
+
+        for (StockMovement movement : manualWaste) {
+            // Bản ghi cũ chưa có giá vốn thì không tự ước tính.
+            if (movement.getLossCost() == null) {
+                continue;
+            }
+
+            Long materialId = movement.getMaterial().getId();
+            String materialName = movement.getMaterial().getName();
+            String unit = movement.getMaterial().getUnit();
+
+            BigDecimal quantity = movement.getDeltaQuantity().abs();
+            BigDecimal cost = movement.getLossCost();
+
+            ReportDto.TopWasteMaterial existing = totals.get(materialId);
+
+            if (existing == null) {
+                totals.put(materialId, ReportDto.TopWasteMaterial.builder()
+                        .materialId(materialId)
+                        .materialName(materialName)
+                        .unit(unit)
+                        .discardedQuantity(quantity)
+                        .lossCost(cost)
+                        .build());
+            } else {
+                existing.setDiscardedQuantity(
+                        existing.getDiscardedQuantity().add(quantity)
+                );
+                existing.setLossCost(
+                        existing.getLossCost().add(cost)
+                );
+            }
+        }
+
+        // 3. Xếp hạng sau khi đã gộp toàn bộ hai nguồn
+        return totals.values().stream()
+                .sorted(
+                        Comparator.comparing(
+                                ReportDto.TopWasteMaterial::getLossCost
+                        ).reversed()
+                        .thenComparing(
+                                ReportDto.TopWasteMaterial::getMaterialId
+                        )
+                )
+                .limit(5)
+                .toList();
+    }
+
+    // Lấy trạng thái cảnh báo hiện tại
+    @Transactional(readOnly = true)
+    public ReportDto.DashboardAlerts getDashboardAlerts() {
+        return getDashboardAlerts(null);
+    }
+
+    @Transactional(readOnly = true)
+    public ReportDto.DashboardAlerts getDashboardAlerts(Long branchId) {
+        long outOfStockCount = 0;
+        long lowStockCount = 0;
+        List<ReportDto.DashboardStockAlert> stockItems = new ArrayList<>();
+
+        for (Stock stock : stockRepository.findAll()) {
+            if (stock.getMaterial() == null ||
+                    !Boolean.TRUE.equals(stock.getMaterial().getActive())) {
+                continue;
+            }
+
+            if (branchId != null && (stock.getId() == null || !branchId.equals(stock.getId().getBranchId()))) {
+                continue;
+            }
+
+            BigDecimal quantity = stock.getQuantity() == null
+                    ? BigDecimal.ZERO : stock.getQuantity();
+
+            BigDecimal threshold = stock.getThreshold();
+
+            String status = null;
+            if (quantity.signum() <= 0) {
+                status = "HET_HANG";
+                outOfStockCount++;
+            } else if (threshold != null &&
+                    threshold.signum() > 0 &&
+                    quantity.compareTo(threshold) < 0) {
+                status = "SAP_HET";
+                lowStockCount++;
+            }
+            if (status != null) {
+                stockItems.add(ReportDto.DashboardStockAlert.builder()
+                        .materialId(stock.getMaterial().getId())
+                        .materialName(stock.getMaterial().getName())
+                        .unit(stock.getMaterial().getUnit())
+                        .location(stock.getId().getLocation().name())
+                        .quantity(quantity)
+                        .threshold(threshold)
+                        .status(status)
+                        .build());
+            }
+        }
+        stockItems.sort(Comparator.comparing(ReportDto.DashboardStockAlert::getMaterialName)
+                .thenComparing(ReportDto.DashboardStockAlert::getLocation));
+
+        long pendingRefundCount = branchId == null
+                ? refundRepository.findByStatus(RefundStatus.CHO_DUYET).size()
+                : refundRepository.findByStatusAndBranchId(RefundStatus.CHO_DUYET, branchId).size();
+
+        var settlements = branchId == null
+                ? shiftSettlementRepository.findAllByOrderByClosedAtDesc()
+                : shiftSettlementRepository.findAllByBranchIdOrderByClosedAtDesc(branchId);
+
+        LocalDateTime lastSettlementAt = null;
+
+        if (!settlements.isEmpty() &&
+                settlements.get(0).getClosedAt() != null) {
+
+            lastSettlementAt = LocalDateTime.ofInstant(
+                    settlements.get(0).getClosedAt(),
+                    VIETNAM_ZONE
             );
-            existing.setLossCost(
-                    existing.getLossCost().add(cost)
+        }
+
+        return ReportDto.DashboardAlerts.builder()
+                .outOfStockCount(outOfStockCount)
+                .lowStockCount(lowStockCount)
+                .pendingRefundCount(pendingRefundCount)
+                .stockItems(stockItems)
+                .lastSettlementAt(lastSettlementAt)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public ReportDto.DashboardResponse getDashboard(LocalDate fromDate, LocalDate toDate) {
+        return getDashboard(null, fromDate, toDate);
+    }
+
+    @Transactional(readOnly = true)
+    public ReportDto.DashboardResponse getDashboard(
+            Long branchId,
+            LocalDate fromDate,
+            LocalDate toDate) {
+
+        LocalDate today = LocalDate.now(VIETNAM_ZONE);
+
+        if (toDate == null) {
+            toDate = today;
+        }
+
+        if (fromDate == null) {
+            fromDate = toDate.minusDays(6);
+        }
+
+        if (fromDate.isAfter(toDate)) {
+            throw new IllegalArgumentException(
+                    "Ngày bắt đầu không được lớn hơn ngày kết thúc"
             );
         }
+
+        String branchName = branchId != null
+                ? branchRepository.findById(branchId).map(vn.edu.ute.milktea.entity.branch.Branch::getName).orElse("Chi nhánh #" + branchId)
+                : "Toàn chuỗi hệ thống";
+
+        return ReportDto.DashboardResponse.builder()
+                .fromDate(fromDate)
+                .toDate(toDate)
+                .branchId(branchId)
+                .branchName(branchName)
+                .summary(getDashboardSummary(branchId, fromDate, toDate))
+                .revenueByDay(getDashboardRevenueByDay(branchId, fromDate, toDate))
+                .ordersByStatus(getDashboardOrderStatuses(branchId, fromDate, toDate))
+                .topProducts(getDashboardTopProducts(branchId, fromDate, toDate))
+                .topWasteMaterials(getDashboardTopWasteMaterials(branchId, fromDate, toDate))
+                .alerts(getDashboardAlerts(branchId))
+                .build();
     }
-
-    // 3. Xếp hạng sau khi đã gộp toàn bộ hai nguồn
-    return totals.values().stream()
-            .sorted(
-                    Comparator.comparing(
-                            ReportDto.TopWasteMaterial::getLossCost
-                    ).reversed()
-                    .thenComparing(
-                            ReportDto.TopWasteMaterial::getMaterialId
-                    )
-            )
-            .limit(5)
-            .toList();
-}
-
-//lấy trạng thái cảnh báo hiện tại
-@Transactional(readOnly = true)
-public ReportDto.DashboardAlerts getDashboardAlerts() {
-
-    long outOfStockCount = 0;
-    long lowStockCount = 0;
-    List<ReportDto.DashboardStockAlert> stockItems = new ArrayList<>();
-
-    for (Stock stock : stockRepository.findAll()) {
-        if (stock.getMaterial() == null ||
-                !Boolean.TRUE.equals(stock.getMaterial().getActive())) {
-            continue;
-        }
-
-        BigDecimal quantity = stock.getQuantity() == null
-                ? BigDecimal.ZERO : stock.getQuantity();
-
-        BigDecimal threshold = stock.getThreshold();
-
-        String status = null;
-        if (quantity.signum() <= 0) {
-            status = "HET_HANG";
-            outOfStockCount++;
-        } else if (threshold != null &&
-                threshold.signum() > 0 &&
-                quantity.compareTo(threshold) < 0) {
-            status = "SAP_HET";
-            lowStockCount++;
-        }
-        if (status != null) {
-            stockItems.add(ReportDto.DashboardStockAlert.builder()
-                    .materialId(stock.getMaterial().getId())
-                    .materialName(stock.getMaterial().getName())
-                    .unit(stock.getMaterial().getUnit())
-                    .location(stock.getId().getLocation().name())
-                    .quantity(quantity)
-                    .threshold(threshold)
-                    .status(status)
-                    .build());
-        }
-    }
-    stockItems.sort(Comparator.comparing(ReportDto.DashboardStockAlert::getMaterialName)
-            .thenComparing(ReportDto.DashboardStockAlert::getLocation));
-
-    long pendingRefundCount = refundRepository
-            .findByStatus(RefundStatus.CHO_DUYET)
-            .size();
-
-    var settlements = shiftSettlementRepository
-            .findAllByOrderByClosedAtDesc();
-
-    LocalDateTime lastSettlementAt = null;
-
-    if (!settlements.isEmpty() &&
-            settlements.get(0).getClosedAt() != null) {
-
-        lastSettlementAt = LocalDateTime.ofInstant(
-                settlements.get(0).getClosedAt(),
-                VIETNAM_ZONE
-        );
-    }
-
-    return ReportDto.DashboardAlerts.builder()
-            .outOfStockCount(outOfStockCount)
-            .lowStockCount(lowStockCount)
-            .pendingRefundCount(pendingRefundCount)
-            .stockItems(stockItems)
-            .lastSettlementAt(lastSettlementAt)
-            .build();
-}
-
-
-@Transactional(readOnly = true)
-public ReportDto.DashboardResponse getDashboard(
-        LocalDate fromDate,
-        LocalDate toDate) {
-
-    LocalDate today = LocalDate.now(VIETNAM_ZONE);
-
-    if (toDate == null) {
-        toDate = today;
-    }
-
-    if (fromDate == null) {
-        fromDate = toDate.minusDays(6);
-    }
-
-    if (fromDate.isAfter(toDate)) {
-        throw new IllegalArgumentException(
-                "Ngày bắt đầu không được lớn hơn ngày kết thúc"
-        );
-    }
-
-    return ReportDto.DashboardResponse.builder()
-            .fromDate(fromDate)
-            .toDate(toDate)
-            .summary(getDashboardSummary(fromDate, toDate))
-            .revenueByDay(getDashboardRevenueByDay(fromDate, toDate))
-            .ordersByStatus(getDashboardOrderStatuses(fromDate, toDate))
-            .topProducts(getDashboardTopProducts(fromDate, toDate))
-            .topWasteMaterials(getDashboardTopWasteMaterials(fromDate, toDate))
-            .alerts(getDashboardAlerts())
-            .build();
-}
-
 }

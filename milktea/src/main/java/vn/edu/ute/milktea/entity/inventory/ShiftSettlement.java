@@ -23,6 +23,10 @@ public class ShiftSettlement {
     @Column(name = "MaKetCa")
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MaCN", nullable = false)
+    private vn.edu.ute.milktea.entity.branch.Branch branch;
+
     @Column(name = "MaCa", length = 64)
     private String shiftCode;
 

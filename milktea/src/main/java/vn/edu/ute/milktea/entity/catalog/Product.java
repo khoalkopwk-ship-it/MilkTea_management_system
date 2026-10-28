@@ -46,4 +46,8 @@ public class Product {
     @Column(name = "HoatDong", nullable = false)
     @Builder.Default
     private Boolean active = true;
+
+    @Column(name = "TaoLuc")
+    @Builder.Default
+    private java.time.Instant createdAt = java.time.Instant.now();
 }

@@ -19,6 +19,7 @@ import vn.edu.ute.milktea.service.table.SessionCartService;
 public class CartController {
 
     private final SessionCartService sessionCartService;
+    private final vn.edu.ute.milktea.repository.table.TableSessionRepository sessionRepository;
 
     @GetMapping({"/table-sessions/{sessionId}/cart", "/customer/cart"})
     public ResponseEntity<ApiResponse<CartDto.CartResponse>> getCart(
@@ -53,8 +54,8 @@ public class CartController {
     }
 
     /**
-     * SEC-02.4: Xác thực quyền sở hữu giỏ hàng của phiên bàn.
-     * Ngăn chặn khách bàn (TABLE_GUEST) can thiệp hoặc truy cập giỏ hàng của bàn khác.
+     * SEC-02.4 & F02: Xác thực quyền sở hữu giỏ hàng của phiên bàn.
+     * Ngăn chặn khách bàn, customer lạ hoặc anonymous can thiệp hoặc truy cập giỏ hàng của bàn khác.
      */
     private Long resolveAndVerifySessionId(Long pathSessionId, Long querySessionId, CurrentActor actor) {
         Long sessionId = pathSessionId != null ? pathSessionId : (querySessionId != null ? querySessionId : (actor != null ? actor.getSessionId() : null));
@@ -63,12 +64,47 @@ public class CartController {
             throw BusinessException.badRequest(ErrorCode.TABLE_SESSION_CLOSED, "Chưa xác định được phiên bàn");
         }
 
-        if (actor != null && actor.getActorType() == CurrentActor.ActorType.TABLE_GUEST) {
-            if (actor.getSessionId() != null && !actor.getSessionId().equals(sessionId)) {
-                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không thể truy cập giỏ hàng của bàn khác");
-            }
+        if (actor == null || actor.getActorType() == CurrentActor.ActorType.QR_ANONYMOUS) {
+            throw BusinessException.unauthorized(ErrorCode.ACCESS_DENIED, "Vui lòng quét QR bàn để truy cập giỏ hàng");
         }
 
-        return sessionId;
+        if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)) {
+            return sessionId;
+        }
+
+        if (actor.getActorType() == CurrentActor.ActorType.TABLE_GUEST) {
+            if (actor.getSessionId() == null || !actor.getSessionId().equals(sessionId)) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không thể truy cập giỏ hàng của bàn khác");
+            }
+            return sessionId;
+        }
+
+        if (sessionRepository == null) {
+            return sessionId;
+        }
+
+        var session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_SESSION_CLOSED, "Không tìm thấy phiên bàn"));
+
+        if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CUSTOMER)) {
+            boolean isOpener = session.getOpenedBy() != null && session.getOpenedBy().getId().equals(actor.getAccountId());
+            boolean hasSessionToken = actor.getSessionId() != null && actor.getSessionId().equals(sessionId);
+            if (!isOpener && !hasSessionToken) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền truy cập giỏ hàng của phiên bàn này");
+            }
+            return sessionId;
+        }
+
+        if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER)
+                || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)
+                || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.KITCHEN)) {
+            Long branchId = session.getTable() != null && session.getTable().getBranch() != null ? session.getTable().getBranch().getId() : null;
+            if (!actor.canAccessBranch(branchId)) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không thể truy cập giỏ hàng của chi nhánh khác");
+            }
+            return sessionId;
+        }
+
+        throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền truy cập giỏ hàng này");
     }
 }

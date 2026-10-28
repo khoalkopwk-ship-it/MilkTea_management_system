@@ -599,6 +599,11 @@
         $('dashboardRangeText').textContent =
             dateVN(data.fromDate) + ' – ' + dateVN(data.toDate);
 
+        const branchBadge = $('dashboardBranchBadge');
+        if (branchBadge) {
+            branchBadge.innerHTML = `<i class="bi bi-geo-alt-fill me-1" style="color: #b86b35;"></i>${data.branchName || 'Toàn chuỗi hệ thống'}`;
+        }
+
         $('dashboardTotalOrders').textContent = number(summary.totalOrders);
         $('dashboardNetRevenue').textContent = money(summary.netRevenue);
         $('dashboardReceived').textContent = money(summary.received);
@@ -637,6 +642,9 @@
     async function load() {
         const from = $('filterFromDate').value;
         const to = $('filterToDate').value;
+        const select = $('filterBranch');
+        const isManager = select && select.dataset.isManager === 'true';
+        const branchId = isManager ? (select.dataset.branchId || select.value || '') : (select?.value || '');
         const error = $('dashboardError');
 
         if (!from || !to || from > to) {
@@ -652,11 +660,14 @@
         $('dashboardFilterButton').disabled = true;
 
         try {
-            const data = await MilkTeaApi.get(
-                '/api/v1/admin/reports/dashboard' +
+            let url = '/api/v1/admin/reports/dashboard' +
                 '?fromDate=' + encodeURIComponent(from) +
-                '&toDate=' + encodeURIComponent(to)
-            );
+                '&toDate=' + encodeURIComponent(to);
+            if (branchId) {
+                url += '&branchId=' + encodeURIComponent(branchId);
+            }
+
+            const data = await MilkTeaApi.get(url);
 
             if (current === requestIndex) {
                 if (!data || typeof data !== 'object' || !data.summary) {
@@ -681,6 +692,63 @@
         }
     }
 
+    async function initializeBranches() {
+        const select = $('filterBranch');
+        if (!select) return;
+        const isManager = select.dataset.isManager === 'true';
+        const managerBranchId = select.dataset.branchId;
+
+        if (select.options.length > 1) {
+            if (isManager) {
+                select.disabled = true;
+                const selectedOpt = select.options[select.selectedIndex];
+                if (selectedOpt) {
+                    const badge = $('dashboardBranchBadge');
+                    if (badge) {
+                        badge.innerHTML = `<i class="bi bi-geo-alt-fill me-1" style="color: #b86b35;"></i>${selectedOpt.textContent}`;
+                    }
+                }
+            }
+            return;
+        }
+
+        try {
+            const branches = await MilkTeaApi.get('/api/v1/branches');
+            if (Array.isArray(branches) && branches.length > 0) {
+                select.replaceChildren();
+                if (!isManager) {
+                    const allOpt = document.createElement('option');
+                    allOpt.value = '';
+                    allOpt.textContent = 'Toàn chuỗi hệ thống';
+                    select.appendChild(allOpt);
+                }
+
+                branches.forEach(b => {
+                    if (isManager && managerBranchId && String(b.id) !== String(managerBranchId)) {
+                        return;
+                    }
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.textContent = `${b.code ? b.code + ' - ' : ''}${b.name}`;
+                    if (isManager && managerBranchId && String(b.id) === String(managerBranchId)) {
+                        opt.selected = true;
+                        const badge = $('dashboardBranchBadge');
+                        if (badge) {
+                            badge.innerHTML = `<i class="bi bi-geo-alt-fill me-1" style="color: #b86b35;"></i>${opt.textContent}`;
+                        }
+                    }
+                    select.appendChild(opt);
+                });
+
+                if (isManager) {
+                    select.disabled = true;
+                }
+            }
+        } catch (e) {
+            console.warn('Không tải được danh sách chi nhánh cho bộ lọc:', e);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         try {
             if (typeof AdminApp !== 'undefined') {
@@ -691,6 +759,12 @@
         } catch (e) {
             console.warn('Realtime admin chưa sẵn sàng:', e);
         }
+
+        initializeBranches();
+
+        $('filterBranch')?.addEventListener('change', () => {
+            load();
+        });
 
         $('dashboardFilterForm').addEventListener('submit', e => {
             e.preventDefault();

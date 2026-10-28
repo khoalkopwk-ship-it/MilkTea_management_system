@@ -159,7 +159,7 @@ public class CatalogService {
         Map<Long, Boolean> availabilityMap = getAvailabilityMap(branchId);
 
         List<CatalogDto.ProductItem> items = pPage.getContent().stream()
-                .map(p -> mapProduct(p, availabilityMap.getOrDefault(p.getId(), true)))
+                .map(p -> mapProduct(p, isProductAvailable(p.getId(), branchId, availabilityMap)))
                 .toList();
 
         return CatalogDto.ProductSearchResponse.builder()
@@ -191,7 +191,11 @@ public class CatalogService {
                 branchName = branch.getName();
             }
             var bpOpt = branchProductRepository.findByBranchIdAndProductId(branchId, productId);
-            available = bpOpt.map(bp -> Boolean.TRUE.equals(bp.getAvailable())).orElse(true);
+            if (bpOpt.isPresent()) {
+                available = Boolean.TRUE.equals(bpOpt.get().getActive()) && Boolean.TRUE.equals(bpOpt.get().getAvailable());
+            } else {
+                available = branchProductRepository.findByBranchId(branchId).isEmpty();
+            }
         }
 
         Double avgRating = productReviewRepository.findAverageRatingByProductId(productId);
@@ -199,7 +203,10 @@ public class CatalogService {
 
         boolean isFavorite = false;
         if (actor != null && actor.isAuthenticated() && actor.getAccountId() != null) {
-            isFavorite = productFavoriteRepository.existsByAccountIdAndProductId(actor.getAccountId(), productId);
+            isFavorite = productFavoriteRepository.existsByAccountIdAndProductName(actor.getAccountId(), p.getName());
+            if (!isFavorite) {
+                isFavorite = productFavoriteRepository.existsByAccountIdAndProductId(actor.getAccountId(), productId);
+            }
         }
 
         List<Product> sameNameProducts = productRepository.findByNameIgnoreCaseAndActiveTrue(p.getName());
@@ -210,12 +217,25 @@ public class CatalogService {
                 .sorted()
                 .toList();
 
+        Map<Long, Boolean> productAvailMap = getAvailabilityMap(branchId);
+        List<CatalogDto.SizeOption> sizeOptions = (sameNameProducts != null)
+                ? sameNameProducts.stream()
+                        .sorted(Comparator.comparing(Product::getPrice, Comparator.nullsLast(BigDecimal::compareTo)))
+                        .map(v -> CatalogDto.SizeOption.builder()
+                                .id(v.getId())
+                                .size(v.getSize())
+                                .price(v.getPrice())
+                                .available(isProductAvailable(v.getId(), branchId, productAvailMap))
+                                .build())
+                        .toList()
+                : Collections.emptyList();
+
         List<CatalogDto.ProductItem> toppings = new ArrayList<>();
         if (p.getCategory() != null && Boolean.TRUE.equals(p.getCategory().getAllowTopping())) {
             List<Product> toppingProds = productRepository.findByCategoryAllowToppingFalseAndActiveTrue();
             Map<Long, Boolean> toppingAvailMap = getAvailabilityMap(branchId);
             toppings = toppingProds.stream()
-                    .map(tp -> mapProduct(tp, toppingAvailMap.getOrDefault(tp.getId(), true)))
+                    .map(tp -> mapProduct(tp, isProductAvailable(tp.getId(), branchId, toppingAvailMap)))
                     .toList();
         }
 
@@ -237,57 +257,76 @@ public class CatalogService {
                 .reviewCount(reviewCount)
                 .isFavorite(isFavorite)
                 .availableSizes(sizes)
+                .sizeOptions(sizeOptions)
                 .toppings(toppings)
                 .build();
     }
 
     /**
-     * Bốn danh sách nổi bật: Mới nhất, Bán chạy nhất, Đánh giá cao nhất, Yêu thích nhất (CUS-02 - Top 20).
+     * Danh sách nổi bật: Bán chạy nhất, Đánh giá cao nhất, Yêu thích nhất (CUS-02 - Top 20).
      */
     @Transactional(readOnly = true)
     public CatalogDto.FeaturedProductsResponse getFeaturedProducts(String type, Long branchId, int limit) {
         int limitCount = Math.min(Math.max(limit, 1), 20);
-        String featType = (type != null && !type.isBlank()) ? type.toLowerCase() : "newest";
+        String featType = (type != null && !type.isBlank()) ? type.toLowerCase().trim().replace("-", "_") : "best_seller";
 
         List<Product> orderedProducts = new ArrayList<>();
         Pageable topPage = PageRequest.of(0, limitCount);
 
         switch (featType) {
-            case "best_seller" -> {
-                List<Long> bestSellerIds = orderItemRepository.findBestSellerProductIds(branchId, topPage);
-                orderedProducts.addAll(loadProductsInOrder(bestSellerIds));
-                if (orderedProducts.size() < limitCount) {
-                    supplementWithNewest(orderedProducts, limitCount);
-                }
-            }
             case "top_rated" -> {
                 List<Long> topRatedIds = productReviewRepository.findTopRatedProductIds(topPage);
                 orderedProducts.addAll(loadProductsInOrder(topRatedIds));
-                if (orderedProducts.size() < limitCount) {
-                    supplementWithNewest(orderedProducts, limitCount);
-                }
             }
             case "most_favorited" -> {
-                List<Long> favIds = productFavoriteRepository.findMostFavoritedProductIds(topPage);
-                orderedProducts.addAll(loadProductsInOrder(favIds));
-                if (orderedProducts.size() < limitCount) {
-                    supplementWithNewest(orderedProducts, limitCount);
+                List<String> favNames = productFavoriteRepository.findMostFavoritedProductNames(topPage);
+                if (favNames != null && !favNames.isEmpty()) {
+                    Set<String> seenNames = new HashSet<>();
+                    for (String name : favNames) {
+                        if (name == null || seenNames.contains(name.toLowerCase())) continue;
+                        seenNames.add(name.toLowerCase());
+                        List<Product> variants = productRepository.findByNameIgnoreCaseAndActiveTrue(name);
+                        if (variants != null && !variants.isEmpty()) {
+                            Product smallest = variants.stream()
+                                    .min(Comparator.comparing(Product::getPrice, Comparator.nullsLast(BigDecimal::compareTo)))
+                                    .orElse(variants.get(0));
+                            orderedProducts.add(smallest);
+                        }
+                    }
+                } else {
+                    List<Long> favIds = productFavoriteRepository.findMostFavoritedProductIds(topPage);
+                    if (favIds != null && !favIds.isEmpty()) {
+                        orderedProducts.addAll(loadProductsInOrder(favIds));
+                    }
                 }
             }
+            case "newest" -> {
+                List<Product> newest = productRepository.findNewestProducts(topPage);
+                if (newest != null && !newest.isEmpty()) {
+                    orderedProducts.addAll(newest);
+                } else {
+                    orderedProducts.addAll(productRepository.findByActiveTrueOrderByIdDesc(topPage));
+                }
+            }
+            case "best_seller" -> {
+                List<Long> bestSellerIds = orderItemRepository.findBestSellerProductIds(branchId, topPage);
+                orderedProducts.addAll(loadProductsInOrder(bestSellerIds));
+            }
             default -> {
-                featType = "newest";
-                orderedProducts = productRepository.findByActiveTrueOrderByIdDesc(topPage);
+                featType = "best_seller";
+                List<Long> bestSellerIds = orderItemRepository.findBestSellerProductIds(branchId, topPage);
+                orderedProducts.addAll(loadProductsInOrder(bestSellerIds));
             }
         }
 
         Map<Long, Boolean> availabilityMap = getAvailabilityMap(branchId);
         List<CatalogDto.ProductItem> productItems = orderedProducts.stream()
-                .map(p -> mapProduct(p, availabilityMap.getOrDefault(p.getId(), true)))
+                .map(p -> mapProduct(p, isProductAvailable(p.getId(), branchId, availabilityMap)))
                 .toList();
 
         String branchName = null;
         if (branchId != null) {
-            Branch b = branchRepository.findById(branchId).orElse(null);
+            Branch b = branchRepository != null ? branchRepository.findById(branchId).orElse(null) : null;
             if (b != null) branchName = b.getName();
         }
 
@@ -315,30 +354,31 @@ public class CatalogService {
         return result;
     }
 
-    private void supplementWithNewest(List<Product> currentList, int limit) {
-        Set<Long> existingIds = currentList.stream().map(Product::getId).collect(Collectors.toSet());
-        List<Product> newest = productRepository.findByActiveTrueOrderByIdDesc(PageRequest.of(0, limit));
-        for (Product p : newest) {
-            if (!existingIds.contains(p.getId())) {
-                currentList.add(p);
-                existingIds.add(p.getId());
-                if (currentList.size() >= limit) {
-                    break;
-                }
-            }
-        }
-    }
-
     private Map<Long, Boolean> getAvailabilityMap(Long branchId) {
         Map<Long, Boolean> availabilityMap = new HashMap<>();
         if (branchId != null) {
+            if (branchRepository != null) {
+                var bOpt = branchRepository.findById(branchId);
+                if (bOpt.isPresent() && (Boolean.TRUE.equals(bOpt.get().getIsCentral()) || "KHOTONG".equalsIgnoreCase(bOpt.get().getIdentifier()))) {
+                    return availabilityMap;
+                }
+            }
             branchProductRepository.findByBranchId(branchId).forEach(bp -> {
                 if (bp.getProduct() != null) {
-                    availabilityMap.put(bp.getProduct().getId(), Boolean.TRUE.equals(bp.getAvailable()));
+                    boolean sellable = Boolean.TRUE.equals(bp.getActive()) && Boolean.TRUE.equals(bp.getAvailable());
+                    availabilityMap.put(bp.getProduct().getId(), sellable);
                 }
             });
         }
         return availabilityMap;
+    }
+
+    private boolean isProductAvailable(Long productId, Long branchId, Map<Long, Boolean> availabilityMap) {
+        if (branchId == null || availabilityMap == null) return true;
+        if (availabilityMap.containsKey(productId)) {
+            return Boolean.TRUE.equals(availabilityMap.get(productId));
+        }
+        return availabilityMap.isEmpty();
     }
 
     private CatalogDto.ProductItem mapProduct(Product p) {

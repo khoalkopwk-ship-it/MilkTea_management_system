@@ -32,6 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final AccountRepository accountRepository;
     private final GuestAccessService guestAccessService;
+    private final vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -53,11 +54,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         Role role = account.getRole();
                         SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.name());
 
+                        java.util.Set<Long> assignedBranchIds = java.util.Set.of();
+                        Long primaryBranchId = null;
+                        if (staffBranchRepository != null) {
+                            var staffBranches = staffBranchRepository.findByAccountIdAndStatus(account.getId(), "HOAT_DONG");
+                            if (!staffBranches.isEmpty()) {
+                                assignedBranchIds = staffBranches.stream()
+                                        .map(sb -> sb.getBranch().getId())
+                                        .collect(java.util.stream.Collectors.toSet());
+                                primaryBranchId = staffBranches.get(0).getBranch().getId();
+                            }
+                        }
+
                         actor = CurrentActor.builder()
                                 .actorType(CurrentActor.ActorType.AUTHENTICATED)
                                 .accountId(account.getId())
                                 .email(account.getEmail())
                                 .role(role)
+                                .branchId(primaryBranchId)
+                                .assignedBranchIds(assignedBranchIds)
                                 .build();
 
                         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
@@ -68,26 +83,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        // If not authenticated account, check guest headers
-        if (actor == null) {
-            String tableToken = request.getHeader("X-Table-Session-Token");
-            if (tableToken == null || tableToken.isBlank()) {
-                tableToken = request.getHeader("X-Table-Token");
-            }
+        String tableToken = request.getHeader("X-Table-Session-Token");
+        if (tableToken == null || tableToken.isBlank()) {
+            tableToken = request.getHeader("X-Table-Token");
+        }
+        if (tableToken == null || tableToken.isBlank()) {
+            tableToken = extractCookie(request, "milktea_table_token");
+        }
 
-            String counterToken = request.getHeader("X-Counter-Order-Token");
-            if (counterToken == null || counterToken.isBlank()) {
-                counterToken = request.getHeader("X-Counter-Token");
-            }
+        String counterToken = request.getHeader("X-Counter-Order-Token");
+        if (counterToken == null || counterToken.isBlank()) {
+            counterToken = request.getHeader("X-Counter-Token");
+        }
+        if (counterToken == null || counterToken.isBlank()) {
+            counterToken = extractCookie(request, "milktea_counter_token");
+        }
 
-            if (tableToken != null && !tableToken.isBlank()) {
-                var accessOpt = guestAccessService.validateTableToken(tableToken);
-                if (accessOpt.isPresent()) {
-                    var access = accessOpt.get();
+        if (tableToken != null && !tableToken.isBlank()) {
+            var accessOpt = guestAccessService.validateTableToken(tableToken);
+            if (accessOpt.isPresent()) {
+                var access = accessOpt.get();
+                if (actor != null) {
+                    actor.setSessionId(access.getSession().getId());
+                    actor.setTableId(access.getSession().getTable().getId());
+                    if (actor.getBranchId() == null && access.getSession().getTable().getBranch() != null) {
+                        actor.setBranchId(access.getSession().getTable().getBranch().getId());
+                    }
+                } else {
+                    Long tableBranchId = (access.getSession().getTable().getBranch() != null)
+                            ? access.getSession().getTable().getBranch().getId()
+                            : null;
                     actor = CurrentActor.builder()
                             .actorType(CurrentActor.ActorType.TABLE_GUEST)
                             .sessionId(access.getSession().getId())
                             .tableId(access.getSession().getTable().getId())
+                            .branchId(tableBranchId)
                             .build();
 
                     SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_GUEST");
@@ -95,13 +125,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             actor, null, Collections.singletonList(authority));
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
-            } else if (counterToken != null && !counterToken.isBlank()) {
-                var accessOpt = guestAccessService.validateCounterToken(counterToken);
-                if (accessOpt.isPresent()) {
-                    var access = accessOpt.get();
+            }
+        } else if (counterToken != null && !counterToken.isBlank()) {
+            var accessOpt = guestAccessService.validateCounterToken(counterToken);
+            if (accessOpt.isPresent()) {
+                var access = accessOpt.get();
+                if (actor != null) {
+                    actor.setOrderId(access.getOrder().getId());
+                    if (actor.getBranchId() == null && access.getOrder().getBranch() != null) {
+                        actor.setBranchId(access.getOrder().getBranch().getId());
+                    }
+                } else {
+                    Long counterBranchId = (access.getOrder().getBranch() != null)
+                            ? access.getOrder().getBranch().getId()
+                            : null;
                     actor = CurrentActor.builder()
                             .actorType(CurrentActor.ActorType.COUNTER_GUEST)
                             .orderId(access.getOrder().getId())
+                            .branchId(counterBranchId)
                             .build();
 
                     SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_GUEST");
@@ -117,6 +158,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String extractCookie(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null && name != null) {
+            for (Cookie cookie : cookies) {
+                if (name.equals(cookie.getName()) && cookie.getValue() != null && !cookie.getValue().isBlank()) {
+                    return cookie.getValue().trim();
+                }
+            }
+        }
+        return null;
     }
 
     private String extractJwtToken(HttpServletRequest request) {

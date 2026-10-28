@@ -9,6 +9,7 @@ Mọi quy tắc nghiệp vụ, ma trận phân quyền, luồng tiền, kho và 
 - [docs/BRANCH_DEVELOPMENT_PLAN.md](docs/BRANCH_DEVELOPMENT_PLAN.md): Lộ trình 6 giai đoạn phát triển.
 - [docs/IMPLEMENTATION_PROGRESS.md](docs/IMPLEMENTATION_PROGRESS.md): Tiến độ, checkpoint và các quyết định.
 - [docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md): Kịch bản sao lưu, backfill và đối soát dữ liệu SQL Server.
+- [database/sample_data_reference.md](database/sample_data_reference.md): Quy chuẩn dữ liệu mẫu & kịch bản demo chuỗi đa chi nhánh.
 
 ## 2. Nguyên tắc bất biến khi lập trình
 1. **Kiến trúc**: Spring Boot MVC Monolith (Java 21, Thymeleaf, Bootstrap, JPA) + 1 database SQL Server. Không chuyển sang Microservices hoặc SPA.

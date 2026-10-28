@@ -3,144 +3,568 @@
     th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
 
 <head>
-    <title>Món yêu thích của tôi - MilkTea</title>
+    <title>Món yêu thích - MilkTea</title>
 </head>
 
 <body>
-    <div th:fragment="content" class="container py-4 wishlist-page">
+    <div th:fragment="content" class="container py-4 milk-menu-page wishlist-page">
         <style>
-            .wishlist-page {
-                --primary-color: #b86b35;
-                --primary-hover: #9e5524;
-                --card-bg: #ffffff;
-                --border-color: #e8ded5;
+            .milk-menu-page {
+                --menu-primary: #b86b35;
+                --menu-primary-hover: #9e5524;
+                --menu-primary-light: #fbeee4;
+                --menu-secondary: #775D4A;
+                --menu-secondary-hover: #604735;
+                --menu-secondary-light: #F3EBE4;
+                --menu-accent: #D9B99B;
+                --menu-cream: #F8F4EF;
+                --menu-ink: #1e293b;
+                --menu-muted: #786F68;
+                --menu-border: #E8DED5;
+                --menu-card: #ffffff;
+                color: var(--menu-ink);
             }
-            .wishlist-card {
-                background: var(--card-bg);
-                border: 1px solid var(--border-color);
-                border-radius: 1rem;
+
+            @keyframes menuFadeUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(16px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .brand-font {
+                color: var(--menu-secondary-hover);
+                letter-spacing: -0.025em;
+            }
+
+            .wishlist-header-card {
+                padding: 22px 26px;
+                background: linear-gradient(115deg, #fff, #F8F4EF);
+                border: 1px solid var(--menu-border);
+                border-radius: 22px;
+                box-shadow: 0 4px 18px rgba(96, 71, 53, .05);
+                animation: menuFadeUp .6s ease-out both;
+            }
+
+            .product-card {
+                background: var(--menu-card);
+                border: 1px solid var(--menu-border);
+                border-radius: 20px;
+                box-shadow: 0 4px 16px rgba(96, 71, 53, .055);
                 overflow: hidden;
-                transition: transform 0.25s ease, box-shadow 0.25s ease;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                transition: transform .24s cubic-bezier(.22, 1, .36, 1), box-shadow .24s ease, border-color .24s ease;
             }
-            .wishlist-card:hover {
-                transform: translateY(-4px);
-                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+
+            .product-card:hover {
+                transform: translateY(-5px);
+                border-color: #D9B99B;
+                box-shadow: 0 14px 30px rgba(96, 71, 53, .13);
             }
-            .item-image {
+
+            .product-img-wrapper {
+                position: relative;
+                background: #F3EBE4;
+                overflow: hidden;
+            }
+
+            .product-img {
                 width: 100%;
-                height: 180px;
+                height: 200px;
                 object-fit: cover;
-                background-color: #f8fafc;
+                transition: transform .35s cubic-bezier(.22, 1, .36, 1);
             }
+
+            .product-card:hover .product-img {
+                transform: scale(1.045);
+            }
+
+            .product-img-wrapper .badge {
+                background: rgba(96, 71, 53, .88) !important;
+                color: #fff;
+                border: 1px solid rgba(255, 255, 255, .22);
+                border-radius: 999px !important;
+                padding: 6px 11px !important;
+                font-size: 11px;
+                font-weight: 700;
+            }
+
             .btn-remove-fav {
-                background: #fee2e2;
-                color: #ef4444;
-                border: none;
                 width: 36px;
                 height: 36px;
-                border-radius: 50%;
+                z-index: 3;
+                background: rgba(255, 255, 255, 0.95);
+                border: 1px solid rgba(239, 68, 68, 0.25);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: all 0.2s;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+                transition: all 0.2s ease;
+                cursor: pointer;
             }
+
             .btn-remove-fav:hover {
-                background: #ef4444;
+                background: #fee2e2;
+                border-color: #ef4444;
+                transform: scale(1.1);
+            }
+
+            .btn-primary-custom {
+                background: var(--menu-primary);
                 color: #fff;
+                border: 1px solid var(--menu-primary);
+                font-weight: 600;
+                transition: all 0.2s ease;
+            }
+
+            .btn-primary-custom:hover {
+                background: var(--menu-primary-hover);
+                color: #fff;
+                border-color: var(--menu-primary-hover);
+                box-shadow: 0 4px 12px rgba(184, 107, 53, 0.25);
+            }
+
+            .product-price {
+                font-weight: 800;
+                color: var(--menu-primary);
+                font-size: 1.15rem;
+            }
+
+            .fav-item-leaving {
+                transition: all 0.3s ease;
+                opacity: 0;
+                transform: scale(0.9);
             }
         </style>
 
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="wishlist-header-card d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
-                <h1 class="h3 fw-bold text-dark mb-1">Món yêu thích của tôi</h1>
-                <p class="text-muted small mb-0">Danh sách các món uống bạn đã lưu lại để thưởng thức</p>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-danger rounded-pill px-3 py-1 small">
+                        <i class="bi bi-heart-fill me-1"></i> Yêu thích
+                    </span>
+                    <span class="text-muted small" id="wishlistCountText">0 món đã lưu</span>
+                </div>
+                <h2 class="brand-font fw-bold mb-1">Món yêu thích của tôi</h2>
+                <p class="text-muted small mb-0">Các món uống thơm ngon bạn đã thả tim để thưởng thức và đặt nhanh chóng</p>
             </div>
-            <a href="/menu" class="btn btn-outline-secondary rounded-pill px-3">
-                <i class="bi bi-arrow-left me-1"></i>Về Menu
+            <a href="/menu" class="btn btn-outline-secondary rounded-pill px-4 fw-semibold align-self-start align-self-md-center">
+                <i class="bi bi-arrow-left me-1"></i> Khám phá Menu
             </a>
         </div>
 
-        <div id="wishlistContainer" class="row g-4">
+        <!-- Lưới sản phẩm yêu thích (Đồng bộ giao diện card như Menu) -->
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="wishlistGrid">
             <div class="col-12 text-center py-5 text-muted" id="wishlistLoading">
                 <div class="spinner-border text-warning spinner-border-sm me-2" role="status"></div>
-                Đang tải danh sách yêu thích...
+                Đang tải danh sách món yêu thích...
+            </div>
+        </div>
+
+        <!-- Customize Modal (Chọn size, topping, ghi chú, số lượng đồng bộ Menu) -->
+        <div class="modal fade" id="customizeModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font" id="modalProductName">Tên món</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="d-flex gap-3 mb-3 pb-3 border-bottom">
+                            <img id="modalProductImg" src="" class="rounded-3"
+                                style="width: 80px; height: 80px; object-fit: cover;" alt="">
+                            <div>
+                                <h4 class="product-price mb-1" id="modalProductPrice">25.000 ₫</h4>
+                                <span class="badge bg-light text-secondary border" id="modalProductCategory">Trà sữa</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="sizeSelectionSection">
+                            <label class="form-label small fw-semibold text-dark">Kích cỡ &amp; Giá tiền (Size):</label>
+                            <div class="d-flex flex-wrap gap-2" id="modalSizeContainer"></div>
+                        </div>
+
+                        <div class="mb-3" id="toppingSelectionSection">
+                            <label class="form-label small fw-semibold text-dark mb-1">Thêm topping (áp dụng theo ly):</label>
+                            <p class="text-muted small mb-2" style="font-size: 0.8rem;">Topping đã chọn được tính trên mỗi ly trong cùng dòng</p>
+                            <div class="border rounded-3 p-2 bg-light-subtle" id="modalToppingList"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-dark">Ghi chú ly</label>
+                            <input type="text" id="modalProductNote" class="form-control rounded-3"
+                                placeholder="Ví dụ: 50% đường, 70% đá, ít ngọt...">
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="small fw-semibold text-dark">Số lượng ly:</span>
+                            <div class="input-group" style="width: 130px;">
+                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="adjustModalQty(-1)">-</button>
+                                <input type="number" id="modalProductQty" class="form-control form-control-sm text-center fw-bold" value="1" min="1" readonly>
+                                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="adjustModalQty(1)">+</button>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-light rounded-3 mb-3 border">
+                            <div class="d-flex justify-content-between text-muted small mb-1">
+                                <span>Giá size (<span id="calcSizeLabel">Size M</span>):</span>
+                                <span id="calcBasePrice">25.000 ₫</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted small mb-1">
+                                <span>Topping mỗi ly:</span>
+                                <span id="calcToppingPerCup">0 ₫</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted small mb-1">
+                                <span>Số lượng:</span>
+                                <span>× <span id="calcQty">1</span></span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-2">
+                                <span class="fw-bold text-dark">Thành tiền ước tính:</span>
+                                <h4 class="product-price mb-0 text-primary" id="calcLineTotal">25.000 ₫</h4>
+                            </div>
+                            <div class="text-muted small mt-1 fst-italic text-end" id="calcFormulaText" style="font-size: 0.78rem;">
+                                1 × (25.000 ₫ + 0 ₫) = 25.000 ₫
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-top">
+                        <div class="d-flex gap-2 w-100">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill w-25" data-bs-dismiss="modal">Đóng</button>
+                            <button type="button" class="btn btn-primary-custom flex-grow-1 py-2 rounded-pill fw-bold" onclick="confirmAddToCart()">
+                                <i class="bi bi-bag-plus-fill me-1"></i> Thêm vào giỏ hàng
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div th:fragment="scripts">
-        <script>
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/customer/customer.js}"></script>
+        <script th:inline="javascript">
+            const rawAllProducts = /*[[${allProducts}]]*/ [];
+            let allVariantsList = [];
+            let currentProductVariants = [];
+            let selectedVariant = null;
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const qr = /*[[${tableQr}]]*/ null;
+                const tableId = /*[[${currentTable != null ? currentTable.id : null}]]*/ null;
+                CustomerApp.initContext(qr, tableId);
+                buildVariantsList();
+                loadWishlist();
+            });
+
+            function buildVariantsList() {
+                if (Array.isArray(rawAllProducts) && rawAllProducts.length > 0) {
+                    allVariantsList = rawAllProducts.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        size: p.size,
+                        price: p.price,
+                        img: p.imageUrl,
+                        categoryId: p.category ? p.category.id : null,
+                        categoryName: p.category ? p.category.name : '',
+                        allowTopping: p.category ? p.category.allowTopping !== false : true
+                    }));
+                }
+            }
+
+            function isToppingProduct(p) {
+                if (!p) return false;
+                const catName = (p.categoryName || '').toLowerCase();
+                return catName.includes('topping');
+            }
+
             async function loadWishlist() {
-                const container = document.getElementById('wishlistContainer');
+                const container = document.getElementById('wishlistGrid');
+                const countText = document.getElementById('wishlistCountText');
                 try {
-                    const res = await fetch('/api/v1/favorites?page=0&size=50');
-                    const data = await res.json();
-                    if (res.ok && data.success && data.data.items && data.data.items.length > 0) {
-                        let html = '';
-                        data.data.items.forEach(item => {
-                            html += `
-                                <div class="col-sm-6 col-md-4 col-lg-3" id="fav-item-${item.productId}">
-                                    <div class="wishlist-card h-100 d-flex flex-column">
-                                        <div class="position-relative">
-                                            <img src="${item.imageUrl || '/images/default-tea.png'}" alt="${item.productName}" class="item-image" />
-                                            <button type="button" class="btn-remove-fav position-absolute top-0 end-0 m-2" onclick="removeFavorite(${item.productId})" title="Xóa khỏi yêu thích">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                    const res = await MilkTeaApi.get('/api/v1/favorites?page=0&size=50');
+                    const items = (res && res.items) || [];
+
+                    if (countText) {
+                        countText.textContent = `${items.length} món đã lưu`;
+                    }
+
+                    if (items.length === 0) {
+                        container.innerHTML = `
+                            <div class="col-12 text-center py-5">
+                                <div class="mb-3">
+                                    <i class="bi bi-heart text-muted display-3"></i>
+                                </div>
+                                <h4 class="brand-font fw-bold mb-2">Chưa có món yêu thích nào</h4>
+                                <p class="text-muted small mb-4">Hãy nhấn biểu tượng trái tim trên thẻ món trong Thực đơn để lưu lại các món bạn mê nhất nhé!</p>
+                                <a href="/menu" class="btn btn-primary-custom rounded-pill px-4 py-2">
+                                    <i class="bi bi-grid me-1"></i> Khám phá Menu ngay
+                                </a>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let html = '';
+                    items.forEach(item => {
+                        const priceFmt = Number(item.price).toLocaleString('vi-VN') + ' ₫';
+                        const imgSrc = item.imageUrl || 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80';
+                        const sizeLabel = item.size ? `Size ${item.size}` : 'Size M';
+
+                        html += `
+                            <div class="col product-item" id="wishlist-item-${item.productId}">
+                                <div class="product-card position-relative">
+                                    <!-- Nút Xóa khỏi yêu thích (Trái tim đỏ) -->
+                                    <button type="button"
+                                            class="btn btn-sm btn-remove-fav position-absolute top-0 start-0 m-2 rounded-circle"
+                                            onclick="removeWishlistItem(event, ${item.productId})"
+                                            title="Xóa khỏi yêu thích">
+                                        <i class="bi bi-heart-fill text-danger fs-6"></i>
+                                    </button>
+
+                                    <!-- Ảnh món -->
+                                    <div class="product-img-wrapper position-relative">
+                                        <a href="/products/${item.productId}" class="d-block text-decoration-none">
+                                            <img src="${imgSrc}" class="product-img" alt="${item.productName}">
+                                        </a>
+                                        <span class="position-absolute top-0 end-0 m-2 badge rounded-pill px-2 py-1 small">
+                                            ${sizeLabel}
+                                        </span>
+                                    </div>
+
+                                    <!-- Nội dung thẻ món -->
+                                    <div class="p-3 d-flex flex-column flex-grow-1">
+                                        <a href="/products/${item.productId}" class="text-decoration-none text-dark">
+                                            <h5 class="fw-bold mb-1 text-truncate" title="${item.productName}">${item.productName}</h5>
+                                        </a>
+                                        <div class="d-flex align-items-center gap-1 mb-1 small">
+                                            <i class="bi bi-star-fill text-warning small"></i>
+                                            <span class="fw-semibold text-secondary small">5.0</span>
+                                            <span class="text-muted small">·</span>
+                                            <a href="/products/${item.productId}" class="text-muted small text-decoration-none">
+                                                Xem chi tiết
+                                            </a>
                                         </div>
-                                        <div class="p-3 d-flex flex-column flex-grow-1">
-                                            <span class="badge bg-light text-muted border align-self-start mb-2">${item.categoryName || 'Trà sữa'}</span>
-                                            <h6 class="fw-bold text-dark mb-1 text-truncate">${item.productName}</h6>
-                                            <div class="text-warning fw-bold mb-3">${Number(item.price).toLocaleString('vi-VN')} đ</div>
-                                            <div class="mt-auto">
-                                                <a href="/products/${item.productId}" class="btn btn-sm btn-outline-warning w-100 rounded-pill">
-                                                    Xem chi tiết
-                                                </a>
+                                        <p class="text-muted small flex-grow-1 mb-2 text-truncate-2">
+                                            ${item.categoryName ? 'Thuộc nhóm ' + item.categoryName : 'Món uống thơm ngon béo ngậy'}
+                                        </p>
+
+                                        <!-- Chân thẻ món: Giá tiền & Nút chọn -->
+                                        <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
+                                            <span class="product-price">${priceFmt}</span>
+                                            <div class="d-flex gap-1">
+                                                <button type="button" class="btn btn-sm btn-primary-custom rounded-pill px-3"
+                                                        onclick="openWishlistCustomizeModal(${item.productId})">
+                                                    <i class="bi bi-plus-lg me-1"></i> Chọn
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            `;
-                        });
-                        container.innerHTML = html;
-                    } else {
-                        container.innerHTML = `
-                            <div class="col-12 text-center py-5">
-                                <i class="bi bi-heart text-muted display-3 mb-3 d-block"></i>
-                                <h5 class="text-dark fw-bold">Chưa có món yêu thích nào</h5>
-                                <p class="text-muted small">Hãy dạo một vòng quanh menu và lưu lại những món bạn yêu thích nhé!</p>
-                                <a href="/menu" class="btn btn-warning rounded-pill px-4 text-white fw-bold" style="background: #b86b35; border: none;">
-                                    Khám phá Menu ngay
-                                </a>
                             </div>
                         `;
-                    }
+                    });
+
+                    container.innerHTML = html;
                 } catch (e) {
                     container.innerHTML = '<div class="col-12 text-center py-5 text-muted">Không thể tải danh sách lúc này. Vui lòng thử lại sau.</div>';
                 }
             }
 
-            async function removeFavorite(productId) {
-                try {
-                    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
-                    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
-                    const headers = {};
-                    if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+            async function removeWishlistItem(event, productId) {
+                if (event) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                }
 
-                    const res = await fetch(`/api/v1/favorites/${productId}`, {
-                        method: 'DELETE',
-                        headers: headers
-                    });
-                    if (res.ok) {
-                        const el = document.getElementById(`fav-item-${productId}`);
-                        if (el) el.remove();
+                try {
+                    await MilkTeaApi.delete(`/api/v1/favorites/${productId}`);
+                    const el = document.getElementById(`wishlist-item-${productId}`);
+                    if (el) {
+                        el.classList.add('fav-item-leaving');
+                        setTimeout(() => {
+                            el.remove();
+                            const remaining = document.querySelectorAll('#wishlistGrid .product-item');
+                            const countText = document.getElementById('wishlistCountText');
+                            if (countText) countText.textContent = `${remaining.length} món đã lưu`;
+                            if (remaining.length === 0) {
+                                loadWishlist();
+                            }
+                        }, 300);
                     }
-                } catch (e) {
-                    console.error('Lỗi khi xóa món yêu thích:', e);
+                    MilkTeaApi.showToast('Đã xóa món khỏi danh sách yêu thích', 'info');
+                } catch (err) {
+                    MilkTeaApi.showToast('Không thể xóa món lúc này. Vui lòng thử lại!', 'warning');
                 }
             }
 
-            loadWishlist();
+            function openWishlistCustomizeModal(productId) {
+                let baseItem = allVariantsList.find(p => p.id === productId);
+                if (!baseItem) {
+                    const card = document.getElementById(`wishlist-item-${productId}`);
+                    if (card) {
+                        const name = card.querySelector('h5')?.textContent || '';
+                        baseItem = allVariantsList.find(p => (p.name || '').toLowerCase() === name.toLowerCase());
+                    }
+                }
+                if (!baseItem) {
+                    window.location.href = `/products/${productId}`;
+                    return;
+                }
+
+                const isToppingItem = isToppingProduct(baseItem);
+                const allowTopping = baseItem.allowTopping !== false && !isToppingItem;
+
+                document.getElementById('modalProductName').textContent = baseItem.name;
+                document.getElementById('modalProductImg').src = baseItem.img && baseItem.img.length > 5 ? baseItem.img : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80';
+                document.getElementById('modalProductCategory').textContent = baseItem.categoryName || 'Món uống';
+                document.getElementById('modalProductNote').value = '';
+                document.getElementById('modalProductQty').value = 1;
+
+                if (isToppingItem) {
+                    currentProductVariants = [baseItem];
+                    selectedVariant = baseItem;
+                    document.getElementById('sizeSelectionSection').style.display = 'none';
+                    document.getElementById('toppingSelectionSection').style.display = 'none';
+                } else {
+                    const normBaseName = (baseItem.name || '').trim().toLowerCase();
+                    currentProductVariants = allVariantsList.filter(p => (p.name || '').trim().toLowerCase() === normBaseName);
+                    if (currentProductVariants.length === 0) currentProductVariants = [baseItem];
+                    currentProductVariants.sort((a, b) => a.price - b.price);
+                    selectedVariant = currentProductVariants.find(p => p.id === productId) || currentProductVariants[0];
+
+                    document.getElementById('sizeSelectionSection').style.display = 'block';
+                    renderSizeOptions();
+
+                    if (allowTopping) {
+                        document.getElementById('toppingSelectionSection').style.display = 'block';
+                        renderToppingOptions();
+                    } else {
+                        document.getElementById('toppingSelectionSection').style.display = 'none';
+                    }
+                }
+
+                updateModalCalculation();
+                const modal = new bootstrap.Modal(document.getElementById('customizeModal'));
+                modal.show();
+            }
+
+            function renderSizeOptions() {
+                const container = document.getElementById('modalSizeContainer');
+                container.innerHTML = '';
+
+                currentProductVariants.forEach(variant => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    const isSelected = variant.id === selectedVariant.id;
+
+                    btn.className = `btn btn-sm rounded-pill px-3 py-1 fw-semibold ${isSelected ? 'btn-primary-custom shadow-sm' : 'btn-outline-secondary'}`;
+                    btn.textContent = `Size ${variant.size} · ${MilkTeaApi.formatVND(variant.price)}`;
+
+                    btn.onclick = () => {
+                        selectedVariant = variant;
+                        renderSizeOptions();
+                        updateModalCalculation();
+                    };
+
+                    container.appendChild(btn);
+                });
+            }
+
+            function renderToppingOptions() {
+                const list = document.getElementById('modalToppingList');
+                const seen = new Set();
+                const toppings = [];
+
+                allVariantsList.forEach(p => {
+                    if (isToppingProduct(p) && !seen.has(p.name)) {
+                        seen.add(p.name);
+                        toppings.push(p);
+                    }
+                });
+
+                if (toppings.length === 0) {
+                    list.innerHTML = '<div class="text-muted small py-2 text-center">Không có topping khả dụng</div>';
+                    return;
+                }
+
+                let html = '';
+                toppings.forEach(t => {
+                    html += `
+                        <div class="form-check d-flex justify-content-between align-items-center py-1 px-2 mb-1 border-bottom border-light">
+                            <div>
+                                <input class="form-check-input modal-topping-cb" type="checkbox" value="${t.id}" data-name="${t.name}" data-price="${t.price}" id="cb_topping_${t.id}" onchange="updateModalCalculation()">
+                                <label class="form-check-label small ms-2 cursor-pointer" for="cb_topping_${t.id}">${t.name}</label>
+                            </div>
+                            <span class="small text-muted fw-semibold">+${MilkTeaApi.formatVND(t.price)}</span>
+                        </div>
+                    `;
+                });
+
+                list.innerHTML = html;
+            }
+
+            function getSelectedToppings() {
+                const cbs = document.querySelectorAll('.modal-topping-cb:checked');
+                return Array.from(cbs).map(cb => ({
+                    id: Number(cb.value),
+                    name: cb.dataset.name,
+                    price: Number(cb.dataset.price)
+                }));
+            }
+
+            function updateModalCalculation() {
+                if (!selectedVariant) return;
+
+                const qty = parseInt(document.getElementById('modalProductQty').value) || 1;
+                const basePrice = selectedVariant.price || 0;
+                const toppings = getSelectedToppings();
+                const toppingPerCup = toppings.reduce((acc, t) => acc + (t.price || 0), 0);
+
+                const unitPriceWithTopping = basePrice + toppingPerCup;
+                const lineTotal = unitPriceWithTopping * qty;
+
+                document.getElementById('modalProductPrice').textContent = MilkTeaApi.formatVND(unitPriceWithTopping);
+                document.getElementById('calcSizeLabel').textContent = 'Size ' + selectedVariant.size;
+                document.getElementById('calcBasePrice').textContent = MilkTeaApi.formatVND(basePrice);
+                document.getElementById('calcToppingPerCup').textContent = MilkTeaApi.formatVND(toppingPerCup);
+                document.getElementById('calcQty').textContent = qty;
+                document.getElementById('calcLineTotal').textContent = MilkTeaApi.formatVND(lineTotal);
+                document.getElementById('calcFormulaText').textContent =
+                    `${qty} ly × (${MilkTeaApi.formatVND(basePrice)} + ${MilkTeaApi.formatVND(toppingPerCup)}) = ${MilkTeaApi.formatVND(lineTotal)}`;
+            }
+
+            function adjustModalQty(delta) {
+                const input = document.getElementById('modalProductQty');
+                let val = parseInt(input.value) + delta;
+                if (val < 1) val = 1;
+                input.value = val;
+                updateModalCalculation();
+            }
+
+            function confirmAddToCart() {
+                if (!selectedVariant) return;
+
+                const qty = parseInt(document.getElementById('modalProductQty').value) || 1;
+                const note = document.getElementById('modalProductNote').value.trim();
+                const toppings = getSelectedToppings();
+
+                CustomerApp.addToCart(selectedVariant, qty, note, toppings);
+
+                const modalEl = document.getElementById('customizeModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+
+                MilkTeaApi.showToast(`Đã thêm ${selectedVariant.name} vào giỏ hàng!`, 'success');
+            }
         </script>
-    </div>
+    </th:block>
 </body>
 </html>

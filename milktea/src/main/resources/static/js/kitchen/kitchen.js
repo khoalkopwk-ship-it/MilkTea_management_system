@@ -17,7 +17,14 @@ const KitchenApp = (() => {
     let settlementFilter = { from: null, to: null, all: false };
 
     async function init() {
-        window.MilkTeaContext = { role: 'KITCHEN' };
+        const workspace = document.querySelector('.kitchen-page') || document.getElementById('kitchenWorkspace');
+        const role = workspace?.dataset.role || 'KITCHEN';
+        const branchId = workspace?.dataset.branchId ? parseInt(workspace.dataset.branchId, 10) : null;
+        window.MilkTeaContext = {
+            ...(window.MilkTeaContext || {}),
+            role: role,
+            branchId: branchId
+        };
         MilkTeaRealtime.connect();
 
         setupRealtime();
@@ -332,7 +339,8 @@ const KitchenApp = (() => {
 
     async function loadStock() {
         try {
-            const stock = await MilkTeaApi.get('/api/v1/inventory/stocks?location=BEP');
+            const branchParam = window.MilkTeaContext?.branchId ? `&branchId=${window.MilkTeaContext.branchId}` : '';
+            const stock = await MilkTeaApi.get(`/api/v1/inventory/stocks?location=BEP${branchParam}`);
             bepStock = stock || [];
             renderStockTable();
         } catch (e) {
@@ -508,7 +516,8 @@ const KitchenApp = (() => {
             outputMaterialId: matId,
             recipeVersion: recipe.version || 1,
             desiredQuantity: desiredQty,
-            note: note || undefined
+            note: note || undefined,
+            branchId: window.MilkTeaContext?.branchId || undefined
         };
 
         const button = document.getElementById('btnSubmitPrep');
@@ -575,15 +584,17 @@ const KitchenApp = (() => {
             `;
         }
 
-        let url = '/api/v1/inventory/preparation-batches';
+        const params = new URLSearchParams();
+        if (window.MilkTeaContext?.branchId) {
+            params.append('branchId', window.MilkTeaContext.branchId);
+        }
         if (prepFilter.all) {
-            url += '?all=true';
+            params.append('all', 'true');
         } else if (prepFilter.from || prepFilter.to) {
-            const params = new URLSearchParams();
             if (prepFilter.from) params.append('from', prepFilter.from);
             if (prepFilter.to) params.append('to', prepFilter.to);
-            url += '?' + params.toString();
         }
+        let url = '/api/v1/inventory/preparation-batches' + (params.toString() ? '?' + params.toString() : '');
 
         try {
             const batches = await MilkTeaApi.get(url);
@@ -648,7 +659,8 @@ const KitchenApp = (() => {
             tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Đang nạp dữ liệu tồn sổ & giá vốn bình quân...</td></tr>';
         }
         try {
-            const res = await MilkTeaApi.get('/api/v1/inventory/shift-settlement/preview?location=BEP');
+            const branchParam = window.MilkTeaContext?.branchId ? `&branchId=${window.MilkTeaContext.branchId}` : '';
+            const res = await MilkTeaApi.get(`/api/v1/inventory/shift-settlement/preview?location=BEP${branchParam}`);
             shiftSettlementRows = (res?.items || []).map(it => ({
                 materialId: it.materialId,
                 materialName: it.materialName,
@@ -753,6 +765,7 @@ const KitchenApp = (() => {
         const note = document.getElementById('shiftSettlementNote').value.trim();
         const payload = {
             location: 'BEP',
+            branchId: window.MilkTeaContext?.branchId || undefined,
             note: note,
             items: shiftSettlementRows.map(r => ({
                 materialId: r.materialId,
@@ -796,6 +809,9 @@ const KitchenApp = (() => {
         if (!tbody) return;
 
         let url = '/api/v1/inventory/shift-settlement?location=BEP';
+        if (window.MilkTeaContext?.branchId) {
+            url += `&branchId=${window.MilkTeaContext.branchId}`;
+        }
         if (settlementFilter.all) {
             url += '&all=true';
         } else if (settlementFilter.from || settlementFilter.to) {

@@ -140,3 +140,53 @@ BEGIN
     END;
     PRINT 'Đã seed voucher CN01SPECIAL và gán chi nhánh CN01.';
 END;
+
+IF NOT EXISTS (SELECT * FROM dbo.Voucher WHERE MaCode = 'DONTOITHIEU')
+BEGIN
+    INSERT INTO dbo.Voucher (MaCode, TenVoucher, MoTa, LoaiGiamGia, GiaTriGiam, GiamToiDa, GiaTriDonToiThieu, TongSoLuot, SoLuotDaDung, SoLuotMoiKhach, ApDungToanChuoi, NgayBatDau, NgayKetThuc, KichHoat)
+    VALUES ('DONTOITHIEU', N'Ưu Đãi Đơn Lớn 50K', N'Giảm ngay 50.000đ cho đơn hàng từ 200.000đ', 'FIXED_AMOUNT', 50000, NULL, 200000, 500, 0, 1, 1, '2024-01-01', '2030-12-31', 1);
+    PRINT 'Đã seed voucher DONTOITHIEU.';
+END;
+
+IF NOT EXISTS (SELECT * FROM dbo.Voucher WHERE MaCode = 'HETLUOT')
+BEGIN
+    INSERT INTO dbo.Voucher (MaCode, TenVoucher, MoTa, LoaiGiamGia, GiaTriGiam, GiamToiDa, GiaTriDonToiThieu, TongSoLuot, SoLuotDaDung, SoLuotMoiKhach, ApDungToanChuoi, NgayBatDau, NgayKetThuc, KichHoat)
+    VALUES ('HETLUOT', N'Mã Siêu Hot Hết Lượt', N'Voucher đã hết số lượt sử dụng quy định (10/10)', 'FIXED_AMOUNT', 30000, NULL, 40000, 10, 10, 1, 1, '2024-01-01', '2030-12-31', 1);
+    PRINT 'Đã seed voucher HETLUOT.';
+END;
+
+IF NOT EXISTS (SELECT * FROM dbo.Voucher WHERE MaCode = 'HETHAN')
+BEGIN
+    INSERT INTO dbo.Voucher (MaCode, TenVoucher, MoTa, LoaiGiamGia, GiaTriGiam, GiamToiDa, GiaTriDonToiThieu, TongSoLuot, SoLuotDaDung, SoLuotMoiKhach, ApDungToanChuoi, NgayBatDau, NgayKetThuc, KichHoat)
+    VALUES ('HETHAN', N'Voucher Đã Hết Hạn', N'Mã đã kết thúc thời gian áp dụng trong quá khứ', 'FIXED_AMOUNT', 25000, NULL, 50000, 100, 0, 1, 1, '2023-01-01', '2023-12-31', 1);
+    PRINT 'Đã seed voucher HETHAN.';
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.LichSuSuDungVoucher WHERE MaVoucher = 5)
+BEGIN
+    -- Chỉ chèn lịch sử mẫu khi các đơn hàng tương ứng thực sự tồn tại để tránh lỗi Foreign Key FK_LSSDV_DonHang
+    IF EXISTS (SELECT 1 FROM dbo.DonHang WHERE MaDH = 1) AND EXISTS (SELECT 1 FROM dbo.DonHang WHERE MaDH = 10)
+    BEGIN
+        INSERT INTO dbo.LichSuSuDungVoucher (MaVoucher, MaDH, MaHD, MaTK, MaCN, SoTienGiam, TrangThai, NgaySuDung)
+        SELECT 5, d.MaDH, h.MaHD, ISNULL(d.MaTK, 3), ISNULL(d.MaCN, 1), 30000, 'DA_DUNG', DATEADD(MINUTE, -d.MaDH * 10, SYSUTCDATETIME())
+        FROM dbo.DonHang d
+        LEFT JOIN dbo.HoaDon h ON h.MaDH = d.MaDH
+        WHERE d.MaDH BETWEEN 1 AND 10;
+
+        UPDATE dbo.Voucher SET SoLuotDaDung = 10 WHERE MaVoucher = 5;
+    END;
+
+    IF EXISTS (SELECT 1 FROM dbo.DonHang WHERE MaDH = 11) AND EXISTS (SELECT 1 FROM dbo.DonHang WHERE MaDH = 13)
+    BEGIN
+        INSERT INTO dbo.LichSuSuDungVoucher (MaVoucher, MaDH, MaHD, MaTK, MaCN, SoTienGiam, TrangThai, NgaySuDung)
+        SELECT 1, d.MaDH, h.MaHD, ISNULL(d.MaTK, 3), ISNULL(d.MaCN, 1), 20000, 'DA_DUNG', DATEADD(MINUTE, -d.MaDH * 5, SYSUTCDATETIME())
+        FROM dbo.DonHang d
+        LEFT JOIN dbo.HoaDon h ON h.MaDH = d.MaDH
+        WHERE d.MaDH BETWEEN 11 AND 13;
+
+        UPDATE dbo.Voucher SET SoLuotDaDung = 3 WHERE MaVoucher = 1;
+    END;
+
+    PRINT N'Đã kiểm tra và seed lịch sử sử dụng voucher an toàn.';
+END;
+

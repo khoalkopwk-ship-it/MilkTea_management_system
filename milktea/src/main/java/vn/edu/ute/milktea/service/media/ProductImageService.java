@@ -312,4 +312,40 @@ public class ProductImageService {
 
         return secureUrl;
     }
+
+    public String uploadReviewImage(MultipartFile file) {
+        validateImageFile(file);
+        if (isCloudinaryConfigured()) {
+            String customPublicId = "milktea/reviews/rev_" + System.currentTimeMillis() + "_"
+                    + UUID.randomUUID().toString().substring(0, 8);
+            try {
+                Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                        "public_id", customPublicId,
+                        "resource_type", "image"));
+                return (String) uploadResult.get("secure_url");
+            } catch (IOException e) {
+                log.error("Lỗi khi tải ảnh đánh giá lên Cloudinary: {}", e.getMessage());
+                throw BusinessException.badRequest(ErrorCode.IMAGE_UPLOAD_FAILED,
+                        "Không thể tải ảnh đánh giá lên Cloudinary: " + e.getMessage());
+            }
+        } else {
+            String ext = ".jpg";
+            String ct = file.getContentType();
+            if (ct != null) {
+                if (ct.contains("png")) ext = ".png";
+                else if (ct.contains("webp")) ext = ".webp";
+            }
+            String filename = "rev_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8) + ext;
+            try {
+                java.nio.file.Path dir = java.nio.file.Paths.get("uploads/reviews");
+                java.nio.file.Files.createDirectories(dir);
+                java.nio.file.Files.write(dir.resolve(filename), file.getBytes());
+                return "/images/reviews/" + filename;
+            } catch (IOException e) {
+                log.error("Lỗi ghi ảnh review vào đĩa cục bộ: {}", e.getMessage());
+                throw BusinessException.badRequest(ErrorCode.IMAGE_UPLOAD_FAILED,
+                        "Không thể lưu ảnh đánh giá cục bộ: " + e.getMessage());
+            }
+        }
+    }
 }

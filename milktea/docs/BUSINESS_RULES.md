@@ -25,9 +25,9 @@ Tài liệu này là **Single Source of Truth (SSOT)** về các quy tắc nghi�
 |---|---|---|---|
 | Quản trị toàn chuỗi | `ADMIN` | Toàn hệ thống (Mọi chi nhánh) | Cấu hình chuỗi, quản lý chi nhánh, quản lý danh mục/món/công thức chuẩn, phân công nhân sự, báo cáo tổng hợp & so sánh chuỗi, kiểm duyệt nội dung toàn chuỗi |
 | Quản lý cơ sở | `MANAGER` | Các chi nhánh được phân công | Quản lý vận hành chi nhánh được giao: cấu hình món kinh doanh/tạm hết tại cơ sở, kiểm duyệt đánh giá tại cơ sở, theo dõi báo cáo cơ sở |
-| Thu ngân | `CASHIER` | Đúng chi nhánh đang làm việc | Mở/đóng phiên bàn cơ sở, tạo đơn tại quầy, xác nhận đơn bàn/online cơ sở, ghi thu tiền mặt/chuyển khoản, yêu cầu hoàn tiền, xem thông báo realtime cơ sở |
+| Thu ngân | `CASHIER` | Đúng chi nhánh đang làm việc | Mở/đóng phiên bàn cơ sở, tạo đơn tại quầy, xác nhận đơn bàn/tại quầy cơ sở, ghi thu tiền mặt/chuyển khoản, yêu cầu hoàn tiền, xem thông báo realtime cơ sở |
 | Nhân viên bếp | `KITCHEN` | Đúng chi nhánh đang làm việc | Xem danh sách đơn cần chế biến của cơ sở, bắt đầu/hoàn thành chế biến (ghi tiêu hao kho bếp cơ sở), lập mẻ sơ chế, kiểm kê kết ca kho bếp cơ sở |
-| Khách hàng | `CUSTOMER` | Tài khoản cá nhân (Toàn chuỗi) | Đặt hàng tại bàn (QR) hoặc trực tuyến, theo dõi đơn của mình, yêu thích món, đánh giá chi tiết món trong đơn đã hoàn thành & thanh toán |
+| Khách hàng | `CUSTOMER` | Tài khoản cá nhân (Toàn chuỗi) | Đặt hàng tại bàn qua mã QR vật lý, theo dõi đơn của mình, yêu thích món, đánh giá chi tiết món trong đơn đã hoàn thành & thanh toán |
 | Khách vãng lai | `Guest` | Bàn/Phiên hoặc Đơn quầy được cấp | Xem menu cơ sở, thêm giỏ, đặt hàng trong phiên bàn hoặc đơn quầy được cấp token hợp lệ. **Không được đánh giá**. |
 
 ### Quy tắc kiểm tra phân quyền tại Backend:
@@ -41,6 +41,7 @@ Tài liệu này là **Single Source of Truth (SSOT)** về các quy tắc nghi�
 
 ### 3.1. Khách tại bàn qua mã QR (FLOW-01)
 1. **Quét QR**:
+   - Khách quét mã QR vật lý gắn tại bàn. Nhãn QR thể hiện rõ tên chi nhánh và số bàn.
    - Xác định `MaBan` và `MaCN`. Mở ngay giao diện menu của đúng chi nhánh đó với nhãn tên chi nhánh và tên bàn.
    - Quét QR hoặc xem menu, xem chi tiết, thêm món vào giỏ **KHÔNG TỰ ĐỘNG TẠO HAY MỞ PHIÊN BÀN**.
 2. **Gửi đơn đầu tiên**:
@@ -53,15 +54,22 @@ Tài liệu này là **Single Source of Truth (SSOT)** về các quy tắc nghi�
    - Chỉ `CASHIER` thuộc chi nhánh đó mới có quyền đóng phiên bàn khi: Mọi đơn đã `HOAN_THANH` hoặc `DA_HUY`, và tất cả hóa đơn hiệu lực đã thanh toán đủ (`DA_THANH_TOAN`).
    - Khi đóng phiên: Thu hồi token truy cập của phiên cũ. Lượt khách sau quét QR bàn sẽ không thấy giỏ hoặc lịch sử của lượt khách trước.
 
-### 3.2. Khách trực tuyến (FLOW-02)
-1. Xem menu dự kiến, chọn món vào giỏ.
-2. Chọn chi nhánh nhận hàng: Server kiểm tra lại tính hợp lệ của toàn bộ giỏ (món có được bán tại chi nhánh không, có tạm hết không, giờ hoạt động).
-3. Chốt đơn hàng trực tuyến (`Nguon = 'ONLINE'`) theo đúng một chi nhánh đã xác thực. Không trộn món của nhiều chi nhánh trong một đơn.
-4. Đơn trực tuyến không bắt buộc phải có bàn hay phiên bàn.
+### 3.2. Thu hẹp chỉ phục vụ tại quán (In-Store Only System — FLOW-02 Ngừng hoạt động)
+1. **Phạm vi phục vụ độc quyền trong không gian quán**:
+   - Hệ thống chuyển đổi toàn diện sang mô hình phục vụ tại quán: chỉ có 2 nguồn đơn hợp lệ là `TABLE` (gắn mã QR bàn vật lý) và `COUNTER` (tại quầy thu ngân).
+   - Ngừng toàn bộ chức năng đặt hàng từ xa, giao hàng, địa chỉ nhận hàng, sổ địa chỉ, shipper, COD, sàn thương mại, phương thức `PICKUP`/`DELIVERY`, phí vận chuyển và giỏ hàng tài khoản độc lập (`AccountCart`).
+2. **Từ chối API trực tuyến cũ**:
+   - Các endpoint `/api/v1/orders/online` và `/api/v1/customer/orders/online` phản hồi HTTP 410 Gone kèm giải thích rõ ràng.
+3. **Tương thích dữ liệu lịch sử (Read-only Compatibility)**:
+   - Giữ enum `OrderSource.ONLINE` và các trường nhận hàng lịch sử (`receiverName`, `receiverPhone`, `deliveryAddress`, `deliveryType`) ở mức read-only trong JPA entity để đọc an toàn các đơn hàng cũ mà không làm hỏng ORM mapping.
 
 ### 3.3. Đơn tại quầy (FLOW-03)
-- Lấy chi nhánh từ ngữ cảnh thu ngân đã đăng nhập.
-- Thu ngân không thể tạo đơn tại chi nhánh ngoài phạm vi phân công của mình.
+- Lấy chi nhánh bắt buộc từ thông tin phân công nhân viên trên server (`actor.branchId`), không bao giờ tin tưởng `branchId` hay thông tin do trình duyệt client gửi lên.
+- Chỉ nhân viên có vai trò được phép (`CASHIER`, `MANAGER`, `ADMIN`) mới có quyền lập đơn quầy; vai trò `CUSTOMER` và `Guest` bị từ chối `403 ACCESS_DENIED`.
+- Đơn quầy gắn vào bàn (nếu khách dùng tại chỗ sau khi gọi quầy) phải cùng chi nhánh với bàn được gắn.
+
+### 3.4. Vòng đời đóng cửa chi nhánh (R19)
+- Không triển khai giao diện/quy trình R19 (Branch shutdown concurrent cancellation) theo phạm vi In-Store Only đã chốt. Giữ nguyên quản lý chi nhánh chuẩn, phân công nhân sự, bàn/QR và kho.
 
 ---
 

@@ -33,6 +33,7 @@ public class OrderDto {
 
         private List<CartDto.CartItemRequest> remainingCartItems;
         private String voucherCode;
+        private String note;
     }
 
     @Data
@@ -46,25 +47,6 @@ public class OrderDto {
 
         private String note;
         private Long branchId;
-        private String voucherCode;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CreateOnlineOrderRequest {
-        @NotNull(message = "Mã chi nhánh không được để trống")
-        private Long branchId;
-
-        @NotEmpty(message = "Danh sách món đặt không được rỗng")
-        @jakarta.validation.Valid
-        private List<CartDto.CartItemRequest> items;
-
-        private String note;
-        private String customerName;
-        private String customerPhone;
-        private String deliveryAddress;
         private String voucherCode;
     }
 
@@ -131,6 +113,10 @@ public class OrderDto {
         private boolean transferNotified;
         private List<OrderItemResponse> items;
         private Instant createdAt;
+        private String receiverName;
+        private String receiverPhone;
+        private String deliveryAddress;
+        private String deliveryType;
         private String guestTableToken;   // Trả về khi đơn đầu tạo phiên
         private String guestCounterToken; // Trả về cho đơn quầy
     }

@@ -72,7 +72,20 @@ public class CatalogDto {
         @Builder.Default
         private boolean isFavorite = false;
         private List<String> availableSizes;
+        private List<SizeOption> sizeOptions;
         private List<ProductItem> toppings;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SizeOption {
+        private Long id;
+        private String size;
+        private BigDecimal price;
+        @Builder.Default
+        private boolean available = true;
     }
 
     @Data

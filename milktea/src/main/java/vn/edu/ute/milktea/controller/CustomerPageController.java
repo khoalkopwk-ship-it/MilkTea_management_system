@@ -27,6 +27,8 @@ public class CustomerPageController {
     private final ProductRepository productRepository;
     private final DiningTableRepository tableRepository;
     private final vn.edu.ute.milktea.service.catalog.CatalogService catalogService;
+    private final vn.edu.ute.milktea.service.branch.BranchService branchService;
+    private final vn.edu.ute.milktea.repository.account.AccountRepository accountRepository;
 
     private static final String COOKIE_TABLE_QR = "MILKTEA_TABLE_QR";
     private static final String COOKIE_TABLE_ID = "MILKTEA_TABLE_ID";
@@ -34,21 +36,13 @@ public class CustomerPageController {
     private static final String SESS_TABLE_QR = "CURRENT_TABLE_QR";
 
     private DiningTable resolveTable(
-            String qrCode, String tableParam,
+            String qrCode,
             jakarta.servlet.http.HttpServletRequest request,
             jakarta.servlet.http.HttpServletResponse response) {
 
         DiningTable table = null;
         if (qrCode != null && !qrCode.isBlank()) {
             table = tableRepository.findByQrCode(qrCode.trim()).orElse(null);
-        } else if (tableParam != null && !tableParam.isBlank()) {
-            try {
-                Long id = Long.parseLong(tableParam.trim());
-                table = tableRepository.findById(id).orElse(null);
-            } catch (NumberFormatException ignored) {}
-            if (table == null) {
-                table = tableRepository.findByName(tableParam.trim()).orElse(null);
-            }
         }
 
         if (table != null) {
@@ -61,52 +55,22 @@ public class CustomerPageController {
                 request.getSession(true).setAttribute(SESS_TABLE_QR, table.getQrCode());
             }
 
-            // Lưu vào Cookie để duy trì sau khi đăng nhập (tránh session fixation làm mất session)
+            // Lưu vào Cookie tạm thời (chỉ trong phiên duyệt web) để duy trì khi chuyển hướng
             if (response != null) {
                 jakarta.servlet.http.Cookie qrCookie = new jakarta.servlet.http.Cookie(COOKIE_TABLE_QR, table.getQrCode());
                 qrCookie.setPath("/");
-                qrCookie.setMaxAge(86400 * 3);
+                qrCookie.setHttpOnly(true);
+                qrCookie.setMaxAge(-1); // Session-only cookie, xóa khi đóng trình duyệt
                 response.addCookie(qrCookie);
-
-                jakarta.servlet.http.Cookie idCookie = new jakarta.servlet.http.Cookie(COOKIE_TABLE_ID, String.valueOf(table.getId()));
-                idCookie.setPath("/");
-                idCookie.setMaxAge(86400 * 3);
-                response.addCookie(idCookie);
             }
             return table;
         }
 
-        // Nếu trên request không truyền param qr/table -> Thử phục hồi từ Session
+        // Nếu trên request không truyền param qr -> Thử phục hồi từ Session hiện thời nếu khách đã quét QR
         if (request != null && request.getSession(false) != null) {
-            Long sessId = (Long) request.getSession(false).getAttribute(SESS_TABLE_ID);
             String sessQr = (String) request.getSession(false).getAttribute(SESS_TABLE_QR);
-            if (sessId != null) {
-                table = tableRepository.findById(sessId).orElse(null);
-                if (table != null) return table;
-            }
             if (sessQr != null && !sessQr.isBlank()) {
                 table = tableRepository.findByQrCode(sessQr.trim()).orElse(null);
-                if (table != null) return table;
-            }
-        }
-
-        // Thử phục hồi từ Cookie
-        if (request != null && request.getCookies() != null) {
-            String cookieQr = null;
-            Long cookieId = null;
-            for (jakarta.servlet.http.Cookie c : request.getCookies()) {
-                if (COOKIE_TABLE_QR.equals(c.getName()) && c.getValue() != null && !c.getValue().isBlank()) {
-                    cookieQr = c.getValue().trim();
-                } else if (COOKIE_TABLE_ID.equals(c.getName()) && c.getValue() != null && !c.getValue().isBlank()) {
-                    try { cookieId = Long.parseLong(c.getValue().trim()); } catch (Exception ignored) {}
-                }
-            }
-            if (cookieId != null) {
-                table = tableRepository.findById(cookieId).orElse(null);
-                if (table != null) return table;
-            }
-            if (cookieQr != null) {
-                table = tableRepository.findByQrCode(cookieQr).orElse(null);
                 if (table != null) return table;
             }
         }
@@ -117,22 +81,34 @@ public class CustomerPageController {
     @GetMapping({"/", "/menu"})
     public String menuPage(
             @RequestParam(value = "qr", required = false) String qrCode,
-            @RequestParam(value = "table", required = false) String tableParam,
             jakarta.servlet.http.HttpServletRequest request,
             jakarta.servlet.http.HttpServletResponse response,
             Model model) {
 
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         List<Category> categories = categoryRepository.findAllByActiveTrue();
-        List<Product> products = productRepository.findAllByActiveTrue();
+        List<Product> allProducts = productRepository.findAllByActiveTrue();
 
-        DiningTable table = resolveTable(qrCode, tableParam, request, response);
+        // Gom nhóm theo tên món, chỉ lấy size bé nhất (giá thấp nhất) làm đại diện trên Menu
+        java.util.Map<String, Product> smallestVariantsByName = new java.util.LinkedHashMap<>();
+        for (Product p : allProducts) {
+            String norm = p.getName().trim().toLowerCase();
+            if (!smallestVariantsByName.containsKey(norm) || p.getPrice().compareTo(smallestVariantsByName.get(norm).getPrice()) < 0) {
+                smallestVariantsByName.put(norm, p);
+            }
+        }
+        List<Product> menuProducts = new java.util.ArrayList<>(smallestVariantsByName.values());
+
+        DiningTable table = resolveTable(qrCode, request, response);
 
         model.addAttribute("settings", settings);
         model.addAttribute("categories", categories);
-        model.addAttribute("products", products);
+        model.addAttribute("products", menuProducts);
+        model.addAttribute("allProducts", allProducts);
         model.addAttribute("currentTable", table);
         model.addAttribute("tableQr", table != null ? table.getQrCode() : qrCode);
+        Long branchId = table != null && table.getBranch() != null ? table.getBranch().getId() : null;
+        model.addAttribute("branchId", branchId);
 
         return "customer/menu";
     }
@@ -140,18 +116,20 @@ public class CustomerPageController {
     @GetMapping("/cart")
     public String cartPage(
             @RequestParam(value = "qr", required = false) String qrCode,
-            @RequestParam(value = "table", required = false) String tableParam,
             jakarta.servlet.http.HttpServletRequest request,
             jakarta.servlet.http.HttpServletResponse response,
             @AuthenticationPrincipal CurrentActor actor, Model model) {
 
         if (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER)) return "redirect:/cashier";
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
-        DiningTable table = resolveTable(qrCode, tableParam, request, response);
+        DiningTable table = resolveTable(qrCode, request, response);
 
         model.addAttribute("settings", settings);
         model.addAttribute("currentTable", table);
         model.addAttribute("tableQr", table != null ? table.getQrCode() : qrCode);
+        if (actor != null && actor.getAccountId() != null) {
+            accountRepository.findById(actor.getAccountId()).ifPresent(acc -> model.addAttribute("currentUser", acc));
+        }
 
         return "customer/cart";
     }
@@ -159,14 +137,13 @@ public class CustomerPageController {
     @GetMapping("/orders")
     public String ordersPage(
             @RequestParam(value = "qr", required = false) String qrCode,
-            @RequestParam(value = "table", required = false) String tableParam,
             jakarta.servlet.http.HttpServletRequest request,
             jakarta.servlet.http.HttpServletResponse response,
             @AuthenticationPrincipal CurrentActor actor,
             Model model) {
 
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
-        DiningTable table = resolveTable(qrCode, tableParam, request, response);
+        DiningTable table = resolveTable(qrCode, request, response);
 
         model.addAttribute("settings", settings);
         model.addAttribute("actor", actor);
@@ -202,12 +179,11 @@ public class CustomerPageController {
             @org.springframework.web.bind.annotation.PathVariable("id") Long id,
             @RequestParam(value = "branchId", required = false) Long branchId,
             @RequestParam(value = "qr", required = false) String qrCode,
-            @RequestParam(value = "table", required = false) String tableParam,
             jakarta.servlet.http.HttpServletRequest request,
             jakarta.servlet.http.HttpServletResponse response,
             @AuthenticationPrincipal CurrentActor actor,
             Model model) {
-        DiningTable table = resolveTable(qrCode, tableParam, request, response);
+        DiningTable table = resolveTable(qrCode, request, response);
         Long targetBranchId = branchId;
         if (targetBranchId == null && table != null && table.getBranch() != null) {
             targetBranchId = table.getBranch().getId();
@@ -226,7 +202,6 @@ public class CustomerPageController {
     @GetMapping("/favorites")
     public String wishlistPage(
             @RequestParam(value = "qr", required = false) String qrCode,
-            @RequestParam(value = "table", required = false) String tableParam,
             jakarta.servlet.http.HttpServletRequest request,
             jakarta.servlet.http.HttpServletResponse response,
             @AuthenticationPrincipal CurrentActor actor,
@@ -234,10 +209,12 @@ public class CustomerPageController {
         if (actor == null || !actor.isAuthenticated()) {
             return "redirect:/login?redirect=/favorites";
         }
-        DiningTable table = resolveTable(qrCode, tableParam, request, response);
+        DiningTable table = resolveTable(qrCode, request, response);
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
+        List<Product> allProducts = productRepository.findAllByActiveTrue();
 
         model.addAttribute("settings", settings);
+        model.addAttribute("allProducts", allProducts);
         model.addAttribute("currentTable", table);
         model.addAttribute("tableQr", table != null ? table.getQrCode() : qrCode);
         return "customer/wishlist";
@@ -289,10 +266,10 @@ public class CustomerPageController {
         if (lower.startsWith("/admin") && (actor == null || actor.getRole() != vn.edu.ute.milktea.entity.account.Role.ADMIN)) {
             return false;
         }
-        if (lower.startsWith("/cashier") && (actor == null || (actor.getRole() != vn.edu.ute.milktea.entity.account.Role.CASHIER && actor.getRole() != vn.edu.ute.milktea.entity.account.Role.ADMIN))) {
+        if (lower.startsWith("/cashier") && (actor == null || (actor.getRole() != vn.edu.ute.milktea.entity.account.Role.CASHIER && actor.getRole() != vn.edu.ute.milktea.entity.account.Role.ADMIN && actor.getRole() != vn.edu.ute.milktea.entity.account.Role.MANAGER))) {
             return false;
         }
-        if (lower.startsWith("/kitchen") && (actor == null || (actor.getRole() != vn.edu.ute.milktea.entity.account.Role.KITCHEN && actor.getRole() != vn.edu.ute.milktea.entity.account.Role.ADMIN))) {
+        if (lower.startsWith("/kitchen") && (actor == null || (actor.getRole() != vn.edu.ute.milktea.entity.account.Role.KITCHEN && actor.getRole() != vn.edu.ute.milktea.entity.account.Role.ADMIN && actor.getRole() != vn.edu.ute.milktea.entity.account.Role.MANAGER))) {
             return false;
         }
         return true;

@@ -23,6 +23,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findByBranchIdAndStatusInOrderByCreatedAtAsc(Long branchId, Collection<OrderStatus> statuses);
 
+    long countByBranchIdAndStatusIn(Long branchId, Collection<OrderStatus> statuses);
+
     List<Order> findByBranchIdAndSessionId(Long branchId, Long sessionId);
 
     List<Order> findByAccountIdOrderByCreatedAtDesc(Long accountId);
@@ -44,11 +46,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         FROM Order o
         WHERE o.createdAt >= :start
           AND o.createdAt < :end
+          AND (:branchId IS NULL OR o.branch.id = :branchId)
         GROUP BY o.status
         """)
     List<Object[]> countOrdersByStatusBetween(
             @Param("start") Instant start,
-            @Param("end") Instant end
+            @Param("end") Instant end,
+            @Param("branchId") Long branchId
     );
 
+    default List<Object[]> countOrdersByStatusBetween(Instant start, Instant end) {
+        return countOrdersByStatusBetween(start, end, null);
+    }
 }

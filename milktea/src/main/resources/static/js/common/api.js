@@ -6,9 +6,18 @@ const MilkTeaApi = (() => {
     let csrfToken = null;
     let csrfHeaderName = 'X-CSRF-TOKEN';
 
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+        return match ? decodeURIComponent(match[3]) : null;
+    }
+
     // Khởi tạo CSRF token
     async function initCsrf() {
-        if (csrfToken) return csrfToken;
+        const cookieToken = getCookie('XSRF-TOKEN');
+        if (cookieToken) {
+            csrfToken = cookieToken;
+            return csrfToken;
+        }
         try {
             const res = await fetch('/api/v1/auth/csrf');
             const json = await res.json();
@@ -36,9 +45,14 @@ const MilkTeaApi = (() => {
 
         // Đính kèm CSRF token cho các mutation methods
         if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-            await initCsrf();
-            if (csrfToken) {
-                headers[csrfHeaderName] = csrfToken;
+            let token = getCookie('XSRF-TOKEN');
+            if (!token) {
+                await initCsrf();
+                token = getCookie('XSRF-TOKEN') || csrfToken;
+            }
+            if (token) {
+                headers['X-CSRF-TOKEN'] = token;
+                headers['X-XSRF-TOKEN'] = token;
             }
         }
 
@@ -123,6 +137,7 @@ const MilkTeaApi = (() => {
         get: (url, headers) => request(url, { method: 'GET', headers }),
         post: (url, body, headers) => request(url, { method: 'POST', body, headers }),
         put: (url, body, headers) => request(url, { method: 'PUT', body, headers }),
+        patch: (url, body, headers) => request(url, { method: 'PATCH', body, headers }),
         delete: (url, headers) => request(url, { method: 'DELETE', headers }),
         upload: (url, formData) => request(url, { method: 'POST', body: formData }),
         formatVND,

@@ -26,4 +26,16 @@ public interface ProductFavoriteRepository extends JpaRepository<ProductFavorite
 
     @Query("SELECT pf.product.id FROM ProductFavorite pf GROUP BY pf.product.id ORDER BY COUNT(pf.id) DESC")
     List<Long> findMostFavoritedProductIds(Pageable pageable);
+
+    @Query("SELECT COUNT(pf) > 0 FROM ProductFavorite pf WHERE pf.account.id = :accountId AND LOWER(pf.product.name) = LOWER(:productName)")
+    boolean existsByAccountIdAndProductName(@Param("accountId") Long accountId, @Param("productName") String productName);
+
+    @Query("SELECT pf FROM ProductFavorite pf WHERE pf.account.id = :accountId AND LOWER(pf.product.name) = LOWER(:productName)")
+    List<ProductFavorite> findAllByAccountIdAndProductName(@Param("accountId") Long accountId, @Param("productName") String productName);
+
+    @Query("SELECT COUNT(DISTINCT pf.account.id) FROM ProductFavorite pf WHERE LOWER(pf.product.name) = LOWER(:productName)")
+    long countDistinctAccountsByProductName(@Param("productName") String productName);
+
+    @Query("SELECT pf.product.name FROM ProductFavorite pf WHERE pf.product.active = true GROUP BY pf.product.name ORDER BY COUNT(DISTINCT pf.account.id) DESC")
+    List<String> findMostFavoritedProductNames(Pageable pageable);
 }

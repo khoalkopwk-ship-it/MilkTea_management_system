@@ -25,6 +25,9 @@ public class AuthController {
     private final AuthService authService;
     private final vn.edu.ute.milktea.service.media.ProductImageService productImageService;
 
+    @org.springframework.beans.factory.annotation.Value("${app.jwt.cookie-secure:false}")
+    private boolean cookieSecure;
+
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthDto.AuthResponse>> login(
             @Valid @RequestBody AuthDto.LoginRequest request,
@@ -32,12 +35,16 @@ public class AuthController {
 
         AuthDto.AuthResponse authResponse = authService.login(request);
 
-        // Lưu JWT vào cookie HttpOnly theo author_rule.md
-        Cookie cookie = new Cookie(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, authResponse.getToken());
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(60 * 60); // 1 hour
-        response.addCookie(cookie);
+        // Lưu JWT vào cookie HttpOnly với SameSite=Lax và cấu hình Secure theo môi trường
+        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie
+                .from(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, authResponse.getToken())
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(60 * 60)
+                .build();
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
 
         return ResponseEntity.ok(ApiResponse.ok(authResponse));
     }
@@ -74,12 +81,16 @@ public class AuthController {
             authService.logout(actor.getAccountId());
         }
 
-        // Xóa cookie JWT
-        Cookie cookie = new Cookie(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, "");
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        // Xóa cookie JWT với cấu hình an toàn
+        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie
+                .from(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(0)
+                .build();
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
 
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
@@ -111,9 +122,15 @@ public class AuthController {
 
     @GetMapping("/csrf")
     public ResponseEntity<ApiResponse<Map<String, String>>> getCsrf(HttpServletRequest request) {
-        // Cung cấp token CSRF chuẩn cho JavaScript browser mutations
-        String token = UUID.randomUUID().toString();
-        return ResponseEntity.ok(ApiResponse.ok(Map.of("headerName", "X-CSRF-TOKEN", "token", token)));
+        // Cung cấp token CSRF chuẩn từ Spring Security CsrfToken
+        org.springframework.security.web.csrf.CsrfToken token =
+                (org.springframework.security.web.csrf.CsrfToken) request.getAttribute(org.springframework.security.web.csrf.CsrfToken.class.getName());
+        if (token == null) {
+            token = (org.springframework.security.web.csrf.CsrfToken) request.getAttribute("_csrf");
+        }
+        String headerName = token != null ? token.getHeaderName() : "X-CSRF-TOKEN";
+        String tokenVal = token != null ? token.getToken() : "";
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("headerName", headerName, "token", tokenVal)));
     }
 
     @GetMapping("/me")

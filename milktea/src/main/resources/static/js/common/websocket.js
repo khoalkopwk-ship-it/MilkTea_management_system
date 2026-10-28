@@ -84,18 +84,29 @@ const MilkTeaRealtime = (() => {
             subscribe(`/topic/table-sessions/${window.MilkTeaContext.sessionId}`);
         }
 
-        // 2. Topic nhân viên nếu có role
+        // 2. Topic nhân viên theo vai trò và chi nhánh (F09)
         if (window.MilkTeaContext && window.MilkTeaContext.role) {
             const role = window.MilkTeaContext.role;
-            if (role === 'CASHIER' || role === 'ADMIN') {
-                subscribe('/topic/cashier');
-            }
-            if (role === 'KITCHEN' || role === 'ADMIN') {
-                subscribe('/topic/kitchen');
-                subscribe('/topic/stock');
-            }
+            const branchId = window.MilkTeaContext.branchId;
+
             if (role === 'ADMIN') {
                 subscribe('/topic/admin');
+                subscribe('/topic/cashier');
+                subscribe('/topic/kitchen');
+                subscribe('/topic/stock');
+                if (branchId) {
+                    subscribe(`/topic/branches/${branchId}/cashier`);
+                    subscribe(`/topic/branches/${branchId}/kitchen`);
+                    subscribe(`/topic/branches/${branchId}/stock`);
+                }
+            } else if (branchId) {
+                if (role === 'CASHIER' || role === 'MANAGER') {
+                    subscribe(`/topic/branches/${branchId}/cashier`);
+                }
+                if (role === 'KITCHEN' || role === 'MANAGER') {
+                    subscribe(`/topic/branches/${branchId}/kitchen`);
+                    subscribe(`/topic/branches/${branchId}/stock`);
+                }
             }
         }
     }

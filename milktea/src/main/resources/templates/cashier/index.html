@@ -6,7 +6,11 @@
 </head>
 
 <body>
-    <div th:fragment="content" class="container-fluid pos-workspace py-3 px-lg-4">
+    <div th:fragment="content" class="container-fluid pos-workspace py-3 px-lg-4"
+         id="posWorkspace"
+         th:data-role="${actor != null ? actor.role : 'CASHIER'}"
+         th:data-branch-id="${actor != null ? actor.branchId : ''}"
+         th:data-branch-name="${currentBranch != null ? currentBranch.name : ''}">
 
         <link rel="stylesheet" th:href="@{/css/staff-ui.css}">
 
@@ -834,7 +838,7 @@
 
                 <h4>
                     <i class="bi bi-cart3"></i>
-                    Tạo đơn tại quầy / bàn
+                    <span th:text="${currentBranch != null ? currentBranch.name + ' · Tại quầy' : 'Chi nhánh · Tại quầy'}">Chi nhánh Quận 1 · Tại quầy</span>
                 </h4>
 
                 <label class="pos-search">

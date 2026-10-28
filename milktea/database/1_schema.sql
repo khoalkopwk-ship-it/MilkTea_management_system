@@ -4,15 +4,11 @@
 USE master;
 GO
 
--- Đóng mọi kết nối đang chiếm giữ database và xóa sạch để tạo lại từ đầu
-IF DB_ID('milktea') IS NOT NULL
+-- Tạo database milktea nếu chưa tồn tại (An toàn, không phá dữ liệu)
+IF DB_ID('milktea') IS NULL
 BEGIN
-    ALTER DATABASE milktea SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-    DROP DATABASE milktea;
+    CREATE DATABASE milktea;
 END
-GO
-
-CREATE DATABASE milktea;
 GO
 
 USE milktea;

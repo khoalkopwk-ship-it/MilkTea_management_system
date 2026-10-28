@@ -37,7 +37,7 @@ public class ProductFavoriteController {
             @AuthenticationPrincipal CurrentActor principalActor,
             HttpServletRequest request) {
         CurrentActor actor = resolveActor(principalActor, request);
-        return ResponseEntity.ok(ApiResponse.ok(productFavoriteService.toggleFavorite(productId, actor)));
+        return ResponseEntity.ok(ApiResponse.ok(productFavoriteService.removeFavorite(productId, actor)));
     }
 
     @GetMapping

@@ -52,6 +52,8 @@ public class InventoryAdminManagementTest {
     @Mock PreparationBatchItemRepository batchItemRepository;
     @Mock BusinessAuditRepository auditRepository;
     @Mock RealtimeEventPublisher realtimeEventPublisher;
+    @Mock vn.edu.ute.milktea.service.branch.BranchService branchService;
+    @Mock vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository;
 
     @InjectMocks InventoryService inventoryService;
 
@@ -59,9 +61,22 @@ public class InventoryAdminManagementTest {
     private Material rawTea;
     private Material preparedTea;
     private PreparationRecipe teaRecipe;
+    private vn.edu.ute.milktea.entity.branch.Branch centralWarehouse;
 
     @BeforeEach
     void setUp() {
+        centralWarehouse = vn.edu.ute.milktea.entity.branch.Branch.builder()
+                .id(1L)
+                .code("KHOTONG")
+                .name("Kho Hàng Tổng")
+                .status("HOAT_DONG")
+                .build();
+        when(branchService.getOrCreateCentralWarehouse()).thenReturn(centralWarehouse);
+        when(branchRepository.findById(anyLong())).thenReturn(Optional.of(centralWarehouse));
+        when(stockRepository.findByIdWithLock(anyLong(), anyLong(), any(StockLocation.class)))
+                .thenAnswer(inv -> stockRepository.findByIdWithLock((Long) inv.getArgument(1), (StockLocation) inv.getArgument(2)));
+        when(stockRepository.save(any(Stock.class))).thenAnswer(inv -> inv.getArgument(0));
+
         adminUser = Account.builder()
                 .id(1L)
                 .email("admin@milktea.vn")

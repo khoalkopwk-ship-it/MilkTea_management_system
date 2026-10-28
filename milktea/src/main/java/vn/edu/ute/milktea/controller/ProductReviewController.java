@@ -22,6 +22,22 @@ import vn.edu.ute.milktea.service.review.ProductReviewService;
 public class ProductReviewController {
 
     private final ProductReviewService productReviewService;
+    private final vn.edu.ute.milktea.service.media.ProductImageService productImageService;
+
+    @PostMapping(value = "/media/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> uploadReviewMedia(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @AuthenticationPrincipal CurrentActor principalActor,
+            HttpServletRequest request) {
+        CurrentActor actor = resolveActor(principalActor, request);
+        if (actor == null || !actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CUSTOMER)) {
+            throw vn.edu.ute.milktea.common.BusinessException.forbidden(
+                    vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED,
+                    "Chỉ khách hàng mới có thể tải ảnh đánh giá");
+        }
+        String mediaUrl = productImageService.uploadReviewImage(file);
+        return ResponseEntity.ok(ApiResponse.ok(java.util.Map.of("mediaUrl", mediaUrl)));
+    }
 
     @PostMapping
     public ResponseEntity<ApiResponse<ReviewDto.ReviewResponse>> createReview(

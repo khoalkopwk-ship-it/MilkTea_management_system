@@ -90,7 +90,7 @@ class Phase3BranchOperationsTest {
     @Mock private AccountRepository accountRepository;
     @Mock private BusinessAuditRepository auditRepository;
     @Mock private GuestAccessService guestAccessService;
-    @Mock private InventoryService inventoryService;
+    private InventoryService inventoryService;
     @Mock private FixedRecipeService fixedRecipeService;
     @Mock private MaterialRepository materialRepository;
     @Mock private RealtimeEventPublisher realtimeEventPublisher;
@@ -112,6 +112,11 @@ class Phase3BranchOperationsTest {
         branchService = new BranchService(branchRepository, branchProductRepository, productRepository);
         catalogService = new CatalogService(categoryRepository, productRepository, branchProductRepository);
         tableContextService = new TableContextService(tableRepository, sessionRepository, guestAccessService);
+        inventoryService = new InventoryService(
+                stockRepository, stockMovementRepository, materialRepository, accountRepository,
+                null, null, null, null, snapshotRepository, orderItemRepository,
+                recipeRepository, null, null, null, null, auditRepository, realtimeEventPublisher,
+                branchService, branchRepository);
         orderService = new OrderService(
                 tableRepository, sessionRepository, tableSessionService, sessionCartService,
                 cartRepository, productRepository, recipeRepository,
@@ -119,7 +124,7 @@ class Phase3BranchOperationsTest {
                 invoiceRepository, paymentRepository, paymentNoticeRepository, refundRepository,
                 cancellationRepository, settingsRepository, accountRepository, auditRepository,
                 guestAccessService, inventoryService, fixedRecipeService, materialRepository,
-                realtimeEventPublisher, branchRepository, idempotencyService, voucherService
+                realtimeEventPublisher, branchRepository, branchProductRepository, idempotencyService, voucherService
         );
 
         branch1 = Branch.builder().id(1L).code("CN01").name("Chi nhánh Quận 1").status("HOAT_DONG").build();
@@ -201,12 +206,20 @@ class Phase3BranchOperationsTest {
     }
 
     @Test
-    @DisplayName("OrderService: Tạo đơn trực tuyến gán đúng chi nhánh và sinh guest token")
-    void testCreateOnlineOrderSuccess() {
+    @DisplayName("OrderService: Tạo đơn tại quầy COUNTER gán đúng chi nhánh phân công và sinh token")
+    void testCreateCounterOrderSuccess() {
         when(branchRepository.findById(1L)).thenReturn(Optional.of(branch1));
 
         Product product = Product.builder().id(10L).name("Trà Sữa Oolong").size("M").price(BigDecimal.valueOf(35000)).active(true).build();
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+        when(recipeRepository.findByIdProductId(10L)).thenReturn(List.of(
+                vn.edu.ute.milktea.entity.recipe.ProductRecipe.builder()
+                        .id(new vn.edu.ute.milktea.entity.recipe.ProductRecipeId(10L, 1L))
+                        .product(product)
+                        .material(Material.builder().id(1L).name("Trà").build())
+                        .quantity(BigDecimal.valueOf(10))
+                        .build()
+        ));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order o = invocation.getArgument(0);
             o.setId(1001L);
@@ -219,30 +232,49 @@ class Phase3BranchOperationsTest {
             return i;
         });
         when(guestAccessService.issueCounterOrderToken(any(Order.class), anyInt()))
-                .thenReturn(new GuestAccessService.IssuedToken("RAW_ONLINE_TOKEN", "hash", Instant.now().plusSeconds(86400)));
+                .thenReturn(new GuestAccessService.IssuedToken("RAW_COUNTER_TOKEN", "hash", Instant.now().plusSeconds(86400)));
 
-        OrderDto.CreateOnlineOrderRequest req = OrderDto.CreateOnlineOrderRequest.builder()
+        OrderDto.CreateCounterOrderRequest req = OrderDto.CreateCounterOrderRequest.builder()
                 .branchId(1L)
-                .customerName("Nguyễn Văn A")
-                .customerPhone("0901234567")
-                .deliveryAddress("123 Lê Duẩn, Q1")
+                .note("Khách gọi tại quầy mang về")
                 .items(List.of(vn.edu.ute.milktea.dto.CartDto.CartItemRequest.builder().productId(10L).quantity(2).build()))
                 .build();
 
-        CurrentActor customer = CurrentActor.customer(50L, "customer@milktea.vn");
-        OrderDto.OrderResponse response = orderService.createOnlineOrder(req, customer, null);
+        CurrentActor cashier = CurrentActor.builder()
+                .actorType(CurrentActor.ActorType.AUTHENTICATED)
+                .accountId(20L)
+                .email("cashier1@milktea.vn")
+                .role(Role.CASHIER)
+                .branchId(1L)
+                .assignedBranchIds(java.util.Set.of(1L))
+                .build();
+        OrderDto.OrderResponse response = orderService.createCounterOrder(req, cashier, null);
 
         assertNotNull(response);
         assertEquals(1001L, response.getOrderId());
         assertEquals(1L, response.getBranchId());
         assertEquals("Chi nhánh Quận 1", response.getBranchName());
-        assertEquals(OrderSource.ONLINE, response.getSource());
-        assertEquals(OrderStatus.CHO_XAC_NHAN, response.getStatus());
-        assertEquals("RAW_ONLINE_TOKEN", response.getGuestCounterToken());
+        assertEquals(OrderSource.COUNTER, response.getSource());
+        assertEquals(OrderStatus.CHO_THANH_TOAN, response.getStatus());
+        assertEquals("RAW_COUNTER_TOKEN", response.getGuestCounterToken());
 
         // Kiểm tra sự kiện realtime được gửi đến kênh chi nhánh
         verify(realtimeEventPublisher, atLeastOnce()).publishAfterCommit(
                 eq("/topic/branches/1/cashier"), eq("ORDER_CREATED"), eq("1001"), isNull(), anyString(), anyMap());
+    }
+
+    @Test
+    @DisplayName("OrderService: Khách hàng/Guest không được tự tạo đơn COUNTER")
+    void testCreateCounterOrder_RejectsCustomerRole() {
+        OrderDto.CreateCounterOrderRequest req = OrderDto.CreateCounterOrderRequest.builder()
+                .branchId(1L)
+                .items(List.of(vn.edu.ute.milktea.dto.CartDto.CartItemRequest.builder().productId(10L).quantity(1).build()))
+                .build();
+
+        CurrentActor customer = CurrentActor.customer(50L, "customer@milktea.vn");
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> orderService.createCounterOrder(req, customer, null));
+        assertEquals(ErrorCode.ACCESS_DENIED, ex.getErrorCode());
     }
 
     @Test
@@ -275,7 +307,8 @@ class Phase3BranchOperationsTest {
         InventoryService invService = new InventoryService(
                 stockRepository, stockMovementRepository, materialRepository, accountRepository,
                 null, null, null, null, snapshotRepository, orderItemRepository,
-                recipeRepository, null, null, null, null, auditRepository, realtimeEventPublisher);
+                recipeRepository, null, null, null, null, auditRepository, realtimeEventPublisher,
+                branchService, branchRepository);
 
         Material mat = Material.builder().id(100L).name("Cốt Trà Oolong").type(vn.edu.ute.milktea.entity.inventory.MaterialType.SOCHE).unit("ml").build();
         Order orderBranch2 = Order.builder().id(999L).branch(branch2).build();

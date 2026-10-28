@@ -51,6 +51,19 @@ public class Order {
     @Column(name = "GhiChu", length = 500)
     private String note;
 
+    @Column(name = "NguoiNhan", length = 100)
+    private String receiverName;
+
+    @Column(name = "SoDienThoaiNhan", length = 20)
+    private String receiverPhone;
+
+    @Column(name = "DiaChiGiao", length = 500)
+    private String deliveryAddress;
+
+    @Column(name = "HinhThucNhan", length = 20)
+    @Builder.Default
+    private String deliveryType = "PICKUP"; // PICKUP, DELIVERY
+
     @Column(name = "TaoLuc", nullable = false)
     private Instant createdAt;
 

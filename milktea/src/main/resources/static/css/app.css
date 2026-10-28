@@ -287,32 +287,68 @@ h4,
 }
 
 .admin-sidebar {
-    background: white;
-    border-right: 1px solid var(--border-color);
-    min-height: calc(100vh - 60px);
+    background: #fff !important;
+    border: 1px solid #E8DED5 !important;
+    border-radius: 18px !important;
+    box-shadow: 0 4px 18px rgba(96, 71, 53, .045) !important;
+    padding: 16px !important;
+    min-height: calc(100vh - 120px);
 }
 
 .admin-sidebar-column {
-    width: 300px;
-    flex: 0 0 300px;
+    width: 280px;
+    flex: 0 0 280px;
 }
 
 .admin-content-column {
     min-width: 0;
 }
 
+.admin-sidebar h6 {
+    color: #786F68 !important;
+    font-size: 11px !important;
+    letter-spacing: .07em;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
 .admin-nav-link {
-    padding: 12px 18px;
-    border-radius: var(--radius-sm);
-    color: var(--dark-color);
+    padding: 11px 16px !important;
+    border-radius: 10px !important;
+    color: #775D4A !important;
+    font-size: 13.5px !important;
     font-weight: 500;
     display: flex;
     align-items: center;
     gap: 12px;
     text-decoration: none;
-    transition: all 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     margin-bottom: 4px;
     white-space: nowrap;
+}
+
+.admin-nav-link i {
+    color: #b86b35;
+    font-size: 16px;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.admin-nav-link:hover {
+    background-color: #fbeee4 !important;
+    color: #b86b35 !important;
+    font-weight: 600;
+    transform: translateX(4px);
+}
+
+.admin-nav-link:hover i {
+    transform: scale(1.15);
+}
+
+.admin-nav-link.active {
+    background-color: #fbeee4 !important;
+    color: #b86b35 !important;
+    font-weight: 700 !important;
 }
 
 @media (max-width: 991.98px) {
@@ -320,13 +356,9 @@ h4,
         width: 100%;
         flex: 0 0 100%;
     }
-}
-
-.admin-nav-link:hover,
-.admin-nav-link.active {
-    background-color: var(--primary-light);
-    color: var(--primary-color);
-    font-weight: 600;
+    .admin-sidebar {
+        min-height: auto;
+    }
 }
 
 .empty-state {
@@ -563,3 +595,75 @@ select,
 textarea {
     font-family: inherit;
 }
+
+/* ==========================================================================
+   UNIFIED ADMIN SIDEBAR SYSTEM (Consistency & Smooth Animation)
+   ========================================================================== */
+.admin-sidebar-column {
+    width: 280px !important;
+    flex: 0 0 280px !important;
+    max-width: 280px !important;
+}
+
+.admin-sidebar {
+    background: #ffffff !important;
+    border: 1px solid #E8DED5 !important;
+    border-radius: 18px !important;
+    padding: 16px !important;
+    box-shadow: 0 4px 18px rgba(96, 71, 53, .045) !important;
+}
+
+.admin-sidebar h6 {
+    color: #786F68 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: .08em !important;
+    text-transform: uppercase !important;
+    margin-bottom: 12px !important;
+    padding: 0 8px !important;
+}
+
+.admin-nav-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 11px 16px !important;
+    margin-bottom: 4px !important;
+    border-radius: 10px !important;
+    color: #775D4A !important;
+    font-size: 13.5px !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+    white-space: nowrap !important;
+    background: transparent !important;
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.admin-nav-link i {
+    font-size: 15px !important;
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.admin-nav-link:hover {
+    background: #FFF8F2 !important;
+    color: #b86b35 !important;
+    font-weight: 600 !important;
+    transform: translateX(4px) !important;
+}
+
+.admin-nav-link:hover i {
+    transform: scale(1.12) !important;
+}
+
+.admin-nav-link.active {
+    background: #b86b35 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 12px rgba(184, 107, 53, 0.25) !important;
+    transform: none !important;
+}
+
+.admin-nav-link.active i {
+    color: #ffffff !important;
+    transform: none !important;
+}

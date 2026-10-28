@@ -42,4 +42,12 @@ public class Branch {
     public boolean isActive() {
         return "HOAT_DONG".equalsIgnoreCase(status);
     }
+
+    public String getIdentifier() {
+        return code;
+    }
+
+    public boolean getIsCentral() {
+        return "KHOTONG".equalsIgnoreCase(code);
+    }
 }

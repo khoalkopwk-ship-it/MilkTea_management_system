@@ -17,7 +17,7 @@ public class DiningTable {
     @Column(name = "MaBan")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "MaCN")
     private vn.edu.ute.milktea.entity.branch.Branch branch;
 

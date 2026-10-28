@@ -101,7 +101,11 @@ public class VoucherService {
                     "Đơn hàng chưa đạt giá trị tối thiểu " + minOrderFormatted + "đ để áp dụng voucher này");
         }
 
-        if (accountId != null && voucher.getUsageLimitPerCustomer() != null) {
+        if (voucher.getUsageLimitPerCustomer() != null) {
+            if (accountId == null) {
+                throw BusinessException.badRequest(ErrorCode.VOUCHER_USER_LIMIT_EXCEEDED,
+                        "Voucher này yêu cầu đăng nhập tài khoản để áp dụng giới hạn lượt sử dụng theo khách hàng");
+            }
             long usedByUser = voucherUsageHistoryRepository.countByVoucherIdAndAccountIdAndStatus(
                     voucher.getId(), accountId, VoucherUsageStatus.DA_DUNG);
             if (usedByUser >= voucher.getUsageLimitPerCustomer()) {
@@ -149,11 +153,15 @@ public class VoucherService {
             if (subtotal != null && subtotal.compareTo(v.getMinOrderValue()) < 0) {
                 canApply = false;
             }
-            if (accountId != null && v.getUsageLimitPerCustomer() != null) {
-                long userUses = voucherUsageHistoryRepository.countByVoucherIdAndAccountIdAndStatus(
-                        v.getId(), accountId, VoucherUsageStatus.DA_DUNG);
-                if (userUses >= v.getUsageLimitPerCustomer()) {
+            if (v.getUsageLimitPerCustomer() != null) {
+                if (accountId == null) {
                     canApply = false;
+                } else {
+                    long userUses = voucherUsageHistoryRepository.countByVoucherIdAndAccountIdAndStatus(
+                            v.getId(), accountId, VoucherUsageStatus.DA_DUNG);
+                    if (userUses >= v.getUsageLimitPerCustomer()) {
+                        canApply = false;
+                    }
                 }
             }
 
@@ -175,12 +183,31 @@ public class VoucherService {
         Voucher voucher = voucherRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VOUCHER_NOT_FOUND, "Không tìm thấy voucher: " + code));
 
+        // Nếu đơn hàng đã có voucher trước đó và mã mới khác mã cũ, giải phóng voucher cũ
+        if (order.getVoucher() != null) {
+            if (order.getVoucher().getId().equals(voucher.getId())) {
+                log.info("Voucher {} đã được áp dụng cho đơn #{}", code, order.getId());
+                return;
+            }
+            releaseVoucherFromOrder(order, "Đổi voucher mới");
+        }
+
         validateVoucherEligibility(voucher, branchId, invoice.getSubtotal(), accountId);
 
         // Concurrency control (AT-05): Atomic update prevents race conditions on last remaining slot
         int updatedRows = voucherRepository.incrementUsageCount(voucher.getId());
         if (updatedRows == 0) {
             throw BusinessException.conflict(ErrorCode.VOUCHER_EXHAUSTED, "Voucher đã hết lượt sử dụng do vừa có khách hàng khác sử dụng");
+        }
+
+        if (voucher.getUsageLimitPerCustomer() != null && accountId != null) {
+            long usedByUser = voucherUsageHistoryRepository.countByVoucherIdAndAccountIdAndStatus(
+                    voucher.getId(), accountId, VoucherUsageStatus.DA_DUNG);
+            if (usedByUser >= voucher.getUsageLimitPerCustomer()) {
+                voucherRepository.decrementUsageCount(voucher.getId());
+                throw BusinessException.badRequest(ErrorCode.VOUCHER_USER_LIMIT_EXCEEDED,
+                        "Bạn đã sử dụng hết số lần quy định cho voucher này (" + voucher.getUsageLimitPerCustomer() + " lần)");
+            }
         }
 
         BigDecimal discountAmount = calculateDiscount(voucher, invoice.getSubtotal());

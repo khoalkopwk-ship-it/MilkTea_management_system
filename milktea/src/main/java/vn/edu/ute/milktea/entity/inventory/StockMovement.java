@@ -22,6 +22,10 @@ public class StockMovement {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MaCN", nullable = false)
+    private vn.edu.ute.milktea.entity.branch.Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "MaNL", nullable = false)
     private Material material;
 

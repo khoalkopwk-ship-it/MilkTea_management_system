@@ -52,7 +52,7 @@ public class AdminVoucherController {
         return ResponseEntity.ok(ApiResponse.ok(voucherService.updateVoucher(id, request)));
     }
 
-    @PatchMapping("/{id}/toggle-status")
+    @RequestMapping(value = "/{id}/toggle-status", method = {RequestMethod.PATCH, RequestMethod.POST})
     public ResponseEntity<ApiResponse<Void>> toggleVoucherStatus(@PathVariable("id") Long id) {
         voucherService.toggleVoucherStatus(id);
         return ResponseEntity.ok(ApiResponse.ok(null));

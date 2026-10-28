@@ -96,7 +96,10 @@ Chuyển đổi hệ thống MilkTea một quán hiện có thành hệ thống 
 - [x] **Kiểm thử tự động toàn diện**:
   - `Phase5VoucherAndDiscountsTest.java` với 18 test cases bao phủ toàn bộ điều kiện voucher, AT-05 concurrency race condition, hoàn trả khi hủy đơn, lọc chi nhánh và Admin CRUD.
 
-### Giai đoạn 6: Nghiệm thu & Bàn giao (Acceptance & Delivery)
-- [ ] Chạy bộ kiểm thử hồi quy và kiểm thử tích hợp trên database SQL Server.
-- [ ] Đối soát báo cáo chuỗi và báo cáo từng cơ sở.
-- [ ] Hoàn thiện hướng dẫn vận hành, demo và tài liệu bàn giao.
+### Giai đoạn 6: Nghiệm thu & Bàn giao (Acceptance & Delivery) — HOÀN TẤT
+- [x] Chạy bộ kiểm thử hồi quy và kiểm thử tích hợp trên database SQL Server (112/112 tests PASS).
+- [x] Đối soát báo cáo chuỗi và báo cáo từng cơ sở: `Received(Chain) = sum(Received(CN_i))`, `Refunded(Chain) = sum(Refunded(CN_i))`, `NetReceived(Chain) = sum(NetReceived(CN_i))`, `CompletedOrderValue(Chain) = sum(CompletedOrderValue(CN_i))`.
+- [x] Báo cáo Dashboard & Doanh thu hỗ trợ bộ lọc chi nhánh trực quan (`reports.html`, `dashboard.js`, `ReportService`, `ReportController`).
+- [x] Phân quyền chuẩn hóa: MANAGER quản lý nghiệp vụ cơ sở, không trùng quyền cấu hình hệ thống với ADMIN.
+- [x] Hoàn thiện hướng dẫn vận hành, demo và tài liệu bàn giao ([docs/OPERATIONS_AND_HANDOFF_GUIDE.md](docs/OPERATIONS_AND_HANDOFF_GUIDE.md)).
+

@@ -10,7 +10,7 @@
 | **Giai đoạn 3** | Vận hành chi nhánh (QR, Đơn, Bếp, Thu ngân, Realtime) | **HOÀN TẤT** | Menu/QR theo chi nhánh, đơn online, thu ngân/bếp scoped chi nhánh, trừ kho Bếp theo chi nhánh, realtime topic theo chi nhánh. 70/70 tests PASS. |
 | **Giai đoạn 4** | Trải nghiệm khách hàng (Chi tiết món, Tìm kiếm/Lọc, Top 20, Yêu thích, Đánh giá) | **HOÀN TẤT** | Đánh giá gắn đơn hoàn thành + đã thanh toán, kiểm duyệt theo chi nhánh, wishlist tài khoản, tìm kiếm & lọc phân trang, 4 danh sách Top 20. 87/87 tests PASS. |
 | **Giai đoạn 5** | Voucher & Giảm giá | **HOÀN TẤT** | Áp dụng voucher an toàn đồng thời (AT-05), migration V3, snapshot HoaDon, hoàn trả khi hủy đơn, giao diện giỏ hàng và 18 test cases. 105/105 tests PASS. |
-| **Giai đoạn 6** | Nghiệm thu & Bàn giao | **CHỜ BẮT ĐẦU** | Hồi quy toàn bộ ca kiểm thử, đối soát chuỗi và cơ sở. |
+| **Giai đoạn 6** | Nghiệm thu & Bàn giao | **HOÀN TẤT** | Bộ kiểm thử chấp nhận AT-01 đến AT-06 hoàn tất (112/112 tests PASS). Báo cáo tài chính đối soát chính xác giữa cấp chuỗi và từng cơ sở. Hoàn tất tài liệu vận hành và bàn giao. |
 
 ---
 
@@ -147,10 +147,245 @@
   - Admin CRUD và bật/tắt kích hoạt voucher.
 - Toàn bộ test suite dự án: **105/105 tests PASS (BUILD SUCCESS)**.
 
+### 5. Giao diện Quản trị Khuyến mãi & Voucher (Giai đoạn 5 hoàn thiện):
+- **Trang Quản lý Khuyến mãi & Voucher Admin (`/admin/vouchers`)**:
+  - Tích hợp vào thanh điều hướng Admin (`templates/admin/vouchers.html`) và đồng bộ sidebar trên toàn bộ các trang quản trị. Đổi tên mục menu thành **Cài đặt** (thay vì "Cài đặt & giảm giá").
+  - Gộp chung cấu hình **Giảm giá cho tất cả hóa đơn trong cửa hàng** vào trang Khuyến mãi & Voucher, loại bỏ phần cấu hình trùng lặp trong trang `settings.html`.
+  - **Loại bỏ hoàn toàn khung kiểm thử (Live Sandbox)** và mã nguồn kiểm thử nhanh theo yêu cầu để giữ giao diện quản trị tinh gọn, chuẩn nghiệp vụ sản xuất.
+  - Thẻ thống kê trực quan: Tổng số voucher, đang kích hoạt, tổng lượt đã dùng, voucher hết hạn.
+  - Quản lý danh sách voucher toàn chuỗi: Tìm kiếm, lọc trạng thái, bật/tắt (toggle active qua PATCH/POST).
+  - **Bổ sung hành động Chỉnh sửa (Edit) Voucher đã tạo**: Mở modal sửa voucher (`PUT /api/v1/admin/vouchers/{id}`), cho phép cập nhật tên, mô tả, loại giảm giá, giá trị giảm, mức giảm tối đa, đơn tối thiểu, tổng lượt dùng, giới hạn mỗi khách, thời hạn và phạm vi chi nhánh.
+  - **Modal tạo mới Voucher hoàn chỉnh**: Đầy đủ trường bắt buộc `Tên voucher`, `Mã voucher`, chuẩn hóa enum `PERCENT`/`FIXED_AMOUNT`, ràng buộc hạn mức và chi nhánh rõ ràng.
+  - **Xem Lịch sử sử dụng Voucher**: Hiển thị chi tiết khách hàng (họ tên, email), mã đơn hàng, chi nhánh, số tiền chiết khấu và thời điểm áp dụng (đã seed và hiển thị 10 lượt sử dụng cho voucher `HETLUOT` và 3 lượt cho `CHAOMUNG`).
+- **Phân quyền Role MANAGER & Quản lý Chi nhánh**:
+  - Hỗ trợ đầy đủ quyền truy cập toàn bộ các trang Admin (`/admin/**`), Quầy thu ngân (`/cashier`), Bếp (`/kitchen`) cho tài khoản Quản lý cơ sở (`Role.MANAGER`).
+  - Danh sách tài khoản demo Quản lý:
+    - Quản lý Cơ sở 01: `manager1@milktea.vn` (Mật khẩu: `123456`) — Chi nhánh 1 Võ Văn Ngân.
+    - Quản lý Cơ sở 02: `manager2@milktea.vn` (Mật khẩu: `123456`) — Chi nhánh 2 Nguyễn Huệ.
+    - Quản trị viên hệ thống: `admin@milktea.vn` (Mật khẩu: `123456`).
+
+### 6. Cải tiến Menu & Tab Yêu thích (Wishlist) Thống nhất:
+- **Bỏ lọc "Mới nhất"**: Loại bỏ nút và tham số lọc `newest` trên menu và backend, tinh gọn bộ lọc sản phẩm nổi bật.
+- **Tính toán "Yêu thích nhất" (Most Favorited) theo tài khoản duy nhất**:
+  - 1 tài khoản chỉ được tính 1 lượt thích cho mỗi tên món nước (không phân biệt size).
+  - Bảng xếp hạng món "Yêu thích nhất" sắp xếp theo số lượng tài khoản đã thích từ cao xuống thấp thông qua `findMostFavoritedProductNames`.
+  - Backend mở rộng `ProductFavoriteRepository` và `ProductFavoriteService` hỗ trợ kiểm tra và toggle yêu thích đồng bộ theo tên món.
+- **Menu chỉ hiển thị Size bé nhất và Giá tương ứng**:
+  - Danh mục Menu tự động nhóm các biến thể cùng tên món và chọn biến thể có giá thấp nhất (size bé nhất) để hiển thị trên thẻ sản phẩm.
+  - Khi khách hàng bấm "Chọn" (mở modal) hoặc vào trang chi tiết món (`/products/{id}`), hệ thống hiển thị đầy đủ các size còn lại kèm giá tiền tương ứng để tùy chọn.
+- **Đồng bộ hóa giao diện Tab Yêu thích (`wishlist.html`)**:
+  - Tái thiết kế toàn bộ `wishlist.html` theo chuẩn thiết kế của `menu.html`: thẻ sản phẩm, huy hiệu phân loại, đánh giá sao, hiển thị size bé nhất và giá tiền.
+  - Đầy đủ thao tác tương tự thẻ menu: Bấm "Chọn" mở modal tùy biến topping/size để thêm giỏ hàng, bấm vào tên/ảnh mở trang chi tiết món.
+  - Bổ sung nút trái tim màu đỏ trên góc thẻ để xóa nhanh món khỏi danh sách yêu thích với hiệu ứng mượt mà (gọi API `DELETE /api/v1/favorites/{productId}`).
+
 ---
 
-## 8. Kế hoạch tiếp theo: Giai đoạn 6 (Nghiệm thu & Bàn giao)
-1. **Kiểm thử hồi quy & Đối soát**: Chạy toàn bộ luồng tích hợp trên SQL Server, đối soát doanh thu chi nhánh và toàn chuỗi.
-2. **Kiểm tra báo cáo**: Báo cáo doanh thu, sản phẩm bán chạy, tồn kho và chiết khấu theo từng chi nhánh.
-3. **Hoàn thiện tài liệu bàn giao**: Hướng dẫn vận hành cho Quản lý chi nhánh, Thu ngân, Bếp và Quản trị viên hệ thống.
+## 8. Checkpoint Chi tiết Giai đoạn 6 — Nghiệm thu & Bàn giao (HOÀN TẤT)
+
+### 1. Báo cáo Tài chính & Vận hành Đa Chi nhánh:
+- **Độc lập và Đối soát Doanh thu**:
+  - `ReportService`: Nâng cấp toàn bộ các báo cáo tài chính và dashboard hỗ trợ tham số lọc `branchId` (`null` = toàn chuỗi hệ thống, khác `null` = chi nhánh cụ thể).
+  - Đối soát số học hoàn hảo:
+    $$\text{Received}(\text{Chain}) = \sum \text{Received}(\text{Branch}_i)$$
+    $$\text{Refunded}(\text{Chain}) = \sum \text{Refunded}(\text{Branch}_i)$$
+    $$\text{NetReceived}(\text{Chain}) = \sum \text{NetReceived}(\text{Branch}_i)$$
+    $$\text{CompletedOrderValue}(\text{Chain}) = \sum \text{CompletedOrderValue}(\text{Branch}_i)$$
+  - Phân tách dữ liệu: Tiền thanh toán, hoàn tiền, số đơn hoàn thành, đơn chưa thanh toán, chi phí hao hụt nguyên liệu theo từng chi nhánh.
+- **Top Sản phẩm Bán chạy & Cảnh báo Tồn kho theo Chi nhánh**:
+  - `findTopSellingProducts`: Thống kê các món bán chạy nhất của từng cơ sở dựa trên đơn hoàn thành và đã thanh toán tại chi nhánh đó.
+  - Cảnh báo tồn kho (`DashboardAlerts`): Tồn kho nguyên liệu BEP/KHO của chi nhánh nào chạm ngưỡng hoặc cạn kiệt chỉ hiển thị trong phạm vi chi nhánh đó, không gây cảnh báo giả cho các cơ sở khác.
+- **Giao diện Quản trị Báo cáo (`reports.html`, `dashboard.js`)**:
+  - Bổ sung thanh chọn chi nhánh động (`<select id="filterBranch">`) nạp từ `/api/v1/branches`.
+  - Hiển thị huy hiệu phạm vi hiện tại (`#dashboardBranchBadge`): `Toàn chuỗi hệ thống` hoặc tên chi nhánh cụ thể (ví dụ: `MilkTea Quán 01 - Võ Văn Ngân`).
+  - Tự động đồng bộ bộ lọc chi nhánh vào mọi biểu đồ và thẻ thống kê KPI.
+
+### 2. Bộ Kiểm thử Chấp nhận & Đối soát Toàn vẹn (AT-01 đến AT-06):
+- Tạo mới [Phase6AcceptanceAndReconciliationTest.java](file:///h:/UTE/Nam_3/MilkTea_management_system/milktea/src/test/java/vn/edu/ute/milktea/service/Phase6AcceptanceAndReconciliationTest.java) gồm 7 ca kiểm thử chuyên sâu:
+  - **AT-01**: Phân quyền & cô lập đa chi nhánh — Quản lý cơ sở 01 bị chặn 403 khi thao tác chéo sang cơ sở 02; Admin có toàn quyền.
+  - **AT-02**: Đơn trực tuyến & Đơn bàn mang đúng ngữ cảnh chi nhánh cơ sở, đơn trực tuyến không bị ép buộc mở phiên bàn.
+  - **AT-03**: Kho đa chi nhánh độc lập — Khóa phức hợp `(MaCN, MaNL, ViTri)` hoàn toàn tách biệt giữa các cơ sở.
+  - **AT-04**: Trải nghiệm khách hàng — Top sản phẩm bán chạy lọc độc lập theo từng chi nhánh.
+  - **AT-05**: Cảnh báo tồn kho theo chi nhánh — Cơ sở hết hàng không làm sai lệch báo cáo cơ sở khác.
+  - **AT-06**: Đối soát số học tài chính — Doanh thu chuỗi bằng chính xác tổng doanh thu các chi nhánh thành phần; Dashboard trả về đúng tên chi nhánh và phạm vi.
+- Kết quả chạy toàn bộ test suite hệ thống: **112/112 tests PASS (BUILD SUCCESS)**, không có bất kỳ regression nào.
+
+### 3. Phân định Quyền hạn Role Chuẩn hóa:
+- **Role ADMIN**: Quản trị viên hệ thống toàn quyền, phụ trách cấu hình cửa hàng, chiết khấu toàn hệ thống, quản lý danh sách chi nhánh và nhân sự.
+- **Role MANAGER**: Quản lý chi nhánh tập trung vào vận hành cơ sở (phục vụ món tại chi nhánh, xem kho, duyệt đánh giá của chi nhánh, hỗ trợ quầy thu ngân và bếp), không can thiệp vào cấu hình hệ thống toàn chuỗi.
+- Đã gỡ bỏ banner/button giảm giá trùng lặp trong trang `settings.html` và thống nhất quản lý tại `vouchers.html`.
+
+### 4. Tài liệu Vận hành & Bàn giao Hệ thống:
+- Đã biên soạn đầy đủ tài liệu: [docs/OPERATIONS_AND_HANDOFF_GUIDE.md](docs/OPERATIONS_AND_HANDOFF_GUIDE.md).
+- Cung cấp ma trận tài khoản demo (Admin, Manager CN01, Manager CN02, Cashier, Kitchen, Customer).
+- Hướng dẫn quy trình vận hành từ đầu đến cuối: Quét QR đặt món, Bếp nhận & chế biến đơn, Thu ngân thanh toán & đóng phiên, Quản trị viên đối soát báo cáo doanh thu chuỗi vs cơ sở.
+
+---
+
+## 9. Cấu hình Chuẩn hóa Role MANAGER & Phân quyền Chi nhánh Tuyệt đối
+
+### 1. Nguyên tắc Phân quyền Role MANAGER:
+- **Phạm vi hoạt động**: Quản lý như một Admin nhưng **chỉ duy nhất trong 1 cửa hàng / chi nhánh** mà Manager được phân công quản lý (`actor.getBranchId()`).
+- **Backend Enforced**: Mọi truy vấn, cập nhật dữ liệu đều lấy trực tiếp từ `CurrentActor.getBranchId()`. Không tin cậy bất kỳ `branchId` nào do client gửi lên.
+
+### 2. Các Tab & Tính năng Bị Cấm Tuyệt đối (Forbidden):
+- **Cài đặt hệ thống (`/admin/settings`)**: Cấm truy cập cả ở mức URL Security (`hasRole('ADMIN')`), Controller redirect về `/admin`, và ẩn khỏi thanh Sidebar.
+- **Khuyến mãi & Voucher (`/admin/vouchers`)**: Cấm truy cập cả ở mức Security, Controller redirect về `/admin`, và ẩn khỏi thanh Sidebar.
+
+### 3. Các Tab & Tính năng Được Quyền Thực thi:
+1. **Quản lý QR bàn của chi nhánh (`/admin/tables`)**:
+   - Chỉ hiển thị, tạo mới, cập nhật, xóa và lấy mã QR cho các bàn thuộc chi nhánh mình quản lý (`findByBranchIdOrderByIdAsc`). Chặn 403 nếu truy cập bàn của chi nhánh khác.
+2. **Báo cáo doanh thu của chi nhánh (`/admin/reports`)**:
+   - Tự động cố định và khóa chọn chi nhánh của Manager, hiển thị dữ liệu doanh thu, đơn hàng, top bán chạy và tồn kho chỉ thuộc chi nhánh mình.
+3. **Quản lý kho của chi nhánh (`/admin/inventory`)**:
+   - Xem tồn kho, thẻ kho biến động (`StockMovement`), kiểm kê cuối ca (`ShiftSettlement`), điều chỉnh tồn, xuất hủy, nhập kho raw material scoped độc lập theo chi nhánh của mình.
+4. **Chứng từ của chi nhánh (`/admin/documents`)**:
+   - Hóa đơn thanh toán, yêu cầu hủy đơn, duyệt hoàn tiền (`RefundRequest`) được lọc và duyệt độc lập theo chi nhánh.
+5. **Tài khoản nhân viên của chi nhánh (`/admin/staff`)**:
+   - Manager có quyền cao nhất đối với chi nhánh mình quản lý: xem danh sách, tạo mới, sửa, bật/tắt tài khoản nhân viên của cơ sở mình.
+   - **Ràng buộc an toàn**: Manager chỉ được tạo và quản lý tài khoản vai trò `CASHIER` (Thu ngân) hoặc `KITCHEN` (Bếp). Tuyệt đối không thể tạo tài khoản `ADMIN` hay can thiệp nhân viên chi nhánh khác.
+6. **Quản lý đơn hàng của chi nhánh (`/admin/orders`)**:
+   - Quản lý và theo dõi toàn bộ danh sách đơn hàng thuộc chi nhánh mình.
+7. **Món & Danh mục (`/admin/catalog`)**:
+   - **Món uống**: Không có quyền thêm mới món, xóa món, sửa tên, sửa size, sửa giá bán, đổi ảnh Cloudinary hay chỉnh sửa định mức công thức (bị chặn 403 tại API và ẩn trên giao diện).
+   - **Quyền duy nhất đối với Món**: Được quyền bật/tắt trạng thái món (Đang bán / Ngừng bán) áp dụng riêng cho chi nhánh của mình thông qua `BranchProduct` (`POST /api/v1/admin/products/{id}/toggle-status` -> `BranchService.updateProductAvailability`).
+   - **Danh mục**: Manager chỉ được quyền xem (Chỉ xem), tuyệt đối không được xóa hay tạo mới danh mục món.
+8. **Đăng nhập & Điều hướng Navbar**:
+   - Đăng nhập với role `MANAGER`: Hệ thống tự động chuyển hướng thẳng vào trang quản trị cơ sở `/admin` (thay vì trang khách hoặc trang khác).
+   - Brand logo và menu navigation trên header hiển thị huy hiệu `Quản lý cơ sở` và trỏ trực tiếp đến `/admin`.
+
+### 4. Kiểm thử Tự động:
+- Tạo mới [ManagerRolePermissionsTest.java](file:///h:/UTE/Nam_3/MilkTea_management_system/milktea/src/test/java/vn/edu/ute/milktea/service/ManagerRolePermissionsTest.java) gồm 6 ca kiểm thử chuyên biệt.
+- Toàn bộ test suite dự án: **125/125 tests PASS (BUILD SUCCESS)**, 0 failures, 0 errors, 0 skipped.
+
+---
+
+## Checkpoint: Kho Hàng Tổng (Central Warehouse), Phân định Quản trị Toàn chuỗi & Sửa lỗi Định mức
+
+### 1. Kho Hàng Tổng (`KHOTONG`) & Nhập kho Chi nhánh 2 chế độ:
+- Khởi tạo Kho Hàng Tổng trung tâm (`KHOTONG`) qua migration `V4__central_warehouse.sql` và `BranchService.getOrCreateCentralWarehouse()`.
+- **Nhập Kho Tổng từ NCC (Dành cho Admin)**: Đầy đủ thông tin nhà cung cấp, đơn giá nhập, số lượng, lý do, tính giá vốn bình quân gia quyền (`costPrice`) và tăng tồn kho Kho Tổng.
+- **Nhập Kho Chi nhánh (Dành cho Chi nhánh)**: Đơn giản hóa, lấy nguyên liệu từ Kho Tổng. Chi nhánh chỉ cần chọn: Nguyên liệu, Số lượng, Lý do.
+- **Ràng buộc cung ứng & Kế thừa giá vốn**:
+  - Tự động kiểm tra tồn kho tại Kho Tổng. Nếu Kho Tổng không đủ hàng, ném ngoại lệ rõ ràng bằng tiếng Việt (báo chính xác số lượng còn tồn vs số lượng chi nhánh yêu cầu).
+  - Tự động giảm tồn kho Kho Tổng với `StockMovementType.XUAT_CHUYEN`.
+  - Tự động tăng tồn kho Chi nhánh với `StockMovementType.NHAP` và kế thừa chính xác đơn giá vốn bình quân từ Kho Tổng.
+
+### 2. Phân định Quyền hạn Admin Toàn Chuỗi vs Quản lý Chi nhánh (Role MANAGER):
+- **Phân tách Sidebar**:
+  - Ẩn mục "Sơ đồ bàn & QR" (`/admin/tables`) và "Quản lý đơn hàng" (`/admin/orders`) đối với vai trò `ADMIN` (do đây là nghiệp vụ đặc thù của từng chi nhánh do Manager điều hành).
+  - Vai trò `MANAGER` tiếp tục quản lý bàn và đơn hàng trong phạm vi chi nhánh của mình.
+  - Khi Admin truy cập trực tiếp URL `/admin/tables` hoặc `/admin/orders`, hệ thống tự động redirect về `/admin/reports`.
+- **Bộ lọc Chi nhánh / Toàn chuỗi**:
+  - Hỗ trợ xem báo cáo doanh thu toàn chuỗi (`Toàn chuỗi hệ thống`) khi không chọn chi nhánh (`branchId == null`).
+  - Tích hợp bộ lọc Chi nhánh xuyên suốt 5 màn hình quản trị của Admin: Báo cáo (`/admin/reports`), Kho hàng (`/admin/inventory`), Chứng từ (`/admin/documents`), Nhân viên (`/admin/staff`), Món & Danh mục (`/admin/catalog`).
+- **Giới hạn nghiệp vụ kho đối với Manager**:
+  - Manager không được phép chỉnh sửa đơn giá vốn (`costPrice` / `averageImportPrice`) và không được đổi tên nguyên liệu (chặn 403 tại backend và vô hiệu hóa input tại frontend).
+  - Manager không được phép xóa nguyên liệu (nút xóa bị ẩn và API trả 403 `ACCESS_DENIED`).
+
+### 3. Sửa lỗi Định mức Sơ chế & Chặn Manager truy cập:
+- Khắc phục triệt để lỗi Hibernate composite primary key collision (`PreparationRecipeItemId`) khi cập nhật định mức sơ chế bằng cách bổ sung `preparationRecipeItemRepository.flush()` ngay sau `deleteByIdRecipeId(id)`.
+- Cấu hình định mức sơ chế là nghiệp vụ toàn chuỗi chỉ dành riêng cho Quản trị viên (`ADMIN`).
+- Chặn 403 đối với `MANAGER` trên toàn bộ các endpoint định mức sơ chế (`listPreparationRecipes`, `getPreparationRecipe`, `createPreparationRecipe`, `updatePreparationRecipe`, `deletePreparationRecipe`) và ẩn tab trên giao diện.
+
+### 4. Đồng bộ Sidebar & Hiệu ứng Chuyển tiếp mượt mà:
+- Chuẩn hóa layout sidebar rộng cố định 280px (`.admin-sidebar-column`), cỡ chữ 13.5px (`font-size: 13.5px !important`), khoảng đệm 11px 16px, hiệu ứng hover trượt nhẹ sang phải (`transform: translateX(4px)` với `cubic-bezier(0.4, 0, 0.2, 1)`), loại bỏ hoàn toàn hiện tượng giật cục hay thay đổi kích thước khi chuyển giữa tab Khuyến mãi & Voucher (`/admin/vouchers`) và các tab khác.
+
+### 5. Kết quả Kiểm thử:
+- Bổ sung [CentralWarehouseAndAdminRoleTest.java](file:///h:/UTE/Nam_3/MilkTea_management_system/milktea/src/test/java/vn/edu/ute/milktea/service/CentralWarehouseAndAdminRoleTest.java) gồm 7 ca kiểm thử tự động.
+- Toàn bộ test suite dự án: **125/125 tests PASS (BUILD SUCCESS)**, 0 failures, 0 errors, 0 skipped.
+
+---
+
+## Checkpoint: Tối ưu Phân quyền Đa chi nhánh, Sửa lỗi Nhập kho & Điều chỉnh Tồn kho (28/10/2026)
+
+### 1. Sửa lỗi `NonUniqueResultException` tại Cấu hình định mức (Admin):
+- **Nguyên nhân**: Khi mở "Cấu hình định mức", `AdminService.getRawMaterialCost(matId)` truy vấn `stockRepository.findByIdMaterialIdAndIdLocation(matId, KHO)` không chỉ định chi nhánh. Do hệ thống đã khởi tạo tồn kho đa chi nhánh (`KHOTONG`, `CN01`, `CN02`), câu truy vấn trả về 3 dòng gây lỗi `Query did not return a unique result: 3 results were returned`.
+- **Giải pháp**: Điều chỉnh phương thức xác định chi nhánh Kho Tổng (`BranchService.getOrCreateCentralWarehouse()`) và truy vấn chính xác theo `findByIdBranchIdAndIdMaterialIdAndIdLocation(centralWarehouse.getId(), matId, KHO)` với cơ chế dự phòng an toàn.
+
+### 2. Sửa lỗi Nhập kho Chi nhánh từ Kho Tổng (`LichSuKho.NguonLoai` Data Truncation):
+- **Nguyên nhân**: Cột `NguonLoai` trong bảng `dbo.LichSuKho` có kiểu dữ liệu `VARCHAR(16)`. Trong mã nguồn `InventoryService.recordImport`, hằng số `sourceType` được đặt là `"TRANSFER_TO_BRANCH"` (18 ký tự) và `"IMPORT_FROM_CENTRAL"` (19 ký tự), vượt quá độ dài tối đa dẫn đến lỗi `String or binary data would be truncated`.
+- **Giải pháp**: Chuẩn hóa mã nguồn loại thành `"CHUYEN_KHO"` và `"NHAP_TONG"` ($\le 16$ ký tự), loại bỏ triệt để lỗi tràn chuỗi khi nhập kho tại chi nhánh từ kho tổng.
+
+### 3. Khắc phục lỗi Khóa ngoại `Msg 547` trong Migration `V3__voucher_and_discounts.sql`:
+- **Nguyên nhân**: Script V3 chèn dữ liệu mẫu vào bảng `dbo.LichSuSuDungVoucher` với các mã đơn hàng giả định cố định (1..13). Khi chạy trên cơ sở dữ liệu thực tế có số lượng đơn hàng ít hơn hoặc ID không liên tục, SQL Server báo lỗi vi phạm khóa ngoại `FK_LSSDV_DonHang`.
+- **Giải pháp**: Bổ sung điều kiện kiểm tra `IF EXISTS (SELECT 1 FROM dbo.DonHang WHERE MaDH = ...)` trước khi chèn, bảo đảm an toàn dữ liệu và tính lũy kế (idempotent) trên mọi môi trường.
+
+### 4. Phân định Quyền Điều chỉnh Tồn kho & Ghi nhận Hao hụt:
+- **Điều chỉnh Tồn kho (`/admin/inventory`)**:
+  - Đối với `MANAGER`: Chỉ được phép cập nhật **Ngưỡng cảnh báo tối thiểu** (`threshold` / `NguongCanhBao`). Các trường Tên nguyên liệu, Số lượng tồn và Giá vốn trung bình đều được khóa chế độ Chỉ đọc (Read-only) cả ở giao diện và xác thực chặt chẽ tại backend (ném `403 ACCESS_DENIED` nếu cố tình gửi lên).
+  - Đối với `ADMIN`: Có toàn quyền chỉnh sửa tất cả các trường (Tên, Tồn kho, Giá vốn, Ngưỡng cảnh báo, Lý do) đối với cả Kho Tổng và kho tại các chi nhánh.
+- **Ghi nhận Hao hụt kho (`recordWaste`)**:
+  - Hỗ trợ tham số `targetBranchId`: tự động xác định phạm vi Kho Tổng (`KHOTONG`) cho vai trò `ADMIN` và Kho Chi nhánh cho vai trò `MANAGER`, áp dụng khóa bi quan `findByIdWithLock(targetBranch.getId(), material.getId(), location)`.
+
+### 5. Khôi phục Quản lý Đơn hàng cho Admin & Lọc Chi nhánh:
+- Mở khóa mục **Quản lý đơn hàng** (`/admin/orders`) cho vai trò `ADMIN` trên sidebar toàn bộ 9 màn hình quản trị.
+- Bỏ cơ chế chuyển hướng sang Báo cáo (`/admin/reports`) đối với Admin.
+- Tích hợp bộ lọc dropdown chọn chi nhánh trên giao diện đơn hàng (`Toàn chuỗi hệ thống` hoặc từng chi nhánh cụ thể), bổ sung badge hiển thị tên chi nhánh trên từng dòng đơn hàng.
+- Đồng bộ bộ lọc chứng từ (`/admin/documents`) thể hiện rõ ràng lựa chọn `Kho Hàng Tổng (Toàn Chuỗi) (KHOTONG)`.
+
+### 6. Thắt chặt Bảo mật Phân quyền Thu ngân & Bếp:
+- Cấu hình `SecurityConfig.java`:
+  - Giới hạn nghiêm ngặt `/cashier`, `/cashier/**`, `/api/v1/cashier/**` chỉ dành riêng cho vai trò `CASHIER`.
+  - Giới hạn nghiêm ngặt `/kitchen`, `/kitchen/**`, `/api/v1/kitchen/**` chỉ dành riêng cho vai trò `KITCHEN` hoặc `CHEF`.
+  - Tài khoản `ADMIN` và `MANAGER` không còn được tự ý truy cập các trang thao tác nghiệp vụ trực tiếp này.
+- Loại bỏ các đường dẫn tắt `[Quầy thu ngân]` và `[Khu vực bếp]` trên thanh điều hướng header đối với vai trò Admin và Manager.
+- Cập nhật toàn bộ các bài kiểm thử tự động, kết quả đạt **125/125 tests PASS (BUILD SUCCESS)**.
+
+---
+
+## 10. Checkpoint Prompt 1 — Hoàn thiện Hệ thống Phục vụ Tại quán (In-Store Only System) (HOÀN TẤT)
+
+### 1. Thu hẹp phạm vi nghiệp vụ:
+- Xác lập độc quyền 2 luồng vận hành trong không gian quán:
+  - **TABLE**: Khách quét mã QR vật lý gắn tại bàn. Nhãn QR thể hiện rõ tên chi nhánh và số bàn. Mở menu cơ sở, gửi đơn đầu tiên tự động mở phiên bàn an toàn bằng Pessimistic Lock, ghi chú bếp đi kèm từng đơn.
+  - **COUNTER**: Khách gọi món trực tiếp tại quầy thu ngân. Nhân viên tạo đơn tại quầy, chi nhánh bắt buộc giải quyết trên server từ phân công nhân viên (`actor.branchId`), không tin tưởng client.
+- Dỡ bỏ toàn diện các tính năng không thuộc phạm vi phục vụ tại quán: đặt món từ xa, đơn `ONLINE` không gắn bàn, giao nhận tận nơi, sổ địa chỉ, shipper, COD, sàn thương mại, hình thức `PICKUP`/`DELIVERY`, và giỏ hàng tài khoản độc lập (`AccountCart`).
+- Đánh dấu R19 (vòng đời đóng cửa chi nhánh) là ngoài phạm vi (OUT_OF_SCOPE).
+
+### 2. Củng cố Backend & Chặn API từ xa:
+- `OrderDto.java`: Bổ sung `note` cho `CreateTableOrderRequest`; xóa bỏ DTO tạo đơn online `CreateOnlineOrderRequest`; đánh dấu các trường giao nhận lịch sử trong `OrderResponse` là `@Deprecated` (read-only phục vụ đọc dữ liệu cũ).
+- `OrderController.java`: Chuyển đổi `/api/v1/orders/online` và `/customer/orders/online` thành HTTP 410 GONE, trả về thông báo từ chối rõ ràng.
+- `OrderService.java`:
+  - `createCounterOrder`: Chặn `CUSTOMER` và `Guest` tạo đơn quầy; lấy `targetBranchId` nghiêm ngặt từ `actor.getBranchId()`.
+  - `createTableOrder`: Lưu `note` vào `DonHang.GhiChu`; kiểm tra bàn bắt buộc thuộc chi nhánh hợp lệ; tạo phiên an toàn.
+  - Xóa bỏ hoàn toàn phương thức `createOnlineOrder`.
+- `TableController.java`: `getTableContext` bắt buộc phải có `qrCode` hợp lệ, xóa bỏ hoàn toàn fallback lấy thông tin bàn qua ID/tên từ trình duyệt.
+- `CustomerPageController.java`: Bỏ danh sách chi nhánh trên trang giỏ hàng; chỉ nạp bàn khi có QR hợp lệ.
+- `SecurityConfig.java`: Loại bỏ `/api/v1/orders/online` khỏi danh sách `permitAll()`.
+
+### 3. Tinh chỉnh Giao diện Khách hàng & Thu ngân:
+- `customer.js`: Nhận diện bàn nghiêm ngặt qua QR URL hoặc mã lưu phiên bàn; từ chối submit đơn giao hàng; gửi kèm ghi chú bếp.
+- `cart.html`: Xóa bỏ toàn bộ form thông tin giao hàng (họ tên, sđt, địa chỉ, chọn chi nhánh nhận hàng, hình thức nhận). Bổ sung ô nhập ghi chú bếp (`orderNoteInput`) và banner hướng dẫn khách tại quán; vô hiệu hóa nút đặt đơn khi khách chưa quét mã QR bàn.
+- `menu.html`: Hiển thị rõ banner `Chi nhánh ... · Bàn ...` khi có ngữ cảnh bàn, hoặc banner nhắc khách quét QR/gọi tại quầy khi là khách vãng lai.
+- `cashier/index.html`: Hiển thị rõ tên chi nhánh đang làm việc trên tiêu đề trang thu ngân.
+
+### 4. Cơ sở dữ liệu & Dữ liệu mẫu (Sample Data):
+- Migration `database/migrations/V6__in_store_only_cleanup.sql`: Xóa default constraint `HinhThucNhan` trên bảng `dbo.DonHang`, tạo chỉ mục tối ưu truy vấn đơn tại quán `IX_DonHang_Nguon_TrangThai_TaoLuc`. Đã áp dụng thành công trên cơ sở dữ liệu `milktea`.
+- `database/sample_data.sql`: Chuẩn hóa 100% dữ liệu mẫu chỉ gồm đơn `TABLE` (84 đơn) và `COUNTER` (24 đơn), 0 đơn `ONLINE`, 0 dữ liệu giao hàng dư thừa. Đã thực thi reseed an toàn.
+
+### 5. Kết quả Kiểm thử Tự động:
+- Xây dựng bộ test chấp nhận chuyên biệt `InStoreOnlyScopeAcceptanceTest.java` (6/6 tests PASS).
+- Toàn bộ test suite dự án đạt **148/148 tests PASS (BUILD SUCCESS)**, không có bất kỳ cảnh báo lỗi hồi quy nào.
+
+---
+
+## Checkpoint: Bỏ Tab Quản Lý Sơ Đồ Bàn & QR ở Sidebar đối với Role ADMIN (29/10/2026)
+
+### 1. Phân định Giao diện Sidebar:
+- Ẩn hoàn toàn tab **Sơ đồ bàn & QR** (`/admin/tables`) trên sidebar đối với vai trò `ADMIN` trên toàn bộ 9 template trang quản trị (`reports.html`, `catalog.html`, `inventory.html`, `documents.html`, `orders.html`, `settings.html`, `staff.html`, `tables.html`, `vouchers.html`).
+- Mục này chỉ hiển thị đối với vai trò `MANAGER` (`th:if="${isManager != null and isManager}"`), vì sơ đồ bàn và in mã QR bàn là nghiệp vụ vật lý nội bộ thuộc quyền hạn điều hành của từng cơ sở chi nhánh.
+
+### 2. Bảo vệ Điều hướng & API Backend:
+- `StaffPageController.java`: Khi tài khoản `ADMIN` truy cập trực tiếp URL `/admin/tables` hoặc `?section=tables`, hệ thống tự động chuyển hướng (redirect) về `/admin/reports`.
+- `AdminController.java`: Kiểm tra `checkNotAdminForTables(actor)`, chặn 403 `ACCESS_DENIED` với thông báo tiếng Việt rõ ràng nếu vai trò `ADMIN` cố tình gọi các REST API quản lý bàn (`/api/v1/admin/tables/**`).
+
+### 3. Kết quả Kiểm thử:
+- Bổ sung ca kiểm thử tự động `testAdminRoleForbiddenFromTableAndQrApis` trong [CentralWarehouseAndAdminRoleTest.java](file:///h:/UTE/Nam_3/MilkTea_management_system/milktea/src/test/java/vn/edu/ute/milktea/service/CentralWarehouseAndAdminRoleTest.java).
+- Toàn bộ test suite dự án đạt **149/149 tests PASS (BUILD SUCCESS)**, 0 failures, 0 errors, 0 skipped.
+
+
+
+
+
+
 

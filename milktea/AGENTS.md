@@ -9,6 +9,7 @@ Never maintain diverging copies of business logic. Always reference:
 - Development Roadmap: [docs/BRANCH_DEVELOPMENT_PLAN.md](docs/BRANCH_DEVELOPMENT_PLAN.md)
 - Progress & Checkpoints: [docs/IMPLEMENTATION_PROGRESS.md](docs/IMPLEMENTATION_PROGRESS.md)
 - Safe Data Migration: [docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)
+- Sample Data & Demo Specification: [database/sample_data_reference.md](database/sample_data_reference.md)
 - Codex Guidelines: [CODEX.md](CODEX.md)
 
 ## 2. Agent Principles

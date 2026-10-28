@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     List<Category> findAllByActiveTrue();
+    boolean existsByNameIgnoreCase(String name);
+    java.util.Optional<Category> findByNameIgnoreCase(String name);
 }

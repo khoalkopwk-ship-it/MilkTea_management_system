@@ -100,11 +100,16 @@ class WebSocketSecurityConfigTest {
     }
 
     @Test
-    @DisplayName("4. Cho phép SUBSCRIBE /topic/cashier nếu là CASHIER")
+    @DisplayName("4. Cho phép SUBSCRIBE /topic/branches/{branchId}/cashier nếu là CASHIER thuộc chi nhánh")
     void testAllowCashierChannelForCashier() {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
-        accessor.setDestination("/topic/cashier");
-        CurrentActor cashierActor = CurrentActor.builder().actorType(CurrentActor.ActorType.AUTHENTICATED).role(Role.CASHIER).build();
+        accessor.setDestination("/topic/branches/1/cashier");
+        CurrentActor cashierActor = CurrentActor.builder()
+                .actorType(CurrentActor.ActorType.AUTHENTICATED)
+                .role(Role.CASHIER)
+                .branchId(1L)
+                .assignedBranchIds(java.util.Set.of(1L))
+                .build();
         accessor.setUser(new UsernamePasswordAuthenticationToken(cashierActor, null, List.of(new SimpleGrantedAuthority("ROLE_CASHIER"))));
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 

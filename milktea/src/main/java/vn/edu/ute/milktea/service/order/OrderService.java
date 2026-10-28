@@ -75,12 +75,21 @@ public class OrderService {
     private final MaterialRepository materialRepository;
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
     private final vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository;
+    private final vn.edu.ute.milktea.repository.branch.BranchProductRepository branchProductRepository;
     private final vn.edu.ute.milktea.service.common.IdempotencyService idempotencyService;
     private final vn.edu.ute.milktea.service.voucher.VoucherService voucherService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
+
+    public void setStaffBranchRepository(vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository) {
+        this.staffBranchRepository = staffBranchRepository;
+    }
     @Transactional
     public OrderDto.OrderResponse createTableOrder(OrderDto.CreateTableOrderRequest request, CurrentActor actor, String idempotencyKey) {
         Long actorId = actor != null ? actor.getAccountId() : null;
-        String payloadJson = "tableId=" + request.getTableId() + ";session=" + request.getExpectedSessionId() + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
+        String voucherStr = (request.getVoucherCode() != null) ? request.getVoucherCode().trim().toUpperCase() : "";
+        String payloadJson = "tableId=" + request.getTableId() + ";session=" + request.getExpectedSessionId() + ";voucher=" + voucherStr + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
         String fingerprint = idempotencyService.computeFingerprint(payloadJson, actorId);
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -106,6 +115,9 @@ public class OrderService {
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
         if (!Boolean.TRUE.equals(table.getActive())) {
             throw BusinessException.badRequest(ErrorCode.TABLE_NOT_FOUND, "Bàn đang ngừng hoạt động");
+        }
+        if (table.getBranch() != null && "KHOTONG".equalsIgnoreCase(table.getBranch().getCode())) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Kho tổng không bán lẻ trực tiếp");
         }
         // Kiểm tra expectedSessionId
         TableSession session;
@@ -145,6 +157,17 @@ public class OrderService {
             }
             session = sessionRepository.findById(table.getActiveSessionId())
                     .orElseThrow(() -> BusinessException.conflict(ErrorCode.TABLE_SESSION_CHANGED, "Không tìm thấy phiên"));
+
+            // F03: Xác thực quyền đặt thêm món vào phiên bàn hiện có
+            boolean isStaffOfBranch = actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN) || actor.hasRole(Role.MANAGER))
+                    && actor.canAccessBranch(table.getBranch().getId());
+            boolean isSessionGuest = actor != null && actor.getSessionId() != null && actor.getSessionId().equals(session.getId());
+            boolean isSessionOpener = actor != null && actor.isAuthenticated() && session.getOpenedBy() != null
+                    && session.getOpenedBy().getId().equals(actor.getAccountId());
+
+            if (!isStaffOfBranch && !isSessionGuest && !isSessionOpener) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền đặt thêm món vào phiên bàn này");
+            }
         }
         // Tạo đơn hàng và tính giá snapshot
         Account customerAccount = (actor != null && actor.isAuthenticated()) ?
@@ -156,6 +179,7 @@ public class OrderService {
                 .source(OrderSource.TABLE)
                 .status(actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN) || actor.hasRole(Role.MANAGER))
                         ? OrderStatus.CHO_THANH_TOAN : OrderStatus.CHO_XAC_NHAN)
+                .note(request.getNote())
                 .idempotencyKey(idempotencyKey)
                 .createdAt(Instant.now())
                 .version(0L)
@@ -193,7 +217,10 @@ public class OrderService {
                 .afterState(order.getStatus().name())
                 .createdAt(Instant.now())
                 .build());
-        Long branchId = table.getBranch() != null ? table.getBranch().getId() : 1L;
+        if (table.getBranch() == null) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Bàn chưa được liên kết với chi nhánh nào");
+        }
+        Long branchId = table.getBranch().getId();
         realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_CREATED", order.getId().toString(), session.getId().toString(), "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", branchId));
         realtimeEventPublisher.publishAfterCommit("/topic/branches/" + branchId + "/cashier", "ORDER_CREATED", order.getId().toString(), session.getId().toString(), "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", branchId));
         realtimeEventPublisher.publishAfterCommit("/topic/table-sessions/" + session.getId(), "ORDER_CREATED", order.getId().toString(), session.getId().toString(), "1", Map.of("orderId", order.getId(), "status", order.getStatus().name()));
@@ -205,8 +232,26 @@ public class OrderService {
 
     @Transactional
     public OrderDto.OrderResponse createCounterOrder(OrderDto.CreateCounterOrderRequest request, CurrentActor actor, String idempotencyKey) {
-        Long actorId = actor != null ? actor.getAccountId() : null;
-        String payloadJson = "branchId=" + request.getBranchId() + ";note=" + request.getNote() + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
+        if (actor == null || (!actor.hasRole(Role.CASHIER) && !actor.hasRole(Role.ADMIN) && !actor.hasRole(Role.MANAGER))) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Chỉ nhân viên thu ngân/quản lý mới được tạo đơn tại quầy");
+        }
+        Long targetBranchId;
+        if (actor.hasRole(Role.ADMIN)) {
+            targetBranchId = request.getBranchId() != null ? request.getBranchId() : actor.getBranchId();
+        } else {
+            // Đối với Thu ngân / Quản lý: lấy chi nhánh từ phân công nhân viên, không tin tưởng tham số client
+            targetBranchId = actor.getBranchId();
+        }
+        if (targetBranchId == null) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Nhân viên chưa được phân công chi nhánh hoạt động");
+        }
+        if (!actor.canAccessBranch(targetBranchId)) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền tạo đơn tại chi nhánh này");
+        }
+
+        Long actorId = actor.getAccountId();
+        String voucherStr = (request.getVoucherCode() != null) ? request.getVoucherCode().trim().toUpperCase() : "";
+        String payloadJson = "branchId=" + targetBranchId + ";note=" + request.getNote() + ";voucher=" + voucherStr + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
         String fingerprint = idempotencyService.computeFingerprint(payloadJson, actorId);
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -228,25 +273,24 @@ public class OrderService {
                 }
             }
         }
-        Long targetBranchId = request.getBranchId();
-        if (targetBranchId == null && actor != null && actor.getBranchId() != null) {
-            targetBranchId = actor.getBranchId();
-        }
-        if (targetBranchId == null) {
-            targetBranchId = 1L; // Fallback default branch
-        }
+
         var branch = branchRepository.findById(targetBranchId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy chi nhánh"));
+        if (!branch.isActive()) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Chi nhánh đang tạm ngưng hoạt động");
+        }
+        if ("KHOTONG".equalsIgnoreCase(branch.getCode())) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Kho tổng không bán lẻ trực tiếp");
+        }
 
-        Account creator = (actor != null && actor.isAuthenticated()) ?
+        Account creator = (actor.isAuthenticated()) ?
                 accountRepository.findById(actor.getAccountId()).orElse(null) : null;
         Order order = Order.builder()
                 .branch(branch)
                 .session(null)
                 .account(creator)
                 .source(OrderSource.COUNTER)
-                .status(actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN) || actor.hasRole(Role.MANAGER))
-                        ? OrderStatus.CHO_THANH_TOAN : OrderStatus.CHO_XAC_NHAN)
+                .status(OrderStatus.CHO_THANH_TOAN)
                 .note(request.getNote())
                 .idempotencyKey(idempotencyKey)
                 .createdAt(Instant.now())
@@ -289,112 +333,6 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderDto.OrderResponse createOnlineOrder(OrderDto.CreateOnlineOrderRequest request, CurrentActor actor, String idempotencyKey) {
-        if (request.getBranchId() == null) {
-            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Chi nhánh đặt hàng không được để trống");
-        }
-        var branch = branchRepository.findById(request.getBranchId())
-                .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy chi nhánh"));
-        if (!branch.isActive()) {
-            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Chi nhánh đang tạm ngưng hoạt động");
-        }
-
-        Long actorId = actor != null ? actor.getAccountId() : null;
-        String payloadJson = "branchId=" + request.getBranchId() + ";phone=" + request.getCustomerPhone() + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
-        String fingerprint = idempotencyService.computeFingerprint(payloadJson, actorId);
-
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            var existingOrderId = idempotencyService.checkExisting("CREATE_ORDER", idempotencyKey, fingerprint);
-            if (existingOrderId.isPresent()) {
-                Order order = orderRepository.findById(existingOrderId.get()).orElse(null);
-                if (order != null) {
-                    Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
-                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-                    return mapToOrderResponse(order, invoice, items, null, null);
-                }
-            } else {
-                var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
-                if (existing.isPresent()) {
-                    Order order = existing.get();
-                    Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
-                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-                    return mapToOrderResponse(order, invoice, items, null, null);
-                }
-            }
-        }
-
-        Account creator = (actor != null && actor.isAuthenticated()) ?
-                accountRepository.findById(actor.getAccountId()).orElse(null) : null;
-
-        StringBuilder noteBuilder = new StringBuilder();
-        if (request.getNote() != null && !request.getNote().isBlank()) {
-            noteBuilder.append(request.getNote().trim()).append("\n");
-        }
-        if (request.getCustomerName() != null && !request.getCustomerName().isBlank()) {
-            noteBuilder.append("Người nhận: ").append(request.getCustomerName().trim()).append("; ");
-        }
-        if (request.getCustomerPhone() != null && !request.getCustomerPhone().isBlank()) {
-            noteBuilder.append("SĐT: ").append(request.getCustomerPhone().trim()).append("; ");
-        }
-        if (request.getDeliveryAddress() != null && !request.getDeliveryAddress().isBlank()) {
-            noteBuilder.append("Đ/c giao: ").append(request.getDeliveryAddress().trim());
-        }
-
-        Order order = Order.builder()
-                .branch(branch)
-                .session(null)
-                .account(creator)
-                .source(OrderSource.ONLINE)
-                .status(OrderStatus.CHO_XAC_NHAN)
-                .note(noteBuilder.toString().trim())
-                .idempotencyKey(idempotencyKey)
-                .createdAt(Instant.now())
-                .version(0L)
-                .build();
-        order = orderRepository.save(order);
-
-        List<OrderItem> savedItems = createOrderItemsAndSnapshots(order, request.getItems());
-        BigDecimal subtotal = calculateOrderSubtotal(savedItems);
-        GlobalSettings settings = settingsRepository.findById(1).orElse(null);
-        CalculatedDiscount discount = computeDiscount(subtotal, settings);
-
-        Invoice invoice = Invoice.builder()
-                .order(order)
-                .subtotal(subtotal)
-                .discountAmount(discount.discountAmount)
-                .totalAmount(discount.totalAmount)
-                .snapshotDiscountPercent(discount.snapshotPercent)
-                .snapshotDiscountType(discount.discountType)
-                .snapshotDiscountValue(discount.configValue)
-                .status(InvoiceStatus.HIEU_LUC)
-                .createdAt(Instant.now())
-                .build();
-        invoice = invoiceRepository.save(invoice);
-        if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
-            voucherService.applyVoucherToOrder(order, invoice, request.getVoucherCode(), creator != null ? creator.getId() : null);
-        }
-
-        var issued = guestAccessService.issueCounterOrderToken(order, 24);
-
-        auditRepository.save(BusinessAudit.builder()
-                .orderId(order.getId())
-                .accountId(creator != null ? creator.getId() : null)
-                .action("ONLINE_ORDER_CREATED")
-                .afterState(order.getStatus().name())
-                .createdAt(Instant.now())
-                .build());
-
-        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_CREATED", order.getId().toString(), null, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", branch.getId()));
-        realtimeEventPublisher.publishAfterCommit("/topic/branches/" + branch.getId() + "/cashier", "ORDER_CREATED", order.getId().toString(), null, "1", Map.of("orderId", order.getId(), "status", order.getStatus().name(), "branchId", branch.getId()));
-
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            idempotencyService.record("CREATE_ORDER", idempotencyKey, fingerprint, "ORDER", order.getId(), 24);
-        }
-
-        return mapToOrderResponse(order, invoice, savedItems, null, issued.rawToken());
-    }
-
-    @Transactional
     public void assignCounterOrderToTable(Long orderId, Long tableId, Long cashierId) {
         Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
@@ -409,6 +347,24 @@ public class OrderService {
         if (order.getBranch() != null && table.getBranch() != null && !order.getBranch().getId().equals(table.getBranch().getId())) {
             throw BusinessException.badRequest(ErrorCode.ORDER_STATE_CONFLICT, "Đơn hàng và bàn không cùng một chi nhánh");
         }
+        // R06: Kiểm tra quyền chi nhánh của nhân viên thu ngân gọi gán đơn
+        if (cashierId != null) {
+            Account cashier = accountRepository.findById(cashierId)
+                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy nhân viên thu ngân"));
+            Long targetBranchId = order.getBranch() != null ? order.getBranch().getId() : (table.getBranch() != null ? table.getBranch().getId() : null);
+            if (cashier.getRole() != Role.ADMIN && targetBranchId != null) {
+                boolean hasActive = staffBranchRepository != null && staffBranchRepository
+                        .findByAccountIdAndBranchIdAndStatus(cashier.getId(), targetBranchId, "HOAT_DONG")
+                        .isPresent();
+                if (!hasActive && cashier.getBranch() != null && cashier.getBranch().getId().equals(targetBranchId)) {
+                    hasActive = true;
+                }
+                if (!hasActive) {
+                    throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Thu ngân không thuộc chi nhánh của đơn hàng và bàn");
+                }
+            }
+        }
+
         // Mở phiên nếu bàn chưa có phiên, hoặc lấy phiên hiện tại
         TableSession session = tableSessionService.openByCashier(tableId, cashierId);
         order.setSession(session);
@@ -421,14 +377,38 @@ public class OrderService {
                 .reason("Gắn đơn quầy vào bàn #" + tableId)
                 .createdAt(Instant.now())
                 .build());
+        Long branchId = order.getBranch() != null ? order.getBranch().getId() : (table.getBranch() != null ? table.getBranch().getId() : null);
         realtimeEventPublisher.publishAfterCommit("/topic/cashier", "ORDER_ASSIGNED_TO_TABLE", order.getId().toString(), session.getId().toString(), "1", Map.of("orderId", order.getId()));
+        if (branchId != null) {
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + branchId + "/cashier", "ORDER_ASSIGNED_TO_TABLE", order.getId().toString(), session.getId().toString(), "1", Map.of("orderId", order.getId()));
+        }
         realtimeEventPublisher.publishAfterCommit("/topic/table-sessions/" + session.getId(), "ORDER_ASSIGNED_TO_TABLE", order.getId().toString(), session.getId().toString(), "1", Map.of("orderId", order.getId()));
+    }
+
+    @Transactional
+    public void confirm(Long orderId, CurrentActor actor) {
+        Order order = orderRepository.findByIdWithLock(orderId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
+        if (actor != null) {
+            if (!actor.hasRole(Role.CASHIER) && !actor.hasRole(Role.ADMIN) && !actor.hasRole(Role.MANAGER)) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền xác nhận đơn hàng");
+            }
+            if (order.getBranch() != null && !actor.canAccessBranch(order.getBranch().getId())) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không thể xác nhận đơn hàng của chi nhánh khác");
+            }
+        }
+        Long cashierId = actor != null ? actor.getAccountId() : null;
+        confirmInternal(order, cashierId);
     }
 
     @Transactional
     public void confirm(Long orderId, Long cashierId) {
         Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
+        confirmInternal(order, cashierId);
+    }
+
+    private void confirmInternal(Order order, Long cashierId) {
         if (order.getStatus() == OrderStatus.CHO_CHE_BIEN) {
             return;
         }
@@ -437,7 +417,7 @@ public class OrderService {
                     "Không thể xác nhận đơn ở trạng thái: " + order.getStatus());
         }
         order.setStatus(OrderStatus.CHO_CHE_BIEN);
-        Invoice invoice = invoiceRepository.findByOrderId(orderId)
+        Invoice invoice = invoiceRepository.findByOrderId(order.getId())
                 .orElseThrow(() -> BusinessException.notFound(
                         ErrorCode.ORDER_STATE_CONFLICT,
                         "Không tìm thấy hóa đơn của đơn hàng"));
@@ -465,9 +445,29 @@ public class OrderService {
     }
 
     @Transactional
+    public void start(Long orderId, CurrentActor actor) {
+        Order order = orderRepository.findByIdWithLock(orderId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
+        if (actor != null) {
+            if (!actor.hasRole(Role.KITCHEN) && !actor.hasRole(Role.ADMIN) && !actor.hasRole(Role.MANAGER)) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền bắt đầu chế biến đơn hàng");
+            }
+            if (order.getBranch() != null && !actor.canAccessBranch(order.getBranch().getId())) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không thể chế biến đơn hàng của chi nhánh khác");
+            }
+        }
+        Long kitchenId = actor != null ? actor.getAccountId() : null;
+        startInternal(order, kitchenId);
+    }
+
+    @Transactional
     public void start(Long orderId, Long kitchenId) {
         Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
+        startInternal(order, kitchenId);
+    }
+
+    private void startInternal(Order order, Long kitchenId) {
         if (order.getStatus() == OrderStatus.DANG_CHE_BIEN) {
             return;
         }
@@ -475,13 +475,13 @@ public class OrderService {
             throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT,
                     "Không thể bắt đầu chế biến đơn ở trạng thái: " + order.getStatus());
         }
-        Invoice invoice = invoiceRepository.findByOrderId(orderId)
+        Invoice invoice = invoiceRepository.findByOrderId(order.getId())
                 .orElseThrow(() -> BusinessException.notFound(
                         ErrorCode.ORDER_STATE_CONFLICT,
                         "Không tìm thấy hóa đơn của đơn hàng"));
         // Không áp dụng paid gate: Bếp có thể chế biến theo lệnh điều phối của quán
         // Kiểm tra không có yêu cầu hủy đang chờ xử lý
-        var pendingCancel = cancellationRepository.findFirstByOrderIdAndStatus(orderId,
+        var pendingCancel = cancellationRepository.findFirstByOrderIdAndStatus(order.getId(),
                 vn.edu.ute.milktea.entity.cancellation.CancellationStatus.CHO);
         if (pendingCancel.isPresent()) {
             throw BusinessException.conflict(ErrorCode.CANCELLATION_PENDING,
@@ -512,9 +512,29 @@ public class OrderService {
     }
 
     @Transactional
+    public void complete(Long orderId, CurrentActor actor) {
+        Order order = orderRepository.findByIdWithLock(orderId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
+        if (actor != null) {
+            if (!actor.hasRole(Role.KITCHEN) && !actor.hasRole(Role.ADMIN) && !actor.hasRole(Role.MANAGER)) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền hoàn thành chế biến đơn hàng");
+            }
+            if (order.getBranch() != null && !actor.canAccessBranch(order.getBranch().getId())) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không thể hoàn thành đơn hàng của chi nhánh khác");
+            }
+        }
+        Long kitchenId = actor != null ? actor.getAccountId() : null;
+        completeInternal(order, kitchenId);
+    }
+
+    @Transactional
     public void complete(Long orderId, Long kitchenId) {
         Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy đơn hàng"));
+        completeInternal(order, kitchenId);
+    }
+
+    private void completeInternal(Order order, Long kitchenId) {
         if (order.getStatus() == OrderStatus.HOAN_THANH) {
             return;
         }
@@ -522,7 +542,7 @@ public class OrderService {
             throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT,
                     "Chỉ có thể hoàn thành đơn đang ở trạng thái DANG_CHE_BIEN. Trạng thái hiện tại: " + order.getStatus());
         }
-        Account kitchen = accountRepository.findById(kitchenId).orElse(null);
+        Account kitchen = kitchenId != null ? accountRepository.findById(kitchenId).orElse(null) : null;
         // Tiêu hao kho BEP theo công thức đang lưu, nhân số ly và lưu snapshot thực tế.
         // Nếu không đủ tồn kho, ném BusinessException.conflict và không đổi trạng thái đơn
         inventoryService.completeOrderConsumption(order, kitchen);
@@ -574,6 +594,16 @@ public class OrderService {
             if (!Boolean.TRUE.equals(product.getActive())) {
                 throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Món đã ngừng bán: " + product.getName());
             }
+            if (order.getBranch() != null) {
+                var bp = branchProductRepository.findByBranchIdAndProductId(order.getBranch().getId(), product.getId());
+                if (bp.isPresent()) {
+                    if (Boolean.FALSE.equals(bp.get().getActive()) || Boolean.FALSE.equals(bp.get().getAvailable())) {
+                        throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Món \"" + product.getName() + "\" hiện không phục vụ tại chi nhánh này");
+                    }
+                } else if (!branchProductRepository.findByBranchId(order.getBranch().getId()).isEmpty()) {
+                    throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Món \"" + product.getName() + "\" chưa được phân bổ kinh doanh tại chi nhánh này");
+                }
+            }
             OrderItem item = OrderItem.builder()
                     .order(order)
                     .product(product)
@@ -595,6 +625,19 @@ public class OrderService {
                             .orElseThrow(() -> BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Topping không tồn tại: ID " + tId));
                     if (!Boolean.TRUE.equals(toppingProd.getActive())) {
                         throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Topping đã ngừng bán: " + toppingProd.getName());
+                    }
+                    if (toppingProd.getCategory() == null || (!toppingProd.getCategory().getName().toLowerCase().contains("topping") && Boolean.TRUE.equals(toppingProd.getCategory().getAllowTopping()))) {
+                        throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Sản phẩm \"" + toppingProd.getName() + "\" không phải là topping hợp lệ");
+                    }
+                    if (order.getBranch() != null) {
+                        var tbp = branchProductRepository.findByBranchIdAndProductId(order.getBranch().getId(), toppingProd.getId());
+                        if (tbp.isPresent()) {
+                            if (Boolean.FALSE.equals(tbp.get().getActive()) || Boolean.FALSE.equals(tbp.get().getAvailable())) {
+                                throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Topping \"" + toppingProd.getName() + "\" hiện không phục vụ tại chi nhánh này");
+                            }
+                        } else if (!branchProductRepository.findByBranchId(order.getBranch().getId()).isEmpty()) {
+                            throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Topping \"" + toppingProd.getName() + "\" chưa được phân bổ kinh doanh tại chi nhánh này");
+                        }
                     }
                     OrderItemTopping oit = OrderItemTopping.builder()
                             .orderItem(item)
@@ -628,14 +671,17 @@ public class OrderService {
                     } else {
                         Map<String, BigDecimal> tFixed = fixedRecipeService.getIngredients(
                                 toppingProd.getName(), toppingProd.getSize() != null ? toppingProd.getSize() : "M");
-                        if (tFixed != null && !tFixed.isEmpty()) {
-                            for (var fEntry : tFixed.entrySet()) {
-                                materialRepository.findByName(fEntry.getKey()).ifPresent(mat -> {
-                                    BigDecimal needed = fEntry.getValue().multiply(BigDecimal.valueOf(req.getQuantity()));
-                                    aggregatedIngredients.merge(mat.getId(), needed, BigDecimal::add);
-                                    materialSampleMap.putIfAbsent(mat.getId(), mat);
-                                });
-                            }
+                        if (tFixed == null || tFixed.isEmpty()) {
+                            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                                    "Không tìm thấy công thức định lượng cho topping: " + toppingProd.getName());
+                        }
+                        for (var fEntry : tFixed.entrySet()) {
+                            Material mat = materialRepository.findByName(fEntry.getKey())
+                                    .orElseThrow(() -> BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                                            "Không tìm thấy nguyên liệu \"" + fEntry.getKey() + "\" trong hệ thống cho topping: " + toppingProd.getName()));
+                            BigDecimal needed = fEntry.getValue().multiply(BigDecimal.valueOf(req.getQuantity()));
+                            aggregatedIngredients.merge(mat.getId(), needed, BigDecimal::add);
+                            materialSampleMap.putIfAbsent(mat.getId(), mat);
                         }
                     }
                 }
@@ -670,16 +716,22 @@ public class OrderService {
             } else {
                 Map<String, BigDecimal> fixedIngredients = fixedRecipeService.getIngredients(
                         product.getName(), product.getSize());
-                if (fixedIngredients != null && !fixedIngredients.isEmpty()) {
-                    for (var fEntry : fixedIngredients.entrySet()) {
-                        materialRepository.findByName(fEntry.getKey()).ifPresent(mat -> {
-                            BigDecimal needed = fEntry.getValue().multiply(BigDecimal.valueOf(req.getQuantity()));
-                            aggregatedIngredients.merge(mat.getId(), needed, BigDecimal::add);
-                            materialSampleMap.putIfAbsent(mat.getId(), mat);
-                        });
-                    }
+                if (fixedIngredients == null || fixedIngredients.isEmpty()) {
+                    throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                            "Không tìm thấy công thức định lượng cho món: " + product.getName());
+                }
+                for (var fEntry : fixedIngredients.entrySet()) {
+                    Material mat = materialRepository.findByName(fEntry.getKey())
+                            .orElseThrow(() -> BusinessException.conflict(ErrorCode.VALIDATION_FAILED,
+                                    "Không tìm thấy nguyên liệu \"" + fEntry.getKey() + "\" trong hệ thống cho món: " + product.getName()));
+                    BigDecimal needed = fEntry.getValue().multiply(BigDecimal.valueOf(req.getQuantity()));
+                    aggregatedIngredients.merge(mat.getId(), needed, BigDecimal::add);
+                    materialSampleMap.putIfAbsent(mat.getId(), mat);
                 }
             }
+        }
+        if (aggregatedIngredients.isEmpty()) {
+            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Đơn hàng không có định lượng nguyên liệu hợp lệ");
         }
         orderItems = orderItemRepository.saveAll(orderItems);
         if (!allToppings.isEmpty()) {
@@ -802,12 +854,16 @@ public class OrderService {
                 .cashierName(payment != null && payment.getRecordedBy() != null ? payment.getRecordedBy().getFullName() : null)
                 .refund(refundRepository.findByOrderId(order.getId()).map(r -> vn.edu.ute.milktea.service.cancellation.RefundService.toResponse(r)).orElse(null))
                 .cancellationPending(cancellationRepository.findFirstByOrderIdAndStatus(order.getId(), CancellationStatus.CHO).isPresent())
-                .staffCreated(order.getAccount() != null && (order.getAccount().getRole() == Role.CASHIER || order.getAccount().getRole() == Role.ADMIN))
+                .staffCreated(order.getAccount() != null && (order.getAccount().getRole() == Role.CASHIER || order.getAccount().getRole() == Role.ADMIN || order.getAccount().getRole() == Role.MANAGER))
                 .paymentRequestMethod(latestNotice != null ? latestNotice.getMethod().name() : null)
                 .transferNotified(transferNotified)
                 .paid(isPaid)
                 .items(itemResponses)
                 .createdAt(order.getCreatedAt())
+                .receiverName(order.getReceiverName())
+                .receiverPhone(order.getReceiverPhone())
+                .deliveryAddress(order.getDeliveryAddress())
+                .deliveryType(order.getDeliveryType())
                 .guestTableToken(tableToken)
                 .guestCounterToken(counterToken)
                 .build();
@@ -822,8 +878,14 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<OrderDto.OrderResponse> getOrdersForCustomer(CurrentActor actor) {
         List<Order> orders = new ArrayList<>();
-        if (actor != null && (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN))) {
+        if (actor != null && actor.hasRole(Role.ADMIN)) {
             orders = orderRepository.findAll();
+        } else if (actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.MANAGER))) {
+            if (actor.getBranchId() != null) {
+                orders = orderRepository.findByBranchIdOrderByCreatedAtDesc(actor.getBranchId());
+            } else {
+                orders = Collections.emptyList();
+            }
         } else if (actor != null && actor.getAccountId() != null) {
             orders = orderRepository.findByAccountIdOrderByCreatedAtDesc(actor.getAccountId());
         } else if (actor != null && actor.getSessionId() != null) {
@@ -835,7 +897,6 @@ public class OrderService {
         return orders.stream().sorted(java.util.Comparator.comparing(Order::getCreatedAt).reversed()).map(this::mapOrderToResponse).toList();
     }
 
-
     @Transactional(readOnly = true)
     public OrderDto.OrderResponse getOrderForCustomer(Long orderId, CurrentActor actor) {
         Order order = orderRepository.findById(orderId)
@@ -843,8 +904,16 @@ public class OrderService {
         if (actor == null) {
             throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem đơn hàng này");
         }
-        boolean allowed = actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN);
-        if (allowed) return mapOrderToResponse(order);
+        if (actor.hasRole(Role.ADMIN)) {
+            return mapOrderToResponse(order);
+        }
+        if (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.MANAGER)) {
+            if (order.getBranch() != null && actor.canAccessBranch(order.getBranch().getId())) {
+                return mapOrderToResponse(order);
+            }
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem đơn hàng của chi nhánh khác");
+        }
+        boolean allowed = false;
         if (actor.getAccountId() != null && order.getAccount() != null) {
             allowed = actor.getAccountId().equals(order.getAccount().getId());
         } else if (actor.getSessionId() != null && order.getSession() != null) {
@@ -1026,7 +1095,7 @@ public class OrderService {
                 .collect(java.util.stream.Collectors.toMap(r -> r.getOrder().getId(), r -> r, (r1, r2) -> r1));
 
         for (Order o : allOrders) {
-            boolean isStaffCreated = o.getAccount() != null && (o.getAccount().getRole() == Role.CASHIER || o.getAccount().getRole() == Role.ADMIN);
+            boolean isStaffCreated = o.getAccount() != null && (o.getAccount().getRole() == Role.CASHIER || o.getAccount().getRole() == Role.ADMIN || o.getAccount().getRole() == Role.MANAGER);
             if (o.getStatus() == OrderStatus.CHO_XAC_NHAN && !isStaffCreated) {
                 confirmCount++;
                 pendingActionOrderIds.add(o.getId());

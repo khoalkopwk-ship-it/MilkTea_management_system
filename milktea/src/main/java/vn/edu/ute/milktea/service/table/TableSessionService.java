@@ -163,6 +163,7 @@ public class TableSessionService {
         realtimeEventPublisher.publishAfterCommit("/topic/table-sessions/" + session.getId(), "TABLE_SESSION_CLOSED", session.getId().toString(), session.getId().toString(), "1", java.util.Map.of("tableId", table.getId(), "tableName", table.getName()));
     }
 
+    @Transactional(readOnly = true)
     public vn.edu.ute.milktea.dto.TableDto.TableSessionResponse getSessionResponse(Long sessionId) {
         TableSession s = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_SESSION_CLOSED, "Không tìm thấy phiên"));

@@ -523,7 +523,8 @@
         <div class="row">
             <div class="col-lg-auto mb-4 admin-sidebar-column">
                 <div class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
-                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase">
+                    <h6 class="text-muted small fw-bold px-3 mb-3 text-uppercase"
+                        th:text="${isManager != null and isManager} ? 'Quản lý chi nhánh' : 'Quản trị hệ thống'">
                         Quản trị hệ thống
                     </h6>
 
@@ -535,7 +536,7 @@
                         <i class="bi bi-cup-hot-fill"></i> Món &amp; danh mục
                     </a>
 
-                    <a th:href="@{/admin/tables}" class="admin-nav-link">
+                    <a th:if="${isManager != null and isManager}" th:href="@{/admin/tables}" class="admin-nav-link">
                         <i class="bi bi-grid-3x3-gap-fill"></i> Sơ đồ bàn &amp; QR
                     </a>
 
@@ -559,8 +560,12 @@
                         </span>
                     </a>
 
-                    <a th:href="@{/admin/settings}" class="admin-nav-link">
-                        <i class="bi bi-gear-fill"></i> Cài đặt &amp; giảm giá
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/vouchers}" class="admin-nav-link">
+                        <i class="bi bi-ticket-perforated-fill"></i> Khuyến mãi &amp; Voucher
+                    </a>
+
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/settings}" class="admin-nav-link">
+                        <i class="bi bi-gear-fill"></i> Cài đặt
                     </a>
                 </div>
             </div>
@@ -575,12 +580,22 @@
 
                 <form id="adminOrderFilters" class="card border-0 shadow-sm rounded-4 p-3 mb-3">
                     <div class="row g-3 align-items-end">
-                        <div class="col-xl-6 col-md-12">
+                        <div class="col-xl-4 col-md-6">
                             <input id="adminOrderSearch" type="search" class="form-control rounded-3"
                                 placeholder="Mã đơn, tên bàn hoặc tên khách hàng">
                         </div>
 
-                        <div class="col-xl-3 col-md-6">
+                        <div class="col-xl-3 col-md-6" th:if="${actor == null or actor.role.name() == 'ADMIN'}">
+                            <select id="adminOrderBranch" class="form-select rounded-3">
+                                <option value="">Toàn chuỗi hệ thống</option>
+                                <option th:each="b : ${branches}"
+                                    th:if="${centralWarehouse == null or b.id != centralWarehouse.id}"
+                                    th:value="${b.id}"
+                                    th:text="${b.name + ' (' + b.code + ')'}"></option>
+                            </select>
+                        </div>
+
+                        <div class="col-xl-2 col-md-6">
                             <select id="adminOrderStatus" class="form-select rounded-3">
                                 <option value="">Tất cả trạng thái</option>
                                 <option value="CHO_THANH_TOAN">Chờ thanh toán</option>
@@ -843,6 +858,7 @@
                             </td>
                             <td class="text-start">
                                 <span class="badge bg-light text-dark border">${esc(order.tableName || 'Quầy / mang về')}</span>
+                                ${order.branchName ? `<div class="small text-muted mt-1"><i class="bi bi-shop me-1"></i>${esc(order.branchName)}</div>` : ''}
                             </td>
                             <td class="text-start">
                                 ${esc(order.customerName || 'Khách vãng lai')}
@@ -925,14 +941,16 @@
                     const query = document.getElementById('adminOrderSearch').value.trim();
                     const status = document.getElementById('adminOrderStatus').value;
                     const payment = document.getElementById('adminOrderPayment').value;
+                    const branch = document.getElementById('adminOrderBranch')?.value;
 
                     if (query) params.set('query', query);
                     if (status) params.set('status', status);
                     if (payment) params.set('paymentStatus', payment);
+                    if (branch) params.set('branchId', branch);
 
                     try {
                         const data = await MilkTeaApi.get(
-                            `/api/v1/cashier/orders?${params.toString()}`
+                            `/api/v1/admin/orders?${params.toString()}`
                         );
 
                         if (!Array.isArray(data)) {
@@ -995,12 +1013,15 @@
                     }, 300);
                 });
 
-                ['adminOrderStatus', 'adminOrderPayment'].forEach(id => {
-                    document.getElementById(id).addEventListener('change', () => {
-                        clearTimeout(filterTimer);
-                        nextLoadReason = 'filter';
-                        loadOrders();
-                    });
+                ['adminOrderStatus', 'adminOrderPayment', 'adminOrderBranch'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.addEventListener('change', () => {
+                            clearTimeout(filterTimer);
+                            nextLoadReason = 'filter';
+                            loadOrders();
+                        });
+                    }
                 });
 
                 previous.addEventListener('click', () => {

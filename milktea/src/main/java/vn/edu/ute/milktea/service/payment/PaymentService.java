@@ -38,7 +38,13 @@ public class PaymentService {
     private final BusinessAuditRepository auditRepository;
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
 
-    
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
+
+    public void setStaffBranchRepository(vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository) {
+        this.staffBranchRepository = staffBranchRepository;
+    }
+
     @Transactional
     public PaymentDto.PaymentResponse recordReceipt(
             Long invoiceId,
@@ -83,7 +89,40 @@ public class PaymentService {
                         ErrorCode.VALIDATION_FAILED,
                         "Không tìm thấy hóa đơn"));
 
-        // 4. Xử lý request gửi lại với cùng idempotency key
+        // R01/R10: Xác định và kiểm tra quyền thu ngân TRƯỚC khi xử lý replay idempotency
+        if (cashierId == null) {
+            throw BusinessException.conflict(
+                    ErrorCode.ACCESS_DENIED,
+                    "Chưa xác định nhân viên thu tiền");
+        }
+
+        Account cashier = accountRepository.findById(cashierId)
+                .orElseThrow(() -> BusinessException.notFound(
+                        ErrorCode.VALIDATION_FAILED,
+                        "Không tìm thấy nhân viên thu tiền"));
+
+        // F06/R01: Kiểm tra thu ngân thuộc chi nhánh của đơn hàng (dựa trên StaffBranch active hoặc Account.branch)
+        if (cashier.getRole() != vn.edu.ute.milktea.entity.account.Role.ADMIN) {
+            Long orderBranchId = order.getBranch() != null ? order.getBranch().getId() : null;
+            if (orderBranchId == null) {
+                throw BusinessException.conflict(
+                        ErrorCode.VALIDATION_FAILED,
+                        "Đơn hàng thiếu thông tin chi nhánh");
+            }
+            boolean hasActiveAssignment = staffBranchRepository != null && staffBranchRepository
+                    .findByAccountIdAndBranchIdAndStatus(cashier.getId(), orderBranchId, "HOAT_DONG")
+                    .isPresent();
+            if (!hasActiveAssignment && cashier.getBranch() != null && cashier.getBranch().getId().equals(orderBranchId)) {
+                hasActiveAssignment = true;
+            }
+            if (!hasActiveAssignment) {
+                throw BusinessException.forbidden(
+                        ErrorCode.ACCESS_DENIED,
+                        "Thu ngân không thuộc chi nhánh của đơn hàng");
+            }
+        }
+
+        // 4. Xử lý request gửi lại với cùng idempotency key (sau khi đã kiểm tra quyền actor - R10)
         if (idempotencyKey != null
                 && !idempotencyKey.isBlank()) {
 
@@ -131,25 +170,13 @@ public class PaymentService {
                     "Hóa đơn đã được thanh toán");
         }
 
-        // 9. Kiểm tra số tiền hóa đơn
+        // 9. Kiểm tra số tiền hóa đơn (cho phép 0 VND khi giảm giá 100% bằng voucher - F17)
         if (invoice.getTotalAmount() == null
-                || invoice.getTotalAmount().signum() <= 0) {
+                || invoice.getTotalAmount().signum() < 0) {
             throw BusinessException.conflict(
                     ErrorCode.VALIDATION_FAILED,
                     "Số tiền phải trả không hợp lệ");
         }
-
-        // 10. Xác định nhân viên thu ngân
-        if (cashierId == null) {
-            throw BusinessException.conflict(
-                    ErrorCode.ACCESS_DENIED,
-                    "Chưa xác định nhân viên thu tiền");
-        }
-
-        Account cashier = accountRepository.findById(cashierId)
-                .orElseThrow(() -> BusinessException.notFound(
-                        ErrorCode.VALIDATION_FAILED,
-                        "Không tìm thấy nhân viên thu tiền"));
 
         // 11. Tạo Payment bằng số tiền server đã chốt
         Payment payment = Payment.builder()
@@ -182,17 +209,19 @@ public class PaymentService {
                 .createdAt(Instant.now())
                 .build());
 
-        // 14. Phát sự kiện sau khi transaction commit
+        // 14. Phát sự kiện sau khi transaction commit (R09: phát cả kênh branch và kênh global)
         String sessionId = order.getSession() != null
                 ? order.getSession().getId().toString()
                 : null;
+        Long branchId = order.getBranch() != null ? order.getBranch().getId() : null;
 
         java.util.Map<String, Object> eventData =
                 java.util.Map.of(
                         "orderId", order.getId(),
                         "invoiceId", invoice.getId(),
                         "amount", payment.getAmount(),
-                        "status", order.getStatus().name());
+                        "status", order.getStatus().name(),
+                        "branchId", branchId != null ? branchId : 0L);
 
         realtimeEventPublisher.publishAfterCommit(
                 "/topic/cashier",
@@ -202,9 +231,23 @@ public class PaymentService {
                 "1",
                 eventData);
 
+        if (branchId != null) {
+            realtimeEventPublisher.publishAfterCommit(
+                    "/topic/branches/" + branchId + "/cashier",
+                    "PAYMENT_RECORDED",
+                    payment.getId().toString(),
+                    sessionId,
+                    "1",
+                    eventData);
+        }
+
         if (order.getStatus() == OrderStatus.CHO_CHE_BIEN) {
             realtimeEventPublisher.publishAfterCommit("/topic/kitchen", "ORDER_STATUS_CHANGED",
                     order.getId().toString(), sessionId, "1", eventData);
+            if (branchId != null) {
+                realtimeEventPublisher.publishAfterCommit("/topic/branches/" + branchId + "/kitchen", "ORDER_STATUS_CHANGED",
+                        order.getId().toString(), sessionId, "1", eventData);
+            }
         }
 
         if (order.getSession() != null) {
@@ -226,7 +269,7 @@ public class PaymentService {
     public void createAuthorizedNotice(Long invoiceId, PaymentDto.PaymentNoticeRequest request, String key, vn.edu.ute.milktea.security.CurrentActor actor) {
         var invoice = invoiceRepository.findById(invoiceId).orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy hóa đơn"));
         var order = invoice.getOrder();
-        boolean allowed = actor != null && (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)
+        boolean allowed = actor != null && (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CASHIER) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN) || actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)
                 || (actor.getAccountId() != null && order.getAccount() != null && actor.getAccountId().equals(order.getAccount().getId()))
                 || (actor.getSessionId() != null && order.getSession() != null && actor.getSessionId().equals(order.getSession().getId()))
                 || (actor.getOrderId() != null && actor.getOrderId().equals(order.getId())));
@@ -264,7 +307,16 @@ public class PaymentService {
                 .createdAt(Instant.now())
                 .build());
 
-        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "PAYMENT_NOTICE_CREATED", notice.getId().toString(), null, "1", java.util.Map.of("orderId", invoice.getOrder().getId(), "invoiceId", invoice.getId(), "method", request.getMethod(), "tableName", invoice.getOrder().getSession() != null ? invoice.getOrder().getSession().getTable().getName() : "Quầy"));
+        var noticeData = java.util.Map.of(
+                "orderId", invoice.getOrder().getId(),
+                "invoiceId", invoice.getId(),
+                "method", request.getMethod(),
+                "tableName", invoice.getOrder().getSession() != null ? invoice.getOrder().getSession().getTable().getName() : "Quầy"
+        );
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "PAYMENT_NOTICE_CREATED", notice.getId().toString(), null, "1", noticeData);
+        if (invoice.getOrder().getBranch() != null) {
+            realtimeEventPublisher.publishAfterCommit("/topic/branches/" + invoice.getOrder().getBranch().getId() + "/cashier", "PAYMENT_NOTICE_CREATED", notice.getId().toString(), null, "1", noticeData);
+        }
     }
 
     @Transactional
@@ -303,7 +355,8 @@ public class PaymentService {
     
     private boolean isStaffCreated(Order order) {
         return order.getAccount() != null && (order.getAccount().getRole() == vn.edu.ute.milktea.entity.account.Role.CASHIER
-                || order.getAccount().getRole() == vn.edu.ute.milktea.entity.account.Role.ADMIN);
+                || order.getAccount().getRole() == vn.edu.ute.milktea.entity.account.Role.ADMIN
+                || order.getAccount().getRole() == vn.edu.ute.milktea.entity.account.Role.MANAGER);
     }
 
     private PaymentDto.PaymentResponse toPaymentResponse(

@@ -48,11 +48,16 @@ public interface ShiftSettlementItemRepository
     WHERE s.closedAt >= :start
       AND s.closedAt < :end
       AND i.discardedQuantity > 0
+      AND (:branchId IS NULL OR s.branch.id = :branchId)
     GROUP BY i.material.id, i.material.name, i.unit
     """)
 List<Object[]> findAllWasteMaterialsBetween(
         @Param("start") Instant start,
-        @Param("end") Instant end
+        @Param("end") Instant end,
+        @Param("branchId") Long branchId
 );
 
+default List<Object[]> findAllWasteMaterialsBetween(Instant start, Instant end) {
+    return findAllWasteMaterialsBetween(start, end, null);
+}
 }

@@ -22,6 +22,10 @@ public interface DiningTableRepository extends JpaRepository<DiningTable, Long> 
 
     List<DiningTable> findByBranchIdAndActiveTrueOrderByIdAsc(Long branchId);
 
+    List<DiningTable> findByBranchIdOrderByIdAsc(Long branchId);
+    Optional<DiningTable> findByBranchIdAndName(Long branchId, String name);
+    Optional<DiningTable> findByBranchIdAndNameIgnoreCase(Long branchId, String name);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM DiningTable t WHERE t.id = :id")
     Optional<DiningTable> findByIdWithLock(@Param("id") Long id);

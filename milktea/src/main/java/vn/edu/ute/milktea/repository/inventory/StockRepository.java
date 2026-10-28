@@ -31,6 +31,12 @@ public interface StockRepository extends JpaRepository<Stock, StockId> {
                                                      @Param("materialIds") Collection<Long> materialIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Stock s WHERE s.id.branchId = :branchId AND s.id.location = :location AND s.id.materialId IN :materialIds ORDER BY s.id.materialId ASC")
+    List<Stock> findByBranchIdAndLocationAndMaterialIdInWithLock(@Param("branchId") Long branchId,
+                                                                 @Param("location") StockLocation location,
+                                                                 @Param("materialIds") Collection<Long> materialIds);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM Stock s WHERE s.id.materialId = :materialId AND s.id.location = :location")
     Optional<Stock> findByIdWithLock(@Param("materialId") Long materialId, @Param("location") StockLocation location);
 

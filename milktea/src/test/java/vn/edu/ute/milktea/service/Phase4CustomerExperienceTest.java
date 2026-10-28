@@ -487,8 +487,6 @@ class Phase4CustomerExperienceTest {
                 .thenReturn(List.of(100L));
         when(productRepository.findByIdInAndActiveTrue(List.of(100L)))
                 .thenReturn(List.of(productOolong));
-        when(productRepository.findByActiveTrueOrderByIdDesc(any(Pageable.class)))
-                .thenReturn(List.of(productOolong));
 
         CatalogDto.FeaturedProductsResponse res = catalogService.getFeaturedProducts("best_seller", 1L, 10);
 
@@ -506,8 +504,6 @@ class Phase4CustomerExperienceTest {
                 .thenReturn(List.of(100L));
         when(productRepository.findByIdInAndActiveTrue(List.of(100L)))
                 .thenReturn(List.of(productOolong));
-        when(productRepository.findByActiveTrueOrderByIdDesc(any(Pageable.class)))
-                .thenReturn(List.of(productOolong));
 
         CatalogDto.FeaturedProductsResponse res = catalogService.getFeaturedProducts("top_rated", 1L, 10);
 
@@ -523,8 +519,6 @@ class Phase4CustomerExperienceTest {
         when(productFavoriteRepository.findMostFavoritedProductIds(any(Pageable.class)))
                 .thenReturn(List.of(100L));
         when(productRepository.findByIdInAndActiveTrue(List.of(100L)))
-                .thenReturn(List.of(productOolong));
-        when(productRepository.findByActiveTrueOrderByIdDesc(any(Pageable.class)))
                 .thenReturn(List.of(productOolong));
 
         CatalogDto.FeaturedProductsResponse res = catalogService.getFeaturedProducts("most_favorited", 1L, 10);

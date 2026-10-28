@@ -23,4 +23,36 @@ public interface RefundRequestRepository extends JpaRepository<RefundRequest, Lo
 
     @Query("SELECT r FROM RefundRequest r WHERE r.status = 'DA_HOAN' AND r.refundedAt >= :start AND r.refundedAt < :end")
     List<RefundRequest> findCompletedRefundsBetween(@Param("start") Instant start, @Param("end") Instant end);
+
+    @Query("""
+        SELECT r FROM RefundRequest r
+        JOIN r.order o
+        WHERE r.status = vn.edu.ute.milktea.entity.cancellation.RefundStatus.DA_HOAN
+          AND r.refundedAt >= :start AND r.refundedAt < :end
+          AND (:branchId IS NULL OR o.branch.id = :branchId)
+        """)
+    List<RefundRequest> findCompletedRefundsBetweenAndBranchId(
+            @Param("start") Instant start,
+            @Param("end") Instant end,
+            @Param("branchId") Long branchId
+    );
+
+    @Query("""
+        SELECT r FROM RefundRequest r
+        JOIN r.order o
+        WHERE r.status = :status
+          AND (:branchId IS NULL OR o.branch.id = :branchId)
+        """)
+    List<RefundRequest> findByStatusAndBranchId(
+            @Param("status") RefundStatus status,
+            @Param("branchId") Long branchId
+    );
+
+    @Query("""
+        SELECT r FROM RefundRequest r
+        JOIN r.order o
+        WHERE :branchId IS NULL OR o.branch.id = :branchId
+        """)
+    List<RefundRequest> findByBranchId(@Param("branchId") Long branchId);
 }
+

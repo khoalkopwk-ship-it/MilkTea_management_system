@@ -56,6 +56,10 @@ public class AdminPreparationRecipeAndStaffTest {
     @Mock BusinessAuditRepository auditRepository;
     @Mock RealtimeEventPublisher realtimeEventPublisher;
     @Mock PasswordEncoder passwordEncoder;
+    @Mock vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository;
+    @Mock vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
+    @Mock vn.edu.ute.milktea.repository.branch.BranchProductRepository branchProductRepository;
+    @Mock vn.edu.ute.milktea.service.branch.BranchService branchService;
 
     @InjectMocks AdminService adminService;
 

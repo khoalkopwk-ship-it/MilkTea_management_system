@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.ute.milktea.common.ApiResponse;
+import vn.edu.ute.milktea.common.ErrorCode;
+import vn.edu.ute.milktea.common.ErrorResponse;
 import vn.edu.ute.milktea.dto.OrderDto;
 import vn.edu.ute.milktea.security.CurrentActor;
 import vn.edu.ute.milktea.security.JwtAuthenticationFilter;
@@ -41,14 +43,14 @@ public class OrderController {
     }
 
     @PostMapping({ "/orders/online", "/customer/orders/online" })
-    public ResponseEntity<ApiResponse<OrderDto.OrderResponse>> createOnlineOrder(
-            @Valid @RequestBody OrderDto.CreateOnlineOrderRequest requestBody,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
-            HttpServletRequest request) {
-
-        CurrentActor actor = (CurrentActor) request.getAttribute(JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
-        OrderDto.OrderResponse response = orderService.createOnlineOrder(requestBody, actor, idempotencyKey);
-        return ResponseEntity.status(201).body(ApiResponse.ok(response));
+    public ResponseEntity<ErrorResponse> rejectOnlineOrder() {
+        return ResponseEntity.status(410).body(ErrorResponse.builder()
+                .success(false)
+                .error(ErrorResponse.ErrorDetail.builder()
+                        .code(ErrorCode.VALIDATION_FAILED.name())
+                        .message("Hệ thống chỉ phục vụ trong không gian quán (TABLE/COUNTER). Chức năng đặt hàng online từ xa đã ngừng hoạt động.")
+                        .build())
+                .build());
     }
 
     @GetMapping("/customer/orders")
@@ -66,7 +68,7 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.ok(orderService.getOrderForCustomer(orderId, actor)));
     }
 
-    @GetMapping("/cashier/orders")
+    @GetMapping({"/cashier/orders", "/admin/orders"})
     public ResponseEntity<ApiResponse<java.util.List<OrderDto.OrderResponse>>> getCashierOrders(
             @RequestParam(value = "branchId", required = false) Long branchIdParam,
             @RequestParam(value = "status", required = false) vn.edu.ute.milktea.entity.order.OrderStatus status,
@@ -74,7 +76,16 @@ public class OrderController {
             @RequestParam(value = "tab", required = false) String tab,
             @RequestParam(value = "query", required = false) String query,
             @AuthenticationPrincipal CurrentActor actor) {
-        Long branchId = (actor != null && actor.getBranchId() != null) ? actor.getBranchId() : branchIdParam;
+        Long branchId;
+        if (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)) {
+            branchId = actor.getBranchId();
+        } else if (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)) {
+            branchId = branchIdParam;
+        } else if (actor != null && actor.getBranchId() != null) {
+            branchId = actor.getBranchId();
+        } else {
+            branchId = branchIdParam;
+        }
         return ResponseEntity.ok(ApiResponse.ok(orderService.getOrdersForCashier(branchId, status, paymentStatus, tab, query)));
     }
 
@@ -110,8 +121,7 @@ public class OrderController {
             @PathVariable("id") Long orderId,
             @AuthenticationPrincipal CurrentActor actor) {
 
-        Long cashierId = actor != null ? actor.getAccountId() : null;
-        orderService.confirm(orderId, cashierId);
+        orderService.confirm(orderId, actor);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
@@ -120,8 +130,7 @@ public class OrderController {
             @PathVariable("id") Long orderId,
             @AuthenticationPrincipal CurrentActor actor) {
 
-        Long kitchenId = actor != null ? actor.getAccountId() : null;
-        orderService.start(orderId, kitchenId);
+        orderService.start(orderId, actor);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
@@ -130,8 +139,7 @@ public class OrderController {
             @PathVariable("id") Long orderId,
             @AuthenticationPrincipal CurrentActor actor) {
 
-        Long kitchenId = actor != null ? actor.getAccountId() : null;
-        orderService.complete(orderId, kitchenId);
+        orderService.complete(orderId, actor);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 

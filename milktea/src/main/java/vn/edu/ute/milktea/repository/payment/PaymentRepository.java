@@ -18,4 +18,17 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     @Query("SELECT p FROM Payment p WHERE p.paidAt >= :start AND p.paidAt < :end")
     List<Payment> findByPaidAtBetween(@Param("start") Instant start, @Param("end") Instant end);
+
+    @Query("""
+        SELECT p FROM Payment p
+        JOIN p.invoice i
+        JOIN i.order o
+        WHERE p.paidAt >= :start AND p.paidAt < :end
+          AND (:branchId IS NULL OR o.branch.id = :branchId)
+        """)
+    List<Payment> findByPaidAtBetweenAndBranchId(
+            @Param("start") Instant start,
+            @Param("end") Instant end,
+            @Param("branchId") Long branchId
+    );
 }

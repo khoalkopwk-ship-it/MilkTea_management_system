@@ -9,6 +9,7 @@ import vn.edu.ute.milktea.common.ErrorCode;
 import vn.edu.ute.milktea.dto.AdminDto;
 import vn.edu.ute.milktea.entity.account.Account;
 import vn.edu.ute.milktea.entity.account.Role;
+import vn.edu.ute.milktea.entity.branch.Branch;
 import vn.edu.ute.milktea.entity.catalog.Category;
 import vn.edu.ute.milktea.entity.catalog.Product;
 import vn.edu.ute.milktea.entity.inventory.Material;
@@ -53,12 +54,28 @@ public class AdminService {
     private final vn.edu.ute.milktea.repository.audit.BusinessAuditRepository auditRepository;
     private final vn.edu.ute.milktea.service.realtime.RealtimeEventPublisher realtimeEventPublisher;
     private final PasswordEncoder passwordEncoder;
+    private final vn.edu.ute.milktea.repository.branch.BranchRepository branchRepository;
+    private final vn.edu.ute.milktea.repository.branch.StaffBranchRepository staffBranchRepository;
+    private final vn.edu.ute.milktea.repository.branch.BranchProductRepository branchProductRepository;
+    private final vn.edu.ute.milktea.service.branch.BranchService branchService;
 
     // ==========================================
     // 1. QUẢN LÝ NHÂN VIÊN
     // ==========================================
     @Transactional(readOnly = true)
     public List<AdminDto.StaffResponse> listStaffAccounts() {
+        return listStaffAccounts(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminDto.StaffResponse> listStaffAccounts(Long branchId) {
+        if (branchId != null) {
+            var branchStaff = staffBranchRepository.findByBranchIdAndStatus(branchId, "HOAT_DONG");
+            return branchStaff.stream()
+                    .map(sb -> mapStaff(sb.getAccount(), sb.getBranch()))
+                    .filter(a -> a.getRole() != Role.CUSTOMER && a.getRole() != Role.ADMIN)
+                    .toList();
+        }
         return accountRepository.findAll().stream()
                 .filter(a -> a.getRole() != Role.CUSTOMER)
                 .map(this::mapStaff)
@@ -67,13 +84,56 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public AdminDto.StaffResponse getStaffAccount(Long id) {
+        return getStaffAccount(id, null);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminDto.StaffResponse getStaffAccount(Long id, Long branchId) {
         Account acc = accountRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy tài khoản nhân viên"));
+        if (branchId != null) {
+            boolean inBranch = staffBranchRepository.findByAccountIdAndBranchIdAndStatus(id, branchId, "HOAT_DONG").isPresent();
+            if (!inBranch || acc.getRole() == Role.ADMIN) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền xem nhân viên của chi nhánh khác");
+            }
+        }
         return mapStaff(acc);
     }
 
     @Transactional
     public AdminDto.StaffResponse createStaffAccount(AdminDto.CreateStaffRequest request) {
+        return createStaffAccount(request, null);
+    }
+
+    @Transactional
+    public AdminDto.StaffResponse createStaffAccount(AdminDto.CreateStaffRequest request, Long branchId) {
+        Long targetBranchId = branchId != null ? branchId : request.getBranchId();
+
+        if (branchId != null) {
+            // Manager creating staff: only CASHIER or KITCHEN
+            if (request.getRole() != Role.CASHIER && request.getRole() != Role.KITCHEN) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở chỉ có quyền tạo tài khoản Thu ngân hoặc Bếp");
+            }
+        }
+
+        if (request.getRole() == Role.ADMIN && branchId != null) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền tạo tài khoản Quản trị viên hệ thống");
+        }
+
+        // F26: Với CASHIER, KITCHEN, MANAGER, targetBranchId là bắt buộc
+        if (request.getRole() == Role.CASHIER || request.getRole() == Role.KITCHEN || request.getRole() == Role.MANAGER) {
+            if (targetBranchId == null) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Nhân viên chi nhánh bắt buộc phải chọn chi nhánh công tác");
+            }
+        }
+
+        Branch branch = null;
+        if (targetBranchId != null) {
+            final Long resolvedBranchId = targetBranchId;
+            branch = branchRepository.findById(resolvedBranchId)
+                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Chi nhánh không tồn tại: " + resolvedBranchId));
+        }
+
         if (accountRepository.existsByEmail(request.getEmail().trim().toLowerCase())) {
             throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Email đã được đăng ký trong hệ thống");
         }
@@ -94,14 +154,40 @@ public class AdminService {
                 .build();
 
         Account saved = accountRepository.save(account);
+
+        if (branch != null) {
+            staffBranchRepository.save(vn.edu.ute.milktea.entity.branch.StaffBranch.builder()
+                    .account(saved)
+                    .branch(branch)
+                    .branchRole(saved.getRole().name())
+                    .status("HOAT_DONG")
+                    .assignedAt(Instant.now())
+                    .build());
+        }
+
         realtimeEventPublisher.publishAfterCommit("/topic/admin", "STAFF_CHANGED", saved.getId().toString(), null, "1", java.util.Map.of("action", "CREATE", "email", saved.getEmail()));
-        return mapStaff(saved);
+        return branch != null ? mapStaff(saved, branch) : mapStaff(saved);
     }
 
     @Transactional
     public AdminDto.StaffResponse updateStaffAccount(Long id, AdminDto.UpdateStaffRequest request, Long currentAdminId) {
+        return updateStaffAccount(id, request, currentAdminId, null);
+    }
+
+    @Transactional
+    public AdminDto.StaffResponse updateStaffAccount(Long id, AdminDto.UpdateStaffRequest request, Long currentAdminId, Long branchId) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy tài khoản"));
+
+        if (branchId != null) {
+            boolean inBranch = staffBranchRepository.findByAccountIdAndBranchIdAndStatus(id, branchId, "HOAT_DONG").isPresent();
+            if (!inBranch || account.getRole() == Role.ADMIN || account.getRole() == Role.MANAGER) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở không có quyền sửa tài khoản này");
+            }
+            if (request.getRole() != null && request.getRole() != Role.CASHIER && request.getRole() != Role.KITCHEN) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở chỉ có thể phân vai trò Thu ngân hoặc Bếp");
+            }
+        }
 
         String beforeState = "role=" + account.getRole() + ",active=" + account.getActive() + ",email=" + account.getEmail();
 
@@ -179,12 +265,24 @@ public class AdminService {
 
     @Transactional
     public AdminDto.StaffResponse toggleStaffStatus(Long id, boolean active, Long currentAdminId) {
+        return toggleStaffStatus(id, active, currentAdminId, null);
+    }
+
+    @Transactional
+    public AdminDto.StaffResponse toggleStaffStatus(Long id, boolean active, Long currentAdminId, Long branchId) {
         if (!active && id.equals(currentAdminId)) {
             throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Không thể tự khóa tài khoản của chính mình");
         }
 
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy tài khoản"));
+
+        if (branchId != null) {
+            boolean inBranch = staffBranchRepository.findByAccountIdAndBranchIdAndStatus(id, branchId, "HOAT_DONG").isPresent();
+            if (!inBranch || account.getRole() == Role.ADMIN || account.getRole() == Role.MANAGER) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở không có quyền thao tác trên tài khoản này");
+            }
+        }
 
         if (!active && account.getRole() == Role.ADMIN) {
             long activeAdminCount = accountRepository.findAll().stream()
@@ -219,10 +317,29 @@ public class AdminService {
 
     @Transactional
     public void deleteStaffAccount(Long id, Long currentAdminId) {
-        toggleStaffStatus(id, false, currentAdminId);
+        deleteStaffAccount(id, currentAdminId, null);
+    }
+
+    @Transactional
+    public void deleteStaffAccount(Long id, Long currentAdminId, Long branchId) {
+        toggleStaffStatus(id, false, currentAdminId, branchId);
     }
 
     private AdminDto.StaffResponse mapStaff(Account a) {
+        return mapStaff(a, null);
+    }
+
+    private AdminDto.StaffResponse mapStaff(Account a, vn.edu.ute.milktea.entity.branch.Branch defaultBranch) {
+        Long bId = defaultBranch != null ? defaultBranch.getId() : null;
+        String bName = defaultBranch != null ? defaultBranch.getName() : null;
+        if (bId == null && staffBranchRepository != null) {
+            var sbs = staffBranchRepository.findByAccountIdAndStatus(a.getId(), "HOAT_DONG");
+            if (!sbs.isEmpty()) {
+                bId = sbs.get(0).getBranch().getId();
+                bName = sbs.get(0).getBranch().getName();
+            }
+        }
+
         return AdminDto.StaffResponse.builder()
                 .id(a.getId())
                 .email(a.getEmail())
@@ -231,6 +348,8 @@ public class AdminService {
                 .role(a.getRole())
                 .active(a.getActive())
                 .createdAt(a.getCreatedAt())
+                .branchId(bId)
+                .branchName(bName)
                 .build();
     }
 
@@ -257,8 +376,26 @@ public class AdminService {
 
     @Transactional
     public AdminDto.CategoryResponse createCategory(AdminDto.CategoryRequest request) {
+        String trimmedName = request.getName().trim();
+        java.util.Optional<Category> existingCat = categoryRepository.findByNameIgnoreCase(trimmedName);
+        if (existingCat.isPresent()) {
+            Category ex = existingCat.get();
+            if (Boolean.TRUE.equals(ex.getActive())) {
+                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Tên danh mục '" + trimmedName + "' đã tồn tại");
+            } else {
+                ex.setActive(true);
+                if (request.getAllowTopping() != null) ex.setAllowTopping(request.getAllowTopping());
+                Category saved = categoryRepository.save(ex);
+                realtimeEventPublisher.publishAfterCommit("/topic/admin", "CATALOG_CHANGED", saved.getId().toString(), null, "1",
+                        java.util.Map.of("type", "CATEGORY", "action", "RESTORE", "id", saved.getId(), "name", saved.getName()));
+                realtimeEventPublisher.publishAfterCommit("/topic/cashier", "CATALOG_CHANGED", saved.getId().toString(), null, "1",
+                        java.util.Map.of("type", "CATEGORY", "action", "RESTORE", "id", saved.getId(), "name", saved.getName()));
+                return AdminDto.CategoryResponse.builder().id(saved.getId()).name(saved.getName()).active(saved.getActive()).allowTopping(saved.getAllowTopping()).build();
+            }
+        }
+
         Category c = Category.builder()
-                .name(request.getName().trim())
+                .name(trimmedName)
                 .active(request.getActive() != null ? request.getActive() : true)
                 .allowTopping(request.getAllowTopping() != null ? request.getAllowTopping() : true)
                 .build();
@@ -274,7 +411,18 @@ public class AdminService {
     public AdminDto.CategoryResponse updateCategory(Long id, AdminDto.CategoryRequest request) {
         Category c = categoryRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy danh mục"));
-        if (request.getName() != null) c.setName(request.getName().trim());
+        if (request.getName() != null && !request.getName().isBlank()) {
+            String trimmedName = request.getName().trim();
+            if (!trimmedName.equalsIgnoreCase(c.getName())) {
+                final Long currentCatId = id;
+                categoryRepository.findByNameIgnoreCase(trimmedName).ifPresent(other -> {
+                    if (!other.getId().equals(currentCatId)) {
+                        throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Tên danh mục '" + trimmedName + "' đã tồn tại");
+                    }
+                });
+                c.setName(trimmedName);
+            }
+        }
         if (request.getActive() != null) c.setActive(request.getActive());
         if (request.getAllowTopping() != null) c.setAllowTopping(request.getAllowTopping());
         c = categoryRepository.save(c);
@@ -302,18 +450,49 @@ public class AdminService {
     // ==========================================
     @Transactional(readOnly = true)
     public List<AdminDto.ProductResponse> listProducts() {
-        return productRepository.findAll().stream().map(this::mapProduct).toList();
+        return listProducts(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminDto.ProductResponse> listProducts(Long branchId) {
+        java.util.Map<Long, Boolean> branchAvailabilityMap = (branchId != null && branchProductRepository != null)
+                ? branchProductRepository.findByBranchId(branchId).stream()
+                        .collect(java.util.stream.Collectors.toMap(bp -> bp.getProduct().getId(), bp -> Boolean.TRUE.equals(bp.getAvailable()), (a, b) -> b))
+                : java.util.Collections.emptyMap();
+        return productRepository.findAll().stream().map(p -> {
+            boolean isAvail = (branchId != null)
+                    ? branchAvailabilityMap.getOrDefault(p.getId(), Boolean.TRUE.equals(p.getActive())) && Boolean.TRUE.equals(p.getActive())
+                    : Boolean.TRUE.equals(p.getActive());
+            AdminDto.ProductResponse resp = mapProduct(p);
+            resp.setActive(isAvail);
+            return resp;
+        }).toList();
     }
 
     @Transactional(readOnly = true)
     public AdminDto.ProductPageResponse searchProducts(Long categoryId, Boolean active, String query, int page, int limit) {
+        return searchProducts(categoryId, active, query, page, limit, null);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminDto.ProductPageResponse searchProducts(Long categoryId, Boolean active, String query, int page, int limit, Long branchId) {
         List<Product> all = productRepository.findAll();
+        java.util.Map<Long, Boolean> branchAvailabilityMap = (branchId != null && branchProductRepository != null)
+                ? branchProductRepository.findByBranchId(branchId).stream()
+                        .collect(java.util.stream.Collectors.toMap(bp -> bp.getProduct().getId(), bp -> Boolean.TRUE.equals(bp.getAvailable()), (a, b) -> b))
+                : java.util.Collections.emptyMap();
+
         var stream = all.stream();
         if (categoryId != null) {
             stream = stream.filter(p -> p.getCategory() != null && categoryId.equals(p.getCategory().getId()));
         }
         if (active != null) {
-            stream = stream.filter(p -> active.equals(p.getActive()));
+            stream = stream.filter(p -> {
+                boolean isAvail = (branchId != null)
+                        ? branchAvailabilityMap.getOrDefault(p.getId(), Boolean.TRUE.equals(p.getActive())) && Boolean.TRUE.equals(p.getActive())
+                        : Boolean.TRUE.equals(p.getActive());
+                return active.equals(isAvail);
+            });
         }
         if (query != null && !query.isBlank()) {
             String q = query.trim().toLowerCase();
@@ -321,7 +500,14 @@ public class AdminService {
                     || (p.getDescription() != null && p.getDescription().toLowerCase().contains(q))
                     || (p.getSize() != null && p.getSize().toLowerCase().contains(q)));
         }
-        List<AdminDto.ProductResponse> filtered = stream.map(this::mapProduct).toList();
+        List<AdminDto.ProductResponse> filtered = stream.map(p -> {
+            boolean isAvail = (branchId != null)
+                    ? branchAvailabilityMap.getOrDefault(p.getId(), Boolean.TRUE.equals(p.getActive())) && Boolean.TRUE.equals(p.getActive())
+                    : Boolean.TRUE.equals(p.getActive());
+            AdminDto.ProductResponse resp = mapProduct(p);
+            resp.setActive(isAvail);
+            return resp;
+        }).toList();
         int totalItems = filtered.size();
         int safeLimit = limit <= 0 ? 10 : limit;
         int totalPages = (int) Math.ceil((double) totalItems / safeLimit);
@@ -414,6 +600,18 @@ public class AdminService {
                 java.util.Map.of("type", "PRODUCT", "action", "DEACTIVATE", "id", p.getId()));
     }
 
+    @Transactional
+    public void toggleProductStatus(Long id, boolean active) {
+        Product p = productRepository.findById(id)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.PRODUCT_UNAVAILABLE, "Không tìm thấy món uống"));
+        p.setActive(active);
+        productRepository.save(p);
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "CATALOG_CHANGED", p.getId().toString(), null, "1",
+                java.util.Map.of("type", "PRODUCT", "action", active ? "ACTIVATE" : "DEACTIVATE", "id", p.getId()));
+        realtimeEventPublisher.publishAfterCommit("/topic/cashier", "CATALOG_CHANGED", p.getId().toString(), null, "1",
+                java.util.Map.of("type", "PRODUCT", "action", active ? "ACTIVATE" : "DEACTIVATE", "id", p.getId()));
+    }
+
     @Transactional(readOnly = true)
     public AdminDto.ProductRecipeResponse getProductRecipe(Long productId) {
         Product p = productRepository.findById(productId)
@@ -486,21 +684,77 @@ public class AdminService {
     // ==========================================
     @Transactional(readOnly = true)
     public List<AdminDto.TableResponse> listTables() {
+        return listTables(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminDto.TableResponse> listTables(Long branchId) {
+        if (branchId != null) {
+            return tableRepository.findByBranchIdOrderByIdAsc(branchId).stream().map(this::mapTable).toList();
+        }
         return tableRepository.findAll().stream().map(this::mapTable).toList();
     }
 
     @Transactional(readOnly = true)
     public AdminDto.TableResponse getTable(Long id) {
+        return getTable(id, null);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminDto.TableResponse getTable(Long id, Long branchId) {
         DiningTable t = tableRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
+        if (branchId != null && (t.getBranch() == null || !t.getBranch().getId().equals(branchId))) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền xem bàn của chi nhánh khác");
+        }
         return mapTable(t);
     }
 
     @Transactional
     public AdminDto.TableResponse createTable(AdminDto.TableRequest request) {
+        return createTable(request, null);
+    }
+
+    @Transactional
+    public AdminDto.TableResponse createTable(AdminDto.TableRequest request, Long branchId) {
+        Long targetBranchId = branchId != null ? branchId : request.getBranchId();
+        if (targetBranchId == null) {
+            targetBranchId = branchRepository.findAll().stream()
+                    .filter(b -> !"KHOTONG".equalsIgnoreCase(b.getCode()) && b.isActive())
+                    .map(Branch::getId)
+                    .findFirst()
+                    .orElse(null);
+            if (targetBranchId == null) {
+                targetBranchId = branchRepository.findAll().stream()
+                        .map(Branch::getId)
+                        .findFirst()
+                        .orElse(null);
+            }
+        }
+        vn.edu.ute.milktea.entity.branch.Branch branch = targetBranchId != null
+                ? branchRepository.findById(targetBranchId).orElse(null)
+                : null;
+        if (branch == null) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Bàn bắt buộc phải thuộc một chi nhánh cụ thể");
+        }
+
+        String trimmedName = request.getName().trim();
+        java.util.Optional<DiningTable> existingTable = tableRepository.findByBranchIdAndNameIgnoreCase(branch.getId(), trimmedName);
+        if (existingTable.isPresent()) {
+            DiningTable ex = existingTable.get();
+            if (Boolean.TRUE.equals(ex.getActive())) {
+                throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Tên bàn '" + trimmedName + "' đã tồn tại trong chi nhánh " + branch.getName());
+            } else {
+                ex.setActive(true);
+                ex.setStatus(TableStatus.TRONG);
+                return mapTable(tableRepository.save(ex));
+            }
+        }
+
         String qrCode = "TABLE_QR_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         DiningTable table = DiningTable.builder()
-                .name(request.getName().trim())
+                .branch(branch)
+                .name(trimmedName)
                 .qrCode(qrCode)
                 .status(TableStatus.TRONG)
                 .active(request.getActive() != null ? request.getActive() : true)
@@ -511,17 +765,46 @@ public class AdminService {
 
     @Transactional
     public AdminDto.TableResponse updateTable(Long id, AdminDto.TableRequest request) {
+        return updateTable(id, request, null);
+    }
+
+    @Transactional
+    public AdminDto.TableResponse updateTable(Long id, AdminDto.TableRequest request, Long branchId) {
         DiningTable t = tableRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
-        if (request.getName() != null) t.setName(request.getName().trim());
+        if (branchId != null && (t.getBranch() == null || !t.getBranch().getId().equals(branchId))) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền sửa bàn của chi nhánh khác");
+        }
+        if (request.getName() != null && !request.getName().isBlank()) {
+            String trimmedName = request.getName().trim();
+            if (!trimmedName.equalsIgnoreCase(t.getName())) {
+                Long bId = t.getBranch() != null ? t.getBranch().getId() : null;
+                if (bId != null) {
+                    tableRepository.findByBranchIdAndNameIgnoreCase(bId, trimmedName).ifPresent(other -> {
+                        if (!other.getId().equals(t.getId())) {
+                            throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Tên bàn '" + trimmedName + "' đã tồn tại trong chi nhánh");
+                        }
+                    });
+                }
+                t.setName(trimmedName);
+            }
+        }
         if (request.getActive() != null) t.setActive(request.getActive());
         return mapTable(tableRepository.save(t));
     }
 
     @Transactional
     public void deleteTable(Long id) {
+        deleteTable(id, null);
+    }
+
+    @Transactional
+    public void deleteTable(Long id, Long branchId) {
         DiningTable t = tableRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
+        if (branchId != null && (t.getBranch() == null || !t.getBranch().getId().equals(branchId))) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền xóa bàn của chi nhánh khác");
+        }
         if (t.getStatus() == TableStatus.CO_KHACH) {
             throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Không thể xóa bàn đang có khách");
         }
@@ -531,8 +814,16 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public String getTableQr(Long id) {
+        return getTableQr(id, null);
+    }
+
+    @Transactional(readOnly = true)
+    public String getTableQr(Long id, Long branchId) {
         DiningTable t = tableRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy bàn"));
+        if (branchId != null && (t.getBranch() == null || !t.getBranch().getId().equals(branchId))) {
+            throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Quản lý cơ sở không có quyền xem bàn của chi nhánh khác");
+        }
         return t.getQrCode();
     }
 
@@ -544,6 +835,8 @@ public class AdminService {
                 .status(t.getStatus())
                 .activeSessionId(t.getActiveSessionId())
                 .active(t.getActive())
+                .branchId(t.getBranch() != null ? t.getBranch().getId() : null)
+                .branchName(t.getBranch() != null ? t.getBranch().getName() : null)
                 .build();
     }
 
@@ -752,6 +1045,7 @@ public class AdminService {
         var inputItems = request.getInputItems();
         if (inputItems != null && !inputItems.isEmpty()) {
             preparationRecipeItemRepository.deleteByIdRecipeId(id);
+            preparationRecipeItemRepository.flush();
             List<PreparationRecipeItem> items = new ArrayList<>();
             for (var in : inputItems) {
                 Material inMat = materialRepository.findById(in.getInputMaterialId())
@@ -789,9 +1083,14 @@ public class AdminService {
     }
 
     private BigDecimal getRawMaterialCost(Long matId) {
-        var stockOpt = stockRepository.findByIdMaterialIdAndIdLocation(matId, vn.edu.ute.milktea.entity.inventory.StockLocation.KHO);
-        if (stockOpt.isPresent() && stockOpt.get().getCostPrice() != null && stockOpt.get().getCostPrice().signum() > 0) {
-            return stockOpt.get().getCostPrice();
+        if (branchService != null) {
+            var centralWarehouse = branchService.getOrCreateCentralWarehouse();
+            if (centralWarehouse != null) {
+                var stockOpt = stockRepository.findByIdBranchIdAndIdMaterialIdAndIdLocation(centralWarehouse.getId(), matId, vn.edu.ute.milktea.entity.inventory.StockLocation.KHO);
+                if (stockOpt.isPresent() && stockOpt.get().getCostPrice() != null && stockOpt.get().getCostPrice().signum() > 0) {
+                    return stockOpt.get().getCostPrice();
+                }
+            }
         }
 
         List<ImportReceiptItem> items = importReceiptItemRepository.findByIdMaterialId(matId);

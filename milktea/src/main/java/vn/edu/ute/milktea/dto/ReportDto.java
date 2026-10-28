@@ -19,6 +19,8 @@ public class ReportDto {
     public static class RevenueReportView {
         private LocalDate fromDate;
         private LocalDate toDate;
+        private Long branchId;
+        private String branchName;
         @Builder.Default
         private String currency = "VND";
         private BigDecimal received;
@@ -45,6 +47,8 @@ public class ReportDto {
     public static class DashboardResponse {
         private LocalDate fromDate;
         private LocalDate toDate;
+        private Long branchId;
+        private String branchName;
         private DashboardSummary summary;
         private List<RevenueByDay> revenueByDay;
         private List<OrderStatusStatistic> ordersByStatus;

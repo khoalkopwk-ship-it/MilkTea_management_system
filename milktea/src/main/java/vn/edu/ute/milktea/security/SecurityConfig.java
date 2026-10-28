@@ -23,7 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.ArrayList;
 import java.util.List;
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
@@ -38,15 +38,42 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+        org.springframework.security.web.csrf.CookieCsrfTokenRepository csrfTokenRepository =
+                org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfTokenRepository.setCookiePath("/");
+        csrfTokenRepository.setHeaderName("X-CSRF-TOKEN");
+
+        org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler requestHandler =
+                new org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler();
+        requestHandler.setCsrfRequestAttributeName(null);
+
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .csrf(AbstractHttpConfigurer::disable) // CSRF handled via token headers/check for API or CookieCsrfTokenRepository
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(csrfTokenRepository)
+                        .csrfTokenRequestHandler(requestHandler)
+                        .ignoringRequestMatchers(
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/verify-email",
+                                "/api/v1/auth/resend-otp",
+                                "/api/v1/auth/password-reset/**",
+                                "/ws/**",
+                                "/actuator/**"
+                        )
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Staff pages require an authenticated staff JWT.
-                        .requestMatchers("/admin", "/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/cashier", "/cashier/**").hasAnyRole("ADMIN", "CASHIER")
-                        .requestMatchers("/kitchen", "/kitchen/**").hasAnyRole("ADMIN", "KITCHEN")
+                        // Settings, Vouchers and Preparation Recipes are strictly ADMIN only
+                        .requestMatchers("/admin/settings", "/admin/settings/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/vouchers", "/admin/vouchers/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/vouchers", "/api/v1/admin/vouchers/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/settings", "/api/v1/admin/settings/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/preparation-recipes", "/api/v1/admin/preparation-recipes/**").hasRole("ADMIN")
+                        // Admin pages & APIs: accessible to ADMIN and MANAGER (manager is scoped to their branch)
+                        .requestMatchers("/admin", "/admin/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/cashier", "/cashier/**").hasRole("CASHIER")
+                        .requestMatchers("/kitchen", "/kitchen/**").hasAnyRole("KITCHEN", "CHEF")
                         // 1. Static resources, pages & websocket
                         .requestMatchers(
                                 "/",
@@ -67,17 +94,28 @@ public class SecurityConfig {
                                 "/actuator/info"
                         ).permitAll()
                         // 2. Role-based staff routes
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/cashier/**").hasAnyRole("ADMIN", "CASHIER")
-                        .requestMatchers("/api/v1/kitchen/**").hasAnyRole("ADMIN", "KITCHEN")
-                        .requestMatchers("/api/v1/inventory/**").hasAnyRole("ADMIN", "KITCHEN", "CASHIER")
+                        .requestMatchers(
+                                "/api/v1/admin/categories",
+                                "/api/v1/admin/categories/**",
+                                "/api/v1/admin/branches",
+                                "/api/v1/admin/branches/**",
+                                "/api/v1/admin/refunds/*/decision"
+                        ).hasRole("ADMIN")
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/api/v1/cashier/**").hasRole("CASHIER")
+                        .requestMatchers("/api/v1/kitchen/**").hasAnyRole("KITCHEN", "CHEF")
+                        .requestMatchers("/api/v1/inventory/**").hasAnyRole("ADMIN", "KITCHEN", "CASHIER", "MANAGER")
+                        .requestMatchers("/api/v1/orders/counter").hasAnyRole("CASHIER", "ADMIN", "MANAGER")
                         // 3. Public, Customer & Guest routes
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/api/v1/public/**",
+                                "/api/v1/branches",
+                                "/api/v1/branches/**",
                                 "/api/v1/catalog/**",
                                 "/api/v1/tables/**",
                                 "/api/v1/table-sessions/**",
+                                "/api/v1/orders/table",
                                 "/api/v1/orders/**",
                                 "/api/v1/customer/**",
                                 "/api/v1/favorites/**",

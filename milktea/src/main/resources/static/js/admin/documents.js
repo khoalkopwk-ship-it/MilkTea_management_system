@@ -354,11 +354,19 @@ const DocumentsApp = (() => {
 
     async function load() {
         try {
+            const branchId = document.getElementById('documentBranchFilter')?.value || '';
+            let importUrl = '/api/v1/inventory/imports';
+            let movementUrl = '/api/v1/inventory/movements';
+            if (branchId) {
+                importUrl += `?branchId=${encodeURIComponent(branchId)}`;
+                movementUrl += `?branchId=${encodeURIComponent(branchId)}`;
+            }
+
             [cancellations, refunds, imports, movements] = await Promise.all([
                 MilkTeaApi.get('/api/v1/admin/cancellation-requests'),
                 MilkTeaApi.get('/api/v1/admin/refunds'),
-                MilkTeaApi.get('/api/v1/inventory/imports'),
-                MilkTeaApi.get('/api/v1/inventory/movements')
+                MilkTeaApi.get(importUrl),
+                MilkTeaApi.get(movementUrl)
             ]);
 
             const ids = [...new Set([
@@ -367,6 +375,17 @@ const DocumentsApp = (() => {
             ])];
             const results = await Promise.all(ids.map(id => MilkTeaApi.get(`/api/v1/customer/orders/${id}`)));
             orders = new Map(results.map(o => [o.orderId, o]));
+
+            if (branchId) {
+                cancellations = cancellations.filter(c => {
+                    const ord = orders.get(c.orderId);
+                    return ord && String(ord.branchId) === String(branchId);
+                });
+                refunds = refunds.filter(r => {
+                    const ord = orders.get(r.orderId);
+                    return ord && String(ord.branchId) === String(branchId);
+                });
+            }
 
             document.getElementById('documentError').classList.add('d-none');
             render();
@@ -408,6 +427,7 @@ const DocumentsApp = (() => {
 
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('movementTypeFilter').addEventListener('change', render);
+        document.getElementById('documentBranchFilter')?.addEventListener('change', load);
         document.getElementById('applyDocumentDateFilter').addEventListener('click', () => {
             appliedDateFrom = document.getElementById('documentDateFrom').value;
             appliedDateTo = document.getElementById('documentDateTo').value;

@@ -4,7 +4,7 @@
       th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
 
 <head>
-    <title>Cài đặt quán &amp; khuyến mãi - Admin</title>
+    <title>Cài đặt - Admin</title>
 </head>
 
 <body>
@@ -567,7 +567,7 @@
                         <i class="bi bi-cup-hot-fill"></i> Món &amp; danh mục
                     </a>
 
-                    <a th:href="@{/admin/tables}" class="admin-nav-link">
+                    <a th:if="${isManager != null and isManager}" th:href="@{/admin/tables}" class="admin-nav-link">
                         <i class="bi bi-grid-3x3-gap-fill"></i> Sơ đồ bàn &amp; QR
                     </a>
 
@@ -589,8 +589,12 @@
                         <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
                     </a>
 
-                    <a th:href="@{/admin/settings}" class="admin-nav-link active">
-                        <i class="bi bi-gear-fill"></i> Cài đặt &amp; giảm giá
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/vouchers}" class="admin-nav-link">
+                        <i class="bi bi-ticket-perforated-fill"></i> Khuyến mãi &amp; Voucher
+                    </a>
+
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/settings}" class="admin-nav-link active">
+                        <i class="bi bi-gear-fill"></i> Cài đặt
                     </a>
                 </div>
             </div>
@@ -598,10 +602,9 @@
             <div class="col admin-content-column">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
                     <div>
-                        <h3 class="brand-font mb-1">Cài đặt quán &amp; khuyến mãi</h3>
+                        <h3 class="brand-font mb-1">Cài đặt hệ thống</h3>
                         <p class="text-muted small mb-0">
-                            Quản lý thương hiệu, ngân hàng nhận tiền chuyển khoản và tỷ lệ
-                            khuyến mãi toàn quán
+                            Quản lý thương hiệu quán và tài khoản ngân hàng nhận tiền chuyển khoản (VietQR)
                         </p>
                     </div>
                 </div>
@@ -645,61 +648,8 @@
                                                placeholder="Địa chỉ quán hiển thị trên hóa đơn và trang chủ" />
                                     </div>
 
-                                    <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2 settings-section-title">
-                                        Chương trình khuyến mãi
-                                    </h6>
-
-                                    <div class="mb-4">
-                                        <label class="form-label fw-semibold">
-                                            Hình thức giảm giá <span class="text-danger">*</span>
-                                        </label>
-
-                                        <div class="d-flex gap-4 mb-2 settings-discount-options">
-                                            <div class="form-check">
-                                                <input class="form-check-input"
-                                                       type="radio"
-                                                       name="discountTypeRadio"
-                                                       id="radioDiscountPercent"
-                                                       value="PERCENT"
-                                                       th:checked="${settings == null || settings.discountType == null || settings.discountType == 'PERCENT'}"
-                                                       onchange="toggleDiscountType()">
-                                                <label class="form-check-label" for="radioDiscountPercent">
-                                                    Theo phần trăm (%)
-                                                </label>
-                                            </div>
-
-                                            <div class="form-check">
-                                                <input class="form-check-input"
-                                                       type="radio"
-                                                       name="discountTypeRadio"
-                                                       id="radioDiscountFixed"
-                                                       value="FIXED_AMOUNT"
-                                                       th:checked="${settings != null && settings.discountType == 'FIXED_AMOUNT'}"
-                                                       onchange="toggleDiscountType()">
-                                                <label class="form-check-label" for="radioDiscountFixed">
-                                                    Theo số tiền cố định (VNĐ)
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <div class="input-group">
-                                            <input type="number"
-                                                   id="discountValueInput"
-                                                   class="form-control"
-                                                   min="0"
-                                                   step="0.5"
-                                                   required
-                                                   th:value="${settings?.discountValue != null ? settings.discountValue : (settings?.discountPercent != null ? settings.discountPercent : 0)}" />
-
-                                            <span class="input-group-text bg-light fw-bold" id="discountUnitAddon">
-                                                %
-                                            </span>
-                                        </div>
-
-                                        <small class="text-muted" id="discountHelpText">
-                                            Áp dụng trực tiếp vào tổng tiền khi khách đặt đơn hoặc thu ngân tạo đơn.
-                                        </small>
-                                    </div>
+                                    <input type="hidden" id="discountTypeHidden" th:value="${settings != null and settings.discountType != null ? settings.discountType : 'PERCENT'}" />
+                                    <input type="hidden" id="discountValueHidden" th:value="${settings != null and settings.discountValue != null ? settings.discountValue : (settings != null and settings.discountPercent != null ? settings.discountPercent : 0)}" />
 
                                     <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2 settings-section-title">
                                         Tài khoản ngân hàng (VietQR)
@@ -826,7 +776,6 @@
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 AdminApp.init();
-                toggleDiscountType();
 
                 document.getElementById('bankAccountNumber').addEventListener('input', (e) => {
                      document.getElementById('previewBankNumber').textContent = e.target.value || '0000000000';
@@ -841,33 +790,14 @@
                 });
             });
 
-            function toggleDiscountType() {
-                const isPercent = document.getElementById('radioDiscountPercent').checked;
-                const input = document.getElementById('discountValueInput');
-                const addon = document.getElementById('discountUnitAddon');
-                const help = document.getElementById('discountHelpText');
-
-                if (isPercent) {
-                    input.max = 100;
-                    input.step = 0.5;
-                    addon.textContent = '%';
-                    help.textContent = 'Giảm từ 0% đến 100% trên tổng giá trị hóa đơn.';
-                } else {
-                    input.removeAttribute('max');
-                    input.step = 1000;
-                    addon.textContent = '₫';
-                    help.textContent = 'Giảm trừ số tiền cố định trực tiếp vào tổng thanh toán (tối đa bằng tổng tiền món).';
-                }
-            }
-
             function submitSettings() {
                 const shopName = document.getElementById('shopName').value;
                 const address = document.getElementById('address').value;
                 const bankName = document.getElementById('bankName').value;
                 const bankAccountNumber = document.getElementById('bankAccountNumber').value;
                 const bankAccountHolder = document.getElementById('bankAccountHolder').value;
-                const discountType = document.getElementById('radioDiscountPercent').checked ? 'PERCENT' : 'FIXED_AMOUNT';
-                const discountValue = parseFloat(document.getElementById('discountValueInput').value || 0);
+                const discountType = document.getElementById('discountTypeHidden').value || 'PERCENT';
+                const discountValue = parseFloat(document.getElementById('discountValueHidden').value || 0);
 
                 AdminApp.updateSettings(shopName, address, bankName, bankAccountNumber, bankAccountHolder, discountValue, discountType, discountValue);
             }

@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+
+<head>
+    <title>Quản lý Khuyến mãi &amp; Voucher - Admin</title>
+</head>
+
+<body>
+    <div th:fragment="content" class="container-fluid py-4 px-lg-4 dashboard-page vouchers-page">
+        <link rel="stylesheet" th:href="@{/css/admin-dashboard.css}">
+
+        <style>
+            .vouchers-page {
+                --voucher-primary: #b86b35;
+                --voucher-primary-hover: #9e5524;
+                --voucher-primary-light: #fbeee4;
+                --voucher-secondary: #775D4A;
+                --voucher-border: #E8DED5;
+                --voucher-card: #ffffff;
+            }
+
+            .voucher-badge-code {
+                font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+                font-size: 0.95rem;
+                font-weight: 700;
+                letter-spacing: 0.05em;
+                background: #fbeee4;
+                color: #9e5524;
+                border: 1px dashed #d8a882;
+                padding: 4px 10px;
+                border-radius: 8px;
+                display: inline-block;
+            }
+
+            .stat-mini-card {
+                background: #fff;
+                border: 1px solid var(--voucher-border);
+                border-radius: 16px;
+                padding: 16px 20px;
+                box-shadow: 0 4px 12px rgba(96, 71, 53, 0.04);
+            }
+        </style>
+
+        <div class="admin-report-layout">
+            <!-- Sidebar Admin -->
+            <div class="admin-sidebar-column">
+                <aside class="card border-0 shadow-sm rounded-4 p-3 admin-sidebar">
+                    <h6 class="text-muted small fw-bold px-2 mb-3 text-uppercase"
+                        th:text="${isManager != null and isManager} ? 'Quản lý chi nhánh' : 'Quản trị hệ thống'">
+                        Quản trị hệ thống
+                    </h6>
+
+                    <a th:href="@{/admin/reports}" class="admin-nav-link">
+                        <i class="bi bi-graph-up-arrow"></i> Báo cáo doanh thu
+                    </a>
+
+                    <a th:href="@{/admin/catalog}" class="admin-nav-link">
+                        <i class="bi bi-cup-hot-fill"></i> Món &amp; danh mục
+                    </a>
+
+                    <a th:if="${isManager != null and isManager}" th:href="@{/admin/tables}" class="admin-nav-link">
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Sơ đồ bàn &amp; QR
+                    </a>
+
+                    <a th:href="@{/admin/orders}" class="admin-nav-link">
+                        <i class="bi bi-receipt"></i> Quản lý đơn hàng
+                    </a>
+
+                    <a th:href="@{/admin/staff}" class="admin-nav-link">
+                        <i class="bi bi-people-fill"></i> Tài khoản nhân viên
+                    </a>
+
+                    <a th:href="@{/admin/inventory}" class="admin-nav-link">
+                        <i class="bi bi-box-seam-fill"></i> Kho hàng
+                    </a>
+
+                    <a th:href="@{/admin/documents}" class="admin-nav-link d-flex align-items-center justify-content-between">
+                        <span><i class="bi bi-files me-1"></i> Chứng từ</span>
+                        <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
+                    </a>
+
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/vouchers}" class="admin-nav-link active">
+                        <i class="bi bi-ticket-perforated-fill"></i> Khuyến mãi &amp; Voucher
+                    </a>
+
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/settings}" class="admin-nav-link">
+                        <i class="bi bi-gear-fill"></i> Cài đặt
+                    </a>
+                </aside>
+            </div>
+
+            <!-- Content Column -->
+            <div class="admin-content-column dashboard-content">
+                <!-- Tiêu đề trang & Nút hành động -->
+                <header class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-warning text-dark fw-bold rounded-pill px-3 py-1">Giai đoạn 5</span>
+                            <span class="text-muted small">Khuyến mãi &amp; Voucher chuỗi</span>
+                        </div>
+                        <h2 class="brand-font fw-bold mb-1">Quản lý Khuyến mãi &amp; Voucher</h2>
+                        <p class="text-muted mb-0">Hệ thống thiết lập mức giảm giá chung cửa hàng và phát hành mã voucher ưu đãi toàn chuỗi</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3" onclick="loadVouchersList()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Làm mới
+                        </button>
+                        <button type="button" class="btn btn-primary rounded-pill px-4 text-white fw-bold" style="background: #b86b35; border: none;" onclick="openCreateVoucherModal()">
+                            <i class="bi bi-plus-lg me-1"></i> Tạo Voucher mới
+                        </button>
+                    </div>
+                </header>
+
+                <!-- 4 Thẻ thống kê tổng quan -->
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="stat-mini-card d-flex align-items-center gap-3">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; background: #fbeee4; color: #b86b35;">
+                                <i class="bi bi-ticket-perforated-fill fs-4"></i>
+                            </div>
+                            <div>
+                                <div class="text-muted small">Tổng số Voucher</div>
+                                <h3 class="fw-bold mb-0 text-dark" id="statTotalVouchers">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="stat-mini-card d-flex align-items-center gap-3">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; background: #ecfdf5; color: #10b981;">
+                                <i class="bi bi-check-circle-fill fs-4"></i>
+                            </div>
+                            <div>
+                                <div class="text-muted small">Đang kích hoạt</div>
+                                <h3 class="fw-bold mb-0 text-success" id="statActiveVouchers">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="stat-mini-card d-flex align-items-center gap-3">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; background: #eff6ff; color: #3b82f6;">
+                                <i class="bi bi-cart-check-fill fs-4"></i>
+                            </div>
+                            <div>
+                                <div class="text-muted small">Lượt đã sử dụng</div>
+                                <h3 class="fw-bold mb-0 text-primary" id="statTotalUsages">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-xl-3">
+                        <div class="stat-mini-card d-flex align-items-center gap-3">
+                            <div class="rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; background: #fee2e2; color: #ef4444;">
+                                <i class="bi bi-calendar-x fs-4"></i>
+                            </div>
+                            <div>
+                                <div class="text-muted small">Voucher hết hạn</div>
+                                <h3 class="fw-bold mb-0 text-danger" id="statExpiredVouchers">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CÀI ĐẶT GIẢM GIÁ CHO TẤT CẢ HÓA ĐƠN TRONG CỬA HÀNG -->
+                <div class="card p-4 mb-4 border-0 shadow-sm rounded-4" style="background: #ffffff; border: 1px solid var(--voucher-border) !important;">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3 pb-3 border-bottom">
+                        <div>
+                            <h4 class="brand-font fw-bold mb-1 text-dark">
+                                <i class="bi bi-tag-fill text-warning me-2"></i>Cài đặt Giảm Giá Cho Tất Cả Hóa Đơn (Giảm Giá Cửa Hàng)
+                            </h4>
+                            <p class="text-muted small mb-0">Thiết lập mức chiết khấu tự động trừ trực tiếp vào mọi đơn hàng/hóa đơn tại quán (kết hợp đồng thời với Voucher)</p>
+                        </div>
+                        <span class="badge bg-warning bg-opacity-10 text-dark border border-warning-subtle px-3 py-2 rounded-pill">
+                            <i class="bi bi-gear-fill me-1"></i> Áp dụng toàn hệ thống
+                        </span>
+                    </div>
+
+                    <form id="storeDiscountForm" onsubmit="event.preventDefault(); saveStoreDiscount();">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-dark">Hình thức giảm giá cửa hàng:</label>
+                                <div class="d-flex gap-3 pt-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="storeDiscountType" id="storeDiscountPercent" value="PERCENT"
+                                               th:checked="${settings == null || settings.discountType == null || settings.discountType == 'PERCENT'}"
+                                               onchange="toggleStoreDiscountType()">
+                                        <label class="form-check-label small fw-semibold" for="storeDiscountPercent">Theo phần trăm (%)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="storeDiscountType" id="storeDiscountFixed" value="FIXED_AMOUNT"
+                                               th:checked="${settings != null && settings.discountType == 'FIXED_AMOUNT'}"
+                                               onchange="toggleStoreDiscountType()">
+                                        <label class="form-check-label small fw-semibold" for="storeDiscountFixed">Số tiền cố định (₫)</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold small text-dark">Giá trị giảm giá:</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="storeDiscountValueInput" min="0" step="any"
+                                           th:value="${settings?.discountValue != null ? settings.discountValue : (settings?.discountPercent != null ? settings.discountPercent : 0)}"
+                                           placeholder="Nhập giá trị giảm giá..." required>
+                                    <span class="input-group-text bg-light fw-bold" id="storeDiscountUnit">
+                                        <span th:text="${settings != null and settings.discountType == 'FIXED_AMOUNT' ? '₫' : '%'}">%</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" id="btnSaveStoreDiscount" class="btn btn-warning w-100 rounded-pill fw-bold text-white"
+                                        style="background: linear-gradient(135deg, #b86b35, #9e5524); border: none;">
+                                    <i class="bi bi-check-circle me-1"></i> Lưu Cài Đặt Giảm Giá
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted" id="storeDiscountHelpText">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Nhập 0 nếu không muốn áp dụng giảm giá chung cửa hàng. Đơn hàng khi thanh toán sẽ được giảm giá cửa hàng trước, sau đó tiếp tục áp dụng trừ Voucher nếu có.
+                            </small>
+                        </div>
+                        <input type="hidden" id="storeShopName" th:value="${settings?.shopName ?: 'MilkTea Chain'}" />
+                        <input type="hidden" id="storeAddress" th:value="${settings?.address ?: 'Hồ Chí Minh, Việt Nam'}" />
+                        <input type="hidden" id="storeBankName" th:value="${settings?.bankName ?: 'MBBank'}" />
+                        <input type="hidden" id="storeBankAccountNumber" th:value="${settings?.bankAccountNumber ?: '08881706888'}" />
+                        <input type="hidden" id="storeBankAccountHolder" th:value="${settings?.bankAccountHolder ?: 'DANG NGUYEN MINH KHOA'}" />
+                    </form>
+                </div>
+
+                <!-- BẢNG QUẢN LÝ VOUCHER -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                        <div>
+                            <h4 class="brand-font fw-bold mb-1 text-dark">Danh sách Voucher toàn chuỗi</h4>
+                            <p class="text-muted small mb-0">Quản lý trạng thái, chỉnh sửa hạn mức chiết khấu và theo dõi khách hàng sử dụng</p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <input type="text" class="form-control form-control-sm rounded-pill px-3" id="voucherSearchKeyword" placeholder="Tìm theo mã hoặc tên..." onkeyup="handleVoucherSearch()" style="width: 240px;" />
+                            <select class="form-select form-select-sm rounded-pill" id="voucherStatusFilter" onchange="loadVouchersList()" style="width: 160px;">
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="true">Đang kích hoạt</option>
+                                <option value="false">Đã tắt</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="vouchersTable">
+                            <thead class="table-light small text-muted text-uppercase">
+                                <tr>
+                                    <th>Mã Voucher</th>
+                                    <th>Tên &amp; Mô tả</th>
+                                    <th>Hình thức giảm</th>
+                                    <th>Đơn tối thiểu</th>
+                                    <th>Phạm vi</th>
+                                    <th>Thời hạn</th>
+                                    <th>Lượt sử dụng</th>
+                                    <th>Trạng thái</th>
+                                    <th class="text-end">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vouchersTableBody">
+                                <tr>
+                                    <td colspan="9" class="text-center py-4 text-muted">
+                                        <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
+                                        Đang tải danh sách voucher...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL TẠO VOUCHER MỚI -->
+        <div class="modal fade" id="createVoucherModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font fw-bold">Tạo Voucher Khuyến Mãi Mới</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form id="createVoucherForm" onsubmit="submitVoucherForm(event)">
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Mã Voucher <span class="text-danger">*</span> (In hoa, không dấu):</label>
+                                    <input type="text" class="form-control text-uppercase fw-bold" id="modalVoucherCode" placeholder="VD: MILKTEA20" required maxlength="50" pattern="^[A-Za-z0-9_-]+$" />
+                                    <small class="text-muted">Chỉ gồm chữ cái, số, gạch dưới hoặc gạch ngang</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Tên Voucher <span class="text-danger">*</span>:</label>
+                                    <input type="text" class="form-control" id="modalVoucherName" placeholder="VD: Khuyến Mãi Mừng Khai Trương" required maxlength="150" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold">Mô tả ngắn gọn:</label>
+                                    <input type="text" class="form-control" id="modalVoucherDescription" placeholder="VD: Giảm 20% cho hóa đơn từ 50k toàn chuỗi" maxlength="500" />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Loại giảm giá <span class="text-danger">*</span>:</label>
+                                    <select class="form-select" id="modalDiscountType" onchange="toggleDiscountTypeInputs()" required>
+                                        <option value="PERCENT">Phần trăm (%)</option>
+                                        <option value="FIXED_AMOUNT">Số tiền cố định (₫)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold" id="modalDiscountValueLabel">Giá trị giảm (%):</label>
+                                    <input type="number" class="form-control fw-bold" id="modalDiscountValue" min="0.01" step="any" placeholder="10" required />
+                                </div>
+                                <div class="col-md-4" id="modalMaxDiscountGroup">
+                                    <label class="form-label small fw-bold">Giảm tối đa (₫):</label>
+                                    <input type="number" class="form-control" id="modalMaxDiscountAmount" placeholder="Không bắt buộc" min="0" step="1000" />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Đơn hàng tối thiểu (₫):</label>
+                                    <input type="number" class="form-control" id="modalMinOrderValue" value="0" min="0" step="1000" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Tổng lượt dùng tối đa <span class="text-danger">*</span>:</label>
+                                    <input type="number" class="form-control" id="modalTotalUsageLimit" value="1000" min="1" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Lượt dùng tối đa / khách <span class="text-danger">*</span>:</label>
+                                    <input type="number" class="form-control" id="modalUsageLimitPerCustomer" value="1" min="1" required />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Ngày bắt đầu <span class="text-danger">*</span>:</label>
+                                    <input type="datetime-local" class="form-control" id="modalStartDate" required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Ngày kết thúc <span class="text-danger">*</span>:</label>
+                                    <input type="datetime-local" class="form-control" id="modalEndDate" required />
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="modalAllBranchesCheck" checked onchange="toggleBranchSelection()">
+                                        <label class="form-check-label fw-bold small" for="modalAllBranchesCheck">Áp dụng cho TOÀN BỘ chi nhánh trong chuỗi</label>
+                                    </div>
+                                    <div id="modalSpecificBranchesContainer" class="p-3 border rounded-3 bg-light" style="display: none;">
+                                        <label class="form-label small fw-bold mb-2">Chọn chi nhánh được áp dụng:</label>
+                                        <div class="d-flex flex-wrap gap-3">
+                                            <div class="form-check" th:each="b : ${branches}">
+                                                <input class="form-check-input branch-cb" type="checkbox" th:value="${b.id}" th:id="${'branch_cb_' + b.id}">
+                                                <label class="form-check-label small" th:for="${'branch_cb_' + b.id}" th:text="${b.name + ' (' + b.code + ')'}">Chi nhánh 1</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4 text-white fw-bold" style="background: #b86b35; border: none;">
+                                <i class="bi bi-save me-1"></i> Lưu Voucher
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL CHỈNH SỬA VOUCHER -->
+        <div class="modal fade" id="editVoucherModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font fw-bold">Chỉnh Sửa Voucher</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form id="editVoucherForm" onsubmit="submitEditVoucher(event)">
+                        <input type="hidden" id="editVoucherId" />
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Mã Voucher (Không thể sửa):</label>
+                                    <input type="text" class="form-control text-uppercase fw-bold bg-light" id="editVoucherCode" readonly disabled />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Tên Voucher <span class="text-danger">*</span>:</label>
+                                    <input type="text" class="form-control" id="editVoucherName" required maxlength="150" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold">Mô tả ngắn gọn:</label>
+                                    <input type="text" class="form-control" id="editVoucherDescription" maxlength="500" />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Loại giảm giá <span class="text-danger">*</span>:</label>
+                                    <select class="form-select" id="editDiscountType" onchange="toggleEditDiscountTypeInputs()" required>
+                                        <option value="PERCENT">Phần trăm (%)</option>
+                                        <option value="FIXED_AMOUNT">Số tiền cố định (₫)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold" id="editDiscountValueLabel">Giá trị giảm:</label>
+                                    <input type="number" class="form-control fw-bold" id="editDiscountValue" min="0.01" step="any" required />
+                                </div>
+                                <div class="col-md-4" id="editMaxDiscountGroup">
+                                    <label class="form-label small fw-bold">Giảm tối đa (₫):</label>
+                                    <input type="number" class="form-control" id="editMaxDiscountAmount" placeholder="Không bắt buộc" min="0" step="1000" />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Đơn hàng tối thiểu (₫):</label>
+                                    <input type="number" class="form-control" id="editMinOrderValue" min="0" step="1000" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Tổng lượt dùng tối đa <span class="text-danger">*</span>:</label>
+                                    <input type="number" class="form-control" id="editTotalUsageLimit" min="1" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Lượt dùng tối đa / khách <span class="text-danger">*</span>:</label>
+                                    <input type="number" class="form-control" id="editUsageLimitPerCustomer" min="1" required />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Ngày bắt đầu <span class="text-danger">*</span>:</label>
+                                    <input type="datetime-local" class="form-control" id="editStartDate" required />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold">Ngày kết thúc <span class="text-danger">*</span>:</label>
+                                    <input type="datetime-local" class="form-control" id="editEndDate" required />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch pt-2">
+                                        <input class="form-check-input" type="checkbox" id="editIsActiveCheck">
+                                        <label class="form-check-label fw-bold small" for="editIsActiveCheck">Kích hoạt áp dụng voucher này</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="editAllBranchesCheck" onchange="toggleEditBranchSelection()">
+                                        <label class="form-check-label fw-bold small" for="editAllBranchesCheck">Áp dụng cho TOÀN BỘ chi nhánh trong chuỗi</label>
+                                    </div>
+                                    <div id="editSpecificBranchesContainer" class="p-3 border rounded-3 bg-light" style="display: none;">
+                                        <label class="form-label small fw-bold mb-2">Chọn chi nhánh được áp dụng:</label>
+                                        <div class="d-flex flex-wrap gap-3">
+                                            <div class="form-check" th:each="b : ${branches}">
+                                                <input class="form-check-input edit-branch-cb" type="checkbox" th:value="${b.id}" th:id="${'edit_branch_cb_' + b.id}">
+                                                <label class="form-check-label small" th:for="${'edit_branch_cb_' + b.id}" th:text="${b.name + ' (' + b.code + ')'}">Chi nhánh 1</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4 text-white fw-bold" style="background: #b86b35; border: none;">
+                                <i class="bi bi-check-lg me-1"></i> Cập Nhật Voucher
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL LỊCH SỬ SỬ DỤNG VOUCHER -->
+        <div class="modal fade" id="usageHistoryModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title brand-font fw-bold" id="historyModalTitle">Lịch sử sử dụng Voucher</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light small text-muted text-uppercase">
+                                    <tr>
+                                        <th>Khách hàng</th>
+                                        <th>Mã đơn hàng</th>
+                                        <th>Chi nhánh</th>
+                                        <th>Số tiền giảm</th>
+                                        <th>Thời điểm áp dụng</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTableBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">Đang tải lịch sử...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:fragment="scripts">
+        <script th:src="@{/js/customer/customer.js}"></script>
+        <script>
+            let currentVouchers = [];
+
+            document.addEventListener('DOMContentLoaded', () => {
+                loadVouchersList();
+                initDefaultDates();
+            });
+
+            function initDefaultDates() {
+                const now = new Date();
+                const oneMonthLater = new Date();
+                oneMonthLater.setMonth(now.getMonth() + 1);
+
+                const startInput = document.getElementById('modalStartDate');
+                const endInput = document.getElementById('modalEndDate');
+                if (startInput) startInput.value = formatDateTimeLocal(now);
+                if (endInput) endInput.value = formatDateTimeLocal(oneMonthLater);
+            }
+
+            function formatDateTimeLocal(d) {
+                if (!d || isNaN(d.getTime())) return '';
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const hours = String(d.getHours()).padStart(2, '0');
+                const mins = String(d.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${mins}`;
+            }
+
+            async function loadVouchersList() {
+                const tbody = document.getElementById('vouchersTableBody');
+                const statusFilter = document.getElementById('voucherStatusFilter').value;
+                let url = '/api/v1/admin/vouchers?size=100';
+                if (statusFilter !== '') {
+                    url += `&isActive=${statusFilter}`;
+                }
+
+                try {
+                    const res = await MilkTeaApi.get(url);
+                    const page = (res && res.content) || (Array.isArray(res) ? res : []);
+                    currentVouchers = page;
+
+                    // Cập nhật thống kê
+                    document.getElementById('statTotalVouchers').textContent = page.length;
+                    document.getElementById('statActiveVouchers').textContent = page.filter(v => v.isActive).length;
+                    const totalUsed = page.reduce((sum, v) => sum + (v.usedCount || 0), 0);
+                    document.getElementById('statTotalUsages').textContent = totalUsed;
+                    const expiredCount = page.filter(v => v.isExpired || (v.endDate && new Date(v.endDate) < new Date())).length;
+                    document.getElementById('statExpiredVouchers').textContent = expiredCount;
+
+                    renderVouchersTable(page);
+                } catch (e) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-danger">Không thể tải danh sách voucher. Vui lòng thử lại sau.</td></tr>';
+                }
+            }
+
+            function renderVouchersTable(list) {
+                const tbody = document.getElementById('vouchersTableBody');
+                if (!list || list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Không tìm thấy voucher nào phù hợp.</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                list.forEach(v => {
+                    const isPercentage = v.discountType === 'PERCENT' || v.discountType === 'PERCENTAGE';
+                    let discountDisplay = v.formattedDiscountText;
+                    if (!discountDisplay) {
+                        discountDisplay = isPercentage ? `${v.discountValue}%` : `${Number(v.discountValue).toLocaleString('vi-VN')} ₫`;
+                    }
+                    const maxDisplay = (isPercentage && v.maxDiscountAmount) ? ` <small class="text-muted d-block">(Tối đa ${Number(v.maxDiscountAmount).toLocaleString('vi-VN')} ₫)</small>` : '';
+                    const minOrderDisplay = v.minOrderValue ? `${Number(v.minOrderValue).toLocaleString('vi-VN')} ₫` : '0 ₫';
+                    
+                    let scopeDisplay = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">Toàn chuỗi</span>';
+                    if (!v.applyAllBranches && v.applicableBranchIds && v.applicableBranchIds.length > 0) {
+                        scopeDisplay = `<span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill">${v.applicableBranchIds.length} chi nhánh</span>`;
+                    }
+
+                    const startStr = v.startDate ? new Date(v.startDate).toLocaleDateString('vi-VN') : '';
+                    const endStr = v.endDate ? new Date(v.endDate).toLocaleDateString('vi-VN') : '';
+                    const dateDisplay = `<span class="small text-muted">${startStr} - ${endStr}</span>`;
+
+                    const usageDisplay = `${v.usedCount || 0} / ${v.totalUsageLimit ? v.totalUsageLimit : '∞'}`;
+
+                    let statusBadge = v.isActive ? 
+                        '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Hoạt động</span>' : 
+                        '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill">Tạm tắt</span>';
+
+                    html += `
+                        <tr>
+                            <td><span class="voucher-badge-code">${v.code}</span></td>
+                            <td>
+                                <div class="fw-bold text-dark">${v.name || v.code}</div>
+                                <div class="small text-muted">${v.description || ''}</div>
+                            </td>
+                            <td><span class="fw-bold text-dark">${discountDisplay}</span>${maxDisplay}</td>
+                            <td class="small fw-semibold">${minOrderDisplay}</td>
+                            <td>${scopeDisplay}</td>
+                            <td>${dateDisplay}</td>
+                            <td class="small fw-semibold text-primary">${usageDisplay}</td>
+                            <td>${statusBadge}</td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary" onclick="openEditVoucherModal(${v.id})" title="Chỉnh sửa voucher">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="toggleStatus(${v.id})" title="Bật/Tắt hoạt động">
+                                        <i class="bi ${v.isActive ? 'bi-toggle-on text-success' : 'bi-toggle-off text-muted'} fs-6"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-info" onclick="viewUsageHistory(${v.id}, '${v.code}')" title="Xem lịch sử sử dụng">
+                                        <i class="bi bi-clock-history"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tbody.innerHTML = html;
+            }
+
+            function handleVoucherSearch() {
+                const kw = (document.getElementById('voucherSearchKeyword').value || '').trim().toLowerCase();
+                if (!kw) {
+                    renderVouchersTable(currentVouchers);
+                    return;
+                }
+                const filtered = currentVouchers.filter(v => 
+                    (v.code && v.code.toLowerCase().includes(kw)) ||
+                    (v.name && v.name.toLowerCase().includes(kw)) ||
+                    (v.description && v.description.toLowerCase().includes(kw))
+                );
+                renderVouchersTable(filtered);
+            }
+
+            async function toggleStatus(voucherId) {
+                try {
+                    await MilkTeaApi.patch(`/api/v1/admin/vouchers/${voucherId}/toggle-status`, {});
+                    MilkTeaApi.showToast('Cập nhật trạng thái voucher thành công!', 'success');
+                    loadVouchersList();
+                } catch (e) {
+                    try {
+                        await MilkTeaApi.post(`/api/v1/admin/vouchers/${voucherId}/toggle-status`, {});
+                        MilkTeaApi.showToast('Cập nhật trạng thái voucher thành công!', 'success');
+                        loadVouchersList();
+                    } catch (err2) {
+                        MilkTeaApi.showToast(err2.message || 'Lỗi khi cập nhật trạng thái voucher', 'danger');
+                    }
+                }
+            }
+
+            function toggleStoreDiscountType() {
+                const isPercent = document.getElementById('storeDiscountPercent').checked;
+                const input = document.getElementById('storeDiscountValueInput');
+                const unit = document.getElementById('storeDiscountUnit');
+                const help = document.getElementById('storeDiscountHelpText');
+
+                if (isPercent) {
+                    input.max = 100;
+                    input.step = 0.5;
+                    unit.textContent = '%';
+                    help.innerHTML = '<i class="bi bi-info-circle me-1"></i> Giảm từ 0% đến 100% trên tổng giá trị đơn hàng trước khi áp dụng thêm Voucher (nếu có).';
+                } else {
+                    input.removeAttribute('max');
+                    input.step = 1000;
+                    unit.textContent = '₫';
+                    help.innerHTML = '<i class="bi bi-info-circle me-1"></i> Giảm trừ số tiền cố định trực tiếp vào tổng đơn hàng trước khi áp dụng thêm Voucher (nếu có).';
+                }
+            }
+
+            async function saveStoreDiscount() {
+                const isPercent = document.getElementById('storeDiscountPercent').checked;
+                const discountType = isPercent ? 'PERCENT' : 'FIXED_AMOUNT';
+                const discountValue = parseFloat(document.getElementById('storeDiscountValueInput').value || 0);
+                const shopName = document.getElementById('storeShopName')?.value || 'MilkTea Chain';
+                const address = document.getElementById('storeAddress')?.value || 'Hồ Chí Minh, Việt Nam';
+                const bankName = document.getElementById('storeBankName')?.value || 'MBBank';
+                const bankAccountNumber = document.getElementById('storeBankAccountNumber')?.value || '08881706888';
+                const bankAccountHolder = document.getElementById('storeBankAccountHolder')?.value || 'DANG NGUYEN MINH KHOA';
+
+                try {
+                    await MilkTeaApi.put('/api/v1/admin/settings', {
+                        shopName,
+                        address,
+                        bankName,
+                        bankAccountNumber,
+                        bankAccountHolder,
+                        discountType,
+                        discountValue,
+                        discountPercent: discountValue
+                    });
+                    MilkTeaApi.showToast('Cập nhật cài đặt giảm giá cửa hàng thành công!', 'success');
+                } catch (e) {
+                    MilkTeaApi.showToast(e.message || 'Lỗi khi lưu cài đặt giảm giá', 'danger');
+                }
+            }
+
+            function openCreateVoucherModal() {
+                document.getElementById('createVoucherForm').reset();
+                initDefaultDates();
+                document.getElementById('modalTotalUsageLimit').value = '1000';
+                document.getElementById('modalUsageLimitPerCustomer').value = '1';
+                document.getElementById('modalMinOrderValue').value = '0';
+                document.getElementById('modalAllBranchesCheck').checked = true;
+                toggleBranchSelection();
+                toggleDiscountTypeInputs();
+                const modal = new bootstrap.Modal(document.getElementById('createVoucherModal'));
+                modal.show();
+            }
+
+            function toggleDiscountTypeInputs() {
+                const type = document.getElementById('modalDiscountType').value;
+                const label = document.getElementById('modalDiscountValueLabel');
+                const maxGroup = document.getElementById('modalMaxDiscountGroup');
+                if (type === 'PERCENT') {
+                    label.textContent = 'Giá trị giảm (%):';
+                    maxGroup.style.display = 'block';
+                } else {
+                    label.textContent = 'Số tiền giảm (₫):';
+                    maxGroup.style.display = 'none';
+                }
+            }
+
+            function toggleBranchSelection() {
+                const allCheck = document.getElementById('modalAllBranchesCheck').checked;
+                document.getElementById('modalSpecificBranchesContainer').style.display = allCheck ? 'none' : 'block';
+            }
+
+            async function submitVoucherForm(e) {
+                e.preventDefault();
+                const code = document.getElementById('modalVoucherCode').value.trim().toUpperCase();
+                const name = document.getElementById('modalVoucherName').value.trim();
+                const description = document.getElementById('modalVoucherDescription').value.trim();
+                const discountType = document.getElementById('modalDiscountType').value;
+                const discountValue = Number(document.getElementById('modalDiscountValue').value);
+                const maxDiscountVal = document.getElementById('modalMaxDiscountAmount').value;
+                const maxDiscountAmount = (discountType === 'PERCENT' && maxDiscountVal) ? Number(maxDiscountVal) : null;
+                const minOrderValue = Number(document.getElementById('modalMinOrderValue').value) || 0;
+                const totalUsageLimit = Number(document.getElementById('modalTotalUsageLimit').value) || 1000;
+                const usageLimitPerCustomer = Number(document.getElementById('modalUsageLimitPerCustomer').value) || 1;
+
+                const startVal = document.getElementById('modalStartDate').value;
+                const endVal = document.getElementById('modalEndDate').value;
+                if (!startVal || !endVal) {
+                    MilkTeaApi.showToast('Vui lòng chọn ngày bắt đầu và kết thúc', 'warning');
+                    return;
+                }
+                const startDate = new Date(startVal).toISOString();
+                const endDate = new Date(endVal).toISOString();
+
+                const applyAllBranches = document.getElementById('modalAllBranchesCheck').checked;
+                let branchIds = [];
+                if (!applyAllBranches) {
+                    document.querySelectorAll('.branch-cb:checked').forEach(cb => {
+                        branchIds.push(Number(cb.value));
+                    });
+                    if (branchIds.length === 0) {
+                        MilkTeaApi.showToast('Vui lòng chọn ít nhất 1 chi nhánh hoặc chọn áp dụng Toàn chuỗi', 'warning');
+                        return;
+                    }
+                }
+
+                const payload = {
+                    code,
+                    name,
+                    description,
+                    discountType,
+                    discountValue,
+                    maxDiscountAmount,
+                    minOrderValue,
+                    totalUsageLimit,
+                    usageLimitPerCustomer,
+                    startDate,
+                    endDate,
+                    applyAllBranches,
+                    branchIds,
+                    isActive: true
+                };
+
+                try {
+                    await MilkTeaApi.post('/api/v1/admin/vouchers', payload);
+                    MilkTeaApi.showToast('Tạo Voucher mới thành công!', 'success');
+                    const modalEl = document.getElementById('createVoucherModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    loadVouchersList();
+                } catch (err) {
+                    MilkTeaApi.showToast(err.message || 'Lỗi khi tạo voucher', 'danger');
+                }
+            }
+
+            function openEditVoucherModal(id) {
+                const voucher = currentVouchers.find(v => v.id === id);
+                if (!voucher) return;
+
+                document.getElementById('editVoucherId').value = voucher.id;
+                document.getElementById('editVoucherCode').value = voucher.code;
+                document.getElementById('editVoucherName').value = voucher.name || voucher.code;
+                document.getElementById('editVoucherDescription').value = voucher.description || '';
+                
+                const dType = (voucher.discountType === 'PERCENT' || voucher.discountType === 'PERCENTAGE') ? 'PERCENT' : 'FIXED_AMOUNT';
+                document.getElementById('editDiscountType').value = dType;
+                document.getElementById('editDiscountValue').value = voucher.discountValue || 0;
+                document.getElementById('editMaxDiscountAmount').value = voucher.maxDiscountAmount || '';
+                document.getElementById('editMinOrderValue').value = voucher.minOrderValue || 0;
+                document.getElementById('editTotalUsageLimit').value = voucher.totalUsageLimit || 1000;
+                document.getElementById('editUsageLimitPerCustomer').value = voucher.usageLimitPerCustomer || 1;
+
+                if (voucher.startDate) {
+                    document.getElementById('editStartDate').value = formatDateTimeLocal(new Date(voucher.startDate));
+                }
+                if (voucher.endDate) {
+                    document.getElementById('editEndDate').value = formatDateTimeLocal(new Date(voucher.endDate));
+                }
+
+                document.getElementById('editIsActiveCheck').checked = Boolean(voucher.isActive);
+                const isAll = Boolean(voucher.applyAllBranches);
+                document.getElementById('editAllBranchesCheck').checked = isAll;
+                toggleEditBranchSelection();
+
+                // Uncheck all edit branch checkboxes first
+                document.querySelectorAll('.edit-branch-cb').forEach(cb => { cb.checked = false; });
+                if (!isAll && voucher.applicableBranchIds) {
+                    voucher.applicableBranchIds.forEach(bId => {
+                        const cb = document.getElementById('edit_branch_cb_' + bId);
+                        if (cb) cb.checked = true;
+                    });
+                }
+
+                toggleEditDiscountTypeInputs();
+
+                const modal = new bootstrap.Modal(document.getElementById('editVoucherModal'));
+                modal.show();
+            }
+
+            function toggleEditDiscountTypeInputs() {
+                const type = document.getElementById('editDiscountType').value;
+                const label = document.getElementById('editDiscountValueLabel');
+                const maxGroup = document.getElementById('editMaxDiscountGroup');
+                if (type === 'PERCENT') {
+                    label.textContent = 'Giá trị giảm (%):';
+                    maxGroup.style.display = 'block';
+                } else {
+                    label.textContent = 'Số tiền giảm (₫):';
+                    maxGroup.style.display = 'none';
+                }
+            }
+
+            function toggleEditBranchSelection() {
+                const allCheck = document.getElementById('editAllBranchesCheck').checked;
+                document.getElementById('editSpecificBranchesContainer').style.display = allCheck ? 'none' : 'block';
+            }
+
+            async function submitEditVoucher(e) {
+                e.preventDefault();
+                const id = document.getElementById('editVoucherId').value;
+                const name = document.getElementById('editVoucherName').value.trim();
+                const description = document.getElementById('editVoucherDescription').value.trim();
+                const discountType = document.getElementById('editDiscountType').value;
+                const discountValue = Number(document.getElementById('editDiscountValue').value);
+                const maxDiscountVal = document.getElementById('editMaxDiscountAmount').value;
+                const maxDiscountAmount = (discountType === 'PERCENT' && maxDiscountVal) ? Number(maxDiscountVal) : null;
+                const minOrderValue = Number(document.getElementById('editMinOrderValue').value) || 0;
+                const totalUsageLimit = Number(document.getElementById('editTotalUsageLimit').value) || 1000;
+                const usageLimitPerCustomer = Number(document.getElementById('editUsageLimitPerCustomer').value) || 1;
+
+                const startVal = document.getElementById('editStartDate').value;
+                const endVal = document.getElementById('editEndDate').value;
+                if (!startVal || !endVal) {
+                    MilkTeaApi.showToast('Vui lòng chọn ngày bắt đầu và kết thúc', 'warning');
+                    return;
+                }
+                const startDate = new Date(startVal).toISOString();
+                const endDate = new Date(endVal).toISOString();
+
+                const isActive = document.getElementById('editIsActiveCheck').checked;
+                const applyAllBranches = document.getElementById('editAllBranchesCheck').checked;
+                let branchIds = [];
+                if (!applyAllBranches) {
+                    document.querySelectorAll('.edit-branch-cb:checked').forEach(cb => {
+                        branchIds.push(Number(cb.value));
+                    });
+                    if (branchIds.length === 0) {
+                        MilkTeaApi.showToast('Vui lòng chọn ít nhất 1 chi nhánh hoặc chọn áp dụng Toàn chuỗi', 'warning');
+                        return;
+                    }
+                }
+
+                const payload = {
+                    name,
+                    description,
+                    discountType,
+                    discountValue,
+                    maxDiscountAmount,
+                    minOrderValue,
+                    totalUsageLimit,
+                    usageLimitPerCustomer,
+                    startDate,
+                    endDate,
+                    applyAllBranches,
+                    branchIds,
+                    isActive
+                };
+
+                try {
+                    await MilkTeaApi.put(`/api/v1/admin/vouchers/${id}`, payload);
+                    MilkTeaApi.showToast('Cập nhật Voucher thành công!', 'success');
+                    const modalEl = document.getElementById('editVoucherModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    loadVouchersList();
+                } catch (err) {
+                    MilkTeaApi.showToast(err.message || 'Lỗi khi cập nhật voucher', 'danger');
+                }
+            }
+
+            async function viewUsageHistory(voucherId, code) {
+                document.getElementById('historyModalTitle').textContent = `Lịch sử sử dụng Voucher: ${code}`;
+                const tbody = document.getElementById('historyTableBody');
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-warning me-2"></div> Đang tải lịch sử...</td></tr>';
+
+                const modal = new bootstrap.Modal(document.getElementById('usageHistoryModal'));
+                modal.show();
+
+                try {
+                    const res = await MilkTeaApi.get(`/api/v1/admin/vouchers/${voucherId}/history?size=100`);
+                    const list = (res && res.content) || (Array.isArray(res) ? res : []);
+                    if (list.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Chưa có lượt sử dụng nào cho voucher này.</td></tr>';
+                        return;
+                    }
+
+                    let html = '';
+                    list.forEach(item => {
+                        const amountFmt = Number(item.discountAmount).toLocaleString('vi-VN') + ' ₫';
+                        const timeStr = item.usedAt ? new Date(item.usedAt).toLocaleString('vi-VN') : '';
+                        const customerDisplay = item.customerName ? 
+                            `<span class="fw-semibold text-dark">${item.customerName}</span><br><small class="text-muted">${item.customerEmail || ''}</small>` : 
+                            `<span class="text-dark">${item.customerEmail || 'Khách vãng lai'}</span>`;
+
+                        html += `
+                            <tr>
+                                <td>${customerDisplay}</td>
+                                <td><span class="badge bg-light text-dark border">#${item.orderId}</span></td>
+                                <td><span class="badge bg-info-subtle text-info border">${item.branchName || 'Toàn chuỗi'}</span></td>
+                                <td class="fw-bold text-danger">- ${amountFmt}</td>
+                                <td class="small text-muted">${timeStr}</td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                } catch (e) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Không thể tải lịch sử sử dụng lúc này.</td></tr>';
+                }
+            }
+        </script>
+    </th:block>
+</body>
+</html>

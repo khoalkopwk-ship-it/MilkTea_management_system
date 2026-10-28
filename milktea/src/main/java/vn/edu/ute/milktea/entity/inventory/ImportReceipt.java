@@ -24,6 +24,10 @@ public class ImportReceipt {
     @JoinColumn(name = "NguoiLap", nullable = false)
     private Account createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "MaCN")
+    private vn.edu.ute.milktea.entity.branch.Branch branch;
+
     @Column(name = "LyDo", length = 500)
     private String reason;
 

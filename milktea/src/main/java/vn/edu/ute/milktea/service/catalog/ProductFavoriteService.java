@@ -17,9 +17,8 @@ import vn.edu.ute.milktea.repository.catalog.ProductFavoriteRepository;
 import vn.edu.ute.milktea.repository.catalog.ProductRepository;
 import vn.edu.ute.milktea.security.CurrentActor;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.math.BigDecimal;
+import java.util.*;
 
 /**
  * Service quản lý danh sách sản phẩm yêu thích (Wishlist - CUS-05).
@@ -44,34 +43,82 @@ public class ProductFavoriteService {
             throw BusinessException.badRequest(ErrorCode.PRODUCT_UNAVAILABLE, "Món uống hiện không hoạt động");
         }
 
-        Optional<ProductFavorite> existingFav = productFavoriteRepository.findByAccountIdAndProductId(actor.getAccountId(), productId);
+        List<ProductFavorite> existingFavs = new ArrayList<>();
+        List<ProductFavorite> found = productFavoriteRepository.findAllByAccountIdAndProductName(
+                actor.getAccountId(), product.getName()
+        );
+        if (found != null && !found.isEmpty()) {
+            existingFavs.addAll(found);
+        } else {
+            productFavoriteRepository.findByAccountIdAndProductId(actor.getAccountId(), productId)
+                    .ifPresent(existingFavs::add);
+        }
+
         boolean isFavorite;
         String message;
 
-        if (existingFav.isPresent()) {
-            productFavoriteRepository.delete(existingFav.get());
+        if (!existingFavs.isEmpty()) {
+            for (ProductFavorite fav : existingFavs) {
+                productFavoriteRepository.delete(fav);
+            }
             isFavorite = false;
             message = "Đã xóa món khỏi danh sách yêu thích";
         } else {
-            Account account = accountRepository.findById(actor.getAccountId())
-                    .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy tài khoản"));
+            Account account = accountRepository.findById(actor.getAccountId()).orElse(null);
+            if (account == null) {
+                account = Account.builder().id(actor.getAccountId()).build();
+            }
+
+            // Đại diện cho món bằng biến thể có giá thấp nhất (size bé nhất)
+            List<Product> sameName = productRepository.findByNameIgnoreCaseAndActiveTrue(product.getName());
+            Product representative = (sameName != null && !sameName.isEmpty())
+                    ? sameName.stream().min(Comparator.comparing(Product::getPrice, Comparator.nullsLast(BigDecimal::compareTo))).orElse(product)
+                    : product;
 
             ProductFavorite newFav = ProductFavorite.builder()
                     .account(account)
-                    .product(product)
+                    .product(representative)
                     .build();
             productFavoriteRepository.save(newFav);
             isFavorite = true;
             message = "Đã thêm món vào danh sách yêu thích";
         }
 
-        long totalFavorites = productFavoriteRepository.countByProductId(productId);
+        long totalFavorites = productFavoriteRepository.countDistinctAccountsByProductName(product.getName());
+        if (totalFavorites == 0) {
+            totalFavorites = productFavoriteRepository.countByProductId(productId);
+        }
 
         return FavoriteDto.ToggleFavoriteResponse.builder()
                 .productId(productId)
                 .isFavorite(isFavorite)
                 .totalFavorites(totalFavorites)
                 .message(message)
+                .build();
+    }
+
+    @Transactional
+    public FavoriteDto.ToggleFavoriteResponse removeFavorite(Long productId, CurrentActor actor) {
+        validateAuthenticatedCustomer(actor);
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> BusinessException.notFound(ErrorCode.PRODUCT_UNAVAILABLE, "Không tìm thấy món uống"));
+
+        List<ProductFavorite> existingFavs = productFavoriteRepository.findAllByAccountIdAndProductName(
+                actor.getAccountId(), product.getName()
+        );
+
+        if (!existingFavs.isEmpty()) {
+            productFavoriteRepository.deleteAll(existingFavs);
+        }
+
+        long totalFavorites = productFavoriteRepository.countDistinctAccountsByProductName(product.getName());
+
+        return FavoriteDto.ToggleFavoriteResponse.builder()
+                .productId(productId)
+                .isFavorite(false)
+                .totalFavorites(totalFavorites)
+                .message("Đã xóa món khỏi danh sách yêu thích")
                 .build();
     }
 
@@ -90,27 +137,44 @@ public class ProductFavoriteService {
             });
         }
 
-        var items = favoritePage.getContent().stream().map(fav -> {
+        // Đảm bảo không trùng tên món (nếu CSDL cũ có nhiều size)
+        Set<String> seenNames = new HashSet<>();
+        List<FavoriteDto.FavoriteItem> items = new ArrayList<>();
+
+        for (ProductFavorite fav : favoritePage.getContent()) {
             Product p = fav.getProduct();
-            boolean available = branchId == null || availabilityMap.getOrDefault(p.getId(), true);
-            return FavoriteDto.FavoriteItem.builder()
+            if (p == null) continue;
+            String normalizedName = p.getName().trim().toLowerCase();
+            if (seenNames.contains(normalizedName)) {
+                continue;
+            }
+            seenNames.add(normalizedName);
+
+            // Tìm size bé nhất của món này để hiển thị chuẩn
+            List<Product> variants = productRepository.findByNameIgnoreCaseAndActiveTrue(p.getName());
+            Product displayProd = variants.stream()
+                    .min(java.util.Comparator.comparing(Product::getPrice))
+                    .orElse(p);
+
+            boolean available = branchId == null || availabilityMap.getOrDefault(displayProd.getId(), true);
+            items.add(FavoriteDto.FavoriteItem.builder()
                     .id(fav.getId())
-                    .productId(p.getId())
-                    .productName(p.getName())
-                    .categoryName(p.getCategory() != null ? p.getCategory().getName() : null)
-                    .size(p.getSize())
-                    .price(p.getPrice())
-                    .imageUrl(p.getImageUrl())
+                    .productId(displayProd.getId())
+                    .productName(displayProd.getName())
+                    .categoryName(displayProd.getCategory() != null ? displayProd.getCategory().getName() : null)
+                    .size(displayProd.getSize())
+                    .price(displayProd.getPrice())
+                    .imageUrl(displayProd.getImageUrl())
                     .createdAt(fav.getCreatedAt())
                     .available(available)
-                    .build();
-        }).toList();
+                    .build());
+        }
 
         return FavoriteDto.FavoriteListResponse.builder()
                 .items(items)
                 .page(favoritePage.getNumber())
                 .size(favoritePage.getSize())
-                .totalElements(favoritePage.getTotalElements())
+                .totalElements(items.size())
                 .totalPages(favoritePage.getTotalPages())
                 .build();
     }
@@ -120,12 +184,16 @@ public class ProductFavoriteService {
         if (actor == null || !actor.isAuthenticated() || actor.getAccountId() == null) {
             return false;
         }
-        return productFavoriteRepository.existsByAccountIdAndProductId(actor.getAccountId(), productId);
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null) return false;
+        return productFavoriteRepository.existsByAccountIdAndProductName(actor.getAccountId(), product.getName());
     }
 
     @Transactional(readOnly = true)
     public long countFavorites(Long productId) {
-        return productFavoriteRepository.countByProductId(productId);
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null) return 0L;
+        return productFavoriteRepository.countDistinctAccountsByProductName(product.getName());
     }
 
     private void validateAuthenticatedCustomer(CurrentActor actor) {

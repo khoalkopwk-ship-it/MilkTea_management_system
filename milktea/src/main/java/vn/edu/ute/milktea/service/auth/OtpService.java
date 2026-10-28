@@ -22,11 +22,21 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class OtpService {
 
     private final EmailVerificationOtpRepository otpRepository;
+    private final OtpAttemptRecorder otpAttemptRecorder;
     private final SecureRandom secureRandom = new SecureRandom();
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public OtpService(EmailVerificationOtpRepository otpRepository, OtpAttemptRecorder otpAttemptRecorder) {
+        this.otpRepository = otpRepository;
+        this.otpAttemptRecorder = otpAttemptRecorder;
+    }
+
+    public OtpService(EmailVerificationOtpRepository otpRepository) {
+        this(otpRepository, null);
+    }
 
     @Value("${app.otp.secret:milktea_secure_otp_secret_key_2026_very_long_and_safe}")
     private String otpSecret;
@@ -149,12 +159,18 @@ public class OtpService {
         // So sánh HMAC Hash
         String expectedHash = computeHmacHash(cleanOtp, otp.getSalt(), cleanEmail, purpose);
         if (!expectedHash.equals(otp.getOtpHash())) {
-            int newAttempts = otp.getAttempts() + 1;
-            otp.setAttempts(newAttempts);
-            if (newAttempts >= otp.getMaxAttempts()) {
-                otp.setRevokedAt(now);
+            int newAttempts;
+            if (otpAttemptRecorder != null) {
+                newAttempts = otpAttemptRecorder.recordFailedAttempt(otp.getId(), otp.getMaxAttempts());
+                otp.setAttempts(newAttempts);
+            } else {
+                newAttempts = otp.getAttempts() + 1;
+                otp.setAttempts(newAttempts);
+                if (newAttempts >= otp.getMaxAttempts()) {
+                    otp.setRevokedAt(now);
+                }
+                otpRepository.save(otp);
             }
-            otpRepository.save(otp);
 
             int remaining = Math.max(0, otp.getMaxAttempts() - newAttempts);
             if (remaining > 0) {
@@ -170,7 +186,13 @@ public class OtpService {
             }
         }
 
-        // Khớp mã -> đánh dấu đã dùng
+        // Khớp mã -> đánh dấu đã dùng nguyên tử chống race condition
+        if (otp.getId() != null) {
+            int consumed = otpRepository.consumeOtpAtomically(otp.getId(), now);
+            if (consumed == 0 && (otp.getUsedAt() != null || otp.getRevokedAt() != null)) {
+                throw BusinessException.badRequest(ErrorCode.AUTH_OTP_INVALID, "Mã xác thực đã được sử dụng hoặc đã bị thu hồi.");
+            }
+        }
         otp.setUsedAt(now);
         otpRepository.save(otp);
     }

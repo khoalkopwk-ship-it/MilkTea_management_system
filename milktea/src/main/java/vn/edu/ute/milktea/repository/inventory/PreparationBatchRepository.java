@@ -24,6 +24,10 @@ public interface PreparationBatchRepository
 
     List<PreparationBatch> findByPostedAtBetweenOrderByPostedAtDescIdDesc(java.time.Instant from, java.time.Instant to);
 
+    List<PreparationBatch> findByBranchIdOrderByPostedAtDescIdDesc(Long branchId);
+
+    List<PreparationBatch> findByBranchIdAndPostedAtBetweenOrderByPostedAtDescIdDesc(Long branchId, java.time.Instant from, java.time.Instant to);
+
     Optional<PreparationBatch> findByIdempotencyKey(
             String idempotencyKey);
 }

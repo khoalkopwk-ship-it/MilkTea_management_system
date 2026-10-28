@@ -1099,6 +1099,43 @@
             </div>
         </div>
 
+        <!-- In-Store Table Banner (TABLE) -->
+        <div th:if="${currentTable != null}"
+             class="alert alert-light border shadow-sm rounded-4 d-flex align-items-center justify-content-between mb-4 py-3 px-4"
+             style="background: linear-gradient(135deg, #FFFDFB, #F9F3EC); border-color: #E8DED5 !important;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center"
+                     style="width: 44px; height: 44px; background: #fbeee4; color: #b86b35;">
+                    <i class="bi bi-geo-alt-fill fs-5"></i>
+                </div>
+                <div>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill px-2 py-1 mb-1 small fw-bold">Phục vụ tại bàn</span>
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <span th:text="${currentTable.branch != null ? currentTable.branch.name : 'Chi nhánh'}">Chi nhánh Quận 1</span>
+                        <span class="text-muted mx-1">·</span>
+                        <span class="text-primary" th:text="${currentTable.name}">Bàn 01</span>
+                    </h5>
+                </div>
+            </div>
+            <div class="d-none d-sm-block text-end">
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 small fw-semibold">
+                    <i class="bi bi-qr-code-scan me-1"></i> QR Bàn hợp lệ
+                </span>
+            </div>
+        </div>
+
+        <!-- Guest Guidance Banner (NO TABLE) -->
+        <div th:if="${currentTable == null}"
+             class="alert alert-warning border-0 shadow-sm rounded-4 d-flex align-items-center mb-4 py-3 px-4">
+            <i class="bi bi-info-circle-fill fs-3 text-warning me-3"></i>
+            <div>
+                <strong class="d-block text-dark">Quý khách đang xem thực đơn tham khảo</strong>
+                <span class="text-muted small">
+                    Hệ thống phục vụ trực tiếp tại không gian quán. Vui lòng <strong>quét mã QR gắn tại bàn</strong> để đặt món theo phiên bàn, hoặc <strong>gọi món trực tiếp tại quầy thu ngân</strong>.
+                </span>
+            </div>
+        </div>
+
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
             <div>
                 <h2 class="brand-font mb-1">Thực đơn trà sữa</h2>
@@ -1138,7 +1175,7 @@
             </div>
         </div>
 
-        <!-- 4 Danh Sách Nổi Bật: Mới nhất, Bán chạy nhất, Đánh giá cao, Yêu thích nhất (CUS-02) -->
+        <!-- 3 Danh Sách Nổi Bật: Bán chạy nhất, Đánh giá cao, Yêu thích nhất (CUS-02) -->
         <div class="menu-featured-tabs d-flex flex-wrap gap-2 mb-4 align-items-center">
             <span class="small fw-bold text-muted me-1 d-none d-md-inline">
                 <i class="bi bi-stars text-warning me-1"></i>Bộ sưu tập:
@@ -1147,7 +1184,7 @@
                 Tất cả món
             </button>
             <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 featured-tab-btn" data-type="newest" onclick="selectFeaturedTab('newest', this)">
-                <i class="bi bi-sparkles text-info me-1"></i> Mới nhất
+                <i class="bi bi-sparkles text-info me-1"></i> Món mới
             </button>
             <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 featured-tab-btn" data-type="best-seller" onclick="selectFeaturedTab('best-seller', this)">
                 <i class="bi bi-fire text-danger me-1"></i> Bán chạy nhất
@@ -1404,12 +1441,16 @@
         <script th:src="@{/js/customer/customer.js}"></script>
         <script th:inline="javascript">
             let catalog = [];
+            let allVariantsList = [];
             let currentProductVariants = [];
             let selectedVariant = null;
+            const rawAllVariants = /*[[${allProducts}]]*/ [];
 
             document.addEventListener('DOMContentLoaded', () => {
                 const qr = /*[[${tableQr}]]*/ null;
                 const tableId = /*[[${currentTable != null ? currentTable.id : null}]]*/ null;
+                const branchId = /*[[${branchId}]]*/ null;
+                if (branchId) window.MilkTeaContext.branchId = branchId;
                 CustomerApp.initContext(qr, tableId);
                 buildCatalog();
                 initializeMenuAnimations();
@@ -1453,6 +1494,21 @@
                     categoryName: el.getAttribute('data-category-name') || '',
                     allowTopping: el.getAttribute('data-category-allow-topping') !== 'false'
                 }));
+
+                if (Array.isArray(rawAllVariants) && rawAllVariants.length > 0) {
+                    allVariantsList = rawAllVariants.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        size: p.size,
+                        price: p.price,
+                        img: p.imageUrl,
+                        categoryId: p.category ? p.category.id : null,
+                        categoryName: p.category ? p.category.name : '',
+                        allowTopping: p.category ? p.category.allowTopping !== false : true
+                    }));
+                } else {
+                    allVariantsList = [...catalog];
+                }
             }
 
             let currentFeaturedType = 'all';
@@ -1518,24 +1574,48 @@
                 const items = Array.from(grid.querySelectorAll('.product-item'));
 
                 if (type === 'all') {
-                    items.forEach(it => it.removeAttribute('data-featured-match'));
+                    items.forEach(it => {
+                        it.removeAttribute('data-featured-match');
+                        it.removeAttribute('data-featured-rank');
+                    });
                     handleMenuFilterAndSearch();
                     return;
                 }
 
                 try {
-                    const res = await MilkTeaApi.get(`/api/v1/public/products/featured?type=${type}&limit=20`);
+                    const branchId = window.MilkTeaContext?.branchId || '';
+                    const branchParam = branchId ? `&branchId=${branchId}` : '';
+                    const res = await MilkTeaApi.get(`/api/v1/public/products/featured?type=${type}&limit=20${branchParam}`);
                     const featuredList = (res && res.products) || [];
-                    const featuredIds = new Set(featuredList.map(p => String(p.id)));
+                    const featuredRankMap = new Map();
+                    featuredList.forEach((p, idx) => {
+                        featuredRankMap.set(String(p.id), idx);
+                        featuredRankMap.set((p.name || '').trim().toLowerCase(), idx);
+                    });
 
                     items.forEach(it => {
                         const id = it.getAttribute('data-id');
-                        if (featuredIds.has(id)) {
+                        const name = (it.getAttribute('data-name') || '').trim().toLowerCase();
+                        if (featuredRankMap.has(id)) {
                             it.removeAttribute('data-featured-match');
+                            it.setAttribute('data-featured-rank', featuredRankMap.get(id));
+                        } else if (featuredRankMap.has(name)) {
+                            it.removeAttribute('data-featured-match');
+                            it.setAttribute('data-featured-rank', featuredRankMap.get(name));
                         } else {
                             it.setAttribute('data-featured-match', 'false');
+                            it.removeAttribute('data-featured-rank');
                         }
                     });
+
+                    // Sắp xếp các phần tử theo thứ tự xếp hạng từ API
+                    items.sort((a, b) => {
+                        const rankA = a.hasAttribute('data-featured-rank') ? Number(a.getAttribute('data-featured-rank')) : 9999;
+                        const rankB = b.hasAttribute('data-featured-rank') ? Number(b.getAttribute('data-featured-rank')) : 9999;
+                        return rankA - rankB;
+                    });
+                    items.forEach(it => grid.appendChild(it));
+
                     handleMenuFilterAndSearch();
                 } catch (e) {
                     console.warn('Lỗi khi tải bộ sưu tập nổi bật:', e);
@@ -1578,10 +1658,13 @@
                     const res = await MilkTeaApi.get('/api/v1/favorites?size=50');
                     const favList = (res && res.items) || [];
                     const favIdSet = new Set(favList.map(f => String(f.productId)));
+                    const favNameSet = new Set(favList.map(f => (f.productName || '').trim().toLowerCase()));
 
                     document.querySelectorAll('.btn-favorite-toggle').forEach(btn => {
                         const pid = btn.getAttribute('data-product-id');
-                        if (favIdSet.has(pid)) {
+                        const pCard = btn.closest('.product-item');
+                        const pName = (pCard?.getAttribute('data-name') || '').trim().toLowerCase();
+                        if (favIdSet.has(pid) || favNameSet.has(pName)) {
                             const icon = btn.querySelector('i');
                             if (icon) {
                                 icon.className = 'bi bi-heart-fill text-danger fs-6';
@@ -1614,8 +1697,11 @@
                     document.getElementById('sizeSelectionSection').style.display = 'none';
                     document.getElementById('toppingSelectionSection').style.display = 'none';
                 } else {
-                    currentProductVariants = catalog.filter(p => p.name === baseItem.name);
+                    const normBaseName = (baseItem.name || '').trim().toLowerCase();
+                    const variantsSource = (allVariantsList && allVariantsList.length > 0) ? allVariantsList : catalog;
+                    currentProductVariants = variantsSource.filter(p => (p.name || '').trim().toLowerCase() === normBaseName);
                     if (currentProductVariants.length === 0) currentProductVariants = [baseItem];
+                    currentProductVariants.sort((a, b) => a.price - b.price);
                     selectedVariant = currentProductVariants.find(p => p.id === productId) || currentProductVariants[0];
 
                     document.getElementById('sizeSelectionSection').style.display = 'block';
@@ -1660,8 +1746,9 @@
                 const list = document.getElementById('modalToppingList');
                 const seen = new Set();
                 const toppings = [];
+                const searchList = (allVariantsList && allVariantsList.length > 0) ? allVariantsList : catalog;
 
-                catalog.forEach(p => {
+                searchList.forEach(p => {
                     if (isToppingProduct(p) && !seen.has(p.name)) {
                         seen.add(p.name);
                         toppings.push(p);

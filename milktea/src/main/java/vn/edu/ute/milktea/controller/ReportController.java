@@ -11,6 +11,10 @@ import vn.edu.ute.milktea.common.ApiResponse;
 import vn.edu.ute.milktea.dto.ReportDto;
 import vn.edu.ute.milktea.service.report.ReportService;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import vn.edu.ute.milktea.entity.account.Role;
+import vn.edu.ute.milktea.security.CurrentActor;
+
 import java.time.LocalDate;
 
 @RestController
@@ -22,35 +26,51 @@ public class ReportController {
 
     @GetMapping("/revenue")
     public ResponseEntity<ApiResponse<ReportDto.RevenueReportView>> getRevenueReport(
+            @RequestParam(value = "branchId", required = false) Long branchId,
             @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @AuthenticationPrincipal CurrentActor actor) {
 
-        return ResponseEntity.ok(ApiResponse.ok(reportService.getRevenueReport(fromDate, toDate)));
+        Long targetBranchId = resolveBranchId(branchId, actor);
+        return ResponseEntity.ok(ApiResponse.ok(reportService.getRevenueReport(targetBranchId, fromDate, toDate)));
     }
 
     @GetMapping("/orders")
     public ResponseEntity<ApiResponse<ReportDto.OrderReportView>> getOrderReport(
+            @RequestParam(value = "branchId", required = false) Long branchId,
             @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @AuthenticationPrincipal CurrentActor actor) {
 
-        return ResponseEntity.ok(ApiResponse.ok(reportService.getOrderReport(fromDate, toDate)));
+        Long targetBranchId = resolveBranchId(branchId, actor);
+        return ResponseEntity.ok(ApiResponse.ok(reportService.getOrderReport(targetBranchId, fromDate, toDate)));
     }
     
-@GetMapping("/dashboard")
-public ResponseEntity<ApiResponse<ReportDto.DashboardResponse>> getDashboard(
-        @RequestParam(value = "fromDate", required = false)
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        LocalDate fromDate,
+    @GetMapping("/dashboard")
+    public ResponseEntity<ApiResponse<ReportDto.DashboardResponse>> getDashboard(
+            @RequestParam(value = "branchId", required = false) Long branchId,
+            @RequestParam(value = "fromDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate fromDate,
 
-        @RequestParam(value = "toDate", required = false)
-        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-        LocalDate toDate) {
+            @RequestParam(value = "toDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate toDate,
+            @AuthenticationPrincipal CurrentActor actor) {
 
-    return ResponseEntity.ok(
-            ApiResponse.ok(
-                    reportService.getDashboard(fromDate, toDate)
-            )
-    );
-}
+        Long targetBranchId = resolveBranchId(branchId, actor);
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        reportService.getDashboard(targetBranchId, fromDate, toDate)
+                )
+        );
+    }
+
+    private Long resolveBranchId(Long branchId, CurrentActor actor) {
+        if (actor != null && actor.hasRole(Role.MANAGER)) {
+            return actor.getBranchId();
+        }
+        return branchId;
+    }
 
 }

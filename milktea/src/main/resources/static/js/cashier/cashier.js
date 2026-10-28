@@ -16,7 +16,14 @@ const CashierApp = (() => {
     let realtimeReady = false;
 
     async function init() {
-        window.MilkTeaContext = { role: document.getElementById('posRole')?.dataset.role || 'CASHIER' };
+        const workspace = document.querySelector('.pos-workspace') || document.getElementById('posWorkspace');
+        const role = workspace?.dataset.role || document.getElementById('posRole')?.dataset.role || 'CASHIER';
+        const branchId = workspace?.dataset.branchId ? parseInt(workspace.dataset.branchId, 10) : null;
+        window.MilkTeaContext = {
+            ...(window.MilkTeaContext || {}),
+            role: role,
+            branchId: branchId
+        };
         MilkTeaRealtime.connect();
 
         if (!realtimeReady) { setupRealtime(); realtimeReady = true; }
