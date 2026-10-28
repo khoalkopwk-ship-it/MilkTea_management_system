@@ -83,9 +83,6 @@
                                 <i class="bi bi-geo-alt-fill me-1" style="color: #b86b35;"></i>Toàn chuỗi hệ thống
                             </span>
                         </div>
-                        <p class="text-muted mb-0">
-                            Theo dõi thực thu, đơn hàng, hao hụt nguyên liệu và cảnh báo vận hành.
-                        </p>
                     </div>
                     <div class="dashboard-heading-actions">
                         <section class="dashboard-panel dashboard-filter-panel dashboard-filter-compact">
@@ -95,7 +92,7 @@
                                     <select id="filterBranch" class="form-select form-select-sm"
                                         th:attr="data-is-manager=${isManager},data-branch-id=${managerBranchId}"
                                         th:disabled="${isManager}"
-                                        style="min-width: 190px; height: 38px; border-radius: 8px;">
+                                        style="height: 38px; border-radius: 8px;">
                                         <option th:unless="${isManager}" value="">Toàn chuỗi hệ thống</option>
                                         <option th:each="b : ${branches}"
                                             th:if="${b.code != 'KHOTONG'}"

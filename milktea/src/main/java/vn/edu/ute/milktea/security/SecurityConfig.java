@@ -74,6 +74,12 @@ public class SecurityConfig {
                         .requestMatchers("/admin", "/admin/**").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers("/cashier", "/cashier/**").hasRole("CASHIER")
                         .requestMatchers("/kitchen", "/kitchen/**").hasAnyRole("KITCHEN", "CHEF")
+                        .requestMatchers(
+                                "/favorites",
+                                "/favorites/**",
+                                "/api/v1/favorites",
+                                "/api/v1/favorites/**"
+                        ).hasRole("CUSTOMER")
                         // 1. Static resources, pages & websocket
                         .requestMatchers(
                                 "/",
@@ -82,7 +88,6 @@ public class SecurityConfig {
                                 "/orders",
                                 "/profile",
                                 "/products/**",
-                                "/favorites",
                                 "/login",
                                 "/error",
                                 "/static/**",
@@ -118,7 +123,6 @@ public class SecurityConfig {
                                 "/api/v1/orders/table",
                                 "/api/v1/orders/**",
                                 "/api/v1/customer/**",
-                                "/api/v1/favorites/**",
                                 "/api/v1/reviews/**",
                                 "/api/v1/vouchers/**"
                         ).permitAll()

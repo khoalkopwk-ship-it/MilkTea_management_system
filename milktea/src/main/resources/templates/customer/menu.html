@@ -1080,6 +1080,81 @@
                     transform: none;
                 }
             }
+            .menu-pagination-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                margin-top: 24px;
+                padding: 16px 20px;
+                background: #fff;
+                border: 1px solid #e8d9cc;
+                border-radius: 0 0 24px 24px;
+            }
+
+            #menuPageInfo {
+                color: #60666b;
+                font-size: 15px;
+            }
+
+            #menuPagination {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                gap: 8px;
+            }
+
+            #menuPagination .page-link {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 36px;
+                height: 38px;
+                padding: 0 10px;
+                margin: 0;
+                border: 1px solid #e8d9cc;
+                border-radius: 12px;
+                background: #fff;
+                color: #795c48;
+                font-size: 14px;
+                box-shadow: none;
+                transition: background-color 0.15s, color 0.15s;
+            }
+
+            #menuPagination .page-link:hover {
+                background: #f7eee7;
+                border-color: #c7804d;
+                color: #b9682e;
+            }
+
+            #menuPagination .page-item.active .page-link {
+                background: #b9682e;
+                border-color: #b9682e;
+                color: #fff;
+            }
+
+            #menuPagination .page-item.disabled .page-link {
+                background: #f4eee8;
+                border-color: #e8d9cc;
+                color: #b7a18e;
+                cursor: default;
+            }
+
+            #menuPagination .page-link:focus-visible {
+                outline: 2px solid #b9682e;
+                outline-offset: 3px;
+            }
+
+            @media (max-width: 575.98px) {
+                .menu-pagination-bar {
+                    flex-direction: column;
+                    padding: 16px 12px;
+                }
+
+                #menuPagination {
+                    justify-content: center;
+                }
+            }
         </style>
 
         <div th:if="${settings != null and ((settings.discountType == 'FIXED_AMOUNT' and settings.discountValue != null and settings.discountValue > 0) or (settings.discountType != 'FIXED_AMOUNT' and settings.discountPercent != null and settings.discountPercent > 0))}"
@@ -1256,6 +1331,13 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="menu-pagination-bar">
+            <div id="menuPageInfo" aria-live="polite"></div>
+
+            <nav aria-label="Phân trang thực đơn">
+                <ul id="menuPagination" class="pagination mb-0"></ul>
+            </nav>
         </div>
 
         <!-- Lucian UX/UI Prompt #011: Nút Menu Tỏa Tia Thay Thế Nút Giỏ Hàng Góc Phải Bên Dưới -->
@@ -1453,9 +1535,11 @@
                 if (branchId) window.MilkTeaContext.branchId = branchId;
                 CustomerApp.initContext(qr, tableId);
                 buildCatalog();
+                handleMenuFilterAndSearch();
                 initializeMenuAnimations();
                 initRadialFabMenu();
                 loadUserFavorites();
+                
             });
 
             function initializeMenuAnimations() {
@@ -1512,7 +1596,105 @@
             }
 
             let currentFeaturedType = 'all';
+            const MENU_PAGE_SIZE = 12;
+            let currentMenuPage = 1;
+            let filteredMenuItems = [];
 
+            function renderMenuPage() {
+                const grid = document.getElementById('productsGrid');
+                const pagination = document.getElementById('menuPagination');
+                const info = document.getElementById('menuPageInfo');
+                if (!grid || !pagination || !info) return;
+
+                const total = filteredMenuItems.length;
+                const totalPages = Math.ceil(total / MENU_PAGE_SIZE);
+
+                currentMenuPage = Math.max(
+                    1,
+                    Math.min(currentMenuPage, totalPages || 1)
+                );
+
+                // Ẩn tất cả, sau đó chỉ hiện các món thuộc trang hiện tại.
+                grid.querySelectorAll('.product-item').forEach(item => {
+                    item.style.display = 'none';
+                });
+
+                const start = (currentMenuPage - 1) * MENU_PAGE_SIZE;
+                const pageItems = filteredMenuItems.slice(
+                    start,
+                    start + MENU_PAGE_SIZE
+                );
+
+                pageItems.forEach(item => {
+                    item.style.display = '';
+                });
+
+                if (total === 0) {
+                    info.textContent = 'Không tìm thấy món phù hợp.';
+                } else {
+                    info.innerHTML =
+                        `Hiển thị <strong>${start + 1}–${start + pageItems.length}</strong>` +
+                        ` trong <strong>${total}</strong> món`;
+                }
+                pagination.replaceChildren();
+
+                if (totalPages <= 1) return;
+
+                function addPageButton(label, targetPage, disabled, active = false) {
+                    const li = document.createElement('li');
+                    li.className = 'page-item';
+                    li.classList.toggle('disabled', disabled);
+                    li.classList.toggle('active', active);
+
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'page-link';
+                    button.textContent = label;
+                    if (label === '«') {
+                        button.setAttribute('aria-label', 'Trang trước');
+                    } else if (label === '»') {
+                        button.setAttribute('aria-label', 'Trang sau');
+                    } else {
+                        button.setAttribute('aria-label', `Trang ${targetPage}`);
+                    }
+                    button.disabled = disabled;
+
+                    if (active) button.setAttribute('aria-current', 'page');
+
+                    button.addEventListener('click', () => {
+                        currentMenuPage = targetPage;
+                        renderMenuPage();
+                        grid.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    });
+
+                    li.appendChild(button);
+                    pagination.appendChild(li);
+                }
+
+                addPageButton(
+                    '«',
+                    currentMenuPage - 1,
+                    currentMenuPage === 1
+                );
+
+                for (let page = 1; page <= totalPages; page++) {
+                    addPageButton(
+                        String(page),
+                        page,
+                        false,
+                        page === currentMenuPage
+                    );
+                }
+
+                addPageButton(
+                    '»',
+                    currentMenuPage + 1,
+                    currentMenuPage === totalPages
+                );
+            }
             function handleMenuFilterAndSearch() {
                 const searchInput = document.getElementById('menuSearchInput');
                 const catSelect = document.getElementById('categoryFilterSelect');
@@ -1554,7 +1736,16 @@
                     });
                     items.forEach(it => grid.appendChild(it));
                 }
-            }
+                // Lấy danh sách đã lọc theo đúng thứ tự hiện tại trong grid.
+                filteredMenuItems = Array.from(
+                    grid.querySelectorAll('.product-item')
+                ).filter(item => item.style.display !== 'none');
+
+                // Khi đổi từ khóa, danh mục, kiểu sắp xếp hoặc tab,
+                // quay lại trang đầu tiên.
+                currentMenuPage = 1;
+                renderMenuPage();
+                            }
 
             function filterCategory(catId) {
                 const catSelect = document.getElementById('categoryFilterSelect');

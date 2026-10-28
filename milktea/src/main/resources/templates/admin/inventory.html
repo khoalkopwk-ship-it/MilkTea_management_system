@@ -430,6 +430,115 @@
                 vertical-align: middle;
                 transition: background-color .18s ease;
             }
+            
+            /* BẢNG CẤU HÌNH ĐỊNH MỨC */
+
+            .admin-inventory-page .recipe-table-wrapper {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: auto;
+            }
+
+            .admin-inventory-page .recipe-table {
+                width: 100%;
+                min-width: 1250px;
+                table-layout: fixed;
+                margin-bottom: 0;
+            }
+
+            /* Phân bổ 10 cột */
+            .admin-inventory-page .recipe-table th:nth-child(1) { width: 4%; }
+            .admin-inventory-page .recipe-table th:nth-child(2) { width: 6%; }
+            .admin-inventory-page .recipe-table th:nth-child(3) { width: 14%; }
+            .admin-inventory-page .recipe-table th:nth-child(4) { width: 19%; }
+            .admin-inventory-page .recipe-table th:nth-child(5) { width: 10%; }
+            .admin-inventory-page .recipe-table th:nth-child(6) { width: 10%; }
+            .admin-inventory-page .recipe-table th:nth-child(7) { width: 6%; }
+            .admin-inventory-page .recipe-table th:nth-child(8) { width: 11%; }
+            .admin-inventory-page .recipe-table th:nth-child(9) { width: 12%; }
+            .admin-inventory-page .recipe-table th:nth-child(10) { width: 8%; }
+
+            /* Ô tiêu đề và dữ liệu */
+            .admin-inventory-page .recipe-table th,
+            .admin-inventory-page .recipe-table td {
+                padding: 12px 8px;
+                vertical-align: middle;
+                overflow-wrap: anywhere;
+            }
+
+            /* Cột tỉ lệ pha chế */
+            .admin-inventory-page .recipe-table td:nth-child(4) {
+                white-space: normal !important;
+                overflow: hidden;
+            }
+            
+/* Căn trái và thu nhỏ nội dung cột Tỉ lệ pha chế */
+.admin-inventory-page .recipe-table td:nth-child(4) {
+    text-align: left !important;
+    vertical-align: middle;
+    white-space: normal !important;
+}
+
+/* Chỉnh phần khung chứa công thức */
+.admin-inventory-page .recipe-table td:nth-child(4) span,
+.admin-inventory-page .recipe-table td:nth-child(4) .badge {
+    display: inline-block;
+    max-width: 100%;
+    padding: 5px 9px;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    line-height: 1.5;
+    text-align: left !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    border-radius: 10px;
+}
+
+
+            /* Giới hạn tất cả phần tử bên trong cột pha chế */
+            .admin-inventory-page .recipe-table td:nth-child(4) * {
+                max-width: 100%;
+                white-space: normal !important;
+                overflow-wrap: anywhere;
+                word-break: break-word;
+            }
+
+            /* Nội dung dạng badge/pill không vượt khỏi ô */
+            .admin-inventory-page .recipe-table td:nth-child(4) .badge,
+            .admin-inventory-page .recipe-table td:nth-child(4) span {
+                display: inline-block;
+                max-width: 100%;
+                height: auto;
+                line-height: 1.5;
+            }
+
+            /* Cột ghi chú */
+            .admin-inventory-page .recipe-table td:nth-child(9) {
+                white-space: normal;
+                overflow-wrap: anywhere;
+                line-height: 1.5;
+            }
+
+            /* Trạng thái và thao tác */
+            .admin-inventory-page .recipe-table td:nth-child(8),
+            .admin-inventory-page .recipe-table td:nth-child(10) {
+                text-align: center;
+            }
+
+            /* Hàng tự điều chỉnh theo nội dung */
+            .admin-inventory-page .recipe-table tbody tr {
+                height: auto !important;
+            }
+
+            /* Không ép chiều cao cố định */
+            .admin-inventory-page .recipe-table tbody td {
+                height: auto !important;
+                min-height: 60px;
+            }
+
+                        
+
 
             .admin-inventory-page .table tbody tr:last-child td {
                 border-bottom: none;
@@ -758,7 +867,9 @@
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <div class="me-1" style="min-width: 220px;">
                             <select id="inventoryBranchSelect" class="form-select form-select-sm rounded-pill fw-semibold border-primary-subtle"
-                                    th:attr="data-is-manager=${isManager},data-manager-branch=${managerBranchId}"
+                                    th:attr="data-is-manager=${isManager},
+                                            data-manager-branch=${managerBranchId},
+                                            data-is-admin=${actor != null and actor.role.name() == 'ADMIN'}"
                                     th:disabled="${isManager}"
                                     onchange="onInventoryBranchChange()">
                                 <option th:unless="${isManager}" value="KHOTONG" th:attr="data-branch-id=${centralWarehouse?.id}">Kho Hàng Tổng (Toàn Chuỗi)</option>
@@ -769,11 +880,23 @@
                                         th:selected="${isManager and managerBranchId != null and managerBranchId == b.id}"></option>
                             </select>
                         </div>
-                        <button type="button" class="btn btn-outline-primary rounded-pill px-3" onclick="openImportModal()">
-                            <i class="bi bi-box-arrow-in-down me-1"></i> <span id="btnImportText" th:text="${isManager != null and isManager} ? 'Nhập từ Kho Tổng' : 'Nhập kho NCC'">Nhập kho NCC</span>
+                        <button id="btnInventoryImport"
+                            type="button"
+                            class="btn btn-outline-primary rounded-pill px-3"
+                            onclick="openImportModal()">
+                        <i class="bi bi-box-arrow-in-down me-1"></i>
+                        <span id="btnImportText"
+                            th:text="${isManager != null and isManager}
+                                    ? 'Nhập từ Kho Tổng' : 'Nhập kho NCC'">
+                            Nhập kho NCC
+                        </span>
                         </button>
-                        <button type="button" class="btn btn-outline-danger rounded-pill px-3" data-bs-toggle="modal"
-                            data-bs-target="#wasteModal">
+
+                        <button id="btnInventoryWaste"
+                                type="button"
+                                class="btn btn-outline-danger rounded-pill px-3"
+                                data-bs-toggle="modal"
+                                data-bs-target="#wasteModal">
                             <i class="bi bi-trash3 me-1"></i> Báo hao hụt
                         </button>
                     </div>
@@ -890,8 +1013,8 @@
                                 </div>
                             </div>
 
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
+                            <div class="table-responsive recipe-table-wrapper">
+                                <table class="table table-hover align-middle mb-0 recipe-table">
                                     <thead class="table-light">
                                         <tr>
                                             <th style="width: 50px;" class="text-center">STT</th>
@@ -1563,9 +1686,21 @@
                 if (val === 'KHOTONG') return null;
                 return parseInt(val) || null;
             }
+            function updateInventoryActionButtons() {
+                const branchSelect = document.getElementById('inventoryBranchSelect');
+
+                const isAdmin = branchSelect?.dataset.isAdmin === 'true';
+                const hideButtons = isAdmin && !isCurrentCentralWarehouse();
+
+                ['btnInventoryImport', 'btnInventoryWaste'].forEach(id => {
+                    document.getElementById(id)
+                        ?.classList.toggle('d-none', hideButtons);
+                });
+            }
 
             function onInventoryBranchChange() {
                 const isCentral = isCurrentCentralWarehouse();
+                updateInventoryActionButtons();
                 const scopeText = document.getElementById('inventoryScopeText');
                 const pageTitle = document.getElementById('inventoryPageTitle');
                 const pageDesc = document.getElementById('inventoryPageDesc');
@@ -1993,6 +2128,8 @@
             }
 
             document.addEventListener('DOMContentLoaded', () => {
+                updateInventoryActionButtons();
+
                 const modalEl = document.getElementById('importModal');
                 if (modalEl) {
                     modalEl.addEventListener('hidden.bs.modal', () => {

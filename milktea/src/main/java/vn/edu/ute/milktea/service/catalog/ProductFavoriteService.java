@@ -16,7 +16,7 @@ import vn.edu.ute.milktea.repository.branch.BranchProductRepository;
 import vn.edu.ute.milktea.repository.catalog.ProductFavoriteRepository;
 import vn.edu.ute.milktea.repository.catalog.ProductRepository;
 import vn.edu.ute.milktea.security.CurrentActor;
-
+import vn.edu.ute.milktea.entity.account.Role;
 import java.math.BigDecimal;
 import java.util.*;
 
@@ -181,7 +181,9 @@ public class ProductFavoriteService {
 
     @Transactional(readOnly = true)
     public boolean isFavorite(Long productId, CurrentActor actor) {
-        if (actor == null || !actor.isAuthenticated() || actor.getAccountId() == null) {
+        if (actor == null || !actor.isAuthenticated()
+                || actor.getAccountId() == null
+                || !actor.hasRole(Role.CUSTOMER)) {
             return false;
         }
         Product product = productRepository.findById(productId).orElse(null);
@@ -197,8 +199,19 @@ public class ProductFavoriteService {
     }
 
     private void validateAuthenticatedCustomer(CurrentActor actor) {
-        if (actor == null || !actor.isAuthenticated() || actor.getAccountId() == null) {
-            throw BusinessException.unauthorized(ErrorCode.ACCESS_DENIED, "Vui lòng đăng nhập để sử dụng tính năng danh sách yêu thích");
-        }
+    if (actor == null || !actor.isAuthenticated()
+            || actor.getAccountId() == null) {
+        throw BusinessException.unauthorized(
+                ErrorCode.ACCESS_DENIED,
+                "Vui lòng đăng nhập để sử dụng tính năng danh sách yêu thích"
+        );
     }
+
+    if (!actor.hasRole(Role.CUSTOMER)) {
+        throw BusinessException.forbidden(
+                ErrorCode.ACCESS_DENIED,
+                "Chức năng yêu thích chỉ dành cho khách hàng"
+        );
+    }
+}
 }
