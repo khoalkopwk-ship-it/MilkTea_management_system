@@ -476,3 +476,29 @@
 
 
 
+
+## 2026-10-30 — Nâng cấp giao diện trang chủ thương hiệu
+
+- Giữ năm section hiện có; tách CSS thành  `static/css/home.css` và xử lý ảnh lỗi thành `static/js/customer/home.js`. Hero hai cột, bảng màu kem–nâu, card đồng đều, responsive Bootstrap, focus rõ và reduced motion.
+- Hiển thị sản phẩm/chi nhánh thật; thêm empty state, giá null/âm được ẩn, địa chỉ thiếu được thông báo; bỏ số liệu quảng cáo không có căn cứ. Footer trang chủ chỉ hiện địa chỉ được cấu hình, ẩn hotline/email hardcode.
+- Stylesheet chỉ nạp khi activePage=home; giữ nguyên controller, API, schema, phân quyền, menu, giỏ hàng và thanh toán. Root có QR vẫn chuyển sang menu theo controller hiện có.
+- Xác minh: mvn clean compile PASS; HomeTemplateRenderingTest (2), MenuAccessAndOrderingFlowTest (17), SessionAndCartSecurityAuditTest (3): 22 tests PASS. git diff --check PASS.
+- Giới hạn: chưa chạy ứng dụng kết nối SQL Server và chưa kiểm tra trực quan trình duyệt ở 375/768/1024/1440px; chưa xác minh E2E menu và từng role. Không ghi dữ liệu hay reset database.
+
+### 2026-10-30 — Tinh chỉnh UI/UX, giữ nguyên nội dung hiện tại
+
+- Phạm vi lượt tinh chỉnh: chỉ sửa `src/main/resources/static/css/home.css`; cập nhật checkpoint này theo AGENTS.md. Không sửa thêm HTML, JavaScript, tên thương hiệu từ settings, logo, ảnh, nội dung, biểu thức Thymeleaf, nút hoặc đường dẫn.
+- Cân chỉnh typography, CTA cùng chiều cao, khoảng cách section và card; khung ảnh hero giữ tỷ lệ và không crop; card phục vụ tại bàn chuyển về luồng bố cục dưới ảnh để tránh che ảnh.
+- Header chỉ áp dụng qua `.brand-home` và `#customerHeaderNav`; bố cục laptop 992–1199px chuyển hai hàng, tablet/mobile giữ collapse hiện có và hiện tên đầy đủ. Không tác động trang role khác hoặc thay đổi nghiệp vụ QR/menu/giỏ/đăng nhập/đặt món.
+- Xác minh: `mvn clean compile` PASS; 22/22 tests thuộc HomeTemplateRenderingTest, MenuAccessAndOrderingFlowTest, SessionAndCartSecurityAuditTest PASS; kiểm tra cân bằng khối CSS và `git diff --check` PASS.
+- Giới hạn: chưa có công cụ browser trong phiên; breakpoint được rà soát từ source cho 375/768/1024/1440px, chưa xác minh trực quan, overflow thực tế hoặc E2E trên SQL Server.
+
+### 2026-10-30 — Tinh chỉnh giao diện Menu khách hàng
+
+- Thêm `static/css/menu.css`; template `customer/menu.html` chỉ thêm thẻ nạp CSS và hai class bố cục `menu-heading-panel`, `menu-filter-controls`. Đối chiếu đảo ngược ba thay đổi này khớp nguyên bản: nội dung, ảnh, script inline, URL và biểu thức Thymeleaf được giữ nguyên.
+- CSS chỉ nạp cho khách/khách hàng, không nạp cho ADMIN/MANAGER/CASHIER/KITCHEN/CHEF; không sửa stylesheet chung, backend hay dữ liệu.
+- Giảm padding banner, căn icon, chuẩn hóa input/select, bộ sưu tập active theo màu thương hiệu; card cùng chiều cao, ảnh contain, tên dài xuống dòng, footer giá/nút căn cuối và nút Xem chi tiết màu cam–nâu. Cùng selectors áp dụng cho SSR và card dựng lại khi lọc/phân trang.
+- Responsive: giữ grid desktop bốn cột; bộ lọc tách khỏi tiêu đề ở laptop, hai cột ở màn hình nhỏ rồi một cột trên mobile; giữ grid sản phẩm mobile hai cột và luồng QR hiện có.
+- `mvn clean compile` PASS; đối chiếu template, cân bằng khối CSS và `git diff --check` PASS. Kết quả kiểm thử hồi quy được ghi bổ sung bên dưới.
+- Giới hạn: không có công cụ browser trong phiên; chưa xác minh trực quan ở 375/768/1024/1440px hoặc E2E qua SQL Server. Không khẳng định kiểm tra CSS thay thế được kiểm tra browser.
+- Hồi quy: MenuAccessAndOrderingFlowTest 17/17 và SessionAndCartSecurityAuditTest 3/3 PASS; tổng 20 tests, 0 failures/errors/skipped.

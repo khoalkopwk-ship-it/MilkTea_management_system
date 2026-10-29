@@ -1,0 +1,552 @@
+.home-page-container {
+    --home-primary: #b86b35;
+    --home-primary-light: #fbeee4;
+    --home-secondary: #775d4a;
+    --home-secondary-hover: #604735;
+    --home-border: #e8ded5;
+    --home-muted: #786f68;
+    color: #604735;
+    font-family: 'Be Vietnam Pro','Inter',sans-serif;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+.home-page-container section {
+    padding: clamp(56px, 6vw, 88px) 0;
+    scroll-margin-top: 120px;
+}
+.home-page-container .hero-section,.home-page-container .featured-section,.home-page-container .how-it-works-section {
+    background: #f8f4ef;
+}
+.home-page-container .hero-content {
+    padding-right: clamp(20px, 3vw, 48px);
+    min-width: 0;
+}
+.home-page-container .hero-badge,.home-page-container .section-tag {
+    display: block;
+    color: #9e5524;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+}
+.home-page-container .hero-title {
+    max-width: 14ch;
+    font-size: clamp(2.15rem, 3.65vw, 3.35rem);
+    font-weight: 700;
+    line-height: 1.28;
+    letter-spacing: -.035em;
+    margin-bottom: 24px;
+    text-wrap: balance;
+}
+.home-page-container .text-highlight {
+    color: #b86b35;
+    display: block;
+}
+.home-page-container .hero-desc {
+    max-width: 490px;
+    color: var(--home-muted);
+    line-height: 1.85;
+    margin-bottom: 28px;
+}
+.home-page-container .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 28px;
+}
+.home-page-container :is(.btn-hero-primary,.btn-hero-secondary,.btn-branch-menu,.btn-view-detail) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 22px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: .875rem;
+    font-weight: 600;
+    transition: background .2s,transform .2s;
+    border: 1px solid var(--home-border);
+    min-height: 44px;
+}
+.home-page-container .btn-hero-primary {
+    background: #b86b35;
+    border-color: #b86b35;
+    color: white;
+}
+.home-page-container .btn-hero-primary:hover {
+    background: #9e5524;
+    transform: translateY(-2px);
+}
+.home-page-container :is(.btn-hero-secondary,.btn-branch-menu,.btn-view-detail) {
+    background: white;
+    color: #604735;
+}
+.home-page-container :is(.btn-hero-secondary,.btn-branch-menu,.btn-view-detail):hover {
+    background: #fbeee4;
+    border-color: #b86b35;
+}
+.home-page-container .hero-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    border-top: 1px solid var(--home-border);
+    padding-top: 22px;
+    font-size: .8rem;
+    color: var(--home-muted);
+}
+.home-page-container .hero-stats i {
+    color: #b86b35;
+    margin-right: 6px;
+}
+.home-page-container .hero-image-wrapper {
+    position: relative;
+    min-width: 0;
+    padding: 12px 24px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.home-page-container .hero-main-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 6 / 5;
+    max-height: 460px;
+    object-fit: contain;
+    padding: 24px;
+    background: #efe3d6;
+    border: 1px solid #e5d7c8;
+    border-radius: 120px 120px 24px 24px;
+}
+.home-page-container .hero-floating-card {
+    position: relative;
+    z-index: 1;
+    margin: 16px 0 0;
+    background: white;
+    border: 1px solid var(--home-border);
+    border-radius: 14px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 6px 18px #60473509;
+    max-width: 100%;
+}
+.home-page-container .section-header {
+    max-width: 660px;
+    text-align: center;
+    margin: 0 auto 40px;
+    text-wrap: pretty;
+}
+.home-page-container .section-tag {
+    margin-bottom: 10px;
+}
+.home-page-container .section-title {
+    font-size: clamp(1.65rem, 2.6vw, 2.2rem);
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: -.025em;
+    margin-bottom: 14px;
+    text-wrap: balance;
+}
+.home-page-container :is(.section-desc,.value-desc,.drink-desc,.step-desc) {
+    color: var(--home-muted);
+    font-size: .9rem;
+    line-height: 1.8;
+    margin-bottom: 0;
+}
+.home-page-container :is(.value-card,.branch-card,.step-box) {
+    height: 100%;
+    padding: 28px;
+    border: 1px solid var(--home-border);
+    border-radius: 16px;
+    background: #fff;
+    transition: transform .2s,box-shadow .2s;
+}
+.home-page-container :is(.value-card,.branch-card,.drink-card):hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px #6047350d;
+}
+.home-page-container .value-icon {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    background: #f8f4ef;
+    border-radius: 12px;
+    color: #b86b35;
+    font-size: 22px;
+    margin-bottom: 24px;
+}
+.home-page-container :is(.value-title,.branch-name,.step-title) {
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+.home-page-container .drink-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: white;
+    border: 1px solid var(--home-border);
+    border-radius: 16px;
+    transition: transform .2s,box-shadow .2s;
+}
+.home-page-container .drink-img-box {
+    position: relative;
+    aspect-ratio: 1/1;
+    background: #eee6dd;
+    overflow: hidden;
+}
+.home-page-container .drink-img-box a {
+    display: block;
+    height: 100%;
+}
+.home-page-container .drink-img-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 16px;
+    transition: transform .3s;
+}
+.home-page-container .drink-card:hover img {
+    transform: scale(1.04);
+}
+.home-page-container .drink-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+.home-page-container .drink-name {
+    display: block;
+    min-height: 3.1em;
+    text-decoration: none;
+    color: #604735;
+    font-weight: 600;
+    line-height: 1.55;
+    margin-bottom: 10px;
+}
+.home-page-container .drink-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+.home-page-container .drink-footer {
+    margin-top: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--home-border);
+    padding-top: 16px;
+}
+.home-page-container .drink-price {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #9e5524;
+}
+.home-page-container .btn-view-detail {
+    padding: 8px 12px;
+    font-size: .8rem;
+}
+.home-page-container .branch-card {
+    display: flex;
+    flex-direction: column;
+}
+.home-page-container .branch-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px 12px;
+    margin-bottom: 20px;
+}
+.home-page-container .branch-badge {
+    color: #775d4a;
+    font-size: .75rem;
+    flex-shrink: 0;
+}
+.home-page-container .branch-info-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    color: var(--home-muted);
+    font-size: .875rem;
+    margin-bottom: 12px;
+}
+.home-page-container .branch-info-row i {
+    color: #b86b35;
+    flex-shrink: 0;
+}
+.home-page-container .btn-branch-menu {
+    width: 100%;
+    margin-top: 20px;
+}
+.home-page-container .step-number {
+    font-size: 2.5rem;
+    font-weight: 500;
+    color: #b86b35;
+    line-height: 1;
+    margin-bottom: 24px;
+}
+.home-page-container .home-empty {
+    text-align: center;
+    padding: 40px;
+    border: 1px dashed #d9b99b;
+    border-radius: 16px;
+    color: #786f68;
+    width: 100%;
+    margin-bottom: 24px;
+}
+.home-page-container .home-empty i {
+    display: block;
+    font-size: 2rem;
+    color: #b86b35;
+    margin-bottom: 12px;
+}
+.brand-home :is(a,button):focus-visible {
+    outline: 3px solid #9e5524;
+    outline-offset: 4px;
+}
+.brand-home .milktea-footer {
+    background: #f1e8dd;
+    box-shadow: none;
+    padding: 40px 0;
+}
+.brand-home .milktea-footer .footer-brand {
+    font-size: 1.25rem;
+}
+/* Header rules apply only to the customer navigation on the home page. */
+.brand-home .navbar-milktea:has(#customerHeaderNav) {
+    padding-block: 12px;
+    box-shadow: 0 2px 12px #60473508;
+}
+.brand-home .navbar-milktea:has(#customerHeaderNav) > .container-fluid {
+    max-width: 1320px;
+    margin-inline: auto;
+    gap: 12px 24px;
+    align-items: center;
+}
+.brand-home .navbar-milktea:has(#customerHeaderNav) .navbar-brand {
+    margin: 0;
+    min-width: 0;
+    flex: 0 1 auto;
+    max-width: 38%;
+    white-space: normal;
+}
+.brand-home .navbar-milktea:has(#customerHeaderNav) .navbar-shop-name {
+    font-size: clamp(.95rem, 1.2vw, 1.12rem);
+    line-height: 1.45;
+    letter-spacing: -.025em;
+    overflow-wrap: anywhere;
+}
+.brand-home .navbar-milktea:has(#customerHeaderNav) .milktea-logo-frame {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+}
+.brand-home .navbar-milktea:has(#customerHeaderNav) #navbarContent {
+    min-width: 0;
+    gap: 16px;
+}
+.brand-home .navbar-milktea #customerHeaderNav {
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: 4px;
+}
+.brand-home .navbar-milktea #customerHeaderNav .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: .85rem;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+.brand-home .navbar-milktea #customerHeaderNav .nav-link i {
+    font-size: 1rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.brand-home .navbar-milktea #customerHeaderNav .nav-link:hover {
+    color: #9e5524;
+    background: #f8f4ef;
+}
+.brand-home .navbar-milktea #customerHeaderNav .nav-link.active {
+    color: #9e5524;
+    background: #fbeee4;
+    box-shadow: inset 0 -2px #b86b35;
+}
+.brand-home .navbar-milktea:has(#customerHeaderNav) #navbarContent > .d-flex {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.brand-home .navbar-milktea:has(#customerHeaderNav) .header-account-btn {
+    max-width: 240px;
+}
+.brand-home .navbar-milktea:has(#customerHeaderNav) .header-account-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.home-page-container .hero-actions > a {
+    min-height: 50px;
+    line-height: 1.5;
+}
+.home-page-container .hero-stats > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.home-page-container :is(.value-icon, .step-number) i {
+    line-height: 1;
+}
+.home-page-container .step-number {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--home-border);
+}
+.home-page-container .step-box {
+    background: #fffdf9;
+}
+.home-page-container .value-title {
+    min-height: 3em;
+}
+.home-page-container .branch-name {
+    overflow-wrap: anywhere;
+}
+.home-page-container .drink-img-box img {
+    padding: 20px;
+}
+.home-page-container .drink-card .badge {
+    max-width: calc(100% - 16px);
+    white-space: normal;
+}
+.home-page-container .drink-price {
+    white-space: nowrap;
+}
+.brand-home .milktea-footer .footer-address {
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+}
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .brand-home .navbar-milktea:has(#customerHeaderNav) > .container-fluid {
+        flex-wrap: wrap;
+        row-gap: 6px;
+    }
+    .brand-home .navbar-milktea:has(#customerHeaderNav) .navbar-brand {
+        max-width: 100%;
+    }
+    .brand-home .navbar-milktea:has(#customerHeaderNav) #navbarContent {
+        flex-basis: 100%;
+    }
+    .brand-home .navbar-milktea #customerHeaderNav {
+        margin-left: 0;
+    }
+}
+@media (max-width: 991.98px) {
+    .home-page-container .hero-content {
+        padding-right: 12px;
+    }
+    .home-page-container .hero-title {
+        max-width: 19ch;
+    }
+    .home-page-container .hero-image-wrapper {
+        margin: 32px auto 0;
+        max-width: 560px;
+        padding-inline: 12px;
+    }
+    .brand-home .navbar-milktea:has(#customerHeaderNav) > .container-fluid {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .brand-home .navbar-milktea:has(#customerHeaderNav) .navbar-brand {
+        flex: 1 1 0;
+        max-width: calc(100% - 60px);
+    }
+    .brand-home .navbar-milktea:has(#customerHeaderNav) .navbar-shop-name {
+        /* Override Bootstrap d-none so the existing full name remains visible. */
+        display: block !important;
+    }
+    .brand-home .navbar-milktea:has(#customerHeaderNav) #navbarContent {
+        flex-basis: 100%;
+        border-top: 1px solid #e8ded5;
+        padding-top: 12px;
+    }
+    .brand-home .navbar-milktea #customerHeaderNav {
+        align-items: stretch;
+    }
+    .brand-home .navbar-milktea:has(#customerHeaderNav) #navbarContent > .d-flex {
+        margin-left: 0;
+    }
+    .home-page-container .value-title {
+        min-height: 0;
+    }
+}
+@media (max-width: 575.98px) {
+    .home-page-container section {
+        padding-block: 48px;
+    }
+    .home-page-container .hero-title {
+        font-size: clamp(2rem, 8.6vw, 2.4rem);
+        line-height: 1.3;
+        max-width: 100%;
+        margin-bottom: 20px;
+    }
+    .home-page-container .hero-badge {
+        font-size: .7rem;
+        letter-spacing: .06em;
+    }
+    .home-page-container .hero-actions > a {
+        width: 100%;
+        min-height: 50px;
+    }
+    .home-page-container .hero-stats {
+        gap: 10px 16px;
+    }
+    .home-page-container .hero-image-wrapper {
+        margin-top: 24px;
+    }
+    .home-page-container .hero-main-img {
+        padding: 16px;
+        border-radius: 80px 80px 20px 20px;
+    }
+    .home-page-container .hero-floating-card {
+        padding: 12px 16px;
+        margin-top: 12px;
+    }
+    .home-page-container :is(.value-card, .branch-card, .step-box) {
+        padding: 24px;
+    }
+    .home-page-container .section-header {
+        margin-bottom: 28px;
+    }
+    .home-page-container .drink-name {
+        min-height: 0;
+    }
+    .brand-home .navbar-milktea:has(#customerHeaderNav) .milktea-logo-frame {
+        width: 44px;
+        height: 44px;
+        flex-basis: 44px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .home-page-container * {
+        transition: none;
+        animation: none;
+    }
+    .home-page-container :is(.value-card, .branch-card, .drink-card, .btn-hero-primary):hover,
+    .home-page-container .drink-card:hover img {
+        transform: none;
+    }
+}

@@ -1156,6 +1156,7 @@
                 }
             }
         </style>
+        <link rel="stylesheet" th:href="@{/css/menu.css}" sec:authorize="!hasAnyRole('ADMIN', 'MANAGER', 'CASHIER', 'KITCHEN', 'CHEF')">
 
         <div th:if="${settings != null and ((settings.discountType == 'FIXED_AMOUNT' and settings.discountValue != null and settings.discountValue > 0) or (settings.discountType != 'FIXED_AMOUNT' and settings.discountPercent != null and settings.discountPercent > 0))}"
             class="alert alert-warning border-0 shadow-sm rounded-4 d-flex align-items-center mb-4 py-3 px-4">
@@ -1248,14 +1249,14 @@
             </div>
         </div>
 
-        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+        <div class="menu-heading-panel d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
             <div>
                 <h2 class="brand-font mb-1">Thực đơn trà sữa</h2>
                 <p class="text-muted small mb-0">Hương vị trà sữa nguyên bản, pha chế thủ công thơm ngon mỗi ngày</p>
             </div>
 
             <!-- Thanh Tìm Kiếm & Lọc Danh Mục & Sắp Xếp (CUS-01) -->
-            <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="menu-filter-controls d-flex flex-wrap align-items-center gap-2">
                 <div class="position-relative" style="min-width: 220px; flex-grow: 1;">
                     <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                     <input type="text"

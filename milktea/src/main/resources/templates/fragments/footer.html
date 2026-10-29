@@ -109,21 +109,21 @@
                 <div class="col-12 col-md-4 text-md-start text-center">
                     <span class="brand-font fw-bold footer-brand fs-6"
                           th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea</span>
-                    <p class="text-muted small mb-0 mt-1 footer-description">
+                    <p class="text-muted small mb-0 mt-1 footer-description" th:text="${activePage == 'home' ? 'Một ly trà yêu thích, một khoảnh khắc dành riêng cho bạn. Khám phá thực đơn và ghé MilkTea hôm nay.' : 'Chuỗi trà sữa đậm vị nguyên bản, phục vụ trực tiếp tại bàn qua QR thông minh và POS quầy.'}">
                         Chuỗi trà sữa đậm vị nguyên bản, phục vụ trực tiếp tại bàn qua QR thông minh và POS quầy.
                     </p>
                 </div>
 
                 <div class="col-12 col-md-4 text-center">
                     <div class="d-inline-flex flex-column gap-1 text-muted small">
-                        <div class="footer-address justify-content-center">
+                        <div class="footer-address justify-content-center" th:if="${activePage != 'home' or (settings != null and !#strings.isEmpty(settings.address))}">
                             <i class="bi bi-geo-alt-fill"></i>
                             <span>Trụ sở chính: </span>
                             <strong th:text="${settings != null and settings.address != null ? settings.address : 'Số 1 Võ Văn Ngân, TP. Thủ Đức'}">
                                 Số 1 Võ Văn Ngân, TP. Thủ Đức
                             </strong>
                         </div>
-                        <div class="footer-address justify-content-center">
+                        <div class="footer-address justify-content-center" th:if="${activePage != 'home'}">
                             <i class="bi bi-telephone-fill"></i>
                             <span>Hotline: </span>
                             <strong>1900 1234</strong>
@@ -144,7 +144,7 @@
                         <a th:href="@{/#branchesSection}" class="text-decoration-none text-muted">Chi nhánh</a>
                     </div>
                     <div class="text-muted small mt-1" style="font-size: 11px;">
-                        © 2026 MilkTea Management System. All rights reserved.
+                        <span th:if="${activePage == 'home'}" th:text="${'© ' + #dates.year(#dates.createNow()) + ' ' + (settings != null ? settings.shopName : 'MilkTea')}">© MilkTea</span><span th:unless="${activePage == 'home'}">© 2026 MilkTea Management System. All rights reserved.</span>
                     </div>
                 </div>
             </div>

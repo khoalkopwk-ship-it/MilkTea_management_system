@@ -10,531 +10,7 @@
 </head>
 
 <body>
-    <div th:fragment="content" class="home-page-container">
-        <style>
-            .home-page-container {
-                --home-primary: #b86b35;
-                --home-primary-hover: #9e5524;
-                --home-primary-light: #fbeee4;
-                --home-secondary: #775D4A;
-                --home-secondary-hover: #604735;
-                --home-secondary-light: #F3EBE4;
-                --home-accent: #D9B99B;
-                --home-cream: #F8F4EF;
-                --home-dark: #1e293b;
-                --home-muted: #64748b;
-                --home-border: #E8DED5;
-                --home-card: #ffffff;
-                color: var(--home-dark);
-                font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
-            }
-
-            /* Animations */
-            @keyframes homeFadeInUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(22px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            @keyframes pulseGlow {
-                0%, 100% {
-                    box-shadow: 0 0 0 0 rgba(184, 107, 53, 0.35);
-                }
-                50% {
-                    box-shadow: 0 0 0 14px rgba(184, 107, 53, 0);
-                }
-            }
-
-            /* Hero Section */
-            .hero-section {
-                background: linear-gradient(135deg, #FFFDF9 0%, #FAF2EA 50%, #F5E7DA 100%);
-                border-bottom: 1px solid var(--home-border);
-                padding: 60px 0 70px;
-                position: relative;
-                overflow: hidden;
-            }
-
-            .hero-section::before {
-                content: '';
-                position: absolute;
-                top: -60px;
-                right: -60px;
-                width: 320px;
-                height: 320px;
-                border-radius: 50%;
-                background: radial-gradient(circle, rgba(184, 107, 53, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
-                pointer-events: none;
-            }
-
-            .hero-content {
-                animation: homeFadeInUp 0.8s ease-out both;
-            }
-
-            .hero-badge {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                background: var(--home-primary-light);
-                color: var(--home-primary);
-                font-weight: 700;
-                font-size: 13px;
-                padding: 7px 16px;
-                border-radius: 30px;
-                border: 1px solid rgba(184, 107, 53, 0.25);
-                margin-bottom: 20px;
-            }
-
-            .hero-title {
-                font-size: 2.8rem;
-                font-weight: 800;
-                line-height: 1.22;
-                letter-spacing: -0.02em;
-                color: var(--home-secondary-hover);
-                margin-bottom: 20px;
-            }
-
-            .hero-title .text-highlight {
-                color: var(--home-primary);
-                position: relative;
-                display: inline-block;
-            }
-
-            .hero-desc {
-                font-size: 1.1rem;
-                color: var(--home-muted);
-                line-height: 1.7;
-                margin-bottom: 32px;
-                max-width: 580px;
-            }
-
-            .hero-actions {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 14px;
-                align-items: center;
-                margin-bottom: 40px;
-            }
-
-            .btn-hero-primary {
-                background: linear-gradient(135deg, var(--home-primary), var(--home-primary-hover));
-                color: #fff;
-                font-weight: 700;
-                padding: 13px 28px;
-                border-radius: 30px;
-                border: none;
-                box-shadow: 0 8px 20px rgba(184, 107, 53, 0.25);
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-                text-decoration: none;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-            }
-
-            .btn-hero-primary:hover {
-                color: #fff;
-                transform: translateY(-2px);
-                box-shadow: 0 12px 25px rgba(184, 107, 53, 0.35);
-            }
-
-            .btn-hero-secondary {
-                background: #ffffff;
-                color: var(--home-secondary);
-                font-weight: 600;
-                padding: 13px 24px;
-                border-radius: 30px;
-                border: 1.5px solid var(--home-border);
-                transition: all 0.2s ease;
-                text-decoration: none;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-            }
-
-            .btn-hero-secondary:hover {
-                color: var(--home-primary);
-                border-color: var(--home-primary);
-                background: #fffbf7;
-                transform: translateY(-2px);
-            }
-
-            .hero-stats {
-                display: flex;
-                gap: 30px;
-                border-top: 1px solid rgba(119, 93, 74, 0.15);
-                padding-top: 24px;
-            }
-
-            .stat-number {
-                font-size: 1.5rem;
-                font-weight: 800;
-                color: var(--home-secondary-hover);
-                line-height: 1;
-            }
-
-            .stat-label {
-                font-size: 12px;
-                color: var(--home-muted);
-                font-weight: 500;
-            }
-
-            .hero-image-wrapper {
-                position: relative;
-                animation: homeFadeInUp 0.9s ease-out both;
-            }
-
-            .hero-main-img {
-                width: 100%;
-                border-radius: 28px;
-                box-shadow: 0 20px 45px rgba(96, 71, 53, 0.12);
-                border: 6px solid #ffffff;
-                object-fit: cover;
-                max-height: 440px;
-            }
-
-            .hero-floating-card {
-                position: absolute;
-                bottom: -20px;
-                left: -20px;
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(8px);
-                border: 1px solid var(--home-border);
-                border-radius: 18px;
-                padding: 14px 20px;
-                box-shadow: 0 10px 30px rgba(96, 71, 53, 0.1);
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            }
-
-            /* Values Section */
-            .values-section {
-                padding: 70px 0;
-                background: #ffffff;
-            }
-
-            .section-header {
-                text-align: center;
-                max-width: 680px;
-                margin: 0 auto 50px;
-            }
-
-            .section-tag {
-                color: var(--home-primary);
-                font-size: 13px;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.08em;
-                margin-bottom: 8px;
-                display: block;
-            }
-
-            .section-title {
-                font-size: 2.1rem;
-                font-weight: 800;
-                color: var(--home-secondary-hover);
-                line-height: 1.3;
-                margin-bottom: 12px;
-            }
-
-            .section-desc {
-                color: var(--home-muted);
-                font-size: 14px;
-                line-height: 1.6;
-            }
-
-            .value-card {
-                background: #FFFDFB;
-                border: 1px solid var(--home-border);
-                border-radius: 20px;
-                padding: 28px 24px;
-                height: 100%;
-                transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-            }
-
-            .value-card:hover {
-                transform: translateY(-6px);
-                box-shadow: 0 14px 30px rgba(96, 71, 53, 0.08);
-                border-color: var(--home-accent);
-            }
-
-            .value-icon {
-                width: 56px;
-                height: 56px;
-                border-radius: 16px;
-                background: var(--home-primary-light);
-                color: var(--home-primary);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 24px;
-                margin-bottom: 20px;
-            }
-
-            .value-title {
-                font-size: 1.15rem;
-                font-weight: 700;
-                color: var(--home-secondary-hover);
-                margin-bottom: 10px;
-            }
-
-            .value-desc {
-                font-size: 13px;
-                color: var(--home-muted);
-                line-height: 1.6;
-                margin-bottom: 0;
-            }
-
-            /* Featured Section */
-            .featured-section {
-                padding: 70px 0;
-                background: linear-gradient(180deg, #FDFBF8 0%, #F8F4EF 100%);
-                border-top: 1px solid var(--home-border);
-                border-bottom: 1px solid var(--home-border);
-            }
-
-            .drink-card {
-                background: #ffffff;
-                border: 1px solid var(--home-border);
-                border-radius: 20px;
-                overflow: hidden;
-                box-shadow: 0 6px 20px rgba(96, 71, 53, 0.04);
-                transition: transform 0.25s ease, box-shadow 0.25s ease;
-                display: flex;
-                flex-direction: column;
-                height: 100%;
-            }
-
-            .drink-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 16px 32px rgba(96, 71, 53, 0.09);
-            }
-
-            .drink-img-box {
-                position: relative;
-                overflow: hidden;
-                height: 190px;
-                background-color: #f1ede8;
-            }
-
-            .drink-img-box img {
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-                transition: transform 0.35s ease;
-            }
-
-            .drink-card:hover .drink-img-box img {
-                transform: scale(1.06);
-            }
-
-            .drink-body {
-                padding: 18px 20px 20px;
-                display: flex;
-                flex-direction: column;
-                flex-grow: 1;
-            }
-
-            .drink-name {
-                font-size: 1.1rem;
-                font-weight: 700;
-                color: var(--home-secondary-hover);
-                margin-bottom: 6px;
-                text-decoration: none;
-                display: block;
-            }
-
-            .drink-name:hover {
-                color: var(--home-primary);
-            }
-
-            .drink-desc {
-                font-size: 12px;
-                color: var(--home-muted);
-                line-height: 1.5;
-                margin-bottom: 14px;
-                flex-grow: 1;
-            }
-
-            .drink-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-top: 1px solid #F0E8DF;
-                padding-top: 12px;
-                margin-top: auto;
-            }
-
-            .drink-price {
-                font-size: 1.15rem;
-                font-weight: 800;
-                color: var(--home-primary);
-            }
-
-            .btn-view-detail {
-                background: var(--home-primary-light);
-                color: var(--home-primary-hover);
-                border: 1px solid rgba(184, 107, 53, 0.2);
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 600;
-                padding: 6px 14px;
-                text-decoration: none;
-                transition: all 0.2s ease;
-            }
-
-            .btn-view-detail:hover {
-                background: var(--home-primary);
-                color: #fff;
-            }
-
-            /* Branches Section */
-            .branches-section {
-                padding: 70px 0;
-                background: #ffffff;
-            }
-
-            .branch-card {
-                background: #FFFDFB;
-                border: 1px solid var(--home-border);
-                border-radius: 20px;
-                padding: 24px;
-                box-shadow: 0 4px 18px rgba(96, 71, 53, 0.04);
-                transition: transform 0.25s ease, box-shadow 0.25s ease;
-                height: 100%;
-                display: flex;
-                flex-direction: column;
-            }
-
-            .branch-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 14px 28px rgba(96, 71, 53, 0.08);
-                border-color: var(--home-accent);
-            }
-
-            .branch-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                margin-bottom: 14px;
-            }
-
-            .branch-name {
-                font-size: 1.2rem;
-                font-weight: 700;
-                color: var(--home-secondary-hover);
-                margin-bottom: 4px;
-            }
-
-            .branch-badge {
-                font-size: 11px;
-                font-weight: 700;
-                padding: 4px 10px;
-                border-radius: 20px;
-                background: #DEF7EC;
-                color: #03543F;
-            }
-
-            .branch-info-row {
-                display: flex;
-                align-items: flex-start;
-                gap: 10px;
-                font-size: 13px;
-                color: var(--home-muted);
-                margin-bottom: 8px;
-                line-height: 1.5;
-            }
-
-            .branch-info-row i {
-                color: var(--home-primary);
-                font-size: 16px;
-                margin-top: 1px;
-                flex-shrink: 0;
-            }
-
-            .btn-branch-menu {
-                display: block;
-                width: 100%;
-                text-align: center;
-                background: #ffffff;
-                color: var(--home-secondary);
-                border: 1.5px solid var(--home-border);
-                border-radius: 12px;
-                padding: 10px 16px;
-                font-size: 13px;
-                font-weight: 600;
-                text-decoration: none;
-                margin-top: 16px;
-                transition: all 0.2s ease;
-            }
-
-            .btn-branch-menu:hover {
-                background: var(--home-primary-light);
-                border-color: var(--home-primary);
-                color: var(--home-primary);
-            }
-
-            /* How it works */
-            .how-it-works-section {
-                padding: 60px 0 75px;
-                background: linear-gradient(135deg, #FAF4EE 0%, #FFFDFB 100%);
-                border-top: 1px solid var(--home-border);
-            }
-
-            .step-box {
-                text-align: center;
-                padding: 20px 16px;
-            }
-
-            .step-number {
-                width: 50px;
-                height: 50px;
-                border-radius: 50%;
-                background: var(--home-primary);
-                color: #fff;
-                font-weight: 800;
-                font-size: 20px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin: 0 auto 16px;
-                box-shadow: 0 6px 16px rgba(184, 107, 53, 0.3);
-            }
-
-            .step-title {
-                font-size: 1.1rem;
-                font-weight: 700;
-                color: var(--home-secondary-hover);
-                margin-bottom: 8px;
-            }
-
-            .step-desc {
-                font-size: 13px;
-                color: var(--home-muted);
-                line-height: 1.6;
-            }
-
-            @media (max-width: 991.98px) {
-                .hero-section {
-                    padding: 40px 0 50px;
-                }
-                .hero-title {
-                    font-size: 2.2rem;
-                }
-                .hero-image-wrapper {
-                    margin-top: 35px;
-                }
-                .hero-floating-card {
-                    bottom: -10px;
-                    left: 10px;
-                }
-            }
-        </style>
-
+    <div th:fragment="content" class="home-page-container" role="main" th:with="fallbackImage=@{/images/MilkTea.png}">
         <!-- 1. HERO SECTION -->
         <section class="hero-section">
             <div class="container">
@@ -545,41 +21,28 @@
                             <span>Thương Hiệu Trà Sữa Đậm Vị Nguyên Bản</span>
                         </div>
                         <h1 class="hero-title">
-                            Thưởng Thức Hương Vị
-                            <span class="text-highlight">Trà Sữa Tươi Mới</span>
-                            Pha Chế Mỗi Ngày
+                            Một chút thảnh thơi,
+                            <span class="text-highlight">một ly trà yêu thích.</span>
+
                         </h1>
                         <p class="hero-desc">
-                            Tuyển chọn từ những đồi trà cao nguyên Bảo Lộc cùng nguồn sữa tươi thanh trùng tự nhiên. Không gian kết nối hiện đại và công nghệ gọi món thông minh tại bàn.
+                            Khám phá hương trà, vị sữa và những lựa chọn topping theo sở thích. Ghé MilkTea, tìm một chỗ ngồi và tận hưởng khoảnh khắc của riêng bạn.
                         </p>
                         <div class="hero-actions">
                             <a th:href="@{/menu(qr=${tableQr})}" class="btn-hero-primary" id="heroExploreMenuBtn">
                                 <i class="bi bi-grid-fill"></i>
-                                <span>Khám Phá Menu</span>
+                                <span>Khám phá thực đơn</span>
                             </a>
                             <a href="#branchesSection" class="btn-hero-secondary">
                                 <i class="bi bi-shop"></i>
-                                <span>Hệ Thống Chi Nhánh</span>
+                                <span>Tìm chi nhánh</span>
                             </a>
                         </div>
-                        <div class="hero-stats">
-                            <div>
-                                <div class="stat-number">30+</div>
-                                <div class="stat-label">Món uống tinh hoa</div>
-                            </div>
-                            <div>
-                                <div class="stat-number">100%</div>
-                                <div class="stat-label">Trà nguyên lá sạch</div>
-                            </div>
-                            <div>
-                                <div class="stat-number">5.0 ★</div>
-                                <div class="stat-label">Đánh giá khách hàng</div>
-                            </div>
-                        </div>
+                        <div class="hero-stats"><span><i class="bi bi-cup-hot" aria-hidden="true"></i>Khám phá vị trà</span><span><i class="bi bi-sliders" aria-hidden="true"></i>Chọn theo sở thích</span><span><i class="bi bi-qr-code-scan" aria-hidden="true"></i>Gọi món tại bàn</span></div>
                     </div>
                     <div class="col-lg-6 hero-image-wrapper">
-                        <img src="https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=800&q=80"
-                             alt="Trà sữa MilkTea"
+                        <img th:src="${not #lists.isEmpty(featuredProducts) and !#strings.isEmpty(featuredProducts[0].imageUrl) ? featuredProducts[0].imageUrl : fallbackImage}" width="540" height="450" fetchpriority="high" data-home-image th:attr="data-fallback=${fallbackImage}"
+                             th:alt="${not #lists.isEmpty(featuredProducts) ? featuredProducts[0].name : 'MilkTea'}"
                              class="hero-main-img" />
                         <div class="hero-floating-card">
                             <div class="rounded-circle d-flex align-items-center justify-content-center"
@@ -603,7 +66,7 @@
                     <span class="section-tag">Giá trị cốt lõi</span>
                     <h2 class="section-title">Tại Sao Khách Hàng Yêu Thích MilkTea?</h2>
                     <p class="section-desc">
-                        Chúng tôi kiên định với chất lượng thật: không sử dụng hương liệu tổng hợp, giữ trọn vị chát thanh dịu mát và vị sữa ngậy béo thuần khiết.
+                        Từ hương trà đến cách gọi món, khám phá những điều làm nên trải nghiệm MilkTea.
                     </p>
                 </div>
                 <div class="row g-4">
@@ -614,7 +77,7 @@
                             </div>
                             <h3 class="value-title">Trà Nguyên Lá</h3>
                             <p class="value-desc">
-                                Được thu hái thủ công từ đồi trà cao nguyên Bảo Lộc &amp; Cầu Đất, ủ lạnh đúng nhiệt độ để chiết xuất hương vị sâu lắng.
+                                Khám phá hương vị trà trong từng món uống và chọn loại trà phù hợp với khẩu vị của bạn.
                             </p>
                         </div>
                     </div>
@@ -623,9 +86,9 @@
                             <div class="value-icon">
                                 <i class="bi bi-droplet-half"></i>
                             </div>
-                            <h3 class="value-title">Sữa Tươi 100%</h3>
+                            <h3 class="value-title">Vị sữa dịu dàng</h3>
                             <p class="value-desc">
-                                Nguồn sữa tươi thanh trùng chuẩn VietGAP mỗi ngày, nói không với bột béo công nghiệp để bảo vệ trọn vẹn sức khỏe.
+                                Vị sữa hòa cùng hương trà, mang đến nhiều lựa chọn từ thanh nhẹ đến đậm đà.
                             </p>
                         </div>
                     </div>
@@ -634,9 +97,9 @@
                             <div class="value-icon">
                                 <i class="bi bi-fire"></i>
                             </div>
-                            <h3 class="value-title">Topping Nấu Mới</h3>
+                            <h3 class="value-title">Topping yêu thích</h3>
                             <p class="value-desc">
-                                Trân châu dẻo thơm ngấm mật ong, pudding trứng mềm tan và thạch thảo mộc được chế biến tươi mới sau mỗi 4 tiếng.
+                                Khám phá topping trong thực đơn và kết hợp theo sở thích khi gọi món tại quán.
                             </p>
                         </div>
                     </div>
@@ -660,31 +123,31 @@
             <div class="container">
                 <div class="section-header">
                     <span class="section-tag">Thực đơn đặc sắc</span>
-                    <h2 class="section-title">Các Món Uống Tiêu Biểu &amp; Yêu Thích Nhất</h2>
+                    <h2 class="section-title">Hôm nay, bạn chọn vị gì?</h2>
                     <p class="section-desc">
-                        Khám phá những món uống signature được hàng ngàn khách hàng tin chọn mỗi ngày tại hệ thống chuỗi.
+                        Một vài gợi ý từ thực đơn để bắt đầu hành trình tìm món uống yêu thích.
                     </p>
                 </div>
-                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 mb-5" id="homeFeaturedGrid">
+                <div class="home-empty" th:if="${#lists.isEmpty(featuredProducts)}"><i class="bi bi-cup-hot" aria-hidden="true"></i><p class="mb-0">Thực đơn nổi bật đang được cập nhật. Mời bạn khám phá thực đơn đầy đủ.</p></div><div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 mb-5" id="homeFeaturedGrid">
                     <div th:each="p : ${featuredProducts}" class="col">
                         <div class="drink-card">
                             <div class="drink-img-box">
                                 <a th:href="@{/products/{id}(id=${p.id}, qr=${tableQr})}">
-                                    <img th:src="${p.imageUrl != null and !p.imageUrl.isEmpty() ? p.imageUrl : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80'}"
-                                         th:alt="${p.name}">
+                                    <img th:src="${p.imageUrl != null and !p.imageUrl.isEmpty() ? p.imageUrl : fallbackImage}"
+                                         th:alt="${p.name}" width="320" height="320" loading="lazy" decoding="async" data-home-image th:attr="data-fallback=${fallbackImage}">
                                 </a>
                                 <span class="position-absolute top-0 end-0 m-2 badge bg-dark bg-opacity-75 rounded-pill px-2 py-1 small"
                                       th:text="'Size ' + ${p.size != null ? p.size : 'M'}">Size M</span>
                             </div>
                             <div class="drink-body">
-                                <a th:href="@{/products/{id}(id=${p.id}, qr=${tableQr})}" class="drink-name text-truncate" th:text="${p.name}">
+                                <a th:href="@{/products/{id}(id=${p.id}, qr=${tableQr})}" class="drink-name" th:text="${p.name}">
                                     Trà Sữa Truyền Thống
                                 </a>
-                                <p class="drink-desc text-truncate-2" th:text="${p.description != null ? p.description : 'Đậm vị trà thơm ngậy sữa tự nhiên'}">
+                                <p class="drink-desc" th:text="${p.description != null ? p.description : 'Đậm vị trà thơm ngậy sữa tự nhiên'}">
                                     Mô tả món uống
                                 </p>
                                 <div class="drink-footer">
-                                    <span class="drink-price"
+                                    <span class="drink-price" th:if="${p.price != null and p.price.signum() >= 0}"
                                           th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA') + ' ₫'}">
                                         25.000 ₫
                                     </span>
@@ -712,10 +175,10 @@
                     <span class="section-tag">Hệ thống cửa hàng</span>
                     <h2 class="section-title">Khám Phá Các Chi Nhánh Của Chúng Tôi</h2>
                     <p class="section-desc">
-                        Không gian ấm cúng, thiết kế hiện đại, máy lạnh mát mẻ và wifi tốc độ cao sẵn sàng chào đón bạn làm việc và thư giãn.
+                        Tìm địa chỉ gần bạn và khám phá thực đơn tại từng chi nhánh MilkTea.
                     </p>
                 </div>
-                <div class="row g-4" id="homeBranchesGrid">
+                <div class="home-empty" th:if="${#lists.isEmpty(branches)}"><i class="bi bi-shop" aria-hidden="true"></i><p class="mb-0">Thông tin chi nhánh đang được cập nhật. Hẹn gặp bạn tại MilkTea.</p></div><div class="row g-4" id="homeBranchesGrid">
                     <div th:each="b : ${branches}" class="col-12 col-md-6 col-lg-4">
                         <div class="branch-card">
                             <div class="branch-header">
@@ -724,12 +187,12 @@
                                     <span class="text-muted small" th:text="'Mã CN: ' + ${b.code}">CN01</span>
                                 </div>
                                 <span class="branch-badge">
-                                    <i class="bi bi-check-circle-fill me-1"></i>Đang mở cửa
+                                    <i class="bi bi-check-circle-fill me-1"></i>Chi nhánh
                                 </span>
                             </div>
                             <div class="branch-info-row">
                                 <i class="bi bi-geo-alt-fill"></i>
-                                <span th:text="${b.address}">123 Nguyễn Thị Minh Khai, Q.1</span>
+                                <span th:text="${!#strings.isEmpty(b.address) ? b.address : 'Địa chỉ đang cập nhật'}">123 Nguyễn Thị Minh Khai, Q.1</span>
                             </div>
                             <div class="branch-info-row" th:if="${b.phone != null and !b.phone.isEmpty()}">
                                 <i class="bi bi-telephone-fill"></i>
@@ -760,13 +223,13 @@
                     <span class="section-tag">Trải nghiệm tiện lợi</span>
                     <h2 class="section-title">3 Bước Thưởng Thức Tại Quán</h2>
                     <p class="section-desc">
-                        Quy trình gọi món khép kín hiện đại giúp bạn thưởng thức ly trà sữa yêu thích nhanh chóng nhất.
+                        Xem thực đơn ngay trên website. Để gọi món, hãy ghé chi nhánh và quét mã QR tại bàn.
                     </p>
                 </div>
                 <div class="row g-4">
                     <div class="col-12 col-md-4">
                         <div class="step-box">
-                            <div class="step-number">1</div>
+                            <div class="step-number">01 <i class="bi bi-shop fs-4" aria-hidden="true"></i></div>
                             <h4 class="step-title">Ghé Thăm Chi Nhánh</h4>
                             <p class="step-desc">
                                 Chọn một góc ngồi thoải mái tại bất kỳ chi nhánh nào trong hệ thống của chúng tôi.
@@ -775,7 +238,7 @@
                     </div>
                     <div class="col-12 col-md-4">
                         <div class="step-box">
-                            <div class="step-number">2</div>
+                            <div class="step-number">02 <i class="bi bi-qr-code-scan fs-4" aria-hidden="true"></i></div>
                             <h4 class="step-title">Quét Mã QR Tại Bàn</h4>
                             <p class="step-desc">
                                 Dùng camera điện thoại quét mã QR được dán sẵn trên bàn để mở trực tiếp menu gọi món.
@@ -784,8 +247,8 @@
                     </div>
                     <div class="col-12 col-md-4">
                         <div class="step-box">
-                            <div class="step-number">3</div>
-                            <h4 class="step-title">Tùy Biến &amp; Thưởng Thức</h4>
+                            <div class="step-number">03 <i class="bi bi-cup-straw fs-4" aria-hidden="true"></i></div>
+                            <h4 class="step-title">Chọn món &amp; đặt hàng</h4>
                             <p class="step-desc">
                                 Lựa chọn mức đường, đá, size ly và topping yêu thích. Món sẽ được pha chế tươi và giao tận bàn!
                             </p>
@@ -797,7 +260,7 @@
     </div>
 
     <th:block th:fragment="scripts">
-        <script th:src="@{/js/customer/customer.js}"></script>
+        <script th:src="@{/js/customer/customer.js}"></script><script th:src="@{/js/customer/home.js}"></script>
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 // Khởi tạo ngữ cảnh nếu khách đã quét QR trước đó

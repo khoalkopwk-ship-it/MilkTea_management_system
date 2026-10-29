@@ -1,0 +1,302 @@
+/* Customer menu presentation; shared selectors also cover cards rendered by JS. */
+.milk-menu-page {
+    --menu-ink: #604735;
+    font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
+    line-height: 1.7;
+}
+.milk-menu-page > .alert {
+    gap: 14px;
+    padding: 14px 18px !important; /* Override Bootstrap spacing utilities. */
+    border-radius: 14px !important;
+    box-shadow: 0 3px 12px #60473508 !important;
+    overflow-wrap: anywhere;
+}
+.milk-menu-page > .alert-warning {
+    background: #fbeee4;
+}
+.milk-menu-page > .alert > .bi {
+    flex: 0 0 auto;
+    margin-right: 0 !important;
+    font-size: 1.4rem !important;
+    line-height: 1;
+}
+.milk-menu-page > .alert > div {
+    min-width: 0;
+}
+.milk-menu-page > .alert .rounded-circle {
+    flex-shrink: 0;
+}
+.milk-menu-page > .alert-light {
+    flex-wrap: wrap;
+    row-gap: 12px;
+}
+.milk-menu-page > .alert-light .badge {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.5;
+}
+.milk-menu-page #menuBranchSelectorCard {
+    gap: 16px;
+    box-shadow: 0 3px 12px #60473508 !important;
+}
+.milk-menu-page #menuBranchSelectorCard > div {
+    min-width: 0 !important; /* Existing inline minimum exceeds narrow screens. */
+}
+.milk-menu-page #menuBranchSelectorCard > div:last-child {
+    flex: 0 1 400px;
+    width: 100%;
+}
+.milk-menu-page .menu-heading-panel {
+    padding: 24px 0 20px;
+    gap: 24px;
+}
+.milk-menu-page .menu-heading-panel > div:first-child {
+    flex: 0 1 300px;
+    min-width: 0;
+}
+.milk-menu-page .menu-heading-panel h2 {
+    font-size: clamp(1.65rem, 2.4vw, 2.1rem);
+    font-weight: 700;
+    line-height: 1.35;
+    letter-spacing: -.025em;
+}
+.milk-menu-page .menu-heading-panel p {
+    line-height: 1.75;
+    max-width: 42ch;
+}
+.milk-menu-page .menu-filter-controls {
+    display: grid !important; /* Replace Bootstrap d-flex with a responsive grid. */
+    grid-template-columns: minmax(180px, 1.25fr) minmax(160px, 1fr) minmax(175px, 1fr);
+    flex: 1 1 0;
+    min-width: 0;
+    width: 100%;
+}
+.milk-menu-page .menu-filter-controls > div,
+.milk-menu-page .menu-filter-controls .menu-category-filter {
+    min-width: 0 !important;
+    width: auto;
+}
+.milk-menu-page :is(.menu-filter-controls, #menuBranchSelectorCard) :is(input, select) {
+    min-height: 46px;
+    width: 100%;
+    min-width: 0;
+    border: 1px solid #dccbbb;
+    border-radius: 10px !important;
+    background-color: #fff;
+    color: #604735;
+    font-size: .875rem;
+    font-weight: 500;
+    line-height: 1.5;
+    box-shadow: none !important;
+    transition: border-color .2s ease, background-color .2s ease;
+}
+.milk-menu-page .menu-category-filter .form-select {
+    padding: 10px 38px 10px 14px;
+}
+.milk-menu-page :is(.menu-filter-controls, #menuBranchSelectorCard) :is(input, select):hover {
+    border-color: #b86b35;
+    background-color: #fffdf9;
+}
+.milk-menu-page :is(.menu-filter-controls, #menuBranchSelectorCard) :is(input, select):focus {
+    outline: 2px solid #b86b35;
+    outline-offset: 2px;
+    border-color: #b86b35;
+}
+.milk-menu-page .menu-featured-tabs {
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e8ded5;
+}
+.milk-menu-page .featured-tab-btn {
+    --bs-btn-color: #775d4a;
+    --bs-btn-border-color: #e0d2c5;
+    --bs-btn-hover-color: #604735;
+    --bs-btn-hover-bg: #f8f4ef;
+    --bs-btn-hover-border-color: #b86b35;
+    --bs-btn-active-bg: #b86b35;
+    --bs-btn-active-border-color: #b86b35;
+    --bs-btn-active-color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 42px;
+    line-height: 1.5;
+    font-size: .8125rem;
+    font-weight: 500;
+    border-radius: 10px !important;
+    padding-block: 9px;
+    transition: background-color .2s ease, border-color .2s ease;
+}
+.milk-menu-page .featured-tab-btn.active {
+    color: #fff;
+    background: #b86b35;
+    border-color: #b86b35;
+}
+.milk-menu-page .featured-tab-btn .bi {
+    color: inherit !important; /* Keep existing icon markup and utility classes. */
+    line-height: 1;
+}
+.milk-menu-page #productsGrid {
+    --bs-gutter-x: 24px;
+    --bs-gutter-y: 28px;
+}
+.milk-menu-page #productsGrid .product-item {
+    min-width: 0;
+    animation: none;
+}
+.milk-menu-page #productsGrid .product-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+    border-radius: 16px;
+    border-color: #e8ded5;
+    box-shadow: 0 3px 12px #60473508;
+    will-change: auto;
+}
+.milk-menu-page #productsGrid .product-card:hover {
+    transform: translateY(-3px);
+    border-color: #d9b99b;
+    box-shadow: 0 10px 24px #60473510;
+}
+.milk-menu-page #productsGrid .product-img-wrapper {
+    padding-top: 100%;
+    background: #f3ebe4;
+}
+.milk-menu-page #productsGrid .product-img {
+    object-fit: contain;
+    padding: 16px;
+}
+.milk-menu-page #productsGrid .product-card > .p-3 {
+    padding: 20px !important;
+    min-width: 0;
+    gap: 8px;
+}
+.milk-menu-page #productsGrid .product-card h5 {
+    display: block;
+    height: auto;
+    min-height: 3em;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    overflow: visible;
+    font-size: 1rem;
+    font-weight: 600 !important;
+    line-height: 1.5;
+}
+.milk-menu-page #productsGrid .product-card p {
+    height: auto;
+    min-height: 3.4em;
+    font-size: .8125rem;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+.milk-menu-page #productsGrid .product-card > .p-3 > .small {
+    flex-wrap: wrap;
+    row-gap: 2px;
+}
+.milk-menu-page #productsGrid .product-card .border-top {
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 16px !important;
+}
+.milk-menu-page #productsGrid .product-price {
+    font-size: 1.05rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.milk-menu-page #productsGrid .border-top .btn {
+    min-height: 42px;
+    line-height: 1.5;
+    border-radius: 10px !important;
+}
+.milk-menu-page #productsGrid .btn-outline-primary {
+    --bs-btn-color: #9e5524;
+    --bs-btn-border-color: #c98f63;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #9e5524;
+    --bs-btn-hover-border-color: #9e5524;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #9e5524;
+    --bs-btn-active-border-color: #9e5524;
+    --bs-btn-focus-shadow-rgb: 184, 107, 53;
+    font-size: .8125rem;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+.milk-menu-page :is(button, a):focus-visible {
+    outline: 2px solid #9e5524;
+    outline-offset: 3px;
+}
+@media (max-width: 1199.98px) {
+    .milk-menu-page .menu-heading-panel {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 20px;
+    }
+    .milk-menu-page .menu-heading-panel > div:first-child {
+        flex-basis: auto;
+    }
+    .milk-menu-page #productsGrid .product-card .border-top {
+        flex-direction: column;
+        align-items: stretch !important; /* Bootstrap align-items-center. */
+    }
+    .milk-menu-page #productsGrid .product-card .border-top .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+    }
+}
+@media (max-width: 767.98px) {
+    .milk-menu-page #menuBranchSelectorCard > div:last-child {
+        flex-basis: auto;
+    }
+    .milk-menu-page .menu-filter-controls {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .milk-menu-page .menu-filter-controls > div:first-child {
+        grid-column: 1 / -1;
+    }
+}
+@media (max-width: 575.98px) {
+    .milk-menu-page > .alert {
+        padding: 12px 14px !important;
+        gap: 12px;
+    }
+    .milk-menu-page .menu-filter-controls {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .milk-menu-page #productsGrid {
+        --bs-gutter-x: 12px;
+        --bs-gutter-y: 16px;
+    }
+    .milk-menu-page #productsGrid .product-card > .p-3 {
+        padding: 12px !important;
+        gap: 6px;
+    }
+    .milk-menu-page #productsGrid .product-card h5 {
+        font-size: .875rem;
+    }
+    .milk-menu-page #productsGrid .product-card p {
+        font-size: .75rem;
+    }
+    .milk-menu-page #productsGrid .product-price {
+        font-size: .9375rem;
+    }
+    .milk-menu-page #productsGrid .product-card .border-top {
+        gap: 10px;
+    }
+    .milk-menu-page #productsGrid .product-img {
+        padding: 10px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .milk-menu-page #productsGrid :is(.product-card, .product-img),
+    .milk-menu-page .featured-tab-btn {
+        transition: none;
+    }
+    .milk-menu-page #productsGrid .product-card:hover,
+    .milk-menu-page #productsGrid .product-card:hover .product-img {
+        transform: none;
+    }
+}
