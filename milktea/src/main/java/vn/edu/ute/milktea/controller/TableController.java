@@ -42,6 +42,27 @@ public class TableController {
         return ResponseEntity.ok(ApiResponse.ok(tableContextService.readByQr(qrCode)));
     }
 
+    @PostMapping({"/public/table-context/restore", "/tables/context/restore"})
+    public ResponseEntity<ApiResponse<TableDto.TableContextResponse>> restoreTableContext(
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            @RequestHeader(value = "X-Table-Token", required = false) String headerToken) {
+        String token = (headerToken != null && !headerToken.isBlank()) ? headerToken : null;
+        if (token == null && body != null) {
+            token = body.get("tableToken");
+        }
+        return ResponseEntity.ok(ApiResponse.ok(tableContextService.restoreContext(token)));
+    }
+
+    @GetMapping({"/public/table-context/restore", "/tables/context/restore"})
+    public ResponseEntity<ApiResponse<TableDto.TableContextResponse>> restoreTableContextGet(
+            @RequestParam(value = "tableToken", required = false) String paramToken,
+            @RequestParam(value = "token", required = false) String legacyToken,
+            @RequestHeader(value = "X-Table-Token", required = false) String headerToken) {
+        String token = (headerToken != null && !headerToken.isBlank()) ? headerToken : paramToken;
+        if (token == null || token.isBlank()) token = legacyToken;
+        return ResponseEntity.ok(ApiResponse.ok(tableContextService.restoreContext(token)));
+    }
+
     @GetMapping({"/cashier/tables", "/tables"})
     public ResponseEntity<ApiResponse<List<TableDto.TableItem>>> getTables(
             @RequestParam(value = "branchId", required = false) Long branchId,

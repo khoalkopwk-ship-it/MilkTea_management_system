@@ -65,6 +65,28 @@ public class CatalogController {
     }
 
     /**
+     * Phân trang thực đơn chuẩn backend (12 món đại diện / trang, tìm kiếm, lọc, bộ sưu tập) (Mục 4.4).
+     */
+    @GetMapping({"/public/products/menu-page", "/catalog/menu-page"})
+    public ResponseEntity<ApiResponse<CatalogDto.MenuPageResponse>> getMenuPage(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "categoryId", required = false) Long categoryId,
+            @RequestParam(value = "minPrice", required = false) BigDecimal minPrice,
+            @RequestParam(value = "maxPrice", required = false) BigDecimal maxPrice,
+            @RequestParam(value = "sortBy", required = false, defaultValue = "default") String sortBy,
+            @RequestParam(value = "featuredType", required = false) String featuredType,
+            @RequestParam(value = "collection", required = false) String collection,
+            @RequestParam(value = "branchId", required = false) Long branchId,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "12") int size) {
+        String searchKw = (keyword != null && !keyword.isBlank()) ? keyword : q;
+        String fType = (featuredType != null && !featuredType.isBlank()) ? featuredType : ((collection != null && !collection.isBlank()) ? collection : "all");
+        return ResponseEntity.ok(ApiResponse.ok(
+                catalogService.getPaginatedMenu(searchKw, categoryId, minPrice, maxPrice, sortBy, fType, branchId, page, size)));
+    }
+
+    /**
      * Chi tiết món uống, size, topping, điểm đánh giá và trạng thái yêu thích (CUS-03).
      */
     @GetMapping({"/public/products/{id}/detail", "/catalog/products/{id}/detail"})

@@ -18,6 +18,7 @@ public class CatalogDto {
         private Long id;
         private Long categoryId;
         private String categoryName;
+        private Boolean allowTopping;
         private String name;
         private String size;
         private String description;
@@ -109,5 +110,19 @@ public class CatalogDto {
         private Long branchId;
         private String branchName;
         private List<ProductItem> products;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class MenuPageResponse {
+        private List<ProductItem> items;
+        private int page;
+        private int pageSize;
+        private long totalItems;
+        private int totalPages;
+        private boolean hasNext;
+        private boolean hasPrevious;
     }
 }

@@ -381,6 +381,170 @@ public class CatalogService {
         return false;
     }
 
+    @Transactional(readOnly = true)
+    public CatalogDto.MenuPageResponse getPaginatedMenu(
+            String keyword,
+            Long categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String sortBy,
+            String featuredType,
+            Long branchId,
+            int page,
+            int size
+    ) {
+        int pageSize = Math.min(Math.max(size, 1), 50);
+        int pageIndex = Math.max(page, 1);
+
+        List<Product> allActive = productRepository.findAllByActiveTrue();
+        Map<Long, Boolean> availabilityMap = getAvailabilityMap(branchId);
+
+        // 1. Lọc sản phẩm theo sellability predicate chung
+        List<Product> sellable = allActive.stream()
+                .filter(p -> p.getCategory() != null && Boolean.TRUE.equals(p.getCategory().getActive()))
+                .filter(p -> isProductAvailable(p.getId(), branchId, availabilityMap))
+                .toList();
+
+        // 2. Gom nhóm theo tên món (distinct drinks), chọn biến thể đại diện có giá thấp nhất
+        Map<String, Product> smallestVariants = new LinkedHashMap<>();
+        for (Product p : sellable) {
+            String norm = (p.getName() != null) ? p.getName().trim().toLowerCase() : "";
+            if (!smallestVariants.containsKey(norm) || p.getPrice().compareTo(smallestVariants.get(norm).getPrice()) < 0
+                    || (p.getPrice().compareTo(smallestVariants.get(norm).getPrice()) == 0 && p.getId() < smallestVariants.get(norm).getId())) {
+                smallestVariants.put(norm, p);
+            }
+        }
+        List<Product> distinctDrinks = new ArrayList<>(smallestVariants.values());
+
+        // 3. Áp dụng bộ sưu tập nổi bật (Top 20) nếu được chọn
+        String fType = (featuredType != null && !featuredType.isBlank()) ? featuredType.toLowerCase().trim().replace("-", "_") : "all";
+        if (!"all".equals(fType)) {
+            Pageable top20Page = PageRequest.of(0, 20);
+            List<String> rankedNames = new ArrayList<>();
+            switch (fType) {
+                case "top_rated" -> {
+                    List<Long> topRatedIds = productReviewRepository.findTopRatedProductIds(top20Page);
+                    if (topRatedIds != null) {
+                        for (Long id : topRatedIds) {
+                            allActive.stream().filter(p -> p.getId().equals(id)).findFirst()
+                                    .ifPresent(p -> rankedNames.add(p.getName().trim().toLowerCase()));
+                        }
+                    }
+                }
+                case "most_favorited" -> {
+                    List<String> favNames = productFavoriteRepository.findMostFavoritedProductNames(top20Page);
+                    if (favNames != null) {
+                        for (String fn : favNames) {
+                            if (fn != null) rankedNames.add(fn.trim().toLowerCase());
+                        }
+                    }
+                }
+                case "newest" -> {
+                    List<Product> newest = productRepository.findNewestProducts(top20Page);
+                    if (newest != null) {
+                        for (Product p : newest) {
+                            rankedNames.add(p.getName().trim().toLowerCase());
+                        }
+                    }
+                }
+                case "top20", "top_20", "best_seller" -> {
+                    List<Long> bestSellerIds = orderItemRepository.findBestSellerProductIds(branchId, top20Page);
+                    if (bestSellerIds != null) {
+                        for (Long id : bestSellerIds) {
+                            allActive.stream().filter(p -> p.getId().equals(id)).findFirst()
+                                    .ifPresent(p -> rankedNames.add(p.getName().trim().toLowerCase()));
+                        }
+                    }
+                    if (rankedNames.size() < 20) {
+                        for (Product p : distinctDrinks) {
+                            String norm = p.getName().trim().toLowerCase();
+                            if (!rankedNames.contains(norm)) {
+                                rankedNames.add(norm);
+                            }
+                            if (rankedNames.size() >= 20) break;
+                        }
+                    }
+                }
+            }
+
+            Map<String, Integer> rankMap = new LinkedHashMap<>();
+            int r = 0;
+            for (String rn : rankedNames) {
+                if (!rankMap.containsKey(rn)) {
+                    rankMap.put(rn, r++);
+                }
+            }
+
+            distinctDrinks = distinctDrinks.stream()
+                    .filter(p -> rankMap.containsKey(p.getName().trim().toLowerCase()))
+                    .sorted(Comparator.comparingInt(p -> rankMap.get(p.getName().trim().toLowerCase())))
+                    .limit(20)
+                    .toList();
+        }
+
+        // 4. Lọc theo từ khóa, danh mục, khoảng giá
+        String kw = (keyword != null && !keyword.isBlank()) ? keyword.trim().toLowerCase() : null;
+        String noAccentKw = (kw != null) ? removeDiacritics(kw) : null;
+        List<Product> filtered = distinctDrinks.stream()
+                .filter(p -> {
+                    if (kw != null) {
+                        String name = p.getName() != null ? p.getName().toLowerCase() : "";
+                        String desc = p.getDescription() != null ? p.getDescription().toLowerCase() : "";
+                        String noAccentName = removeDiacritics(name);
+                        String noAccentDesc = removeDiacritics(desc);
+                        boolean matchesName = name.contains(kw) || noAccentName.contains(noAccentKw);
+                        boolean matchesDesc = desc.contains(kw) || noAccentDesc.contains(noAccentKw);
+                        if (!matchesName && !matchesDesc) return false;
+                    }
+                    if (categoryId != null && categoryId > 0) {
+                        if (p.getCategory() == null || !categoryId.equals(p.getCategory().getId())) return false;
+                    }
+                    if (minPrice != null && p.getPrice().compareTo(minPrice) < 0) return false;
+                    if (maxPrice != null && p.getPrice().compareTo(maxPrice) > 0) return false;
+                    return true;
+                })
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        // 5. Sắp xếp với tie-break ổn định
+        if ("all".equals(fType) || (sortBy != null && !"default".equalsIgnoreCase(sortBy))) {
+            String sort = (sortBy != null) ? sortBy.trim().toLowerCase() : "";
+            switch (sort) {
+                case "price_asc" -> filtered.sort(Comparator.comparing(Product::getPrice).thenComparing(Product::getId));
+                case "price_desc" -> filtered.sort(Comparator.comparing(Product::getPrice).reversed().thenComparing(Product::getId));
+                case "name_asc" -> filtered.sort(Comparator.comparing(Product::getName, String.CASE_INSENSITIVE_ORDER).thenComparing(Product::getId));
+                default -> {
+                    if ("all".equals(fType)) {
+                        filtered.sort(Comparator.comparing(Product::getId));
+                    }
+                }
+            }
+        }
+
+        // 6. Phân trang
+        long totalItems = filtered.size();
+        int totalPages = totalItems == 0 ? 0 : (int) Math.ceil((double) totalItems / pageSize);
+        int effectivePage = Math.max(1, Math.min(pageIndex, Math.max(totalPages, 1)));
+
+        int start = (effectivePage - 1) * pageSize;
+        int end = Math.min(start + pageSize, (int) totalItems);
+
+        List<Product> pageSlice = (start < totalItems) ? filtered.subList(start, end) : Collections.emptyList();
+
+        List<CatalogDto.ProductItem> items = pageSlice.stream()
+                .map(p -> mapProduct(p, isProductAvailable(p.getId(), branchId, availabilityMap)))
+                .toList();
+
+        return CatalogDto.MenuPageResponse.builder()
+                .items(items)
+                .page(effectivePage)
+                .pageSize(pageSize)
+                .totalItems(totalItems)
+                .totalPages(totalPages)
+                .hasNext(effectivePage < totalPages)
+                .hasPrevious(effectivePage > 1)
+                .build();
+    }
+
     private CatalogDto.ProductItem mapProduct(Product p) {
         return mapProduct(p, true);
     }
@@ -390,6 +554,7 @@ public class CatalogService {
                 .id(p.getId())
                 .categoryId(p.getCategory() != null ? p.getCategory().getId() : null)
                 .categoryName(p.getCategory() != null ? p.getCategory().getName() : null)
+                .allowTopping(p.getCategory() != null ? p.getCategory().getAllowTopping() : true)
                 .name(p.getName())
                 .size(p.getSize())
                 .description(p.getDescription())
@@ -398,5 +563,12 @@ public class CatalogService {
                 .active(p.getActive())
                 .available(available)
                 .build();
+    }
+
+    private String removeDiacritics(String str) {
+        if (str == null) return "";
+        String nfd = java.text.Normalizer.normalize(str, java.text.Normalizer.Form.NFD);
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        return pattern.matcher(nfd).replaceAll("").replace('đ', 'd').replace('Đ', 'D').toLowerCase();
     }
 }

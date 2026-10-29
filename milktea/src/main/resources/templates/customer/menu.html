@@ -1274,7 +1274,7 @@
 
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="productsGrid">
             <div th:each="p : ${products}" class="col product-item"
-                th:attr="data-category=${p.category.id}, data-category-name=${p.category.name}, data-category-allow-topping=${p.category.allowTopping}, data-id=${p.id}, data-name=${p.name}, data-price=${p.price}, data-size=${p.size}, data-img=${p.imageUrl}">
+                th:attr="data-category=${p.categoryId}, data-category-name=${p.categoryName}, data-category-allow-topping=${p.allowTopping != null ? p.allowTopping : true}, data-id=${p.id}, data-name=${p.name}, data-price=${p.price}, data-size=${p.size}, data-img=${p.imageUrl}">
                 <div class="product-card position-relative">
                     <!-- Nút Trái tim Yêu thích (CUS-05) -->
                     <button type="button"
@@ -1522,11 +1522,15 @@
     <th:block th:fragment="scripts">
         <script th:src="@{/js/customer/customer.js}"></script>
         <script th:inline="javascript">
-            let catalog = [];
-            let allVariantsList = [];
             let currentProductVariants = [];
             let selectedVariant = null;
-            const rawAllVariants = /*[[${allProducts}]]*/ [];
+            let currentMenuPage = /*[[${currentPage}]]*/ 1;
+            let totalMenuPages = /*[[${totalPages}]]*/ 1;
+            let totalMenuItems = /*[[${totalItems}]]*/ 0;
+            const MENU_PAGE_SIZE = /*[[${pageSize}]]*/ 12;
+            let currentFeaturedType = 'all';
+            let menuRequestSeq = 0;
+            let menuSearchTimeout = null;
 
             document.addEventListener('DOMContentLoaded', () => {
                 const qr = /*[[${tableQr}]]*/ null;
@@ -1534,17 +1538,23 @@
                 const branchId = /*[[${branchId}]]*/ null;
                 if (branchId) window.MilkTeaContext.branchId = branchId;
                 CustomerApp.initContext(qr, tableId);
-                buildCatalog();
-                handleMenuFilterAndSearch();
                 initializeMenuAnimations();
                 initRadialFabMenu();
                 loadUserFavorites();
-                
+
+                // Cập nhật thanh phân trang từ dữ liệu SSR ban đầu
+                const initialCount = document.querySelectorAll('#productsGrid .product-item').length;
+                const info = document.getElementById('menuPageInfo');
+                if (info && totalMenuItems > 0) {
+                    info.innerHTML = `Hiển thị <strong>1–${initialCount}</strong> trong <strong>${totalMenuItems}</strong> món`;
+                } else if (info) {
+                    info.textContent = totalMenuItems === 0 ? 'Không tìm thấy món phù hợp.' : '';
+                }
+                renderPaginationBar(currentMenuPage, totalMenuPages);
             });
 
             function initializeMenuAnimations() {
                 const items = document.querySelectorAll('#productsGrid .product-item');
-
                 items.forEach((item, index) => {
                     item.style.setProperty('--menu-item-index', Math.min(index, 8));
                 });
@@ -1552,9 +1562,7 @@
 
             function triggerCartBounce() {
                 const cartBtn = document.querySelector('.u011-floating-container .u011-fab') || document.querySelector('.milk-menu-page .floating-cart-btn');
-
                 if (!cartBtn) return;
-
                 cartBtn.classList.remove('cart-bounce');
                 void cartBtn.offsetWidth;
                 cartBtn.classList.add('cart-bounce');
@@ -1566,76 +1574,127 @@
                 return catName.includes('topping');
             }
 
-            function buildCatalog() {
-                const items = document.querySelectorAll('.product-item');
-                catalog = Array.from(items).map(el => ({
-                    id: Number(el.getAttribute('data-id')),
-                    name: el.getAttribute('data-name'),
-                    size: el.getAttribute('data-size'),
-                    price: Number(el.getAttribute('data-price')),
-                    img: el.getAttribute('data-img'),
-                    categoryId: el.getAttribute('data-category'),
-                    categoryName: el.getAttribute('data-category-name') || '',
-                    allowTopping: el.getAttribute('data-category-allow-topping') !== 'false'
-                }));
-
-                if (Array.isArray(rawAllVariants) && rawAllVariants.length > 0) {
-                    allVariantsList = rawAllVariants.map(p => ({
-                        id: p.id,
-                        name: p.name,
-                        size: p.size,
-                        price: p.price,
-                        img: p.imageUrl,
-                        categoryId: p.category ? p.category.id : null,
-                        categoryName: p.category ? p.category.name : '',
-                        allowTopping: p.category ? p.category.allowTopping !== false : true
-                    }));
-                } else {
-                    allVariantsList = [...catalog];
-                }
-            }
-
-            let currentFeaturedType = 'all';
-            const MENU_PAGE_SIZE = 12;
-            let currentMenuPage = 1;
-            let filteredMenuItems = [];
-
-            function renderMenuPage() {
+            async function loadMenuPage(page) {
+                const searchInput = document.getElementById('menuSearchInput');
+                const catSelect = document.getElementById('categoryFilterSelect');
+                const sortSelect = document.getElementById('menuSortSelect');
                 const grid = document.getElementById('productsGrid');
                 const pagination = document.getElementById('menuPagination');
                 const info = document.getElementById('menuPageInfo');
-                if (!grid || !pagination || !info) return;
 
-                const total = filteredMenuItems.length;
-                const totalPages = Math.ceil(total / MENU_PAGE_SIZE);
+                if (!grid) return;
 
-                currentMenuPage = Math.max(
-                    1,
-                    Math.min(currentMenuPage, totalPages || 1)
-                );
+                const kw = (searchInput?.value || '').trim();
+                const catId = (catSelect?.value && catSelect.value !== 'ALL') ? catSelect.value : '';
+                const sort = sortSelect?.value || 'default';
+                const branchId = window.MilkTeaContext?.branchId || '';
 
-                // Ẩn tất cả, sau đó chỉ hiện các món thuộc trang hiện tại.
-                grid.querySelectorAll('.product-item').forEach(item => {
-                    item.style.display = 'none';
-                });
+                const thisSeq = ++menuRequestSeq;
+                grid.style.opacity = '0.55';
 
-                const start = (currentMenuPage - 1) * MENU_PAGE_SIZE;
-                const pageItems = filteredMenuItems.slice(
-                    start,
-                    start + MENU_PAGE_SIZE
-                );
+                try {
+                    let url = `/api/v1/public/products/menu-page?page=${page}&size=${MENU_PAGE_SIZE}&sortBy=${encodeURIComponent(sort)}&featuredType=${encodeURIComponent(currentFeaturedType)}`;
+                    if (kw) url += `&keyword=${encodeURIComponent(kw)}`;
+                    if (catId) url += `&categoryId=${encodeURIComponent(catId)}`;
+                    if (branchId) url += `&branchId=${encodeURIComponent(branchId)}`;
 
-                pageItems.forEach(item => {
-                    item.style.display = '';
-                });
+                    const res = await MilkTeaApi.get(url);
+                    if (thisSeq !== menuRequestSeq) return;
 
-                if (total === 0) {
-                    info.textContent = 'Không tìm thấy món phù hợp.';
-                } else {
-                    info.innerHTML =
-                        `Hiển thị <strong>${start + 1}–${start + pageItems.length}</strong>` +
-                        ` trong <strong>${total}</strong> món`;
+                    grid.style.opacity = '1';
+
+                    const items = (res && res.items) || [];
+                    currentMenuPage = (res && res.page) || page;
+                    totalMenuPages = (res && res.totalPages) || 0;
+                    totalMenuItems = (res && res.totalItems) || 0;
+
+                    if (items.length === 0) {
+                        grid.innerHTML = '<div class="col-12 py-5 text-center text-muted"><i class="bi bi-search fs-1 d-block mb-2 text-secondary"></i>Không tìm thấy món uống nào phù hợp với bộ lọc.</div>';
+                        if (info) info.textContent = 'Không tìm thấy món phù hợp.';
+                        if (pagination) pagination.replaceChildren();
+                        return;
+                    }
+
+                    grid.innerHTML = items.map(renderProductCard).join('');
+
+                    const start = (currentMenuPage - 1) * MENU_PAGE_SIZE + 1;
+                    const end = Math.min(start + items.length - 1, totalMenuItems);
+                    if (info) {
+                        info.innerHTML = `Hiển thị <strong>${start}–${end}</strong> trong <strong>${totalMenuItems}</strong> món`;
+                    }
+
+                    renderPaginationBar(currentMenuPage, totalMenuPages);
+                    initializeMenuAnimations();
+                    loadUserFavorites();
+                } catch (e) {
+                    if (thisSeq !== menuRequestSeq) return;
+                    grid.style.opacity = '1';
+                    console.warn('Lỗi khi nạp trang thực đơn:', e);
+                    MilkTeaApi.showToast('Không thể tải thực đơn, vui lòng thử lại', 'danger');
                 }
+            }
+
+            function renderProductCard(p) {
+                const img = (p.imageUrl && p.imageUrl.length > 5) ? p.imageUrl : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80';
+                const formattedPrice = MilkTeaApi.formatVND(p.price);
+                const desc = p.description || 'Đậm vị trà thơm ngậy sữa';
+                const sizeLabel = p.size ? `Size ${p.size}` : 'Size M';
+                return `
+                    <div class="col product-item" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}" data-size="${p.size || 'M'}" data-img="${img}">
+                        <div class="product-card position-relative">
+                            <button type="button"
+                                    class="btn btn-sm btn-favorite-toggle position-absolute top-0 start-0 m-2 rounded-circle"
+                                    data-product-id="${p.id}"
+                                    onclick="toggleProductFavorite(event, this)"
+                                    title="Thêm vào yêu thích"
+                                    style="width: 34px; height: 34px; z-index: 3; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                                <i class="bi bi-heart text-secondary fs-6"></i>
+                            </button>
+
+                            <div class="product-img-wrapper position-relative">
+                                <a href="/products/${p.id}" class="d-block text-decoration-none">
+                                    <img src="${img}" class="product-img" alt="${p.name}">
+                                </a>
+                                <span class="position-absolute top-0 end-0 m-2 badge bg-dark bg-opacity-75 rounded-pill px-2 py-1 small">
+                                    ${sizeLabel}
+                                </span>
+                            </div>
+
+                            <div class="p-3 d-flex flex-column flex-grow-1">
+                                <a href="/products/${p.id}" class="text-decoration-none text-dark">
+                                    <h5 class="fw-bold mb-1 text-truncate">${p.name}</h5>
+                                </a>
+                                <div class="d-flex align-items-center gap-1 mb-1 small">
+                                    <i class="bi bi-star-fill text-warning small"></i>
+                                    <span class="fw-semibold text-secondary small">5.0</span>
+                                    <span class="text-muted small">·</span>
+                                    <a href="/products/${p.id}" class="text-muted small text-decoration-none">
+                                        Xem đánh giá
+                                    </a>
+                                </div>
+                                <p class="text-muted small flex-grow-1 mb-2 text-truncate-2">
+                                    ${desc}
+                                </p>
+
+                                <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
+                                    <span class="product-price">
+                                        ${formattedPrice}
+                                    </span>
+                                    <button type="button"
+                                        class="btn btn-sm btn-primary-custom rounded-pill px-3"
+                                        onclick="openCustomizeModal(${p.id})">
+                                        <i class="bi bi-plus-lg me-1"></i> Chọn
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderPaginationBar(currentPage, totalPages) {
+                const pagination = document.getElementById('menuPagination');
+                if (!pagination) return;
                 pagination.replaceChildren();
 
                 if (totalPages <= 1) return;
@@ -1658,94 +1717,33 @@
                         button.setAttribute('aria-label', `Trang ${targetPage}`);
                     }
                     button.disabled = disabled;
-
                     if (active) button.setAttribute('aria-current', 'page');
 
                     button.addEventListener('click', () => {
-                        currentMenuPage = targetPage;
-                        renderMenuPage();
-                        grid.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
+                        loadMenuPage(targetPage);
+                        const topSection = document.getElementById('productsGrid');
+                        if (topSection) {
+                            topSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
                     });
 
                     li.appendChild(button);
                     pagination.appendChild(li);
                 }
 
-                addPageButton(
-                    '«',
-                    currentMenuPage - 1,
-                    currentMenuPage === 1
-                );
-
-                for (let page = 1; page <= totalPages; page++) {
-                    addPageButton(
-                        String(page),
-                        page,
-                        false,
-                        page === currentMenuPage
-                    );
+                addPageButton('«', currentPage - 1, currentPage <= 1);
+                for (let p = 1; p <= totalPages; p++) {
+                    addPageButton(String(p), p, false, p === currentPage);
                 }
-
-                addPageButton(
-                    '»',
-                    currentMenuPage + 1,
-                    currentMenuPage === totalPages
-                );
+                addPageButton('»', currentPage + 1, currentPage >= totalPages);
             }
+
             function handleMenuFilterAndSearch() {
-                const searchInput = document.getElementById('menuSearchInput');
-                const catSelect = document.getElementById('categoryFilterSelect');
-                const sortSelect = document.getElementById('menuSortSelect');
-
-                const query = (searchInput?.value || '').trim().toLowerCase();
-                const catId = catSelect?.value || 'ALL';
-                const sortKey = sortSelect?.value || 'default';
-
-                const grid = document.getElementById('productsGrid');
-                if (!grid) return;
-                const items = Array.from(grid.querySelectorAll('.product-item'));
-
-                items.forEach(it => {
-                    const name = (it.getAttribute('data-name') || '').toLowerCase();
-                    const itemCat = it.getAttribute('data-category');
-                    const matchCategory = (catId === 'ALL' || itemCat === catId);
-                    const matchQuery = (!query || name.includes(query));
-                    const matchFeatured = (currentFeaturedType === 'all' || it.getAttribute('data-featured-match') !== 'false');
-
-                    if (matchCategory && matchQuery && matchFeatured) {
-                        it.style.display = '';
-                    } else {
-                        it.style.display = 'none';
-                    }
-                });
-
-                if (sortKey !== 'default') {
-                    items.sort((a, b) => {
-                        const priceA = Number(a.getAttribute('data-price') || 0);
-                        const priceB = Number(b.getAttribute('data-price') || 0);
-                        const nameA = (a.getAttribute('data-name') || '').toLowerCase();
-                        const nameB = (b.getAttribute('data-name') || '').toLowerCase();
-
-                        if (sortKey === 'price_asc') return priceA - priceB;
-                        if (sortKey === 'price_desc') return priceB - priceA;
-                        if (sortKey === 'name_asc') return nameA.localeCompare(nameB);
-                        return 0;
-                    });
-                    items.forEach(it => grid.appendChild(it));
-                }
-                // Lấy danh sách đã lọc theo đúng thứ tự hiện tại trong grid.
-                filteredMenuItems = Array.from(
-                    grid.querySelectorAll('.product-item')
-                ).filter(item => item.style.display !== 'none');
-
-                // Khi đổi từ khóa, danh mục, kiểu sắp xếp hoặc tab,
-                // quay lại trang đầu tiên.
-                currentMenuPage = 1;
-                renderMenuPage();
-                            }
+                clearTimeout(menuSearchTimeout);
+                menuSearchTimeout = setTimeout(() => {
+                    loadMenuPage(1);
+                }, 280);
+            }
 
             function filterCategory(catId) {
                 const catSelect = document.getElementById('categoryFilterSelect');
@@ -1759,60 +1757,7 @@
                 if (btn) {
                     btn.classList.add('active');
                 }
-
-                const grid = document.getElementById('productsGrid');
-                if (!grid) return;
-                const items = Array.from(grid.querySelectorAll('.product-item'));
-
-                if (type === 'all') {
-                    items.forEach(it => {
-                        it.removeAttribute('data-featured-match');
-                        it.removeAttribute('data-featured-rank');
-                    });
-                    handleMenuFilterAndSearch();
-                    return;
-                }
-
-                try {
-                    const branchId = window.MilkTeaContext?.branchId || '';
-                    const branchParam = branchId ? `&branchId=${branchId}` : '';
-                    const res = await MilkTeaApi.get(`/api/v1/public/products/featured?type=${type}&limit=20${branchParam}`);
-                    const featuredList = (res && res.products) || [];
-                    const featuredRankMap = new Map();
-                    featuredList.forEach((p, idx) => {
-                        featuredRankMap.set(String(p.id), idx);
-                        featuredRankMap.set((p.name || '').trim().toLowerCase(), idx);
-                    });
-
-                    items.forEach(it => {
-                        const id = it.getAttribute('data-id');
-                        const name = (it.getAttribute('data-name') || '').trim().toLowerCase();
-                        if (featuredRankMap.has(id)) {
-                            it.removeAttribute('data-featured-match');
-                            it.setAttribute('data-featured-rank', featuredRankMap.get(id));
-                        } else if (featuredRankMap.has(name)) {
-                            it.removeAttribute('data-featured-match');
-                            it.setAttribute('data-featured-rank', featuredRankMap.get(name));
-                        } else {
-                            it.setAttribute('data-featured-match', 'false');
-                            it.removeAttribute('data-featured-rank');
-                        }
-                    });
-
-                    // Sắp xếp các phần tử theo thứ tự xếp hạng từ API
-                    items.sort((a, b) => {
-                        const rankA = a.hasAttribute('data-featured-rank') ? Number(a.getAttribute('data-featured-rank')) : 9999;
-                        const rankB = b.hasAttribute('data-featured-rank') ? Number(b.getAttribute('data-featured-rank')) : 9999;
-                        return rankA - rankB;
-                    });
-                    items.forEach(it => grid.appendChild(it));
-
-                    handleMenuFilterAndSearch();
-                } catch (e) {
-                    console.warn('Lỗi khi tải bộ sưu tập nổi bật:', e);
-                    items.forEach(it => it.removeAttribute('data-featured-match'));
-                    handleMenuFilterAndSearch();
-                }
+                loadMenuPage(1);
             }
 
             async function toggleProductFavorite(event, btn) {
@@ -1868,47 +1813,77 @@
                 }
             }
 
-            function openCustomizeModal(productId) {
-                if (!catalog || catalog.length === 0) buildCatalog();
-                const baseItem = catalog.find(p => p.id === productId);
-                if (!baseItem) return;
+            async function openCustomizeModal(productId) {
+                try {
+                    const branchId = window.MilkTeaContext?.branchId || '';
+                    const branchParam = branchId ? `?branchId=${branchId}` : '';
+                    const detail = await MilkTeaApi.get(`/api/v1/public/products/${productId}/detail${branchParam}`);
+                    if (!detail) throw new Error('Không thể tải chi tiết món');
 
-                const isToppingItem = isToppingProduct(baseItem);
-                const allowTopping = baseItem.allowTopping !== false && !isToppingItem;
+                    const isToppingItem = isToppingProduct(detail);
+                    const allowTopping = detail.allowTopping !== false && !isToppingItem;
 
-                document.getElementById('modalProductName').textContent = baseItem.name;
-                document.getElementById('modalProductImg').src = baseItem.img && baseItem.img.length > 5 ? baseItem.img : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80';
-                document.getElementById('modalProductCategory').textContent = baseItem.categoryName || 'Món uống';
-                document.getElementById('modalProductNote').value = '';
-                document.getElementById('modalProductQty').value = 1;
+                    document.getElementById('modalProductName').textContent = detail.name;
+                    document.getElementById('modalProductImg').src = detail.imageUrl && detail.imageUrl.length > 5 ? detail.imageUrl : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80';
+                    document.getElementById('modalProductCategory').textContent = detail.categoryName || 'Món uống';
+                    document.getElementById('modalProductNote').value = '';
+                    document.getElementById('modalProductQty').value = 1;
 
-                if (isToppingItem) {
-                    currentProductVariants = [baseItem];
-                    selectedVariant = baseItem;
-                    document.getElementById('sizeSelectionSection').style.display = 'none';
-                    document.getElementById('toppingSelectionSection').style.display = 'none';
-                } else {
-                    const normBaseName = (baseItem.name || '').trim().toLowerCase();
-                    const variantsSource = (allVariantsList && allVariantsList.length > 0) ? allVariantsList : catalog;
-                    currentProductVariants = variantsSource.filter(p => (p.name || '').trim().toLowerCase() === normBaseName);
-                    if (currentProductVariants.length === 0) currentProductVariants = [baseItem];
-                    currentProductVariants.sort((a, b) => a.price - b.price);
-                    selectedVariant = currentProductVariants.find(p => p.id === productId) || currentProductVariants[0];
+                    const sizes = (detail.sizeOptions && detail.sizeOptions.length > 0) ? detail.sizeOptions : [{ id: detail.id, size: detail.size, price: detail.price, available: detail.available }];
+                    currentProductVariants = sizes.map(s => ({
+                        id: s.id,
+                        name: detail.name,
+                        size: s.size,
+                        price: s.price,
+                        available: s.available !== false
+                    }));
+                    selectedVariant = currentProductVariants.find(s => s.id === productId) || currentProductVariants[0];
 
-                    document.getElementById('sizeSelectionSection').style.display = 'block';
-                    renderSizeOptions();
+                    if (isToppingItem || sizes.length <= 1) {
+                        document.getElementById('sizeSelectionSection').style.display = sizes.length > 1 ? 'block' : 'none';
+                        if (sizes.length > 1) renderSizeOptions();
+                    } else {
+                        document.getElementById('sizeSelectionSection').style.display = 'block';
+                        renderSizeOptions();
+                    }
 
-                    if (allowTopping) {
+                    if (allowTopping && detail.toppings && detail.toppings.length > 0) {
                         document.getElementById('toppingSelectionSection').style.display = 'block';
-                        renderToppingOptions();
+                        renderToppingOptionsFromDetail(detail.toppings);
                     } else {
                         document.getElementById('toppingSelectionSection').style.display = 'none';
                     }
+
+                    updateModalCalculation();
+                    const modal = new bootstrap.Modal(document.getElementById('customizeModal'));
+                    modal.show();
+                } catch (e) {
+                    console.warn('Lỗi khi mở modal chi tiết món:', e);
+                    MilkTeaApi.showToast('Không thể tải chi tiết món uống, vui lòng thử lại', 'danger');
+                }
+            }
+
+            function renderToppingOptionsFromDetail(toppings) {
+                const list = document.getElementById('modalToppingList');
+                if (!list) return;
+                if (!toppings || toppings.length === 0) {
+                    list.innerHTML = '<div class="text-muted small py-2 text-center">Không có topping khả dụng</div>';
+                    return;
                 }
 
-                updateModalCalculation();
-                const modal = new bootstrap.Modal(document.getElementById('customizeModal'));
-                modal.show();
+                let html = '';
+                toppings.forEach(t => {
+                    html += `
+                        <div class="form-check d-flex justify-content-between align-items-center py-1 px-2 mb-1 border-bottom border-light">
+                            <div>
+                                <input class="form-check-input modal-topping-cb" type="checkbox" value="${t.id}" data-name="${t.name}" data-price="${t.price}" id="cb_topping_${t.id}" onchange="updateModalCalculation()">
+                                <label class="form-check-label small ms-2 cursor-pointer" for="cb_topping_${t.id}">${t.name}</label>
+                            </div>
+                            <span class="small text-muted fw-semibold">+${MilkTeaApi.formatVND(t.price)}</span>
+                        </div>
+                    `;
+                });
+                list.innerHTML = html;
             }
 
             function renderSizeOptions() {

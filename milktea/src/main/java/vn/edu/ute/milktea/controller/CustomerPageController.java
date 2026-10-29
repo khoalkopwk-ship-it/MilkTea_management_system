@@ -85,29 +85,24 @@ public class CustomerPageController {
             jakarta.servlet.http.HttpServletResponse response,
             Model model) {
 
+        DiningTable table = resolveTable(qrCode, request, response);
+        Long branchId = table != null && table.getBranch() != null ? table.getBranch().getId() : null;
+
         GlobalSettings settings = settingsRepository.findById(1).orElse(null);
         List<Category> categories = categoryRepository.findAllByActiveTrue();
-        List<Product> allProducts = productRepository.findAllByActiveTrue();
 
-        // Gom nhóm theo tên món, chỉ lấy size bé nhất (giá thấp nhất) làm đại diện trên Menu
-        java.util.Map<String, Product> smallestVariantsByName = new java.util.LinkedHashMap<>();
-        for (Product p : allProducts) {
-            String norm = p.getName().trim().toLowerCase();
-            if (!smallestVariantsByName.containsKey(norm) || p.getPrice().compareTo(smallestVariantsByName.get(norm).getPrice()) < 0) {
-                smallestVariantsByName.put(norm, p);
-            }
-        }
-        List<Product> menuProducts = new java.util.ArrayList<>(smallestVariantsByName.values());
-
-        DiningTable table = resolveTable(qrCode, request, response);
+        // Nạp trang đầu tiên (page=1, size=12) chuẩn backend cho SSR (Mục 4.4)
+        var initialPage = catalogService.getPaginatedMenu(null, null, null, null, "default", "all", branchId, 1, 12);
 
         model.addAttribute("settings", settings);
         model.addAttribute("categories", categories);
-        model.addAttribute("products", menuProducts);
-        model.addAttribute("allProducts", allProducts);
+        model.addAttribute("products", initialPage.getItems());
+        model.addAttribute("currentPage", initialPage.getPage());
+        model.addAttribute("pageSize", initialPage.getPageSize());
+        model.addAttribute("totalItems", initialPage.getTotalItems());
+        model.addAttribute("totalPages", initialPage.getTotalPages());
         model.addAttribute("currentTable", table);
         model.addAttribute("tableQr", table != null ? table.getQrCode() : qrCode);
-        Long branchId = table != null && table.getBranch() != null ? table.getBranch().getId() : null;
         model.addAttribute("branchId", branchId);
 
         return "customer/menu";
