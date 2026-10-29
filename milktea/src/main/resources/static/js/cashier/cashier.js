@@ -459,8 +459,8 @@ const CashierApp = (() => {
             const fingerprint = JSON.stringify(payload);
             if (fingerprint !== creationFingerprint) { creationFingerprint = fingerprint; creationKey = crypto.randomUUID(); }
             const created = pendingCounterOrder || await MilkTeaApi.post(tableId ? '/api/v1/orders/table' : '/api/v1/orders/counter', payload, { 'Idempotency-Key': creationKey });
-            pendingCounterOrder = created;
-            await MilkTeaApi.post(`/api/v1/cashier/orders/${created.orderId}/payments`, { method: document.getElementById('counterPayMethod').value, reference: 'POS_' + created.orderId }, { 'Idempotency-Key': 'POS_PAYMENT_' + created.orderId });
+            const payMethod = document.getElementById('counterPayMethod').value;
+            await MilkTeaApi.post(`/api/v1/cashier/orders/${created.orderId}/payments`, { method: payMethod, reference: 'POS_' + created.orderId }, { 'Idempotency-Key': 'POS_PAYMENT_' + created.orderId });
             pendingCounterOrder = null;
             creationKey = null; creationFingerprint = null;
             await MilkTeaReceipts.open(created.orderId);

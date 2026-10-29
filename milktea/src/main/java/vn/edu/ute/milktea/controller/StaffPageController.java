@@ -104,6 +104,8 @@ public class StaffPageController {
             return adminReportsPage(actor, model);
         } else if ("settings".equalsIgnoreCase(section)) {
             return adminSettingsPage(actor, model);
+        } else if ("branches".equalsIgnoreCase(section)) {
+            return adminBranchesPage(actor, model);
         } else if ("vouchers".equalsIgnoreCase(section)) {
             return adminVouchersPage(actor, model);
         }
@@ -250,5 +252,18 @@ public class StaffPageController {
         model.addAttribute("actor", actor);
         model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
         return "admin/settings";
+    }
+
+    @GetMapping("/admin/branches")
+    public String adminBranchesPage(@AuthenticationPrincipal CurrentActor actor, Model model) {
+        if (!isManagerOrAdmin(actor)) {
+            return "redirect:/login?redirect=/admin/branches";
+        }
+        GlobalSettings settings = settingsRepository.findById(1).orElse(null);
+        model.addAttribute("settings", settings);
+        model.addAttribute("actor", actor);
+        model.addAttribute("isManager", actor != null && actor.getRole() == Role.MANAGER);
+        model.addAttribute("branches", branchRepository.findAll());
+        return "admin/branches";
     }
 }

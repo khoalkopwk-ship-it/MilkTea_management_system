@@ -1194,20 +1194,57 @@
             </div>
             <div class="d-none d-sm-block text-end">
                 <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 small fw-semibold">
-                    <i class="bi bi-qr-code-scan me-1"></i> QR Bàn hợp lệ
+                    <i class="bi bi-qr-code-scan me-1"></i> QR Bàn hợp lệ - Đang gọi món tại bàn
                 </span>
             </div>
         </div>
 
-        <!-- Guest Guidance Banner (NO TABLE) -->
+        <!-- View-Only Guidance Banner (NO TABLE) -->
         <div th:if="${currentTable == null}"
-             class="alert alert-warning border-0 shadow-sm rounded-4 d-flex align-items-center mb-4 py-3 px-4">
-            <i class="bi bi-info-circle-fill fs-3 text-warning me-3"></i>
+             class="alert alert-info border-0 shadow-sm rounded-4 d-flex align-items-center mb-4 py-3 px-4"
+             id="viewOnlyBanner"
+             style="background: linear-gradient(135deg, #FFFDFB, #F6EFE7); border: 1px solid #E8DED5 !important;">
+            <i class="bi bi-info-circle-fill fs-3 text-primary me-3 flex-shrink-0"></i>
             <div>
-                <strong class="d-block text-dark">Quý khách đang xem thực đơn tham khảo</strong>
-                <span class="text-muted small">
-                    Hệ thống phục vụ trực tiếp tại không gian quán. Vui lòng <strong>quét mã QR gắn tại bàn</strong> để đặt món theo phiên bàn, hoặc <strong>gọi món trực tiếp tại quầy thu ngân</strong>.
+                <strong class="d-block text-dark">Bạn đang xem thực đơn</strong>
+                <span class="text-secondary small">
+                    Để gọi món, vui lòng đến cửa hàng và quét mã QR tại bàn.
                 </span>
+            </div>
+        </div>
+
+        <!-- Branch Selector (VIEW-ONLY MODE) -->
+        <div th:if="${currentTable == null}"
+             class="p-3 mb-4 rounded-4 border bg-white shadow-sm d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3"
+             id="menuBranchSelectorCard">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-shop fs-4 text-primary"></i>
+                <div>
+                    <strong class="small d-block text-dark">Chi nhánh xem thực đơn:</strong>
+                    <span class="text-muted small" style="font-size: 11px;">Chọn chi nhánh để xem bảng giá và trạng thái phục vụ chính xác</span>
+                </div>
+            </div>
+            <div style="min-width: 280px;">
+                <select class="form-select form-select-sm rounded-pill fw-semibold border shadow-none"
+                        id="menuBranchSelect"
+                        onchange="handleBranchSelectChange(this.value)">
+                    <option value="" th:selected="${branchId == null}">-- Vui lòng chọn chi nhánh --</option>
+                    <option th:each="b : ${activeBranches}"
+                            th:value="${b.id}"
+                            th:text="${b.name + ' (' + b.address + ')'}"
+                            th:selected="${branchId != null and branchId == b.id}">
+                        Chi nhánh
+                    </option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Prompt to choose branch when branchId is null -->
+        <div th:if="${currentTable == null and branchId == null}"
+             class="alert alert-warning border-0 shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center gap-3">
+            <i class="bi bi-exclamation-triangle-fill text-warning fs-3 flex-shrink-0"></i>
+            <div class="small text-dark">
+                Vui lòng <strong>chọn một chi nhánh</strong> ở trên để xem giá áp dụng và tình trạng phục vụ chính xác của từng món uống.
             </div>
         </div>
 
@@ -1287,7 +1324,7 @@
                     </button>
 
                     <div class="product-img-wrapper position-relative">
-                        <a th:href="@{'/products/' + ${p.id}}" class="d-block text-decoration-none">
+                        <a th:href="@{/products/{id}(id=${p.id}, branchId=${branchId}, qr=${tableQr})}" class="d-block text-decoration-none">
                             <img th:src="${p.imageUrl != null and !p.imageUrl.isEmpty() ? p.imageUrl : 'https://images.unsplash.com/photo-1558857563-b37cf5efee6a?w=400&q=80'}"
                                 class="product-img" alt="Ảnh món">
                         </a>
@@ -1299,14 +1336,14 @@
                     </div>
 
                     <div class="p-3 d-flex flex-column flex-grow-1">
-                        <a th:href="@{'/products/' + ${p.id}}" class="text-decoration-none text-dark">
+                        <a th:href="@{/products/{id}(id=${p.id}, branchId=${branchId}, qr=${tableQr})}" class="text-decoration-none text-dark">
                             <h5 class="fw-bold mb-1 text-truncate" th:text="${p.name}">Trà Sữa Truyền Thống</h5>
                         </a>
                         <div class="d-flex align-items-center gap-1 mb-1 small">
                             <i class="bi bi-star-fill text-warning small"></i>
                             <span class="fw-semibold text-secondary small">5.0</span>
                             <span class="text-muted small">·</span>
-                            <a th:href="@{'/products/' + ${p.id}}" class="text-muted small text-decoration-none">
+                            <a th:href="@{/products/{id}(id=${p.id}, branchId=${branchId}, qr=${tableQr})}" class="text-muted small text-decoration-none">
                                 Xem đánh giá
                             </a>
                         </div>
@@ -1317,16 +1354,28 @@
 
                         <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
                             <span class="product-price"
-                                th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA') + ' ₫'}">
+                                  th:if="${branchId != null or currentTable != null}"
+                                  th:text="${#numbers.formatDecimal(p.price, 0, 'POINT', 0, 'COMMA') + ' ₫'}">
                                 25.000 ₫
+                            </span>
+                            <span class="text-muted small fst-italic"
+                                  th:if="${branchId == null and currentTable == null}">
+                                Chọn CN để xem giá
                             </span>
                             <a sec:authorize="hasRole('CASHIER')" href="/cashier"
                                 class="btn btn-sm btn-primary-custom rounded-pill px-3">Tạo đơn tại POS</a>
-                            <button sec:authorize="!hasRole('CASHIER')" type="button"
-                                class="btn btn-sm btn-primary-custom rounded-pill px-3"
-                                th:attr="onclick=|openCustomizeModal(${p.id})|">
-                                <i class="bi bi-plus-lg me-1"></i> Chọn
-                            </button>
+                            <th:block sec:authorize="!hasRole('CASHIER')">
+                                <button th:if="${currentTable != null}" type="button"
+                                    class="btn btn-sm btn-primary-custom rounded-pill px-3"
+                                    th:attr="onclick=|openCustomizeModal(${p.id})|">
+                                    <i class="bi bi-plus-lg me-1"></i> Chọn
+                                </button>
+                                <a th:if="${currentTable == null}"
+                                   th:href="@{/products/{id}(id=${p.id}, branchId=${branchId}, qr=${tableQr})}"
+                                   class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    <i class="bi bi-eye me-1"></i> Xem chi tiết
+                                </a>
+                            </th:block>
                         </div>
                     </div>
                 </div>
@@ -1341,7 +1390,7 @@
         </div>
 
         <!-- Lucian UX/UI Prompt #011: Nút Menu Tỏa Tia Thay Thế Nút Giỏ Hàng Góc Phải Bên Dưới -->
-        <div class="u011-floating-container">
+        <div class="u011-floating-container" th:if="${currentTable != null}">
             <div class="ux u011"
                 th:classappend="${#authorization.expression('isAuthenticated()')} ? ' is-logged-in' : ''">
                 <span class="u011-halo" aria-hidden="true"></span>
@@ -1505,13 +1554,20 @@
                     </div>
 
                     <div class="modal-footer border-top">
-                        <div class="d-flex gap-2 w-100">
+                        <div th:if="${currentTable != null}" class="d-flex gap-2 w-100">
                             <button type="button" class="btn btn-outline-secondary rounded-pill w-25"
                                 data-bs-dismiss="modal">Đóng</button>
                             <button type="button" class="btn btn-primary-custom flex-grow-1 py-2 rounded-pill fw-bold"
                                 onclick="confirmAddToCart()">
                                 <i class="bi bi-bag-plus-fill me-1"></i> Thêm vào giỏ hàng
                             </button>
+                        </div>
+                        <div th:unless="${currentTable != null}" class="w-100 text-center py-1">
+                            <div class="alert alert-warning mb-2 py-2 small border-0 rounded-3">
+                                <i class="bi bi-info-circle-fill me-1 text-warning"></i>
+                                Bạn đang xem thực đơn. Để gọi món, vui lòng đến cửa hàng và quét mã QR tại bàn.
+                            </div>
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
                         </div>
                     </div>
                 </div>
@@ -1639,6 +1695,40 @@
                 const formattedPrice = MilkTeaApi.formatVND(p.price);
                 const desc = p.description || 'Đậm vị trà thơm ngậy sữa';
                 const sizeLabel = p.size ? `Size ${p.size}` : 'Size M';
+                const isViewOnlyMode = /*[[${currentTable == null}]]*/ true;
+                const currentBranchId = window.MilkTeaContext?.branchId || /*[[${branchId}]]*/ null;
+                const currentQr = window.MilkTeaContext?.qrCode || /*[[${tableQr}]]*/ null;
+                const searchParams = new URLSearchParams();
+                if (currentBranchId) searchParams.append('branchId', currentBranchId);
+                if (currentQr) searchParams.append('qr', currentQr);
+                const queryStr = searchParams.toString();
+                const detailHref = `/products/${p.id}${queryStr ? '?' + queryStr : ''}`;
+
+                let priceHtml = '';
+                if (currentBranchId || !isViewOnlyMode) {
+                    priceHtml = `<span class="product-price">${formattedPrice}</span>`;
+                } else {
+                    priceHtml = `<span class="product-price text-muted small fst-italic">Chọn CN để xem giá</span>`;
+                }
+
+                let actionHtml = '';
+                if (!isViewOnlyMode) {
+                    actionHtml = `
+                        <button type="button"
+                            class="btn btn-sm btn-primary-custom rounded-pill px-3"
+                            onclick="openCustomizeModal(${p.id})">
+                            <i class="bi bi-plus-lg me-1"></i> Chọn
+                        </button>
+                    `;
+                } else {
+                    actionHtml = `
+                        <a href="${detailHref}"
+                           class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                            <i class="bi bi-eye me-1"></i> Xem chi tiết
+                        </a>
+                    `;
+                }
+
                 return `
                     <div class="col product-item" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}" data-size="${p.size || 'M'}" data-img="${img}">
                         <div class="product-card position-relative">
@@ -1652,7 +1742,7 @@
                             </button>
 
                             <div class="product-img-wrapper position-relative">
-                                <a href="/products/${p.id}" class="d-block text-decoration-none">
+                                <a href="${detailHref}" class="d-block text-decoration-none">
                                     <img src="${img}" class="product-img" alt="${p.name}">
                                 </a>
                                 <span class="position-absolute top-0 end-0 m-2 badge bg-dark bg-opacity-75 rounded-pill px-2 py-1 small">
@@ -1661,14 +1751,14 @@
                             </div>
 
                             <div class="p-3 d-flex flex-column flex-grow-1">
-                                <a href="/products/${p.id}" class="text-decoration-none text-dark">
+                                <a href="${detailHref}" class="text-decoration-none text-dark">
                                     <h5 class="fw-bold mb-1 text-truncate">${p.name}</h5>
                                 </a>
                                 <div class="d-flex align-items-center gap-1 mb-1 small">
                                     <i class="bi bi-star-fill text-warning small"></i>
                                     <span class="fw-semibold text-secondary small">5.0</span>
                                     <span class="text-muted small">·</span>
-                                    <a href="/products/${p.id}" class="text-muted small text-decoration-none">
+                                    <a href="${detailHref}" class="text-muted small text-decoration-none">
                                         Xem đánh giá
                                     </a>
                                 </div>
@@ -1677,19 +1767,21 @@
                                 </p>
 
                                 <div class="d-flex justify-content-between align-items-center mt-auto pt-2 border-top">
-                                    <span class="product-price">
-                                        ${formattedPrice}
-                                    </span>
-                                    <button type="button"
-                                        class="btn btn-sm btn-primary-custom rounded-pill px-3"
-                                        onclick="openCustomizeModal(${p.id})">
-                                        <i class="bi bi-plus-lg me-1"></i> Chọn
-                                    </button>
+                                    ${priceHtml}
+                                    ${actionHtml}
                                 </div>
                             </div>
                         </div>
                     </div>
                 `;
+            }
+
+            function handleBranchSelectChange(newBranchId) {
+                if (newBranchId && newBranchId.trim() !== '') {
+                    window.location.href = '/menu?branchId=' + encodeURIComponent(newBranchId.trim());
+                } else {
+                    window.location.href = '/menu';
+                }
             }
 
             function renderPaginationBar(currentPage, totalPages) {

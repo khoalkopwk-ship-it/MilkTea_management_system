@@ -10,4 +10,6 @@ import java.util.List;
 public interface PaymentNoticeRepository extends JpaRepository<PaymentNotice, Long> {
     List<PaymentNotice> findByInvoiceId(Long invoiceId);
     java.util.Optional<PaymentNotice> findFirstByInvoiceIdOrderByCreatedAtDescIdDesc(Long invoiceId);
+    java.util.Optional<PaymentNotice> findFirstByReference(String reference);
+    java.util.Optional<PaymentNotice> findFirstByReferenceOrderByCreatedAtDescIdDesc(String reference);
 }

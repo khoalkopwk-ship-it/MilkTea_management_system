@@ -41,24 +41,30 @@ public class GuestAccessService {
 
     public boolean validateTableQrCapabilityToken(String token, Long expectedTableId) {
         if (token == null || token.isBlank() || expectedTableId == null) return false;
+        return validateAndGetTableIdFromQrCapabilityToken(token)
+                .filter(expectedTableId::equals)
+                .isPresent();
+    }
+
+    public Optional<Long> validateAndGetTableIdFromQrCapabilityToken(String token) {
+        if (token == null || token.isBlank()) return Optional.empty();
         String[] parts = token.split("\\.");
-        if (parts.length != 2) return false;
+        if (parts.length != 2) return Optional.empty();
         try {
             String payload = new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
             String sig = parts[1];
             String expectedSig = signPayload(payload);
             if (!MessageDigest.isEqual(sig.getBytes(StandardCharsets.UTF_8), expectedSig.getBytes(StandardCharsets.UTF_8))) {
-                return false;
+                return Optional.empty();
             }
             String[] tokens = payload.split(":");
-            if (tokens.length < 5 || !"TQR".equals(tokens[0])) return false;
+            if (tokens.length < 5 || !"TQR".equals(tokens[0])) return Optional.empty();
             Long tableId = Long.parseLong(tokens[1]);
             long expMillis = Long.parseLong(tokens[3]);
-            if (!tableId.equals(expectedTableId)) return false;
-            if (Instant.now().toEpochMilli() > expMillis) return false;
-            return true;
+            if (Instant.now().toEpochMilli() > expMillis) return Optional.empty();
+            return Optional.of(tableId);
         } catch (Exception e) {
-            return false;
+            return Optional.empty();
         }
     }
 

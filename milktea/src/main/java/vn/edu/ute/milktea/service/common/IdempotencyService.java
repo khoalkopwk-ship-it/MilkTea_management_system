@@ -27,19 +27,19 @@ public class IdempotencyService {
      * Tạo mã băm SHA-256 làm fingerprint cho payload và actor.
      */
     public String computeFingerprint(String payloadJson, Long actorId) {
+        return computeFingerprint(payloadJson, actorId != null ? actorId.toString() : "GUEST");
+    }
+
+    public String computeFingerprint(String payloadJson, String callerScope) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            String combined = (actorId != null ? actorId.toString() : "GUEST") + ":" + (payloadJson != null ? payloadJson : "");
+            String combined = (callerScope != null && !callerScope.isBlank() ? callerScope : "GUEST") + ":" + (payloadJson != null ? payloadJson : "");
             byte[] hash = digest.digest(combined.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {
             log.error("Lỗi băm fingerprint payload idempotency: {}", e.getMessage());
-            return String.valueOf(combinedString(payloadJson, actorId).hashCode());
+            return String.valueOf(((callerScope != null ? callerScope : "GUEST") + ":" + payloadJson).hashCode());
         }
-    }
-
-    private String combinedString(String payload, Long actorId) {
-        return (actorId != null ? actorId.toString() : "GUEST") + ":" + (payload != null ? payload : "");
     }
 
     /**

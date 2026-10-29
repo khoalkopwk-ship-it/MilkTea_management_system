@@ -1254,6 +1254,9 @@ public class InventoryService {
                     .afterState("threshold=" + request.getThreshold())
                     .createdAt(Instant.now())
                     .build());
+            if (targetBranchId != null) {
+                realtimeEventPublisher.publishAfterCommit("/topic/branches/" + targetBranchId + "/stock", "STOCK_CHANGED", material.getId().toString(), null, "1", java.util.Map.of("action", "ADJUST", "branchId", targetBranchId));
+            }
             realtimeEventPublisher.publishAfterCommit("/topic/stock", "STOCK_CHANGED", material.getId().toString(), null, "1", java.util.Map.of("action", "ADJUST", "branchId", targetBranchId));
             realtimeEventPublisher.publishAfterCommit("/topic/admin", "STOCK_CHANGED", material.getId().toString(), null, "1", java.util.Map.of("action", "ADJUST", "branchId", targetBranchId));
             return;

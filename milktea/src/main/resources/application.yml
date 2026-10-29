@@ -42,7 +42,7 @@ spring:
       max-request-size: 6MB
 
 server:
-  port: 8082
+  port: ${PORT:8080}
   forward-headers-strategy: framework
 
 management:
@@ -57,7 +57,7 @@ management:
         enabled: true
 
 app:
-  base-url: ${APP_BASE_URL:http://localhost:8080}
+  base-url: ${APP_BASE_URL:http://localhost:${PORT:8080}}
   jwt:
     issuer: milktea
     audience: milktea-web
@@ -65,7 +65,7 @@ app:
     ttl-minutes: 60
     cookie-secure: false
   websocket:
-    allowed-origin: ${WEBSOCKET_ALLOWED_ORIGIN:http://localhost:8080}
+    allowed-origin: ${WEBSOCKET_ALLOWED_ORIGIN:http://localhost:${PORT:8080}}
   admin:
     default-password: ${ADMIN_DEFAULT_PASSWORD:Password@123}
   cloudinary:
@@ -79,4 +79,4 @@ app:
     secret: ${OTP_SECRET:default-otp-secret-key-32-bytes-long!}
     expiry-minutes: 10
     cooldown-seconds: 60
-    max-attempts: 5
+    max-attempts: 5

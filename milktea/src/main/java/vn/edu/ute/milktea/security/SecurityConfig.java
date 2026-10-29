@@ -87,6 +87,8 @@ public class SecurityConfig {
                                 "/cart",
                                 "/orders",
                                 "/profile",
+                                "/products",
+                                "/products/*",
                                 "/products/**",
                                 "/login",
                                 "/error",
@@ -174,15 +176,30 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
             @Value("${app.base-url:http://localhost:8080}") String baseUrl,
-            @Value("${app.websocket.allowed-origin:http://localhost:8080}") String allowedOrigin) {
+            @Value("${app.websocket.allowed-origin:http://localhost:8080}") String allowedOrigin,
+            @Value("${server.port:8080}") int serverPort) {
         CorsConfiguration configuration = new CorsConfiguration();
         List<String> origins = new ArrayList<>();
         if (baseUrl != null && !baseUrl.isBlank()) origins.add(baseUrl);
         if (allowedOrigin != null && !allowedOrigin.isBlank() && !origins.contains(allowedOrigin)) origins.add(allowedOrigin);
+        String dynamicOriginLocalhost = "http://localhost:" + serverPort;
+        if (!origins.contains(dynamicOriginLocalhost)) origins.add(dynamicOriginLocalhost);
+        String dynamicOriginIp = "http://127.0.0.1:" + serverPort;
+        if (!origins.contains(dynamicOriginIp)) origins.add(dynamicOriginIp);
         if (!origins.contains("http://localhost:8080")) origins.add("http://localhost:8080");
         if (!origins.contains("http://127.0.0.1:8080")) origins.add("http://127.0.0.1:8080");
+        if (!origins.contains("http://localhost:8082")) origins.add("http://localhost:8082");
+        if (!origins.contains("http://127.0.0.1:8082")) origins.add("http://127.0.0.1:8082");
 
         configuration.setAllowedOrigins(origins);
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "https://*.ngrok-free.app",
+                "https://*.ngrok.io",
+                "https://*.ngrok.app",
+                "*"
+        ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
@@ -191,5 +208,14 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    @Bean
+    public org.springframework.security.web.firewall.HttpFirewall httpFirewall() {
+        org.springframework.security.web.firewall.StrictHttpFirewall firewall = new org.springframework.security.web.firewall.StrictHttpFirewall();
+        firewall.setAllowUrlEncodedPercent(true);
+        firewall.setAllowUrlEncodedSlash(true);
+        firewall.setAllowSemicolon(true);
+        return firewall;
     }
 }

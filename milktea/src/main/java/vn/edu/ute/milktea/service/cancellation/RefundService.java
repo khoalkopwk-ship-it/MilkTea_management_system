@@ -82,7 +82,7 @@ public class RefundService {
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.ORDER_STATE_CONFLICT, "Không tìm thấy hóa đơn"));
         var payment = paymentRepository.findByInvoiceId(invoice.getId())
                 .orElseThrow(() -> BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Đơn chưa thu tiền, không cần hoàn tiền"));
-        if (payment.getMethod() != vn.edu.ute.milktea.entity.payment.PaymentMethod.BANK_TRANSFER) {
+        if (payment.getMethod() == vn.edu.ute.milktea.entity.payment.PaymentMethod.CASH) {
             throw BusinessException.conflict(ErrorCode.VALIDATION_FAILED, "Đơn thanh toán tiền mặt phải do thu ngân hoàn trực tiếp");
         }
         var refund = refundRepository.save(RefundRequest.builder()

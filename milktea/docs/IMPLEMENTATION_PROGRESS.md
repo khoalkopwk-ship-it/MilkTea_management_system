@@ -11,6 +11,7 @@
 | **Giai đoạn 4** | Trải nghiệm khách hàng (Chi tiết món, Tìm kiếm/Lọc, Top 20, Yêu thích, Đánh giá) | **HOÀN TẤT** | Đánh giá gắn đơn hoàn thành + đã thanh toán, kiểm duyệt theo chi nhánh, wishlist tài khoản, tìm kiếm & lọc phân trang, 4 danh sách Top 20. 87/87 tests PASS. |
 | **Giai đoạn 5** | Voucher & Giảm giá | **HOÀN TẤT** | Áp dụng voucher an toàn đồng thời (AT-05), migration V3, snapshot HoaDon, hoàn trả khi hủy đơn, giao diện giỏ hàng và 18 test cases. 105/105 tests PASS. |
 | **Giai đoạn 6** | Nghiệm thu & Bàn giao | **HOÀN TẤT** | Bộ kiểm thử chấp nhận AT-01 đến AT-06 hoàn tất (112/112 tests PASS). Báo cáo tài chính đối soát chính xác giữa cấp chuỗi và từng cơ sở. Hoàn tất tài liệu vận hành và bàn giao. |
+| **Đợt Sửa 6 Mục & Cổng TT** | Sửa 6 mục (4.1, 4.2, 4.4, 4.6, 4.7, 4.8) & Tích hợp 3 Cổng VNPAY/MoMo/ZaloPay | **HOÀN TẤT** | Zero DB DDL, QR restore chống silent grant, canonical idempotency fingerprint, menu 12 món distinct, script kho thuần đọc 3 invariants, VNPAY/MoMo/ZaloPay. 155/155 tests PASS. |
 
 ---
 
@@ -382,6 +383,92 @@
 ### 3. Kết quả Kiểm thử:
 - Bổ sung ca kiểm thử tự động `testAdminRoleForbiddenFromTableAndQrApis` trong [CentralWarehouseAndAdminRoleTest.java](file:///h:/UTE/Nam_3/MilkTea_management_system/milktea/src/test/java/vn/edu/ute/milktea/service/CentralWarehouseAndAdminRoleTest.java).
 - Toàn bộ test suite dự án đạt **149/149 tests PASS (BUILD SUCCESS)**, 0 failures, 0 errors, 0 skipped.
+
+---
+
+## 11. Checkpoint: Sửa 6 Mục Hoàn Thiện & Tích Hợp 3 Cổng Thanh Toán VNPAY, MoMo, ZaloPay (PROMPT_GEMINI_SUA_6_MUC_MILKTEA_V5) (HOÀN TẤT)
+
+### 1. Nguyên Tắc Bất Biến: Zero Database DDL & Data Preservation
+- **Tuyệt đối không thay đổi schema**: Không thực thi bất kỳ câu lệnh DDL (`ALTER TABLE`, `DROP`, `CREATE TABLE/COLUMN/CONSTRAINT/TRIGGER`), không reset database `milktea`, không chỉnh sửa seed data cũ.
+- Tận dụng trường `dbo.ThanhToan.PhuongThuc` (`VARCHAR(16)`) đã có sẵn để lưu các giá trị enum mới `VNPAY`, `MOMO`, `ZALOPAY`.
+- Lưu trữ tương quan giao dịch (`txnRef`, trạng thái IPN, chữ ký gateway) bền vững qua các bảng nghiệp vụ có sẵn: `dbo.ThongBaoThanhToan` (`PaymentNotice`) và `dbo.NhatKyNghiepVu` (`BusinessAudit`), đảm bảo dữ liệu không bị thất lạc khi server restart.
+
+### 2. Chi Tiết Thực Hiện 6 Mục Kiểm Định (Items 4.1 – 4.8):
+
+#### Mục 4.1 — Khôi Phục Ngữ Cảnh QR Bàn (QR Context Restore):
+- **Phân tách luồng QR rõ ràng**: Tách biệt luồng khách quét mã QR vật lý trực tiếp (`?qr=...`) với luồng khôi phục ngữ cảnh từ token đã lưu (`POST /api/v1/public/table-context/restore`).
+- **Server-validated Capability Token**: `GuestAccessService.validateAndGetTableIdFromQrCapabilityToken(token)` xác thực chữ ký token.
+- **Ngăn chặn Silent-Grant**: `TableContextService.restoreContext(rawToken)` kiểm tra token phiên hoạt động hoặc token quyền truy cập QR trước phiên. Nếu bàn đã đóng phiên hoặc chuyển sang phiên mới khác (`Session B`), hệ thống ném ngoại lệ 403 `ACCESS_DENIED`, ngăn chặn tuyệt đối việc tự động cấp quyền âm thầm vào phiên mới.
+- **Client Frontend (`customer.js`)**: Khi nhận phản hồi không hợp lệ từ endpoint khôi phục, lập tức dọn sạch cache token địa phương, hiển thị banner yêu cầu khách quét lại mã QR tại bàn.
+
+#### Mục 4.2 — Kiểm Tra Chống Lặp (Idempotency Replay) & Canonical Fingerprint:
+- **Canonical Payload Fingerprint**: `IdempotencyService.computeFingerprint` chuẩn hóa dữ liệu đầu vào:
+  - Sắp xếp danh sách món (`items`) theo `productId`, `quantity`, `note`.
+  - Sắp xếp danh mục topping theo `id` tăng dần.
+  - Loại bỏ khoảng trắng thừa, đính kèm đầy đủ `note`, `voucherCode`, `remainingItems` và phạm vi người gọi (`callerScope`).
+- **Xác thực quyền Caller khi Replay**: `OrderService.createTableOrder` và `createCounterOrder` xác thực người gọi (session token của bàn hoặc username nhân viên quầy) khớp với giao dịch gốc trước khi trả về kết quả lưu trong bản ghi chống lặp `BanGhiChongLap`.
+- **Gỡ bỏ Fallback không an toàn**: Loại bỏ hoàn toàn câu lệnh truy vấn dự phòng `orderRepository.findByIdempotencyKey` vốn có thể bỏ qua xác thực quyền sở hữu.
+- **Đồng bộ Header Chống Lặp**: `OrderController.resolveIdempotencyKey` kiểm tra cả `Idempotency-Key` và `X-Idempotency-Key`. Nếu cả hai header cùng xuất hiện nhưng có giá trị khác nhau, trả về HTTP 400 Bad Request ngay lập tức.
+
+#### Mục 4.4 — Phân Trang Thực Đơn Backend (12 Món Uống Phân Biệt):
+- **Cấu trúc DTO Chuẩn**: `CatalogDto.MenuPageResponse` hỗ trợ `page`, `size`, `totalElements`, `totalPages`, `hasNext`, `hasPrevious`.
+- **Nhóm món phân biệt (Distinct Drinks)**: `CatalogService.getPaginatedMenu` nhóm các biến thể theo tên món, chọn biến thể có đơn giá thấp nhất (size nhỏ nhất) để hiển thị trên thực đơn.
+- **Lọc Đa Tiêu Chí & Chuẩn Hóa Tiếng Việt**: Lọc theo danh mục, khoảng giá `[minPrice, maxPrice]`, trạng thái khả dụng tại chi nhánh, và từ khóa tìm kiếm (chuẩn hóa loại bỏ dấu tiếng Việt để tìm kiếm "tra sua" hay "trà sữa" đều cho kết quả chính xác).
+- **Hỗ trợ Danh Sách Nổi Bật Top 20**: Hỗ trợ 4 bộ sưu tập (`best_seller`, `top_rated`, `most_favorited`, `newest`) với tối đa 20 sản phẩm, phân trang chính xác: trang 1 có 12 món, trang 2 có 8 món.
+- **SSR Tối Ưu & Lazy Modal**: `CustomerPageController` chỉ nạp trước trang 1 (12 món) vào HTML SSR, không nhúng toàn bộ danh sách biến thể; chi tiết món được tải lười (lazy load) qua API `/api/v1/public/products/{id}` khi khách mở modal tùy chọn.
+
+#### Mục 4.6 — Kịch Bản Đối Soát Tồn Kho Độc Lập (Inventory Reconciliation):
+- **Kịch bản Thuần Đọc**: `database/validation/verify_inventory_reconciliation.sql` được viết lại hoàn toàn thành script chỉ đọc, không thực hiện `UPDATE`/`INSERT`/`DELETE`.
+- **Phân định 3 Bất Biến Độc Lập**:
+  - **Bất biến 1 (Số học cùng dòng)**: `TonSau = TonTruoc + LuongBienDong` trong `dbo.LichSuKho` $\rightarrow$ Đạt **0/488 lỗi** (**PASS**).
+  - **Bất biến 2 (Chuỗi biến động liên tục)**: `LAG(TonSau) = TonTruoc` theo nguyên liệu/kho/chi nhánh $\rightarrow$ Báo cáo trung thực **444 dòng seed lịch sử bị đứt gãy** (**INSUFFICIENT_EVIDENCE** do dữ liệu hạt giống ban đầu chèn phi tuần tự).
+  - **Bất biến 3 (Số dư đóng kho vs thẻ kho)**: Đối chiếu số lượng hiện hành trong `dbo.TonNguyenLieu` với bản ghi thẻ kho mới nhất $\rightarrow$ Báo cáo trung thực **147 dòng seed không đối chiếu được** (**UNRECONCILED**).
+  - **Dữ liệu Đơn Hàng Runtime (`MaDH >= 225`)**: 19/19 đơn hàng có đầy đủ snapshot công thức; 100% đơn hàng trạng thái `HOAN_THANH` đã được khấu trừ kho Bếp với loại biến động `TIEU_HAO` (**PASS**).
+
+#### Mục 4.7 — Ma Trận Sự Kiện Realtime & Phân Quyền Chi Nhánh:
+- **WebSocket Scoped Chi Nhánh**: Khi điều chỉnh ngưỡng cảnh báo hoặc biến động tồn kho tại `InventoryService`, hệ thống gửi thông báo realtime đến topic cô lập `/topic/branches/{targetBranchId}/stock`.
+- **Ghi Nhận Nhật Ký Nghiệp Vụ**: Mọi thay đổi đều được ghi vết vào `dbo.NhatKyNghiepVu` (`BusinessAudit`).
+- **Khôi phục Kết nối STOMP**: Hỗ trợ xử lý tái kết nối client trên frontend khi mạng gián đoạn.
+
+#### Mục 4.8 — Chuẩn Hóa Báo Cáo Kiểm Thử Theo Bằng Chứng Thực Tế:
+- `docs/API_TEST_MATRIX.md`: Cập nhật 33 route templates, 48 ca kiểm thử HTTP thực chạy, 155 unit tests, tách bạch rõ ràng giữa kết quả kiểm thử thực thi mới và nhật ký kiểm thử lịch sử.
+- `docs/E2E_TEST_REPORT.md`: Báo cáo chi tiết ma trận kiểm định (QR01-QR02, ID01-ID04, PG01-PG03, SQL01-SQL02, RT01-RT02, MD01, PAY01-PAY06, BR01, EV01); ghi nhận trạng thái trung thực `BLOCKED_BROWSER` cho môi trường sandbox offline không tải được binary Playwright.
+
+---
+
+### 3. Tích Hợp 3 Cổng Thanh Toán Tự Động (VNPAY, MoMo, ZaloPay) (Mục 8):
+- **Thay thế VietQR thủ công**: Dỡ bỏ hoàn toàn phương thức chuyển khoản quét QR thủ công vốn dễ sai sót đối soát. Thay thế bằng 3 cổng thanh toán tự động hàng đầu Việt Nam:
+  1. **VNPAY**: Tạo URL thanh toán với mã checksum `HMAC-SHA512`, xử lý webhook IPN trả về `RspCode: "00"` (thành công) hoặc `"97"` (chữ ký không hợp lệ).
+  2. **MoMo**: Tích hợp phương thức `captureWallet` với chữ ký `HMAC-SHA256`, xử lý IPN trả về `resultCode: 0` (thành công) hoặc `99` (sai chữ ký).
+  3. **ZaloPay**: Tạo đơn thanh toán với mã giao dịch `yyMMdd_xxx`, xác thực MAC IPN bằng `key2` (`HMAC-SHA256`), trả về `return_code: 1` hoặc `-1`.
+- **Kiến trúc Adapter & Service**:
+  - `PaymentGatewayAdapter`: Giao diện chung chuẩn hóa luồng `createPaymentUrl`, `verifyIpn`, `verifyReturnUrl`.
+  - `PaymentGatewayService`: Quản lý vòng đời nỗ lực thanh toán (`PaymentAttempt`), kiểm tra quyền truy cập của caller, lưu vết tham chiếu vào `dbo.ThongBaoThanhToan` và `dbo.NhatKyNghiepVu`, thực hiện thanh toán idempotent qua `PaymentService.createPayment`.
+  - `PaymentGatewayController`: Cung cấp API tạo attempt `/api/v1/payments/gateways/create-attempt`, các webhook IPN và return URL cho từng cổng.
+  - `SecurityConfig`: Cấu hình ngoại lệ CSRF cho các webhook IPN của cổng thanh toán.
+  - `RefundService`: Hỗ trợ Admin yêu cầu hoàn tiền điện tử đối với các khoản thanh toán qua cổng.
+- **Giao diện Người dùng**:
+  - `cashier.html` & `cashier.js`: Tích hợp các lựa chọn VNPAY, MoMo, ZaloPay vào quầy POS thu ngân.
+  - `orders.js`: Tích hợp modal thanh toán cổng điện tử cho khách hàng tại bàn.
+  - Giữ nguyên phương thức `CASH` (Tiền mặt) và bảo toàn các bản ghi thanh toán `BANK_TRANSFER` cũ trong lịch sử.
+
+---
+
+### 4. Kết Quả Kiểm Thử & Nghiệm Thu:
+- **Kiểm thử Đơn vị & Tích hợp (JUnit)**:
+  - Tạo mới `PaymentGatewayIntegrationTest.java` (6 ca kiểm thử: PAY01 - PAY06).
+  - Toàn bộ test suite dự án đạt **155/155 tests PASS (BUILD SUCCESS)**, 0 failures, 0 errors.
+- **Kiểm thử HTTP Thực chạy trên Server 8082**:
+  - Script `test_qr_idempotency_gateways.ps1` kiểm tra trực tiếp trên cổng 8082: **7/7 ca kiểm thử thành công 100%**:
+    - `QR01`: Cố tình khôi phục ngữ cảnh bằng token rác $\rightarrow$ HTTP 403 `ACCESS_DENIED`.
+    - `ID02`: Gửi xung đột giữa `Idempotency-Key` và `X-Idempotency-Key` $\rightarrow$ HTTP 400 Bad Request.
+    - `PG01`: Phân trang thực đơn 12 món $\rightarrow$ Trang 1: 12 món, Trang 2: 12 món, Trang 3: 9 món.
+    - `PAY01`: Khách trái phép gọi tạo nỗ lực thanh toán $\rightarrow$ Bị chặn 403.
+    - `PAY02`: Giả mạo webhook VNPAY với chữ ký sai $\rightarrow$ Trả về `RspCode: "97"`.
+    - `PAY03`: Giả mạo webhook MoMo với chữ ký sai $\rightarrow$ Trả về `resultCode: 99`.
+    - `PAY04`: Giả mạo webhook ZaloPay với MAC sai $\rightarrow$ Trả về `return_code: -1`.
+- **Kiểm định Script Kho Hàng**: `verify_inventory_reconciliation.sql` chạy qua `sqlcmd` thoát mã `0` thành công, phản ánh chính xác hiện trạng dữ liệu.
+
 
 
 

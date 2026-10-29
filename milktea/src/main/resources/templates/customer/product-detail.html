@@ -114,7 +114,7 @@
 
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/menu" class="text-decoration-none text-muted">Thực đơn</a></li>
+                <li class="breadcrumb-item"><a th:href="@{/menu(branchId=${branchId}, qr=${tableQr})}" class="text-decoration-none text-muted">Thực đơn</a></li>
                 <li class="breadcrumb-item" th:if="${product.categoryName}" th:text="${product.categoryName}">Danh mục</li>
                 <li class="breadcrumb-item active text-dark fw-semibold" aria-current="page" th:text="${product.name}">Tên món</li>
             </ol>
@@ -210,8 +210,8 @@
                         </div>
                     </div>
 
-                    <!-- Số lượng và Ghi chú món -->
-                    <div class="row g-3 mb-4">
+                    <!-- Số lượng và Ghi chú món (Chỉ hiển thị khi có bàn hợp lệ) -->
+                    <div class="row g-3 mb-4" th:if="${currentTable != null}">
                         <div class="col-sm-5">
                             <label class="form-label fw-bold text-dark mb-1 small">Số lượng:</label>
                             <div class="input-group">
@@ -231,7 +231,7 @@
                     </div>
 
                     <!-- Tổng thanh toán dự kiến cho món -->
-                    <div class="p-3 bg-light rounded-3 mb-4 border d-flex justify-content-between align-items-center">
+                    <div class="p-3 bg-light rounded-3 mb-4 border d-flex justify-content-between align-items-center" th:if="${currentTable != null}">
                         <div>
                             <span class="text-muted small d-block">Tổng tạm tính cho món:</span>
                             <span class="small text-muted" id="detailCalculationBreakdown"></span>
@@ -241,12 +241,20 @@
                         </div>
                     </div>
 
-                    <!-- Nút Thêm vào giỏ hàng -->
+                    <!-- Thông báo chế độ chỉ xem khi chưa có bàn -->
+                    <div class="alert alert-warning border-0 shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center gap-3" th:if="${currentTable == null}">
+                        <i class="bi bi-info-circle-fill text-warning fs-3 flex-shrink-0"></i>
+                        <div class="small text-dark">
+                            Bạn đang xem thực đơn. Để gọi món, vui lòng đến cửa hàng và quét mã QR tại bàn.
+                        </div>
+                    </div>
+
+                    <!-- Nút thao tác -->
                     <div class="d-flex gap-3 pt-3 border-top">
-                        <a th:href="@{/menu(branchId=${branchId})}" class="btn btn-outline-secondary px-4 py-2 rounded-pill">
+                        <a th:href="@{/menu(branchId=${branchId}, table=${currentTable != null ? currentTable.id : null}, qr=${tableQr})}" class="btn btn-outline-secondary px-4 py-2 rounded-pill">
                             <i class="bi bi-arrow-left me-1"></i>Xem Menu
                         </a>
-                        <button type="button" id="btnDetailAddToCart" class="btn btn-warning px-4 py-2 rounded-pill text-white fw-bold flex-grow-1"
+                        <button th:if="${currentTable != null}" type="button" id="btnDetailAddToCart" class="btn btn-warning px-4 py-2 rounded-pill text-white fw-bold flex-grow-1"
                                 style="background: linear-gradient(135deg, #b86b35, #9e5524); border: none;"
                                 onclick="addCurrentProductToCart()"
                                 th:disabled="${!product.available}">
@@ -295,6 +303,9 @@
             let selectedToppings = [];
 
             document.addEventListener('DOMContentLoaded', () => {
+                const qr = /*[[${tableQr}]]*/ null;
+                const tableId = /*[[${currentTable != null ? currentTable.id : null}]]*/ null;
+                CustomerApp.initContext(qr, tableId);
                 updateDetailPriceTotal();
                 loadReviews(currentProductId);
             });
@@ -426,7 +437,9 @@
                                 heartIcon.className = 'bi bi-heart';
                             }
                         } else if (res.status === 401) {
-                            window.location.href = `/login?redirect=/products/${currentProductId}`;
+                            const curBranch = /*[[${branchId}]]*/ null;
+                            const returnPath = `/products/${currentProductId}${curBranch ? '?branchId=' + encodeURIComponent(curBranch) : ''}`;
+                            window.location.href = `/login?redirect=${encodeURIComponent(returnPath)}`;
                         }
                     } catch (e) {
                         console.error('Lỗi toggle favorite:', e);

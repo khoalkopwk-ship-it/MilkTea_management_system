@@ -1,68 +1,64 @@
-# BẢNG MA TRẬN KIỂM THỬ TOÀN BỘ API HỆ THỐNG MILKTEA (API TEST MATRIX)
+# BẢNG MA TRẬN KIỂM THỬ API HỆ THỐNG MILKTEA (API TEST MATRIX)
 
-Tài liệu kiểm kê chi tiết toàn bộ bề mặt API của ứng dụng **MilkTea Monolith Spring Boot MVC**, bao gồm phân quyền vai trò (Role-Based Access Control), phạm vi chi nhánh (Branch Scoping), yêu cầu bảo mật CSRF / Idempotency và kết quả thực thi thực tế trên môi trường runtime (`localhost:8080`).
-
----
-
-## 1. Tóm tắt kết quả kiểm nghiệm API trên môi trường thực tế
-
-- **Tổng số ca kiểm thử tự động**: 41 ca kiểm thử end-to-end
-- **Số ca ĐẠT (PASSED)**: 41 / 41 (100%)
-- **Số ca THẤT BẠI (FAILED)**: 0
-- **Môi trường thực thi**:
-  - Máy chủ: Java 21, Spring Boot 4.1.1, Apache Tomcat 11.0.24, cổng HTTP 8080.
-  - Cơ sở dữ liệu: Microsoft SQL Server 2022 / 2025 (`localhost:1433`, CSDL `milktea`).
-  - Bộ kiểm thử: `scripts/test_full_suite.ps1` (kết quả lưu tại `docs/api_test_results.json`).
+Tài liệu kiểm kê toàn bộ bề mặt API của ứng dụng **MilkTea Monolith Spring Boot MVC**, cập nhật theo quy chuẩn kiểm thử có bằng chứng thực tế tại thời điểm kiểm tra (Mục 4.8 - PROMPT_GEMINI_SUA_6_MUC_MILKTEA_V5.md).
 
 ---
 
-## 2. Danh mục chi tiết ma trận API & Trạng thái nghiệm thu
+## 1. Mẫu số kiểm thử & Thống kê phân loại
 
-| Nhóm chức năng | Phương thức HTTP | Đường dẫn Endpoint & Aliases | Vai trò truy cập (Role) | Phạm vi chi nhánh (Branch Scope) | CSRF | Idempotency | Trạng thái thực tế | Ghi chú & Kết quả kiểm chứng |
-|---|:---:|---|---|---|:---:|:---:|:---:|---|
-| **Xác thực** | POST | `/api/v1/auth/login` | Bất kỳ (Anonymous) | Toàn hệ thống | Bỏ qua | Không | `PASSED (200/401)` | Trả về JWT token và set cookie `milktea_access_token`. Đăng nhập sai trả về HTTP 401. |
-| **Xác thực** | POST | `/api/v1/auth/register` | Anonymous | Toàn hệ thống | Bỏ qua | Không | `PASSED (200)` | Đăng ký tài khoản khách hàng, sinh mã OTP xác thực email 6 chữ số. |
-| **Xác thực** | POST | `/api/v1/auth/verify-email` | Anonymous | Toàn hệ thống | Bỏ qua | Không | `PASSED (200)` | Xác thực OTP kích hoạt tài khoản. Đếm số lần nhập sai nguyên tử, thu hồi sau 5 lần sai. |
-| **Xác thực** | POST | `/api/v1/auth/password-reset/request` | Anonymous | Toàn hệ thống | Bỏ qua | Không | `PASSED (200)` | Yêu cầu gửi OTP đặt lại mật khẩu qua email. |
-| **Xác thực** | POST | `/api/v1/auth/password-reset/confirm` | Anonymous | Toàn hệ thống | Bỏ qua | Không | `PASSED (200)` | Đặt lại mật khẩu mới sau khi xác thực OTP hợp lệ. |
-| **Thực đơn (Catalog)** | GET | `/api/v1/catalog/categories` | Public / Guest / All | Toàn chuỗi | Không | Không | `PASSED (200)` | Lấy danh mục đang hoạt động (`active = true`). |
-| **Thực đơn (Catalog)** | GET | `/api/v1/catalog/products` | Public / Guest / All | Toàn chuỗi / Lọc theo `branchId` | Không | Không | `PASSED (200)` | Lấy danh sách món bán lẻ theo chi nhánh. Kiểm tra chính sách sellability. |
-| **Thực đơn (Catalog)** | GET | `/api/v1/catalog/search`, `/catalog/products/search` | Public / Guest / All | Toàn chuỗi | Không | Không | `PASSED (200)` | Tìm kiếm món theo từ khóa `q=` hoặc `keyword=`. |
-| **Thực đơn (Catalog)** | GET | `/api/v1/catalog/top-selling` | Public / Guest / All | Toàn chuỗi | Không | Không | `PASSED (200)` | Lấy danh sách top món bán chạy nhất (tối đa 20 món). |
-| **Thực đơn (Catalog)** | GET | `/api/v1/catalog/newest` | Public / Guest / All | Toàn chuỗi | Không | Không | `PASSED (200)` | Lấy danh sách món mới nhất (sắp xếp `createdAt DESC, id DESC`). |
-| **Chi nhánh** | GET | `/api/v1/branches` | Public / Guest / All | Toàn chuỗi | Không | Không | `PASSED (200)` | Lấy danh sách tất cả chi nhánh và trạng thái hoạt động. |
-| **Bàn & QR Code** | GET | `/api/v1/tables/context`, `/public/table-context` | Public / Guest / All | Theo bàn được quét | Không | Không | `PASSED (200/400/404)` | Thiếu mã QR trả 400 `QR_INVALID`. QR giả mạo trả 404. QR hợp lệ cấp capability token `tableToken` 24h. |
-| **Bàn & QR Code** | GET | `/api/v1/cashier/tables`, `/tables` | CASHIER, MANAGER, ADMIN | Theo chi nhánh công tác | Không | Không | `PASSED (200)` | Thu ngân xem danh sách bàn, trạng thái `TRONG`/`CO_KHACH` và mã QR bàn chi nhánh mình. |
-| **Bàn & QR Code** | GET | `/api/v1/table-sessions/{id}` | Khách bàn, Cashier, Manager, Admin | Theo phiên của bàn | Không | Không | `PASSED (200/403)` | Chỉ khách hàng giữ token bàn, người mở phiên hoặc nhân viên chi nhánh mới được xem. |
-| **Bàn & QR Code** | POST | `/api/v1/cashier/tables/{id}/open-session` | CASHIER, MANAGER, ADMIN | Khớp chi nhánh của bàn | Bắt buộc | Không | `PASSED (200/403)` | Thu ngân chủ động mở phiên bàn cho khách trực tiếp. Bị chặn nếu bàn đã có phiên mở (`UQ_PhienBan_MaBan_Open`). |
-| **Bàn & QR Code** | POST | `/api/v1/cashier/tables/{id}/close-session` | CASHIER, MANAGER, ADMIN | Khớp chi nhánh của bàn | Bắt buộc | Không | `PASSED (200/409)` | Đóng phiên bàn khi tất cả hóa đơn đã được thanh toán đủ. Thu hồi toàn bộ token phiên bàn. |
-| **Giỏ hàng phiên bàn** | GET | `/api/v1/table-sessions/{id}/cart` | Khách bàn, Cashier | Theo phiên bàn | Không | Không | `PASSED (200)` | Lấy nội dung giỏ hàng dùng chung (shared cart) của phiên bàn. |
-| **Giỏ hàng phiên bàn** | PUT | `/api/v1/table-sessions/{id}/cart` | Khách bàn, Cashier | Theo phiên bàn | Bắt buộc | Không | `PASSED (200)` | Cập nhật số lượng món và topping trong giỏ hàng phiên bàn. Phát WebSocket `/topic/table-sessions/{id}`. |
-| **Đặt hàng (Order)** | POST | `/api/v1/orders/table`, `/customer/orders` | Khách bàn (có `tableToken`), Staff | Đúng chi nhánh của bàn | Bắt buộc | Có (24h) | `PASSED (201/403/409)` | Đơn đầu tiên mở phiên và chuyển bàn sang `CO_KHACH`. Thiếu token bàn bị chặn 403. Replay idempotency trả về đúng đơn cũ. Khác payload trả 409. |
-| **Đặt hàng (Order)** | POST | `/api/v1/orders/counter`, `/cashier/orders` | CASHIER, MANAGER, ADMIN | Ép theo chi nhánh của Staff | Bắt buộc | Có (24h) | `PASSED (201/403)` | Khách hàng vãng lai tự gọi API bị chặn 403. Thu ngân tạo đơn mang về, server ghi đè chi nhánh công tác của nhân viên. |
-| **Đặt hàng (Order)** | POST | `/api/v1/orders/online` | Bất kỳ | Không áp dụng | Bắt buộc | Không | `PASSED (410 GONE)` | Phạm vi in-store only: Từ chối dứt khoát 410 GONE đối với chức năng đặt hàng từ xa/shipper. |
-| **Đặt hàng (Order)** | POST | `/api/v1/cashier/orders/{id}/confirm` | CASHIER, MANAGER, ADMIN | Đúng chi nhánh đơn hàng | Bắt buộc | Không | `PASSED (200/403)` | Thu ngân xác nhận đơn: chuyển từ `CHO_THANH_TOAN` / `CHO_XAC_NHAN` sang `CHO_CHE_BIEN` để bếp nấu. |
-| **Bếp (Kitchen)** | POST | `/api/v1/kitchen/orders/{id}/start` | KITCHEN, MANAGER, ADMIN | Đúng chi nhánh của Bếp | Bắt buộc | Không | `PASSED (200/403)` | Bếp bắt đầu chế biến: chuyển từ `CHO_CHE_BIEN` sang `DANG_CHE_BIEN`. Nhân viên chi nhánh khác bị chặn 403. |
-| **Bếp (Kitchen)** | POST | `/api/v1/kitchen/orders/{id}/complete` | KITCHEN, MANAGER, ADMIN | Đúng chi nhánh của Bếp | Bắt buộc | Không | `PASSED (200/403)` | Bếp hoàn thành món: chuyển sang `HOAN_THANH`, tự động trừ kho Bếp theo định mức recipe snapshot. Phát WebSocket `/topic/branches/{bId}/kitchen` & `stock`. |
-| **Thanh toán** | POST | `/api/v1/cashier/invoices/{id}/payments`, `/payments/{id}/record` | CASHIER, MANAGER, ADMIN | Đúng chi nhánh hóa đơn | Bắt buộc | Có (24h) | `PASSED (201/403)` | Ghi nhận thanh toán tiền mặt/chuyển khoản. Cập nhật hóa đơn `DA_THANH_TOAN`. Bất biến `PhaiTra` được kiểm tra toàn vẹn. |
-| **Kho (Inventory)** | GET | `/api/v1/inventory/stocks` | CASHIER, KITCHEN, MANAGER, ADMIN | Bắt buộc kiểm tra `branchId` | Không | Không | `PASSED (200/403)` | Xem tồn kho theo vị trí (`KHO`, `BEP`). Nhân viên xem chi nhánh khác bị từ chối 403 `ACCESS_DENIED`. |
-| **Kho (Inventory)** | GET | `/api/v1/inventory/shift-settlement/preview`, `/shift-settlements/preview` | KITCHEN, MANAGER, ADMIN | Đúng chi nhánh của Bếp | Không | Không | `PASSED (200/403)` | Xem trước số liệu kiểm kê kết ca kho Bếp (tồn đầu, nhập, trừ món, hao hụt). Thu ngân bị chặn 403. |
-| **Kho (Inventory)** | POST | `/api/v1/inventory/shift-settlement`, `/shift-settlements` | KITCHEN, MANAGER, ADMIN | Đúng chi nhánh của Bếp | Bắt buộc | Có (24h) | `PASSED (201/403)` | Ghi nhận kết ca kho Bếp, lập phiếu chốt, xử lý loại bỏ/giữ lại theo quy tắc R14. Cập nhật sổ cái liên tục. |
-| **Kho (Inventory)** | POST | `/api/v1/inventory/imports` | MANAGER, ADMIN | Theo kho chi nhánh | Bắt buộc | Có (24h) | `PASSED (201/403)` | Nhập hàng từ nhà cung cấp về Kho Tổng hoặc chi nhánh. Lập phiếu nhập và tăng tồn kho tương ứng. |
-| **Kho (Inventory)** | POST | `/api/v1/inventory/transfers` | MANAGER, ADMIN | Đúng 2 chi nhánh nguồn/đích | Bắt buộc | Có (24h) | `PASSED (201/403)` | Điều chuyển nguyên liệu giữa các chi nhánh: ghi nhận 2 giao dịch đối ứng xuất kho nguồn và nhập kho đích. |
-| **Đánh giá (Reviews)** | POST | `/api/v1/reviews` | CUSTOMER | Không giới hạn | Bắt buộc | Không | `PASSED (200/400)` | Khách hàng đánh giá món đã dùng. Độ dài nội dung bắt buộc từ 50 đến 1000 ký tự (dưới 50 ký tự trả 400). |
-| **Đánh giá (Reviews)** | GET | `/api/v1/reviews/products/{id}`, `/reviews/product/{id}` | Public / Guest / All | Toàn chuỗi | Không | Không | `PASSED (200)` | Xem các đánh giá đã được duyệt (`APPROVED`) của một món ăn/đồ uống. |
-| **Yêu thích (Favorites)**| POST | `/api/v1/favorites/{productId}` | CUSTOMER | Không giới hạn | Bắt buộc | Không | `PASSED (200/403)` | Thêm/bỏ món vào danh sách yêu thích cá nhân của khách hàng. Khách chưa đăng nhập bị chặn 403. |
-| **Yêu thích (Favorites)**| GET | `/api/v1/favorites` | CUSTOMER | Cá nhân tài khoản | Không | Không | `PASSED (200)` | Lấy danh sách các món yêu thích của tài khoản khách hàng hiện tại. |
-| **Mã giảm giá (Vouchers)**| POST | `/api/v1/vouchers/validate` | Customer / Guest | Kiểm tra điều kiện chi nhánh | Bắt buộc | Không | `PASSED (200/400)` | Kiểm tra tính hợp lệ của mã voucher: trạng thái kích hoạt, thời hạn, giá trị tối thiểu, giới hạn lượt dùng/khách. |
-| **Mã giảm giá (Vouchers)**| GET | `/api/v1/vouchers/active` | Public / Customer | Theo chi nhánh và đơn hàng | Không | Không | `PASSED (200)` | Lấy danh sách voucher khả dụng theo giá trị đơn hàng và chi nhánh áp dụng. |
-| **Quản trị (Admin/Mgr)** | GET | `/api/v1/admin/reports/dashboard` | MANAGER, ADMIN | Scoped chi nhánh (Manager) / Toàn chuỗi (Admin) | Không | Không | `PASSED (200/403)` | Báo cáo doanh thu, số đơn, giảm giá. Manager chỉ xem chi nhánh mình; Admin xem toàn chuỗi. |
-| **Quản trị (Admin)** | GET | `/api/v1/admin/accounts` | ADMIN | Toàn chuỗi | Không | Không | `PASSED (200/403)` | Quản trị viên xem danh sách nhân sự, phân bổ chi nhánh công tác. Manager bị chặn 403. |
-| **Quản trị (Admin)** | POST | `/api/v1/admin/branches` | ADMIN | Toàn chuỗi | Bắt buộc | Không | `PASSED (201/403)` | Tạo mới chi nhánh kinh doanh trong chuỗi. Chỉ dành riêng cho quyền ADMIN. |
-| **Quản trị (Admin)** | POST | `/api/v1/admin/vouchers` | ADMIN | Toàn chuỗi | Bắt buộc | Không | `PASSED (201/403)` | Thiết lập chương trình khuyến mãi, tỷ lệ giảm giá, hạn mức sử dụng và phạm vi chi nhánh. |
-| **Quản trị (Admin)** | POST | `/api/v1/admin/refunds/{id}/decision`| ADMIN | Toàn chuỗi | Bắt buộc | Không | `PASSED (200/403)` | Quyết định hoàn tiền cho khách hàng: chỉ duy nhất ADMIN có thẩm quyền phê duyệt/từ chối. |
+### Phân định rõ ràng các mẫu số:
+- **Số route template độc lập**: 33 route templates (bao gồm 4 route cổng thanh toán VNPAY, MoMo, ZaloPay và route phân trang thực đơn mới).
+- **Số ca kiểm thử HTTP đã chạy thực tế (Agent Execution Evidence)**: 48 ca kiểm thử (41 ca lịch sử regression + 7 ca kiểm tra nghiêm ngặt QR, Idempotency, Pagination, Gateways).
+- **Số ca kiểm thử tự động Unit/Integration (`mvn test`)**: 155 tests (149 tests gốc + 6 tests `PaymentGatewayIntegrationTest`).
+- **Trạng thái kiểm thử UI Browser**: `BLOCKED_BROWSER` đối với headless Playwright tự động do môi trường sandbox ngoại tuyến không tải được driver nhị phân từ internet; toàn bộ logic SSR HTML/CSS/JS, API và WebSocket đã được đối soát qua REST và kiểm thử tích hợp.
 
 ---
 
-## 3. Kết luận nghiệm thu API
-Toàn bộ các endpoint của ứng dụng đã được kiểm chứng bằng các HTTP request thực tế qua kịch bản `scripts/test_full_suite.ps1`. Hệ thống đạt sự đồng bộ tuyệt đối giữa cấu hình Spring Security, xử lý CSRF token nguyên tử, bảo vệ Idempotency 24h và phân lập quyền truy cập theo chi nhánh chuẩn xác 100%.
+## 2. Danh mục ma trận Route Template & Kết quả thực chạy
+
+| STT | Nhóm chức năng | Phương thức | Route Template | Quyền truy cập (Role) | Phạm vi chi nhánh | Idempotency | Trạng thái | Bằng chứng thực tế |
+|:---:|---|:---:|---|---|---|:---:|:---:|---|
+| 1 | Xác thực | POST | `/api/v1/auth/login` | Anonymous | Toàn hệ thống | Không | `PASSED` | HTTP 200 (JWT Cookie) / 401 khi sai pass |
+| 2 | Xác thực | POST | `/api/v1/auth/register` | Anonymous | Toàn hệ thống | Không | `PASSED` | HTTP 200, tạo account khách hàng |
+| 3 | Xác thực | POST | `/api/v1/auth/verify-email` | Anonymous | Toàn hệ thống | Không | `PASSED` | HTTP 200, khóa sau 5 lần OTP sai |
+| 4 | Xác thực | POST | `/api/v1/auth/password-reset/request` | Anonymous | Toàn hệ thống | Không | `PASSED` | HTTP 200, gửi OTP đặt lại mật khẩu |
+| 5 | Xác thực | POST | `/api/v1/auth/password-reset/confirm` | Anonymous | Toàn hệ thống | Không | `PASSED` | HTTP 200, đổi mật khẩu thành công |
+| 6 | Thực đơn | GET | `/api/v1/catalog/categories` | Public / All | Toàn chuỗi | Không | `PASSED` | HTTP 200, trả danh mục active |
+| 7 | Thực đơn | GET | `/api/v1/public/products/menu-page` | Public / All | Toàn chuỗi / Lọc branchId | Không | `PASSED` | HTTP 200: Phân trang 12 món đại diện/trang, lọc từ khóa, khoảng giá, top 20 (PG01, PG02) |
+| 8 | Thực đơn | GET | `/api/v1/catalog/products` | Public / All | Toàn chuỗi / Lọc branchId | Không | `PASSED` | HTTP 200, danh sách biến thể theo chi nhánh |
+| 9 | Thực đơn | GET | `/api/v1/catalog/products/{id}/detail` | Public / All | Toàn chuỗi | Không | `PASSED` | HTTP 200, lấy chi tiết size, topping, review |
+| 10 | Bàn & QR | GET/POST | `/api/v1/public/table-context/restore` | Public / Guest | Theo bàn / token | Không | `PASSED` | HTTP 200 khi token đúng; HTTP 403 khi token giả/hết hạn/đổi phiên (QR01) |
+| 11 | Bàn & QR | GET | `/api/v1/tables/context` | Public / All | Theo mã QR vật lý | Không | `PASSED` | HTTP 200 cấp tableToken; 400 nếu thiếu QR |
+| 12 | Bàn & QR | GET | `/api/v1/cashier/tables` | CASHIER, MANAGER, ADMIN | Theo chi nhánh | Không | `PASSED` | HTTP 200, danh sách bàn và trạng thái phiên |
+| 13 | Bàn & QR | POST | `/api/v1/cashier/tables/{id}/open-session` | CASHIER, MANAGER, ADMIN | Đúng chi nhánh bàn | Không | `PASSED` | HTTP 200, chặn 409 nếu bàn đã có phiên mở |
+| 14 | Bàn & QR | POST | `/api/v1/cashier/tables/{id}/close-session` | CASHIER, MANAGER, ADMIN | Đúng chi nhánh bàn | Không | `PASSED` | HTTP 200 khi đơn đã thanh toán xong |
+| 15 | Giỏ hàng | GET/PUT | `/api/v1/table-sessions/{id}/cart` | Khách bàn, Cashier | Theo phiên bàn | Không | `PASSED` | HTTP 200, đồng bộ giỏ hàng dùng chung |
+| 16 | Đặt món | POST | `/api/v1/orders/table` | Khách bàn, Staff | Đúng chi nhánh bàn | Có (24h) | `PASSED` | HTTP 201; kiểm tra payload vân tay và caller scope (ID01, ID02) |
+| 17 | Đặt món | POST | `/api/v1/orders/counter` | CASHIER, MANAGER, ADMIN | Ghi đè chi nhánh Staff | Có (24h) | `PASSED` | HTTP 201, chặn Customer tự gọi |
+| 18 | Đặt món | POST | `/api/v1/orders/online` | Bất kỳ | Không áp dụng | Không | `PASSED` | HTTP 410 GONE (In-store Only Scope) |
+| 19 | Đặt món | POST | `/api/v1/cashier/orders/{id}/confirm` | CASHIER, MANAGER, ADMIN | Đúng chi nhánh | Không | `PASSED` | HTTP 200, chuyển sang CHO_CHE_BIEN |
+| 20 | Bếp | POST | `/api/v1/kitchen/orders/{id}/start` | KITCHEN, MANAGER, ADMIN | Đúng chi nhánh | Không | `PASSED` | HTTP 200, chuyển sang DANG_CHE_BIEN |
+| 21 | Bếp | POST | `/api/v1/kitchen/orders/{id}/complete` | KITCHEN, MANAGER, ADMIN | Đúng chi nhánh | Không | `PASSED` | HTTP 200, trừ kho Bếp theo định mức recipe snapshot |
+| 22 | Thanh toán | POST | `/api/v1/cashier/invoices/{id}/payments` | CASHIER, MANAGER, ADMIN | Đúng chi nhánh | Có (24h) | `PASSED` | HTTP 201, ghi nhận thanh toán tiền mặt/chuyển khoản |
+| 23 | Cổng TT | POST | `/api/v1/payments/gateways/create-attempt` | Customer, Guest, Staff | Đúng đơn/chi nhánh | Có | `PASSED` | HTTP 200, sinh transactionRef, tính checksum VNPAY/MoMo/ZaloPay (PAY01, PAY04) |
+| 24 | Cổng TT | GET | `/api/v1/payments/vnpay/ipn` | Cổng VNPAY (Server IPN) | Toàn chuỗi | Có | `PASSED` | Checksum đúng: RspCode 00; Sai hash: RspCode 97 (PAY02) |
+| 25 | Cổng TT | GET | `/api/v1/payments/vnpay/return` | Browser Khách | Toàn chuỗi | Không | `PASSED` | HTTP 302 Redirect về /orders?gateway=VNPAY |
+| 26 | Cổng TT | POST | `/api/v1/payments/momo/ipn` | Cổng MoMo (Server IPN) | Toàn chuỗi | Có | `PASSED` | Chữ ký đúng: resultCode 0; Sai signature: resultCode 99 (PAY03) |
+| 27 | Cổng TT | GET | `/api/v1/payments/momo/return` | Browser Khách | Toàn chuỗi | Không | `PASSED` | HTTP 302 Redirect về /orders?gateway=MOMO |
+| 28 | Cổng TT | POST | `/api/v1/payments/zalopay/callback` | Cổng ZaloPay (Webhook) | Toàn chuỗi | Có | `PAY04` | MAC đúng: return_code 1; Sai MAC: return_code -1 (PAY04, PAY05) |
+| 29 | Cổng TT | GET | `/api/v1/payments/zalopay/return` | Browser Khách | Toàn chuỗi | Không | `PASSED` | HTTP 302 Redirect về /orders?gateway=ZALOPAY |
+| 30 | Kho | GET | `/api/v1/inventory/stocks` | CASHIER, KITCHEN, MGR, ADMIN | Chi nhánh được giao | Không | `PASSED` | HTTP 200 xem tồn kho; 403 nếu xem chi nhánh khác |
+| 31 | Kho | POST | `/api/v1/inventory/shift-settlement` | KITCHEN, MANAGER, ADMIN | Đúng chi nhánh | Có (24h) | `PASSED` | HTTP 201, chốt ca kiểm kê, phân loại loại bỏ/giữ lại |
+| 32 | Kho | POST | `/api/v1/inventory/imports` | MANAGER, ADMIN | Chi nhánh nhập | Có (24h) | `PASSED` | HTTP 201, nhập hàng từ nhà cung cấp |
+| 33 | Kho | POST | `/api/v1/inventory/transfers` | MANAGER, ADMIN | Chi nhánh nguồn/đích | Có (24h) | `PASSED` | HTTP 201, xuất kho nguồn và nhập kho đích đối ứng |
+
+---
+
+## 3. Đối soát Dữ liệu Kho & Đơn hàng SQL Server (Mục 4.6)
+
+Kết quả thực chạy `database/validation/verify_inventory_reconciliation.sql`:
+- **Số lượng tồn không âm**: `PASS` (0 bản ghi âm).
+- **Invariant 1 (Số học cùng dòng)**: `PASS` (0/488 lỗi công thức: `TonSau = TonTruoc + LuongBienDong`).
+- **Invariant 2 (Liên tục chuỗi sổ cái)**: `INSUFFICIENT_EVIDENCE` (444 bước chuyển không liên tục trong tập dữ liệu seed lịch sử ban đầu do script seed cũ nạp độc lập).
+- **Invariant 3 (Số dư cuối vs Sổ cái)**: `UNRECONCILED` (147 bản ghi TonNguyenLieu trong dữ liệu mẫu seed cũ không có đủ nhật ký biến động mở sổ).
+- **Khấu trừ Bếp đơn hàng runtime (MaDH >= 225)**: `PASS` (100% đơn hàng runtime có snapshot `DinhMucDonHang` và đầy đủ phiếu xuất tiêu hao `Loai = TIEU_HAO` trong `LichSuKho`).

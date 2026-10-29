@@ -95,16 +95,17 @@ public class OrderService {
         boolean isStaffOfBranch = actor != null && (actor.hasRole(Role.CASHIER) || actor.hasRole(Role.ADMIN) || actor.hasRole(Role.MANAGER))
                 && actor.canAccessBranch(table.getBranch() != null ? table.getBranch().getId() : null);
 
-        // V4-01: Kiểm tra quyền cơ bản trước khi xử lý (QR capability token, staff hoặc session token)
+        // V4-01 & Yêu cầu 5: Kiểm tra quyền bắt buộc phải có QR capability token, staff hoặc session token hợp lệ
         boolean hasValidQr = request.getTableToken() != null && guestAccessService.validateTableQrCapabilityToken(request.getTableToken(), table.getId());
         boolean hasValidSession = false;
         if (table.getActiveSessionId() != null) {
             TableSession activeSession = sessionRepository.findById(table.getActiveSessionId()).orElse(null);
-            if (activeSession != null) {
+            if (activeSession != null && activeSession.getStatus() == TableSessionStatus.OPEN) {
+                boolean hasSessionToken = request.getTableToken() != null && guestAccessService.validateTableToken(request.getTableToken())
+                        .map(access -> access.getSession() != null && activeSession.getId().equals(access.getSession().getId()))
+                        .orElse(false);
                 boolean isSessionGuest = actor != null && actor.getSessionId() != null && actor.getSessionId().equals(activeSession.getId());
-                boolean isSessionOpener = actor != null && actor.isAuthenticated() && activeSession.getOpenedBy() != null
-                        && activeSession.getOpenedBy().getId().equals(actor.getAccountId());
-                hasValidSession = isSessionGuest || isSessionOpener;
+                hasValidSession = hasSessionToken || isSessionGuest;
             }
         }
 
@@ -112,32 +113,34 @@ public class OrderService {
             throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Cần quét mã QR hợp lệ của bàn để đặt món");
         }
 
-        // V4-12: Kiểm tra Idempotency replay TRƯỚC KHI kiểm tra phiên bị đổi (khi client retry cùng request)
-        Long actorId = actor != null ? actor.getAccountId() : null;
-        String voucherStr = (request.getVoucherCode() != null) ? request.getVoucherCode().trim().toUpperCase() : "";
-        String payloadJson = "tableId=" + request.getTableId() + ";session=" + request.getExpectedSessionId() + ";voucher=" + voucherStr + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
-        String fingerprint = idempotencyService.computeFingerprint(payloadJson, actorId);
+        // V4-12 & Mục 4.2: Kiểm tra Idempotency replay TRƯỚC KHI kiểm tra phiên bị đổi (khi client retry cùng request)
+        String callerScope = resolveCallerScope(actor, table.getId());
+        String payloadJson = buildCanonicalTablePayload(request);
+        String fingerprint = idempotencyService.computeFingerprint(payloadJson, callerScope);
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             var existingOrderId = idempotencyService.checkExisting("CREATE_ORDER", idempotencyKey, fingerprint);
             if (existingOrderId.isPresent()) {
                 Order order = orderRepository.findById(existingOrderId.get()).orElse(null);
-                if (order != null && order.getSession() != null && order.getSession().getTable() != null
-                        && order.getSession().getTable().getId().equals(table.getId())) {
+                if (order != null) {
+                    // Kiểm tra thẩm quyền truy cập đối với tài nguyên cũ (Mục 4.2)
+                    boolean isStaffAuthorized = isStaffOfBranch;
+                    boolean isUserAuthorized = actor != null && actor.isAuthenticated() && order.getAccount() != null
+                            && order.getAccount().getId().equals(actor.getAccountId());
+                    boolean isGuestSessionAuthorized = order.getSession() != null && actor != null && actor.getSessionId() != null
+                            && actor.getSessionId().equals(order.getSession().getId());
+                    boolean isGuestTableSessionAuthorized = order.getSession() != null && table.getActiveSessionId() != null
+                            && order.getSession().getId().equals(table.getActiveSessionId())
+                            && order.getSession().getTable() != null
+                            && order.getSession().getTable().getId().equals(table.getId());
+
+                    if (!isStaffAuthorized && !isUserAuthorized && !isGuestSessionAuthorized && !isGuestTableSessionAuthorized) {
+                        throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền truy cập đơn hàng của phiên này");
+                    }
+
                     Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
                     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
                     return mapToOrderResponse(order, invoice, items, null, null);
-                }
-            } else {
-                var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
-                if (existing.isPresent()) {
-                    Order order = existing.get();
-                    if (order.getSession() != null && order.getSession().getTable() != null
-                            && order.getSession().getTable().getId().equals(table.getId())) {
-                        Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
-                        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-                        return mapToOrderResponse(order, invoice, items, null, null);
-                    }
                 }
             }
         }
@@ -272,24 +275,18 @@ public class OrderService {
             throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền tạo đơn tại chi nhánh này");
         }
 
-        Long actorId = actor.getAccountId();
-        String voucherStr = (request.getVoucherCode() != null) ? request.getVoucherCode().trim().toUpperCase() : "";
-        String payloadJson = "branchId=" + targetBranchId + ";note=" + request.getNote() + ";voucher=" + voucherStr + ";items=" + (request.getItems() != null ? request.getItems().toString() : "");
-        String fingerprint = idempotencyService.computeFingerprint(payloadJson, actorId);
+        String callerScope = "USER:" + (actor.getAccountId() != null ? actor.getAccountId() : 0L);
+        String payloadJson = buildCanonicalCounterPayload(request, targetBranchId);
+        String fingerprint = idempotencyService.computeFingerprint(payloadJson, callerScope);
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             var existingOrderId = idempotencyService.checkExisting("CREATE_ORDER", idempotencyKey, fingerprint);
             if (existingOrderId.isPresent()) {
                 Order order = orderRepository.findById(existingOrderId.get()).orElse(null);
                 if (order != null) {
-                    Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
-                    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-                    return mapToOrderResponse(order, invoice, items, null, null);
-                }
-            } else {
-                var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
-                if (existing.isPresent()) {
-                    Order order = existing.get();
+                    if (!actor.canAccessBranch(order.getBranch().getId())) {
+                        throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Không có quyền truy cập đơn hàng của chi nhánh khác");
+                    }
                     Invoice invoice = invoiceRepository.findByOrderId(order.getId()).orElse(null);
                     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
                     return mapToOrderResponse(order, invoice, items, null, null);
@@ -1130,5 +1127,58 @@ public class OrderService {
     @Transactional(readOnly = true)
     public OrderDto.OrderWorkSummaryResponse getOrderWorkSummary() {
         return getOrderWorkSummary(null);
+    }
+
+    private String canonicalizeCartItems(List<CartDto.CartItemRequest> items) {
+        if (items == null || items.isEmpty()) return "[]";
+        List<String> formatted = new java.util.ArrayList<>();
+        for (CartDto.CartItemRequest item : items) {
+            if (item == null) continue;
+            Long pid = item.getProductId() != null ? item.getProductId() : 0L;
+            int qty = item.getQuantity() != null ? item.getQuantity() : 0;
+            String note = item.getNote() != null ? item.getNote().trim() : "";
+            List<Long> toppings = item.getToppingIds() != null
+                    ? item.getToppingIds().stream().filter(java.util.Objects::nonNull).sorted().toList()
+                    : java.util.Collections.emptyList();
+            formatted.add(pid + ":" + qty + ":" + note + ":" + toppings);
+        }
+        java.util.Collections.sort(formatted);
+        return String.join(";", formatted);
+    }
+
+    private String buildCanonicalTablePayload(OrderDto.CreateTableOrderRequest request) {
+        String voucherStr = (request.getVoucherCode() != null) ? request.getVoucherCode().trim().toUpperCase() : "";
+        String noteStr = (request.getNote() != null) ? request.getNote().trim() : "";
+        String itemsStr = canonicalizeCartItems(request.getItems());
+        String remainingStr = canonicalizeCartItems(request.getRemainingCartItems());
+        return "tableId=" + request.getTableId() +
+                ";session=" + request.getExpectedSessionId() +
+                ";note=" + noteStr +
+                ";voucher=" + voucherStr +
+                ";items=" + itemsStr +
+                ";remaining=" + remainingStr;
+    }
+
+    private String buildCanonicalCounterPayload(OrderDto.CreateCounterOrderRequest request, Long targetBranchId) {
+        String voucherStr = (request.getVoucherCode() != null) ? request.getVoucherCode().trim().toUpperCase() : "";
+        String noteStr = (request.getNote() != null) ? request.getNote().trim() : "";
+        String itemsStr = canonicalizeCartItems(request.getItems());
+        return "branchId=" + targetBranchId +
+                ";note=" + noteStr +
+                ";voucher=" + voucherStr +
+                ";items=" + itemsStr;
+    }
+
+    private String resolveCallerScope(CurrentActor actor, Long tableId) {
+        if (actor != null && actor.isAuthenticated() && actor.getAccountId() != null) {
+            return "USER:" + actor.getAccountId();
+        }
+        if (actor != null && actor.getSessionId() != null) {
+            return "SESSION:" + actor.getSessionId();
+        }
+        if (tableId != null) {
+            return "TABLE:" + tableId;
+        }
+        return "GUEST";
     }
 }

@@ -86,10 +86,13 @@ public class CartController {
         var session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.TABLE_SESSION_CLOSED, "Không tìm thấy phiên bàn"));
 
+        if (session.getStatus() != vn.edu.ute.milktea.entity.table.TableSessionStatus.OPEN) {
+            throw BusinessException.badRequest(ErrorCode.TABLE_SESSION_CLOSED, "Phiên bàn đã kết thúc");
+        }
+
         if (actor.hasRole(vn.edu.ute.milktea.entity.account.Role.CUSTOMER)) {
-            boolean isOpener = session.getOpenedBy() != null && session.getOpenedBy().getId().equals(actor.getAccountId());
             boolean hasSessionToken = actor.getSessionId() != null && actor.getSessionId().equals(sessionId);
-            if (!isOpener && !hasSessionToken) {
+            if (!hasSessionToken) {
                 throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED, "Bạn không có quyền truy cập giỏ hàng của phiên bàn này");
             }
             return sessionId;

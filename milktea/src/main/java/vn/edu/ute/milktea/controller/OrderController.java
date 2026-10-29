@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.ute.milktea.common.ApiResponse;
+import vn.edu.ute.milktea.common.BusinessException;
 import vn.edu.ute.milktea.common.ErrorCode;
 import vn.edu.ute.milktea.common.ErrorResponse;
 import vn.edu.ute.milktea.dto.OrderDto;
@@ -28,7 +29,7 @@ public class OrderController {
             @RequestHeader(value = "X-Idempotency-Key", required = false) String xIdempotencyKey,
             HttpServletRequest request) {
 
-        String key = (idempotencyKey != null && !idempotencyKey.isBlank()) ? idempotencyKey : xIdempotencyKey;
+        String key = resolveIdempotencyKey(idempotencyKey, xIdempotencyKey);
         CurrentActor actor = (CurrentActor) request.getAttribute(JwtAuthenticationFilter.CURRENT_ACTOR_ATTR);
         if (requestBody.getTableToken() == null || requestBody.getTableToken().isBlank()) {
             String token = request.getHeader("X-Table-Session-Token");
@@ -48,9 +49,19 @@ public class OrderController {
             @RequestHeader(value = "X-Idempotency-Key", required = false) String xIdempotencyKey,
             @AuthenticationPrincipal CurrentActor actor) {
 
-        String key = (idempotencyKey != null && !idempotencyKey.isBlank()) ? idempotencyKey : xIdempotencyKey;
+        String key = resolveIdempotencyKey(idempotencyKey, xIdempotencyKey);
         OrderDto.OrderResponse response = orderService.createCounterOrder(requestBody, actor, key);
         return ResponseEntity.status(201).body(ApiResponse.ok(response));
+    }
+
+    private String resolveIdempotencyKey(String idempotencyKey, String xIdempotencyKey) {
+        boolean hasStandard = idempotencyKey != null && !idempotencyKey.isBlank();
+        boolean hasAlias = xIdempotencyKey != null && !xIdempotencyKey.isBlank();
+        if (hasStandard && hasAlias && !idempotencyKey.trim().equals(xIdempotencyKey.trim())) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "Giá trị header Idempotency-Key và X-Idempotency-Key không đồng nhất");
+        }
+        return hasStandard ? idempotencyKey.trim() : (hasAlias ? xIdempotencyKey.trim() : null);
     }
 
     @PostMapping({ "/orders/online", "/customer/orders/online" })

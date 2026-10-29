@@ -39,7 +39,7 @@ const OrdersApp = (() => {
         }
         if (o.paid) {
             const method = (o.paymentMethod || '').toUpperCase();
-            if (method === 'BANK_TRANSFER' || method === 'CK' || method === 'TRANSFER' || o.transferNotified) {
+            if (method === 'BANK_TRANSFER' || method === 'CK' || method === 'TRANSFER' || method === 'VNPAY' || method === 'MOMO' || method === 'ZALOPAY' || o.transferNotified) {
                 return { label: 'Đã thu tiền - CK', css: 'payment-done payment-bank' };
             }
             return { label: 'Đã thu tiền - TM', css: 'payment-done payment-cash' };
@@ -47,7 +47,7 @@ const OrdersApp = (() => {
         if (o.status === 'DA_HUY') return { label: 'Không cần thu tiền', css: 'payment-muted' };
         if (o.transferNotified) return { label: 'Khách báo đã CK', css: 'payment-wait' };
         if (o.paymentRequestMethod === 'CASH') return { label: 'Chờ thu · Tiền mặt', css: 'payment-wait' };
-        if (o.paymentRequestMethod === 'BANK_TRANSFER') return { label: 'Chờ thu · Chuyển khoản', css: 'payment-wait' };
+        if (o.paymentRequestMethod === 'BANK_TRANSFER' || o.paymentRequestMethod === 'VNPAY' || o.paymentRequestMethod === 'MOMO' || o.paymentRequestMethod === 'ZALOPAY') return { label: 'Chờ thu · Chuyển khoản', css: 'payment-wait' };
         return { label: 'Chưa thu tiền', css: 'payment-wait' };
     }
 
@@ -94,13 +94,13 @@ const OrdersApp = (() => {
             let matchPayment = true;
             if (currentTab === 'all' && paymentStatus) {
                 const method = (o.paymentMethod || '').toUpperCase();
-                const isBank = (method === 'BANK_TRANSFER' || method === 'CK' || method === 'TRANSFER' || o.transferNotified);
+                const isOnline = (method === 'BANK_TRANSFER' || method === 'CK' || method === 'TRANSFER' || method === 'VNPAY' || method === 'MOMO' || method === 'ZALOPAY' || o.transferNotified);
                 if (paymentStatus === 'PAID') {
                     matchPayment = o.paid;
                 } else if (paymentStatus === 'PAID_TM' || paymentStatus === 'PAID_CASH') {
-                    matchPayment = o.paid && !isBank;
+                    matchPayment = o.paid && !isOnline;
                 } else if (paymentStatus === 'PAID_CK' || paymentStatus === 'PAID_TRANSFER') {
-                    matchPayment = o.paid && isBank;
+                    matchPayment = o.paid && isOnline;
                 } else if (paymentStatus === 'UNPAID') {
                     matchPayment = !o.paid && o.status !== 'DA_HUY';
                 } else if (paymentStatus === 'TRANSFER_PENDING') {
@@ -140,24 +140,33 @@ const OrdersApp = (() => {
             const payment = paymentState(o);
 
             if (currentTab === 'refund') {
-                let refundCell = '';
-                const isBank = o.paymentMethod === 'BANK_TRANSFER';
+                let refundStatusBadge = '';
+                let quickRefundAction = '';
+                const isBank = (o.paymentMethod || '').toUpperCase() === 'BANK_TRANSFER'
+                    || (o.paymentMethod || '').toUpperCase() === 'CK'
+                    || (o.paymentMethod || '').toUpperCase() === 'TRANSFER';
+
                 if (o.refund && o.refund.status === 'DA_HOAN') {
-                    refundCell = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Hoàn tất</span>';
+                    refundStatusBadge = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Hoàn tất</span>';
                 } else if (o.refund && o.refund.status === 'CHO_DUYET') {
-                    refundCell = '<span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Chờ xác nhận</span>';
+                    refundStatusBadge = '<span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Chờ duyệt</span>';
                 } else if (o.refund && o.refund.status === 'TU_CHOI') {
-                    refundCell = `<div class="d-flex flex-column gap-1"><span class="badge bg-danger">Bị từ chối</span>${button('requestBankRefund', o.orderId, 'Gửi lại yêu cầu', 'outline-warning')}</div>`;
+                    refundStatusBadge = '<span class="badge bg-danger">Bị từ chối</span>';
+                    quickRefundAction = button('requestBankRefund', o.orderId, 'Gửi lại yêu cầu', 'outline-warning');
                 } else {
+                    refundStatusBadge = '<span class="badge bg-secondary">Cần xử lý hoàn</span>';
                     if (isBank) {
-                        refundCell = button('requestBankRefund', o.orderId, 'Gửi yêu cầu', 'warning');
+                        quickRefundAction = button('requestBankRefund', o.orderId, 'Gửi yêu cầu', 'warning');
                     } else {
-                        refundCell = button('refundCash', o.orderId, 'Hoàn tiền mặt', 'warning');
+                        quickRefundAction = button('refundCash', o.orderId, 'Hoàn tiền mặt', 'warning');
                     }
                 }
 
                 detailActions.set(String(o.orderId), button('receipt', o.orderId, 'Xem hóa đơn'));
-                const actionCell = `<button title="Xem chi tiết đơn" aria-label="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn d-inline-flex align-items-center justify-content-center gap-1 text-nowrap" data-action="details" data-id="${o.orderId}"><i class="bi bi-receipt"></i><span>Chi tiết</span></button>`;
+                const actionCell = quickRefundAction
+                    ? `<div class="d-flex justify-content-center align-items-center">${quickRefundAction}</div>`
+                    : `<span class="text-muted small">—</span>`;
+                const detailCell = `<button title="Xem chi tiết đơn" aria-label="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn d-inline-flex align-items-center justify-content-center gap-1 text-nowrap" data-action="details" data-id="${o.orderId}"><i class="bi bi-receipt"></i><span>Chi tiết</span></button>`;
 
                 return `<tr>
                     <td>
@@ -167,11 +176,12 @@ const OrdersApp = (() => {
                         <small class="d-block text-muted mt-1">${e(o.tableName || (o.staffCreated ? 'Quầy thu ngân' : 'Quầy / mang về'))}</small>
                     </td>
                     <td class="text-end fw-semibold text-nowrap">${MilkTeaApi.formatVND(o.totalAmount)}</td>
-                    <td>${refundCell}</td>
+                    <td>${refundStatusBadge}</td>
                     <td>
                         <span class="payment-pill ${payment.css}">${payment.label}</span>
                     </td>
                     <td class="text-center">${actionCell}</td>
+                    <td class="text-center">${detailCell}</td>
                 </tr>`;
             }
 
@@ -186,34 +196,47 @@ const OrdersApp = (() => {
                     quickAction = button('approveCancel', cancel.id, 'Duyệt hủy', 'danger');
                 } else if (o.status === 'CHO_XAC_NHAN' && !o.staffCreated) {
                     actions += button('confirm', o.orderId, 'Xác nhận đơn', 'primary');
-                    if (currentTab === 'confirm') {
+                    if (currentTab === 'confirm' || currentTab === 'all') {
                         quickAction = button('confirm', o.orderId, 'Xác nhận đơn', 'primary');
                     }
                 }
-                if (!o.cancellationPending && ['CHO_XAC_NHAN', 'CHO_CHE_BIEN'].includes(o.status)
-                ) {
+                if (!o.cancellationPending && ['CHO_XAC_NHAN', 'CHO_CHE_BIEN'].includes(o.status)) {
                     actions += button('cancel', o.orderId, 'Hủy đơn', 'outline-danger');
                 }
 
                 if (currentTab === 'transfer' && o.transferNotified && !o.paid && o.status !== 'DA_HUY') {
-                    quickAction = button('confirmTransfer', o.orderId, 'Đã thanh toán', 'success');
-                } else if (o.transferNotified && !o.paid && o.invoiceStatus === 'HIEU_LUC') {
-                    actions += button('confirmTransfer', o.orderId, 'Đã thanh toán (CK)', 'success');
+                    quickAction = button('confirmTransfer', o.orderId, 'Xác nhận CK', 'success');
+                } else if (o.transferNotified && !o.paid) {
+                    actions += button('confirmTransfer', o.orderId, 'Đã nhận CK', 'success');
+                    if (!quickAction) {
+                        quickAction = button('confirmTransfer', o.orderId, 'Xác nhận CK', 'success');
+                    }
                 } else if (!o.paid && o.status !== 'DA_HUY') {
                     actions += button('staffPayment', o.orderId, 'Đã thanh toán', 'success');
+                    if (!quickAction && (currentTab === 'all' || currentTab === 'cooking')) {
+                        quickAction = button('staffPayment', o.orderId, 'Đã thanh toán', 'success');
+                    }
                 }
             } else {
-                if (o.status !== 'DA_HUY' && !o.paid) actions += button('pay', o.orderId, 'Thanh toán', 'primary');
+                if (o.status !== 'DA_HUY' && !o.paid) {
+                    actions += button('pay', o.orderId, 'Thanh toán', 'primary');
+                    quickAction = button('pay', o.orderId, 'Thanh toán', 'primary');
+                }
                 if (!o.cancellationPending && ['CHO_THANH_TOAN', 'CHO_XAC_NHAN', 'CHO_CHE_BIEN'].includes(o.status)) {
                     actions += button('cancel', o.orderId, 'Yêu cầu hủy', 'outline-danger');
+                    if (!quickAction) {
+                        quickAction = button('cancel', o.orderId, 'Yêu cầu hủy', 'outline-danger');
+                    }
                 }
             }
 
             detailActions.set(String(o.orderId), actions);
 
             const actionCell = quickAction
-                ? `<div class="d-flex justify-content-center align-items-center gap-1">${quickAction}<button title="Chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn d-inline-flex align-items-center justify-content-center gap-1" data-action="details" data-id="${o.orderId}"><i class="bi bi-receipt"></i><span>Chi tiết</span></button></div>`
-                : `<button title="Xem chi tiết đơn" aria-label="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn d-inline-flex align-items-center justify-content-center gap-1 text-nowrap" data-action="details" data-id="${o.orderId}"><i class="bi bi-receipt"></i><span>Chi tiết</span></button>`;
+                ? `<div class="d-flex justify-content-center align-items-center">${quickAction}</div>`
+                : `<span class="text-muted small">—</span>`;
+
+            const detailCell = `<button title="Xem chi tiết đơn" aria-label="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn d-inline-flex align-items-center justify-content-center gap-1 text-nowrap" data-action="details" data-id="${o.orderId}"><i class="bi bi-receipt"></i><span>Chi tiết</span></button>`;
 
             let statusBadge = '';
             if (currentTab === 'cooking') {
@@ -241,6 +264,7 @@ const OrdersApp = (() => {
                     <span class="payment-pill ${payment.css}">${payment.label}</span>
                 </td>
                 <td class="text-center">${actionCell}</td>
+                <td class="text-center">${detailCell}</td>
             </tr>`;
         }).join('');
 
@@ -259,10 +283,11 @@ const OrdersApp = (() => {
                         <th class="text-end">Tổng tiền</th>
                         <th>${thirdColHeader}</th>
                         <th>Tình trạng thanh toán</th>
+                        <th class="text-center">Thao tác</th>
                         <th class="text-center">Chi tiết</th>
                     </tr>
                 </thead>
-                <tbody>${rows || '<tr><td colspan="5" class="text-center py-5 text-muted">Không có đơn hàng phù hợp trong mục này.</td></tr>'}</tbody>
+                <tbody>${rows || '<tr><td colspan="6" class="text-center py-5 text-muted">Không có đơn hàng phù hợp trong mục này.</td></tr>'}</tbody>
             </table>
         </div>`;
 
@@ -376,10 +401,10 @@ const OrdersApp = (() => {
     async function action(name, id) {
         const o = orders.find(o => String(o.orderId) === String(id));
         if (name === 'staffPayment') {
-            modal('Xác nhận thanh toán ' + MilkTeaReceipts.code(id),
-                `<p class="text-muted">Chỉ xác nhận sau khi đã nhận đủ tiền hoặc kiểm tra giao dịch chuyển khoản.</p>
+            modal('Thanh toán ' + MilkTeaReceipts.code(id),
+                `<p class="text-muted">Chỉ xác nhận sau khi thu ngân đã nhận đủ tiền mặt hoặc kiểm tra giao dịch chuyển khoản.</p>
                  <div class="payment-confirm-total">${MilkTeaApi.formatVND(o.totalAmount)}</div>
-                 <p class="mt-3">${o.paymentRequestMethod ? 'Khách chọn ' + (o.paymentRequestMethod === 'CASH' ? 'tiền mặt' : 'chuyển khoản') + '.' : 'Chọn phương thức đã nhận tiền.'}</p>`,
+                 <p class="mt-3">${o.paymentRequestMethod ? 'Khách chọn ' + (o.paymentRequestMethod === 'CASH' ? 'tiền mặt' : 'chuyển khoản') + '.' : 'Chọn phương thức đã nhận tiền:'}</p>`,
                 button('cash', id, 'Đã nhận tiền mặt', 'success') + button('bank', id, 'Đã nhận chuyển khoản', 'primary'));
             return;
         }
@@ -389,15 +414,11 @@ const OrdersApp = (() => {
             try {
                 await MilkTeaApi.post(`/api/v1/cashier/orders/${id}/confirm-transfer`);
                 MilkTeaApi.showToast('Đã xác nhận thanh toán chuyển khoản thành công.', 'success');
-                o.paid = true;
-                o.transferNotified = false;
                 const actionModal = document.getElementById('orderActionModal');
                 if (actionModal) bootstrap.Modal.getInstance(actionModal)?.hide();
-                render();
-                window.PendingOrders?.refresh();
                 await load();
             } catch (err) {
-                MilkTeaApi.showToast(err.message || 'Lỗi khi xác nhận thanh toán', 'error');
+                MilkTeaApi.showToast(err.message || 'Lỗi khi xác nhận chuyển khoản', 'error');
             }
             return;
         }
@@ -512,12 +533,10 @@ const OrdersApp = (() => {
         if (name === 'requestBank') {
             try {
                 const shop = document.getElementById('receiptShop') || {};
-                const bank = (shop.dataset && shop.dataset.bank) || 'Vietcombank',
-                    account = (shop.dataset && shop.dataset.account) || '',
-                    holder = (shop.dataset && shop.dataset.holder) || '';
-                const img = account
-                    ? `<img alt="QR chuyển khoản" class="d-block mx-auto my-3 img-fluid border rounded p-2" style="max-width:240px" src="https://img.vietqr.io/image/${encodeURIComponent(bank)}-${encodeURIComponent(account)}-compact2.png?amount=${encodeURIComponent(o.totalAmount)}&addInfo=DH${id}&accountName=${encodeURIComponent(holder)}">`
-                    : '<p class="text-muted">Vui lòng liên hệ thu ngân để nhận thông tin chuyển khoản.</p>';
+                const bank = (shop.dataset && shop.dataset.bank) || 'MBBank',
+                    account = (shop.dataset && shop.dataset.account) || '08881706888',
+                    holder = (shop.dataset && shop.dataset.holder) || 'DANG NGUYEN MINH KHOA';
+                const img = `<img alt="QR chuyển khoản" class="d-block mx-auto my-3 img-fluid border rounded p-2" style="max-width:240px" src="https://img.vietqr.io/image/${encodeURIComponent(bank)}-${encodeURIComponent(account)}-compact2.png?amount=${encodeURIComponent(o.totalAmount)}&addInfo=DH${id}&accountName=${encodeURIComponent(holder)}">`;
                 modal('Chuyển khoản ' + MilkTeaReceipts.code(id),
                     `<p>Số tiền: <b>${MilkTeaApi.formatVND(o.totalAmount)}</b></p>
                      <p class="mb-1"><b>Ngân hàng:</b> ${e(bank)}</p>
@@ -537,11 +556,15 @@ const OrdersApp = (() => {
         document.querySelectorAll('[data-action]').forEach(b => b.disabled = true);
         try {
             if (name === 'cash' || name === 'bank') {
-                if (!confirm('Xác nhận đã nhận đủ ' + MilkTeaApi.formatVND(o.totalAmount) + ' bằng ' + (name === 'cash' ? 'tiền mặt' : 'chuyển khoản') + '?')) return;
+                const isCash = name === 'cash';
+                if (!confirm('Xác nhận đã nhận đủ ' + MilkTeaApi.formatVND(o.totalAmount) + ' bằng ' + (isCash ? 'tiền mặt' : 'chuyển khoản') + '?')) return;
                 await MilkTeaApi.post(`/api/v1/cashier/orders/${id}/payments`, {
-                    method: name === 'cash' ? 'CASH' : 'BANK_TRANSFER',
-                    reference: 'RECEIPT_' + id
+                    method: isCash ? 'CASH' : 'BANK_TRANSFER',
+                    reference: (isCash ? 'RECEIPT_CASH_' : 'RECEIPT_TRANSFER_') + id
                 });
+                MilkTeaApi.showToast(`Đã ghi nhận thu ${isCash ? 'tiền mặt' : 'chuyển khoản'} thành công.`, 'success');
+                const actionModal = document.getElementById('orderActionModal');
+                if (actionModal) bootstrap.Modal.getInstance(actionModal)?.hide();
                 await load();
             } else if (name === 'confirm') {
                 await MilkTeaApi.post(`/api/v1/cashier/orders/${id}/confirm`);

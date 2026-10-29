@@ -64,4 +64,62 @@ public class TableContextService {
 
         return builder.build();
     }
+
+    @Transactional(readOnly = true)
+    public TableDto.TableContextResponse restoreContext(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            throw BusinessException.unauthorized(ErrorCode.ACCESS_DENIED, "Vui lòng quét mã QR hợp lệ tại bàn để bắt đầu phiên mới.");
+        }
+
+        // 1. Kiểm tra session access token hợp lệ
+        var sessionAccessOpt = guestAccessService.validateTableToken(rawToken);
+        if (sessionAccessOpt.isPresent()) {
+            var access = sessionAccessOpt.get();
+            TableSession session = access.getSession();
+            DiningTable table = session.getTable();
+            if (table == null || !Boolean.TRUE.equals(table.getActive())) {
+                throw BusinessException.badRequest(ErrorCode.TABLE_NOT_FOUND, "Bàn đang ngừng hoạt động");
+            }
+            if (session.getStatus() != TableSessionStatus.OPEN || !session.getId().equals(table.getActiveSessionId())) {
+                throw BusinessException.unauthorized(ErrorCode.TABLE_SESSION_CLOSED, "Phiên bàn đã kết thúc. Vui lòng quét lại mã QR tại bàn.");
+            }
+
+            return TableDto.TableContextResponse.builder()
+                    .tableId(table.getId())
+                    .tableName(table.getName())
+                    .qrCode(table.getQrCode())
+                    .status(table.getStatus())
+                    .branchId(table.getBranch() != null ? table.getBranch().getId() : null)
+                    .branchName(table.getBranch() != null ? table.getBranch().getName() : null)
+                    .sessionId(session.getId())
+                    .sessionStatus(session.getStatus())
+                    .tableToken(rawToken)
+                    .build();
+        }
+
+        // 2. Nếu không phải session token, kiểm tra QR capability token (khi khách đã quét QR nhưng chưa tạo đơn đầu tiên)
+        var tableIdOpt = guestAccessService.validateAndGetTableIdFromQrCapabilityToken(rawToken);
+        if (tableIdOpt.isPresent()) {
+            Long tableId = tableIdOpt.get();
+            DiningTable table = tableRepository.findById(tableId).orElse(null);
+            if (table != null && Boolean.TRUE.equals(table.getActive())) {
+                if (table.getActiveSessionId() == null) {
+                    return TableDto.TableContextResponse.builder()
+                            .tableId(table.getId())
+                            .tableName(table.getName())
+                            .qrCode(table.getQrCode())
+                            .status(table.getStatus())
+                            .branchId(table.getBranch() != null ? table.getBranch().getId() : null)
+                            .branchName(table.getBranch() != null ? table.getBranch().getName() : null)
+                            .sessionId(null)
+                            .sessionStatus(null)
+                            .tableToken(rawToken)
+                            .build();
+                }
+                throw BusinessException.unauthorized(ErrorCode.TABLE_SESSION_CHANGED, "Bàn đã có phiên mới phục vụ khách khác. Vui lòng quét lại mã QR tại bàn.");
+            }
+        }
+
+        throw BusinessException.unauthorized(ErrorCode.ACCESS_DENIED, "Phiên bàn không hợp lệ hoặc đã kết thúc. Vui lòng quét lại mã QR tại bàn.");
+    }
 }

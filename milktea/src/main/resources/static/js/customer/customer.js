@@ -43,76 +43,99 @@ const CustomerApp = (() => {
         localStorage.removeItem(getLocalCartStorageKey());
     }
 
-    // Khởi tạo ngữ cảnh bàn qua mã QR bàn
+    // Khởi tạo ngữ cảnh bàn qua mã QR bàn hoặc khôi phục token phiên
     async function initContext(qrCodeParam) {
         let qr = qrCodeParam;
         const urlParams = new URLSearchParams(window.location.search);
         let isExplicitQrScan = !!urlParams.get('qr');
         if (!qr) qr = urlParams.get('qr');
 
-        // Nếu URL không có, chỉ phục hồi nếu còn table token hợp lệ
-        if (!qr) {
-            const hasActiveToken = !!window.MilkTeaContext?.tableToken || !!sessionStorage.getItem('milktea_table_token');
-            if (hasActiveToken) {
-                const cookies = document.cookie.split(';');
-                for (let c of cookies) {
-                    const parts = c.trim().split('=');
-                    if (parts[0] === 'MILKTEA_TABLE_QR' && parts[1]) qr = decodeURIComponent(parts[1]);
-                }
-                if (!qr) qr = localStorage.getItem('milktea.lastTableQr');
-            } else {
-                localStorage.removeItem('milktea.lastTableQr');
-            }
-        }
-
-        if (qr) {
+        // TRƯỜNG HỢP 1: Khách chủ động quét mã QR mới qua URL (?qr=...)
+        if (isExplicitQrScan && qr) {
             try {
-                let url = '/api/v1/public/table-context?qrCode=' + encodeURIComponent(qr);
-
+                const url = '/api/v1/public/table-context?qrCode=' + encodeURIComponent(qr);
                 const ctx = await MilkTeaApi.get(url);
                 if (ctx) {
-                    window.MilkTeaContext.tableId = ctx.tableId;
-                    window.MilkTeaContext.tableName = ctx.tableName;
-                    window.MilkTeaContext.qrCode = ctx.qrCode;
-                    window.MilkTeaContext.branchId = ctx.branchId;
-                    window.MilkTeaContext.branchName = ctx.branchName;
-                    window.MilkTeaContext.sessionId = ctx.sessionId;
-                    window.MilkTeaContext.sessionStatus = ctx.sessionStatus;
-                    window.MilkTeaContext.tableToken = ctx.tableToken;
-
-                    if (ctx.qrCode && ctx.sessionId) {
-                        localStorage.setItem('milktea.lastTableQr', ctx.qrCode);
-                        if (ctx.tableToken) sessionStorage.setItem('milktea_table_token', ctx.tableToken);
-                    } else if (!isExplicitQrScan) {
-                        localStorage.removeItem('milktea.lastTableQr');
-                        sessionStorage.removeItem('milktea_table_token');
-                    }
-
-                    // Cập nhật nhãn bàn trên navbar nếu đang ẩn
-                    const badgeContainer = document.getElementById('navbarTableBadgeContainer');
-                    const nameEl = document.getElementById('navbarTableName');
-                    if (badgeContainer && nameEl && ctx.tableName) {
-                        const displayName = (ctx.branchName ? ctx.branchName + ' · ' : '') + ctx.tableName;
-                        nameEl.textContent = displayName;
-                        badgeContainer.style.display = 'flex';
-                        badgeContainer.classList.remove('d-none');
-                    }
-
-                    // Kết nối WebSocket nếu có phiên
-                    if (window.MilkTeaContext.sessionId) {
-                        MilkTeaRealtime.connect();
-                        // Nạp giỏ hàng từ server
-                        await loadServerCart();
-                    }
+                    applyContext(ctx);
+                    if (ctx.qrCode) localStorage.setItem('milktea.lastTableQr', ctx.qrCode);
+                    if (ctx.tableToken) sessionStorage.setItem('milktea_table_token', ctx.tableToken);
                 }
             } catch (e) {
-                console.warn('Không thể nạp ngữ cảnh bàn:', e.message);
+                console.warn('Không thể nạp ngữ cảnh bàn từ mã QR:', e.message);
+                clearTableContextState();
+            }
+        }
+        // TRƯỜNG HỢP 2: Khôi phục ngữ cảnh phiên đang có qua token (F5 / chuyển trang)
+        else {
+            const storedToken = sessionStorage.getItem('milktea_table_token') || window.MilkTeaContext?.tableToken;
+            if (storedToken) {
+                try {
+                    // Gửi token lên server để xác minh hợp lệ (phiên còn OPEN, chưa hết hạn / revoked)
+                    const res = await MilkTeaApi.post('/api/v1/public/table-context/restore', { tableToken: storedToken });
+                    if (res) {
+                        applyContext(res);
+                    } else {
+                        throw new Error('Xác minh token thất bại');
+                    }
+                } catch (e) {
+                    console.warn('Token phiên bàn đã hết hạn hoặc không hợp lệ:', e.message);
+                    // Token không hợp lệ -> xóa sạch quyền, không tự động fallback sang QR cache
+                    clearTableContextState();
+                }
+            } else {
+                // Không có token -> trạng thái vãng lai chưa có ngữ cảnh
+                clearTableContextState();
             }
         }
 
         loadLocalCart();
         updateCartBadge();
         setupRealtimeListeners();
+    }
+
+    function applyContext(ctx) {
+        window.MilkTeaContext.tableId = ctx.tableId;
+        window.MilkTeaContext.tableName = ctx.tableName;
+        window.MilkTeaContext.qrCode = ctx.qrCode;
+        window.MilkTeaContext.branchId = ctx.branchId;
+        window.MilkTeaContext.branchName = ctx.branchName;
+        window.MilkTeaContext.sessionId = ctx.sessionId;
+        window.MilkTeaContext.sessionStatus = ctx.sessionStatus;
+        window.MilkTeaContext.tableToken = ctx.tableToken;
+
+        // Cập nhật nhãn bàn trên navbar
+        const badgeContainer = document.getElementById('navbarTableBadgeContainer');
+        const nameEl = document.getElementById('navbarTableName');
+        if (badgeContainer && nameEl && ctx.tableName) {
+            const displayName = (ctx.branchName ? ctx.branchName + ' · ' : '') + ctx.tableName;
+            nameEl.textContent = displayName;
+            badgeContainer.style.display = 'flex';
+            badgeContainer.classList.remove('d-none');
+        }
+
+        if (window.MilkTeaContext.sessionId) {
+            MilkTeaRealtime.connect();
+            loadServerCart();
+        }
+    }
+
+    function clearTableContextState() {
+        sessionStorage.removeItem('milktea_table_token');
+        localStorage.removeItem('milktea.lastTableQr');
+        clearLocalCart();
+        window.MilkTeaContext.tableId = null;
+        window.MilkTeaContext.tableName = null;
+        window.MilkTeaContext.qrCode = null;
+        window.MilkTeaContext.sessionId = null;
+        window.MilkTeaContext.sessionStatus = null;
+        window.MilkTeaContext.tableToken = null;
+
+        const badgeContainer = document.getElementById('navbarTableBadgeContainer');
+        if (badgeContainer) {
+            badgeContainer.style.display = 'none';
+            badgeContainer.classList.add('d-none');
+        }
+        MilkTeaRealtime.disconnect();
     }
 
     function setupRealtimeListeners() {
