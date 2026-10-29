@@ -1155,6 +1155,94 @@
                     justify-content: center;
                 }
             }
+
+            /* Compact branch card: all rules are scoped to this component. */
+            .milk-menu-page .menu-branch-compact {
+                margin-bottom: 28px;
+                padding: 20px 24px;
+                border: 1px solid #e8ded5;
+                border-radius: 16px;
+                background: #fffdfb;
+                box-shadow: 0 3px 14px rgba(96,71,53,.035);
+                color: #604735;
+            }
+            .milk-menu-page .menu-branch-compact-main {
+                display: grid;
+                grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+                align-items: center;
+                gap: 24px;
+            }
+            .milk-menu-page .menu-branch-compact-intro {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                min-width: 0;
+            }
+            .milk-menu-page .menu-branch-compact-icon {
+                width: 54px;
+                height: 54px;
+                flex: 0 0 54px;
+                display: grid;
+                place-items: center;
+                border-radius: 14px;
+                background: #fbeee4;
+                color: #b86b35;
+                font-size: 26px;
+            }
+            .milk-menu-page .menu-branch-compact-intro strong {
+                display: block;
+                font-size: 1rem;
+                font-weight: 700;
+                line-height: 1.5;
+            }
+            .milk-menu-page .menu-branch-compact-intro p {
+                margin: 4px 0 0;
+                color: #786f68;
+                font-size: .85rem;
+                line-height: 1.6;
+            }
+            .milk-menu-page .menu-branch-compact-field { min-width: 0; }
+            .milk-menu-page .menu-branch-compact-field label {
+                display: block;
+                margin-bottom: 6px;
+                font-size: .8rem;
+                font-weight: 600;
+            }
+            .milk-menu-page .menu-branch-compact #menuBranchSelect {
+                width: 100%;
+                min-width: 0;
+                min-height: 46px;
+                border: 1px solid #e8ded5 !important;
+                border-radius: 10px !important;
+                background-color: #fff;
+                color: #604735;
+                font-size: .85rem;
+                padding-left: 14px;
+                text-overflow: ellipsis;
+            }
+            .milk-menu-page .menu-branch-compact #menuBranchSelect:focus {
+                border-color: #b86b35 !important;
+                box-shadow: 0 0 0 3px rgba(184,107,53,.12) !important;
+            }
+            .milk-menu-page .menu-branch-compact-note {
+                display: flex;
+                align-items: baseline;
+                gap: 10px;
+                margin-top: 16px;
+                padding-top: 12px;
+                border-top: 1px solid #eee5dc;
+                font-size: .8rem;
+                line-height: 1.6;
+                color: #786f68;
+            }
+            .milk-menu-page .menu-branch-compact-note i { color: #b86b35; }
+            @media (max-width: 767.98px) {
+                .milk-menu-page .menu-branch-compact { padding: 16px; }
+                .milk-menu-page .menu-branch-compact-main {
+                    grid-template-columns: minmax(0, 1fr);
+                    gap: 16px;
+                }
+            }
         </style>
         <link rel="stylesheet" th:href="@{/css/menu.css}" sec:authorize="!hasAnyRole('ADMIN', 'MANAGER', 'CASHIER', 'KITCHEN', 'CHEF')">
 
@@ -1200,33 +1288,23 @@
             </div>
         </div>
 
-        <!-- View-Only Guidance Banner (NO TABLE) -->
-        <div th:if="${currentTable == null}"
-             class="alert alert-info border-0 shadow-sm rounded-4 d-flex align-items-center mb-4 py-3 px-4"
-             id="viewOnlyBanner"
-             style="background: linear-gradient(135deg, #FFFDFB, #F6EFE7); border: 1px solid #E8DED5 !important;">
-            <i class="bi bi-info-circle-fill fs-3 text-primary me-3 flex-shrink-0"></i>
-            <div>
-                <strong class="d-block text-dark">Bạn đang xem thực đơn</strong>
-                <span class="text-secondary small">
-                    Để gọi món, vui lòng đến cửa hàng và quét mã QR tại bàn.
-                </span>
-            </div>
-        </div>
-
-        <!-- Branch Selector (VIEW-ONLY MODE) -->
-        <div th:if="${currentTable == null}"
-             class="p-3 mb-4 rounded-4 border bg-white shadow-sm d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3"
-             id="menuBranchSelectorCard">
-            <div class="d-flex align-items-center gap-2">
-                <i class="bi bi-shop fs-4 text-primary"></i>
-                <div>
-                    <strong class="small d-block text-dark">Chi nhánh xem thực đơn:</strong>
-                    <span class="text-muted small" style="font-size: 11px;">Chọn chi nhánh để xem bảng giá và trạng thái phục vụ chính xác</span>
+        <!-- Compact view-only branch card: presentation only -->
+        <div th:if="${currentTable == null}" class="menu-branch-compact">
+            <div class="menu-branch-compact-main">
+                <div id="viewOnlyBanner" th:if="${currentTable == null}"
+                     class="menu-branch-compact-intro">
+                    <span class="menu-branch-compact-icon" aria-hidden="true">
+                        <i class="bi bi-shop"></i>
+                    </span>
+                    <div>
+                        <strong>Chọn chi nhánh xem thực đơn</strong>
+                        <p>Quét QR tại bàn để gọi món.</p>
+                    </div>
                 </div>
-            </div>
-            <div style="min-width: 280px;">
-                <select class="form-select form-select-sm rounded-pill fw-semibold border shadow-none"
+                <div id="menuBranchSelectorCard" th:if="${currentTable == null}"
+                     class="menu-branch-compact-field">
+                    <label for="menuBranchSelect">Chi nhánh</label>
+                    <select class="form-select form-select-sm rounded-pill fw-semibold border shadow-none"
                         id="menuBranchSelect"
                         onchange="handleBranchSelectChange(this.value)">
                     <option value="" th:selected="${branchId == null}">-- Vui lòng chọn chi nhánh --</option>
@@ -1237,15 +1315,12 @@
                         Chi nhánh
                     </option>
                 </select>
+                </div>
             </div>
-        </div>
-
-        <!-- Prompt to choose branch when branchId is null -->
-        <div th:if="${currentTable == null and branchId == null}"
-             class="alert alert-warning border-0 shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center gap-3">
-            <i class="bi bi-exclamation-triangle-fill text-warning fs-3 flex-shrink-0"></i>
-            <div class="small text-dark">
-                Vui lòng <strong>chọn một chi nhánh</strong> ở trên để xem giá áp dụng và tình trạng phục vụ chính xác của từng món uống.
+            <div th:if="${currentTable == null and branchId == null}"
+                 class="menu-branch-compact-note">
+                <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                <span>Chọn chi nhánh để xem giá và tình trạng phục vụ chính xác.</span>
             </div>
         </div>
 

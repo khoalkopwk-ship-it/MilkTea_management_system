@@ -1,5 +1,39 @@
 const OrdersApp = (() => {
     const e = MilkTeaReceipts.esc;
+    function statusIcon(status, cancellationPending = false) {
+    const icons = {
+        CHO_THANH_TOAN: 'bi-wallet2',
+        CHO_XAC_NHAN: 'bi-hourglass-split',
+        CHO_CHE_BIEN: 'bi-hourglass',
+        DANG_CHE_BIEN: 'bi-cup-hot',
+        HOAN_THANH: 'bi-check-circle',
+        DA_HUY: 'bi-x-circle'
+    };
+
+    const icon = cancellationPending
+        ? 'bi-hourglass-split'
+        : (icons[status] || 'bi-info-circle');
+
+    return `<i class="bi ${icon} me-1" aria-hidden="true"></i>`;
+}
+
+    function paymentIcon(label) {
+        const icons = {
+            'Đã hoàn tiền': 'bi-arrow-counterclockwise',
+            'Chờ chi hoàn': 'bi-clock-history',
+            'Chờ duyệt hoàn': 'bi-hourglass-split',
+            'Hoàn tiền bị từ chối': 'bi-x-circle',
+            'Đã thu tiền - CK': 'bi-bank',
+            'Đã thu tiền - TM': 'bi-cash-coin',
+            'Không cần thu tiền': 'bi-dash-circle',
+            'Khách báo đã CK': 'bi-bell',
+            'Chờ thu · Tiền mặt': 'bi-cash-coin',
+            'Chờ thu · Chuyển khoản': 'bi-bank',
+            'Chưa thu tiền': 'bi-clock'
+        };
+
+        return `<i class="bi ${icons[label] || 'bi-info-circle'} me-1" aria-hidden="true"></i>`;
+    }
     const labels = {
         CHO_THANH_TOAN: 'Chờ thanh toán',
         CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -28,6 +62,43 @@ const OrdersApp = (() => {
         if (tab === 'cancel') return !!o.cancellationPending && o.status === 'CHO_CHE_BIEN' && o.paid;
         if (tab === 'refund') return o.status === 'DA_HUY' && o.paid;
         return true;
+    // Icon kế thừa màu chữ hiện tại, không thêm nền.
+    function statusIcon(status, cancellationPending = false) {
+        const icons = {
+            CHO_THANH_TOAN: 'bi-wallet2',
+            CHO_XAC_NHAN: 'bi-hourglass-split',
+            CHO_CHE_BIEN: 'bi-hourglass',
+            DANG_CHE_BIEN: 'bi-cup-hot',
+            HOAN_THANH: 'bi-check-circle',
+            DA_HUY: 'bi-x-circle'
+        };
+
+        const icon = cancellationPending
+            ? 'bi-hourglass-split'
+            : (icons[status] || 'bi-info-circle');
+
+        return `<i class="bi ${icon} me-1" aria-hidden="true"></i>`;
+    }
+
+    function paymentIcon(label) {
+        const icons = {
+            'Đã hoàn tiền': 'bi-arrow-counterclockwise',
+            'Chờ chi hoàn': 'bi-clock-history',
+            'Chờ duyệt hoàn': 'bi-hourglass-split',
+            'Hoàn tiền bị từ chối': 'bi-x-circle',
+            'Đã thu tiền - CK': 'bi-bank',
+            'Đã thu tiền - TM': 'bi-cash-coin',
+            'Không cần thu tiền': 'bi-dash-circle',
+            'Khách báo đã CK': 'bi-bell',
+            'Chờ thu · Tiền mặt': 'bi-cash-coin',
+            'Chờ thu · Chuyển khoản': 'bi-bank',
+            'Chưa thu tiền': 'bi-clock'
+        };
+
+        const icon = icons[label] || 'bi-info-circle';
+
+        return `<i class="bi ${icon} me-1" aria-hidden="true"></i>`;
+    }
     }
 
     function paymentState(o) {
@@ -178,7 +249,7 @@ const OrdersApp = (() => {
                     <td class="text-end fw-semibold text-nowrap">${MilkTeaApi.formatVND(o.totalAmount)}</td>
                     <td>${refundStatusBadge}</td>
                     <td>
-                        <span class="payment-pill ${payment.css}">${payment.label}</span>
+                        <span class="payment-pill ${payment.css}">${paymentIcon(payment.label)}${payment.label}</span>
                     </td>
                     <td class="text-center">${actionCell}</td>
                     <td class="text-center">${detailCell}</td>
@@ -239,16 +310,17 @@ const OrdersApp = (() => {
             const detailCell = `<button title="Xem chi tiết đơn" aria-label="Xem chi tiết ${MilkTeaReceipts.code(o.orderId)}" class="order-detail-btn d-inline-flex align-items-center justify-content-center gap-1 text-nowrap" data-action="details" data-id="${o.orderId}"><i class="bi bi-receipt"></i><span>Chi tiết</span></button>`;
 
             let statusBadge = '';
+
             if (currentTab === 'cooking') {
                 if (o.status === 'CHO_CHE_BIEN') {
                     statusBadge = '<span class="badge bg-info text-dark"><i class="bi bi-hourglass-split me-1"></i>Chờ Bếp bắt đầu</span>';
                 } else if (o.status === 'DANG_CHE_BIEN') {
                     statusBadge = '<span class="badge bg-primary"><i class="bi bi-fire me-1"></i>Bếp đang chế biến</span>';
                 } else {
-                    statusBadge = `<span class="badge-status badge-${o.status}">${labels[o.status] || e(o.status)}</span>`;
+                    statusBadge = `<span class="badge-status badge-${o.status}">${statusIcon(o.status)}${labels[o.status] || e(o.status)}</span>`;
                 }
             } else {
-                statusBadge = `<span class="badge-status badge-${o.status}">${o.cancellationPending ? 'Chờ xác nhận hủy' : (labels[o.status] || e(o.status))}</span>`;
+                statusBadge = `<span class="badge-status badge-${o.status}">${statusIcon(o.status, o.cancellationPending)}${o.cancellationPending ? 'Chờ xác nhận hủy' : (labels[o.status] || e(o.status))}</span>`;
             }
 
             return `<tr>
@@ -261,7 +333,7 @@ const OrdersApp = (() => {
                 <td class="text-end fw-semibold text-nowrap">${MilkTeaApi.formatVND(o.totalAmount)}</td>
                 <td>${statusBadge}</td>
                 <td>
-                    <span class="payment-pill ${payment.css}">${payment.label}</span>
+                    <span class="payment-pill ${payment.css}">${paymentIcon(payment.label)}${payment.label}</span>
                 </td>
                 <td class="text-center">${actionCell}</td>
                 <td class="text-center">${detailCell}</td>
