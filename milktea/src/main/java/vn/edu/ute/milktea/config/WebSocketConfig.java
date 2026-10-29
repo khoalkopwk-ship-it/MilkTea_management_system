@@ -185,7 +185,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                             }
                         } else {
                             if (staffBranchRepository != null) {
-                                var staffBranches = staffBranchRepository.findByAccountId(account.getId());
+                                // Match active staff assignments used by JwtAuthenticationFilter.
+                                var staffBranches = staffBranchRepository.findByAccountIdAndStatus(account.getId(), "HOAT_DONG");
                                 for (var sb : staffBranches) {
                                     if (sb.getBranch() != null) {
                                         assignedBranchIds.add(sb.getBranch().getId());

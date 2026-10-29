@@ -8,12 +8,24 @@ const MilkTeaRealtime = (() => {
     let isConnecting = false;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 8;
+    let reconnectTimer = null;
+    let stableConnectionTimer = null;
+    let connectionGeneration = 0;
+    let manuallyDisconnected = false;
+    let savedHeaders = {};
+    const stableConnectionMs = 10000;
     const processedEvents = new Set();
     const eventListeners = new Map(); // type -> array of callbacks
     const reconnectCallbacks = [];
     const activeSubscriptions = [];
 
     function connect(headers = {}) {
+        savedHeaders = { ...savedHeaders, ...headers };
+        manuallyDisconnected = false;
+        if (reconnectTimer !== null) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
         if (isConnected || (stompClient && stompClient.connected)) {
             setupContextSubscriptions();
             return;
@@ -24,12 +36,13 @@ const MilkTeaRealtime = (() => {
 
         console.log('Đang kết nối WebSocket STOMP tới /ws...');
         isConnecting = true;
+        const generation = ++connectionGeneration;
         const socket = new SockJS('/ws');
         stompClient = Stomp.over(socket);
         stompClient.debug = null; // Tắt debug log rác trong console
 
         // Đính kèm token guest nếu có
-        const connectHeaders = { ...headers };
+        const connectHeaders = { ...savedHeaders };
         if (window.MilkTeaContext) {
             if (window.MilkTeaContext.tableToken) {
                 connectHeaders['X-Table-Session-Token'] = window.MilkTeaContext.tableToken;
@@ -39,14 +52,27 @@ const MilkTeaRealtime = (() => {
             }
         }
 
-        stompClient.connect(connectHeaders, onConnected, onError);
+        stompClient.connect(connectHeaders,
+            frame => {
+                if (generation !== connectionGeneration || manuallyDisconnected) return;
+                onConnected(frame);
+            },
+            error => {
+                if (generation !== connectionGeneration || manuallyDisconnected) return;
+                onError(error);
+            });
     }
 
     function onConnected(frame) {
         console.log('WebSocket STOMP đã kết nối thành công!');
         isConnecting = false;
         isConnected = true;
-        reconnectAttempts = 0;
+        // A connection rejected immediately after SUBSCRIBE is not stable.
+        if (stableConnectionTimer !== null) clearTimeout(stableConnectionTimer);
+        stableConnectionTimer = setTimeout(() => {
+            stableConnectionTimer = null;
+            if (isConnected) reconnectAttempts = 0;
+        }, stableConnectionMs);
 
         // Tự động subscribe theo vai trò / ngữ cảnh
         activeSubscriptions.length = 0;
@@ -62,18 +88,34 @@ const MilkTeaRealtime = (() => {
         console.warn('Lỗi kết nối WebSocket STOMP:', error);
         isConnecting = false;
         isConnected = false;
-
-        // Thử kết nối lại với exponential backoff có giới hạn
-        if (reconnectAttempts < maxReconnectAttempts) {
-            reconnectAttempts++;
-            const timeout = Math.min(1000 * Math.pow(1.5, reconnectAttempts), 15000);
-            console.log(`Sẽ kết nối lại sau ${(timeout / 1000).toFixed(1)}s (lần ${reconnectAttempts}/${maxReconnectAttempts})...`);
-            setTimeout(() => {
-                connect();
-            }, timeout);
-        } else {
-            console.warn('Đã đạt giới hạn số lần kết nối lại WebSocket.');
+        if (stableConnectionTimer !== null) {
+            clearTimeout(stableConnectionTimer);
+            stableConnectionTimer = null;
         }
+        activeSubscriptions.length = 0;
+        if (manuallyDisconnected) return;
+
+        // ERROR and socket close may both call this handler. Retire the
+        // connection before closing it so its late callbacks cannot retry.
+        ++connectionGeneration;
+        const failedClient = stompClient;
+        stompClient = null;
+        if (failedClient) {
+            try { failedClient.disconnect(() => {}); } catch (e) {}
+            try { failedClient.ws?.close(); } catch (e) {}
+        }
+        if (reconnectTimer !== null) return;
+        if (reconnectAttempts >= maxReconnectAttempts) {
+            console.warn('Đã đạt giới hạn số lần kết nối lại WebSocket.');
+            return;
+        }
+        reconnectAttempts++;
+        const timeout = Math.min(1000 * Math.pow(1.5, reconnectAttempts), 15000);
+        console.log(`Sẽ kết nối lại sau ${(timeout / 1000).toFixed(1)}s (lần ${reconnectAttempts}/${maxReconnectAttempts})...`);
+        reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            if (!manuallyDisconnected) connect();
+        }, timeout);
     }
 
     function setupContextSubscriptions() {
@@ -214,16 +256,27 @@ const MilkTeaRealtime = (() => {
     }
 
     function disconnect() {
-        if (stompClient) {
-            try {
-                stompClient.disconnect(() => {
-                    console.log('WebSocket STOMP đã ngắt kết nối.');
-                });
-            } catch (e) {}
-        }
+        manuallyDisconnected = true;
+        ++connectionGeneration;
+        if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+        if (stableConnectionTimer !== null) clearTimeout(stableConnectionTimer);
+        reconnectTimer = null;
+        stableConnectionTimer = null;
+        reconnectAttempts = 0;
+        savedHeaders = {};
+        const client = stompClient;
+        stompClient = null;
         isConnecting = false;
         isConnected = false;
         activeSubscriptions.length = 0;
+        if (client) {
+            try {
+                client.disconnect(() => {
+                    console.log('WebSocket STOMP đã ngắt kết nối.');
+                });
+            } catch (e) {}
+            try { client.ws?.close(); } catch (e) {}
+        }
     }
 
     return {
