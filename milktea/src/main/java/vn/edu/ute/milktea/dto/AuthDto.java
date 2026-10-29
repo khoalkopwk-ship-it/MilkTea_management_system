@@ -22,6 +22,8 @@ public class AuthDto {
 
         @NotBlank(message = "Mật khẩu không được để trống")
         private String password;
+        
+        private boolean rememberMe;
     }
 
     @Data

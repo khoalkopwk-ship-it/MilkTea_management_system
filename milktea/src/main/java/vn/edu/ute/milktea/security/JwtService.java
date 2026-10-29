@@ -27,11 +27,16 @@ public class JwtService {
     private final long ttlMinutes;
     private final ObjectMapper objectMapper;
 
+    // Thời hạn ghi nhớ đăng nhập: mặc định 7 ngày.
+    @Value("${app.jwt.remember-me-ttl-minutes:10080}")
+    private long rememberMeTtlMinutes;
+
     public JwtService(
             @Value("${app.jwt.secret-base64}") String secretBase64,
             @Value("${app.jwt.issuer:milktea}") String issuer,
             @Value("${app.jwt.audience:milktea-web}") String audience,
             @Value("${app.jwt.ttl-minutes:60}") long ttlMinutes) {
+
         this.secretKey = Base64.getDecoder().decode(secretBase64);
         this.issuer = issuer;
         this.audience = audience;
@@ -39,12 +44,37 @@ public class JwtService {
         this.objectMapper = new ObjectMapper();
     }
 
+    /**
+     * Lấy thời hạn token theo lựa chọn ghi nhớ đăng nhập.
+     */
+    public long getTokenTtlMinutes(boolean rememberMe) {
+        return rememberMe ? rememberMeTtlMinutes : ttlMinutes;
+    }
+
+    /**
+     * Giữ tương thích với các chỗ gọi cũ.
+     * Mặc định không ghi nhớ đăng nhập.
+     */
     public String generateToken(Account account) {
+        return generateToken(account, false);
+    }
+
+    /**
+     * Tạo JWT với thời hạn tương ứng lựa chọn ghi nhớ đăng nhập.
+     */
+    public String generateToken(Account account, boolean rememberMe) {
         try {
             Instant now = Instant.now();
-            Instant exp = now.plus(ttlMinutes, ChronoUnit.MINUTES);
+            Instant exp = now.plus(
+                    getTokenTtlMinutes(rememberMe),
+                    ChronoUnit.MINUTES
+            );
 
-            Map<String, Object> header = Map.of("alg", "HS256", "typ", "JWT");
+            Map<String, Object> header = Map.of(
+                    "alg", "HS256",
+                    "typ", "JWT"
+            );
+
             Map<String, Object> claims = new HashMap<>();
             claims.put("sub", String.valueOf(account.getId()));
             claims.put("email", account.getEmail());
@@ -55,11 +85,20 @@ public class JwtService {
             claims.put("iat", now.getEpochSecond());
             claims.put("exp", exp.getEpochSecond());
 
-            String encodedHeader = base64UrlEncode(objectMapper.writeValueAsBytes(header));
-            String encodedPayload = base64UrlEncode(objectMapper.writeValueAsBytes(claims));
+            String encodedHeader = base64UrlEncode(
+                    objectMapper.writeValueAsBytes(header)
+            );
+
+            String encodedPayload = base64UrlEncode(
+                    objectMapper.writeValueAsBytes(claims)
+            );
+
             String dataToSign = encodedHeader + "." + encodedPayload;
 
-            byte[] signature = sign(dataToSign.getBytes(StandardCharsets.UTF_8));
+            byte[] signature = sign(
+                    dataToSign.getBytes(StandardCharsets.UTF_8)
+            );
+
             String encodedSignature = base64UrlEncode(signature);
 
             return dataToSign + "." + encodedSignature;
@@ -68,14 +107,27 @@ public class JwtService {
         }
     }
 
+    /**
+     * Xác thực chữ ký, thời hạn, issuer và audience.
+     * Trả về null khi token không hợp lệ.
+     */
     public Map<String, Object> validateAndExtractClaims(String token) {
-        if (token == null || token.isBlank()) return null;
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+
         String[] parts = token.split("\\.");
-        if (parts.length != 3) return null;
+        if (parts.length != 3) {
+            return null;
+        }
 
         try {
             String dataToSign = parts[0] + "." + parts[1];
-            byte[] expectedSig = sign(dataToSign.getBytes(StandardCharsets.UTF_8));
+
+            byte[] expectedSig = sign(
+                    dataToSign.getBytes(StandardCharsets.UTF_8)
+            );
+
             byte[] actualSig = base64UrlDecode(parts[2]);
 
             if (!MessageDigest.isEqual(expectedSig, actualSig)) {
@@ -83,14 +135,20 @@ public class JwtService {
             }
 
             byte[] payloadBytes = base64UrlDecode(parts[1]);
-            Map<String, Object> claims = objectMapper.readValue(payloadBytes, new TypeReference<>() {});
+
+            Map<String, Object> claims = objectMapper.readValue(
+                    payloadBytes,
+                    new TypeReference<>() {}
+            );
 
             long exp = ((Number) claims.get("exp")).longValue();
-            if (Instant.now().getEpochSecond() > exp) {
+
+            if (Instant.now().getEpochSecond() >= exp) {
                 return null;
             }
 
-            if (!issuer.equals(claims.get("iss")) || !audience.equals(claims.get("aud"))) {
+            if (!issuer.equals(claims.get("iss"))
+                    || !audience.equals(claims.get("aud"))) {
                 return null;
             }
 
@@ -108,7 +166,9 @@ public class JwtService {
     }
 
     private String base64UrlEncode(byte[] bytes) {
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(bytes);
     }
 
     private byte[] base64UrlDecode(String str) {

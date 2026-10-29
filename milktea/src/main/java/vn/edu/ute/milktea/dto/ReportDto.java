@@ -55,6 +55,21 @@ public class ReportDto {
         private List<TopSellingProduct> topProducts;
         private List<TopWasteMaterial> topWasteMaterials;
         private DashboardAlerts alerts;
+        private List<BranchRevenueRanking> branchRevenueRanking;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BranchRevenueRanking {
+        private Long branchId;
+        private String branchCode;
+        private String branchName;
+        private BigDecimal received;
+        private BigDecimal refunded;
+        private BigDecimal netRevenue;
+        private int rank;
     }
 
     @Data

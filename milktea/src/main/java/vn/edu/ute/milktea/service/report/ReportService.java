@@ -633,6 +633,40 @@ public class ReportService {
                 .build();
     }
 
+    // Only called for an Admin viewing the entire chain by ReportController.
+    @Transactional(readOnly = true)
+    public List<ReportDto.BranchRevenueRanking> getBranchRevenueRanking(
+            LocalDate fromDate, LocalDate toDate) {
+        
+        if (fromDate == null || toDate == null || fromDate.isAfter(toDate)) {
+            throw new IllegalArgumentException("Khoảng ngày báo cáo không hợp lệ");
+        }
+        List<ReportDto.BranchRevenueRanking> rows = new ArrayList<>();
+        for (var branch : branchRepository.findAll()) {
+                if (branch.getIsCentral()) {
+                        continue;
+                }
+            var revenue = getRevenueReport(branch.getId(), fromDate, toDate);
+            rows.add(ReportDto.BranchRevenueRanking.builder()
+                    .branchId(branch.getId())
+                    .branchCode(branch.getCode())
+                    .branchName(branch.getName())
+                    .received(revenue.getReceived())
+                    .refunded(revenue.getRefunded())
+                    .netRevenue(revenue.getNetReceived())
+                    .build());
+        }
+        rows.sort(Comparator.comparing(ReportDto.BranchRevenueRanking::getNetRevenue)
+                .reversed()
+                .thenComparing(ReportDto.BranchRevenueRanking::getBranchCode,
+                        Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(ReportDto.BranchRevenueRanking::getBranchId));
+        for (int i = 0; i < rows.size(); i++) {
+            rows.get(i).setRank(i + 1);
+        }
+        return rows;
+    }
+
     @Transactional(readOnly = true)
     public ReportDto.DashboardResponse getDashboard(LocalDate fromDate, LocalDate toDate) {
         return getDashboard(null, fromDate, toDate);

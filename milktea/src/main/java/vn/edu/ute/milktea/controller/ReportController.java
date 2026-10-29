@@ -59,11 +59,14 @@ public class ReportController {
             @AuthenticationPrincipal CurrentActor actor) {
 
         Long targetBranchId = resolveBranchId(branchId, actor);
-        return ResponseEntity.ok(
-                ApiResponse.ok(
-                        reportService.getDashboard(targetBranchId, fromDate, toDate)
-                )
-        );
+        var dashboard = reportService.getDashboard(targetBranchId, fromDate, toDate);
+        // Do not expose cross-branch rankings to Managers, even without an assignment.
+        dashboard.setBranchRevenueRanking(
+                actor != null && actor.hasRole(Role.ADMIN) && targetBranchId == null
+                        ? reportService.getBranchRevenueRanking(
+                                dashboard.getFromDate(), dashboard.getToDate())
+                        : java.util.List.of());
+        return ResponseEntity.ok(ApiResponse.ok(dashboard));
     }
 
     private Long resolveBranchId(Long branchId, CurrentActor actor) {

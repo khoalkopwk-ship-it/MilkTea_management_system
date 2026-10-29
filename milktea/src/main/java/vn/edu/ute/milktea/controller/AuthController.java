@@ -23,6 +23,7 @@ import java.util.UUID;
 public class AuthController {
 
     private final AuthService authService;
+    private final vn.edu.ute.milktea.security.JwtService jwtService;
     private final vn.edu.ute.milktea.service.media.ProductImageService productImageService;
 
     @org.springframework.beans.factory.annotation.Value("${app.jwt.cookie-secure:false}")
@@ -35,16 +36,29 @@ public class AuthController {
 
         AuthDto.AuthResponse authResponse = authService.login(request);
 
-        // Lưu JWT vào cookie HttpOnly với SameSite=Lax và cấu hình Secure theo môi trường
-        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie
-                .from(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, authResponse.getToken())
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .sameSite("Lax")
-                .maxAge(60 * 60)
-                .build();
-        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
+        org.springframework.http.ResponseCookie.ResponseCookieBuilder cookieBuilder =
+                org.springframework.http.ResponseCookie
+                        .from(
+                                JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE,
+                                authResponse.getToken()
+                        )
+                        .httpOnly(true)
+                        .secure(cookieSecure)
+                        .path("/")
+                        .sameSite("Lax");
+
+        if (request.isRememberMe()) {
+            cookieBuilder.maxAge(
+                    java.time.Duration.ofMinutes(
+                            jwtService.getTokenTtlMinutes(true)
+                    )
+            );
+        }
+
+        response.addHeader(
+                org.springframework.http.HttpHeaders.SET_COOKIE,
+                cookieBuilder.build().toString()
+        );
 
         return ResponseEntity.ok(ApiResponse.ok(authResponse));
     }

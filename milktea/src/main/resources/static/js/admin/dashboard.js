@@ -195,6 +195,62 @@
         });
     }
 
+    function renderBranchRevenueRanking(data) {
+        const select = $('filterBranch');
+        const visible = data.branchId == null && select?.dataset.isManager !== 'true';
+        const panel = $('dashboardBranchRankingPanel');
+        panel.hidden = !visible;
+        $('dashboardRevenueRow').classList.toggle('has-branch-ranking', visible);
+        const svg = $('dashboardBranchRankingChart');
+        svg.replaceChildren();
+        if (!visible) return;
+        const rows = data.branchRevenueRanking || [];
+        $('dashboardBranchRankingEmpty').hidden = rows.some(
+            row => Number(row.received) !== 0 || Number(row.refunded) !== 0
+        );
+        const NS = 'http://www.w3.org/2000/svg';
+        const width = Math.max(340, rows.length * 110 + 30);
+        svg.setAttribute('width', width);
+        svg.setAttribute('viewBox', `0 0 ${width} 270`);
+        const make = (tag, attrs, text) => {
+            const el = document.createElementNS(NS, tag);
+            Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
+            if (text !== undefined) el.textContent = text;
+            svg.appendChild(el);
+            return el;
+        };
+        const values = rows.map(row => Number(row.netRevenue) || 0);
+        const min = Math.min(0, ...values);
+        const max = Math.max(0, ...values);
+        const range = max - min || 1;
+        const y = value => 205 - (value - min) / range * 155;
+        make('line', {x1: 10, x2: width - 10, y1: y(0), y2: y(0), stroke: '#b8a89a'});
+        const slot = (width - 30) / Math.max(1, rows.length);
+        rows.forEach((row, i) => {
+            const value = values[i];
+            const x = 15 + slot * (i + .5);
+            const description = `#${row.rank} · ${row.branchCode || row.branchId} · ${row.branchName}\nTiền thu: ${money(row.received)}\nTiền hoàn: ${money(row.refunded)}\nThực thu: ${money(value)}`;
+            const bar = make('rect', {
+                x: x - 25, y: Math.min(y(0), y(value)), width: 50,
+                height: Math.max(2, Math.abs(y(value) - y(0))), rx: 4,
+                fill: i === 0 ? '#BAE6FD' : '#BFDBFE', tabindex: 0,
+                'aria-label': description
+            });
+            const title = document.createElementNS(NS, 'title');
+            title.textContent = description;
+            bar.appendChild(title);
+            make('text', {x, y: value >= 0 ? y(value) - 10 : y(value) + 16,
+                'text-anchor': 'middle', fill: '#684c39', 'font-size': 11}, money(value));
+            const name = row.branchName || row.branchCode || String(row.branchId);
+            const label = make('text', {x, y: 245, 'text-anchor': 'middle',
+                fill: '#786f68', 'font-size': 11},
+                `#${row.rank} ${name.length > 13 ? name.slice(0, 12) + '…' : name}`);
+            const fullName = document.createElementNS(NS, 'title');
+            fullName.textContent = name;
+            label.appendChild(fullName);
+        });
+    }
+
     function renderStatuses(rows) {
         const total = rows.reduce(
             (v, r) => v + (Number(r.count) || 0),
@@ -382,11 +438,11 @@
                 height: h,
                 rx: 6,
                 fill: [
-                    '#ff9945',
-                    '#ffb052',
-                    '#fb7b83',
-                    '#fbc65d',
-                    '#ffad73'
+                    '#D6C2A1',
+                    '#B7795B',
+                    '#A85D43',
+                    '#C08A3E',
+                    '#7A7B4B'
                 ][i % 5]
             });
 
@@ -632,6 +688,7 @@
                 : 'Chưa có';
 
         renderRevenue(data.revenueByDay || []);
+        renderBranchRevenueRanking(data);
         renderStatuses(data.ordersByStatus || []);
         renderRankings('dashboardTopProducts', data.topProducts || []);
         renderWaste(data.topWasteMaterials || []);
@@ -640,6 +697,10 @@
     }
 
     async function load() {
+        const current = ++requestIndex;
+        // Clear the old scope's ranking while waiting for the latest filter result.
+        $('dashboardBranchRankingPanel').hidden = true;
+        $('dashboardRevenueRow').classList.remove('has-branch-ranking');
         const from = $('filterFromDate').value;
         const to = $('filterToDate').value;
         const select = $('filterBranch');
@@ -651,10 +712,9 @@
             error.textContent =
                 'Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc.';
             error.classList.remove('d-none');
+            $('dashboardFilterButton').disabled = false;
             return;
         }
-
-        const current = ++requestIndex;
 
         error.classList.add('d-none');
         $('dashboardFilterButton').disabled = true;
@@ -771,6 +831,8 @@
             load();
         });
 
+        $('filterFromDate').addEventListener('change', load);
+        $('filterToDate').addEventListener('change', load);
         initializeDateRange();
     });
 })();

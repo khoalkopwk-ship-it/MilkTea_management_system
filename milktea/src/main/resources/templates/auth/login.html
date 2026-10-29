@@ -2916,6 +2916,7 @@
                 e.preventDefault();
                 const email = document.getElementById('email').value.trim();
                 const password = document.getElementById('password').value;
+                const rememberMe = document.getElementById('rememberMe').checked;
                 const alertEl = document.getElementById('authAlert');
                 const btn = document.getElementById('loginBtn');
                 const spinner = document.getElementById('loginSpinner');
@@ -2926,7 +2927,11 @@
                 spinner.classList.remove('d-none');
 
                 try {
-                    const data = await MilkTeaApi.post('/api/v1/auth/login', { email, password });
+                    const data = await MilkTeaApi.post('/api/v1/auth/login', {
+                        email,
+                        password,
+                        rememberMe
+                    });
                     if (MilkTeaApi.showToast) MilkTeaApi.showToast('Đăng nhập thành công!', 'success');
 
                     BobaGang.setLoginSuccess();

@@ -183,6 +183,7 @@
                 <div class="dashboard-main-layout">
                     <div class="dashboard-charts-column">
                         <div class="dashboard-chart-grid">
+                            <div class="dashboard-revenue-row" id="dashboardRevenueRow">
                             <section class="dashboard-panel">
                                 <div class="dashboard-panel-heading">
                                     <div>
@@ -203,6 +204,21 @@
                                         viewBox="0 0 720 290" preserveAspectRatio="xMidYMid meet"></svg>
                                 </div>
                             </section>
+
+                            <section class="dashboard-panel dashboard-branch-ranking" id="dashboardBranchRankingPanel" hidden>
+                                <div class="dashboard-panel-heading">
+                                    <div>
+                                        <h5>Xếp hạng thi đua chi nhánh</h5>
+                                        <p>Xếp theo thực thu ròng trong kỳ</p>
+                                    </div>
+                                    <i class="bi bi-bar-chart-fill"></i>
+                                </div>
+                                <p id="dashboardBranchRankingEmpty" class="dashboard-empty" hidden>Chưa có dữ liệu thực thu trong khoảng thời gian đã chọn</p>
+                                <div class="dashboard-branch-ranking-scroll" tabindex="0" aria-label="Cuộn biểu đồ xếp hạng chi nhánh">
+                                    <svg id="dashboardBranchRankingChart" role="img" aria-label="Xếp hạng thi đua chi nhánh theo thực thu ròng"></svg>
+                                </div>
+                            </section>
+                            </div>
 
                             <section class="dashboard-panel">
                                 <div class="dashboard-panel-heading">

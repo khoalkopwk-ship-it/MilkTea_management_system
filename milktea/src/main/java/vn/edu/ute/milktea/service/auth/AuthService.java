@@ -62,7 +62,7 @@ public class AuthService {
                     "Địa chỉ email chưa được xác thực. Vui lòng xác thực email để kích hoạt tài khoản trước khi đăng nhập.");
         }
 
-        String token = jwtService.generateToken(account);
+        String token = jwtService.generateToken(account, request.isRememberMe());
         return AuthDto.AuthResponse.builder()
                 .token(token)
                 .user(AuthDto.UserInfo.builder()
