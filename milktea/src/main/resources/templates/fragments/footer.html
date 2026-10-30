@@ -1,154 +1,102 @@
-
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
-    <footer th:fragment="footer" class="milktea-footer py-4 mt-auto">
-        <style>
-            .milktea-footer {
-                --footer-primary: #b86b35;
-                --footer-primary-hover: #9e5524;
-                --footer-primary-light: #fbeee4;
-                --footer-secondary: #775D4A;
-                --footer-secondary-hover: #604735;
-                --footer-secondary-light: #F3EBE4;
-                --footer-cream: #F8F4EF;
-                --footer-border: #E8DED5;
-                --footer-muted: #786F68;
-                background: linear-gradient(110deg, #FFFDFB, #F8F4EF);
-                border-top: 1px solid var(--footer-border);
-                box-shadow: 0 -3px 16px rgba(96, 71, 53, .035);
-                font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
-            }
-
-            .milktea-footer .footer-brand {
-                color: var(--footer-secondary-hover);
-                font-family: 'Be Vietnam Pro', 'Inter', sans-serif;
-                font-size: 15px;
-                font-weight: 700;
-                letter-spacing: 0;
-                transition: color .2s ease;
-            }
-
-            .milktea-footer .footer-brand:hover {
-                color: var(--footer-primary);
-            }
-
-            .milktea-footer .footer-description {
-                color: var(--footer-muted) !important;
-                font-size: 12px;
-                line-height: 1.6;
-            }
-
-            .milktea-footer .footer-address {
-                display: inline-flex;
-                align-items: center;
-                justify-content: flex-end;
-                gap: 7px;
-                color: var(--footer-muted);
-                font-size: 12px;
-                line-height: 1.6;
-            }
-
-            .milktea-footer .footer-address i {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 29px;
-                height: 29px;
-                flex-shrink: 0;
-                background: var(--footer-primary-light);
-                color: var(--footer-primary);
-                border: 1px solid #EAD6C4;
-                border-radius: 9px;
-                font-size: 14px;
-                transition:
-                    background-color .2s ease,
-                    color .2s ease,
-                    transform .2s ease;
-            }
-
-            .milktea-footer .footer-address:hover i {
-                background: var(--footer-primary);
-                color: #fff;
-                transform: translateY(-2px);
-            }
-
-            .milktea-footer .footer-address span {
-                color: var(--footer-secondary);
-            }
-
-            @media (max-width: 767.98px) {
-                .milktea-footer .footer-brand,
-                .milktea-footer .footer-description {
-                    display: block;
-                    margin-left: 0 !important;
-                }
-
-                .milktea-footer .footer-brand {
-                    margin-bottom: 5px;
-                }
-
-                .milktea-footer .footer-address {
-                    justify-content: center;
-                    margin-top: 5px;
-                }
-            }
-
-            @media (prefers-reduced-motion: reduce) {
-                .milktea-footer *,
-                .milktea-footer *::before,
-                .milktea-footer *::after {
-                    transition-duration: .01ms !important;
-                    animation-duration: .01ms !important;
-                }
-            }
-        </style>
-
-        <div class="container py-2">
-            <div class="row g-4 align-items-center">
-                <div class="col-12 col-md-4 text-md-start text-center">
-                    <span class="brand-font fw-bold footer-brand fs-6"
-                          th:text="${settings != null ? settings.shopName : 'MilkTea Quán'}">MilkTea</span>
-                    <p class="text-muted small mb-0 mt-1 footer-description" th:text="${activePage == 'home' ? 'Một ly trà yêu thích, một khoảnh khắc dành riêng cho bạn. Khám phá thực đơn và ghé MilkTea hôm nay.' : 'Chuỗi trà sữa đậm vị nguyên bản, phục vụ trực tiếp tại bàn qua QR thông minh và POS quầy.'}">
-                        Chuỗi trà sữa đậm vị nguyên bản, phục vụ trực tiếp tại bàn qua QR thông minh và POS quầy.
-                    </p>
+<footer th:fragment="footer" class="milktea-footer mt-auto">
+    <style>
+        .milktea-footer { position:relative; isolation:isolate; overflow:hidden; flex-shrink:0; border-top:1px solid #eedfd2; background:linear-gradient(110deg,#fffaf4,#fffdfa 55%,#fcf1e6); color:#70513c; font-family:'Be Vietnam Pro','Inter',sans-serif; }
+        .milktea-footer::before,.milktea-footer::after { content:''; position:absolute; z-index:-1; pointer-events:none; width:310px; height:170px; bottom:-95px; border-radius:50%; background:#f3d9bf; opacity:.45; }
+        .milktea-footer::before { left:-110px; box-shadow:55px -40px 0 #fae9d8,-45px -130px 0 #fcf0e4; transform:rotate(20deg); }
+        .milktea-footer::after { right:-100px; box-shadow:-60px -35px 0 #fae9d8,55px -145px 0 #fcf0e4; transform:rotate(-20deg); }
+        .milktea-footer .footer-inner { position:relative; max-width:1320px; margin:auto; padding:34px 24px 0; }
+        .milktea-footer .footer-grid { display:grid; grid-template-columns:1.1fr 1.2fr .7fr; gap:36px; padding-bottom:28px; }
+        .milktea-footer .footer-brand-block { display:flex; align-items:flex-start; gap:18px; min-width:0; }
+        .milktea-footer .footer-logo { width:64px; height:96px; flex:0 0 64px; }
+        .milktea-footer .footer-brand { display:block; margin:0 0 8px; max-width:300px; color:#67442b; font-size:21px; font-weight:700; line-height:1.35; overflow-wrap:anywhere; }
+        .milktea-footer .footer-description { margin:0; font-size:12px; line-height:1.8; color:#856a56; max-width:320px; }
+        .milktea-footer .footer-contact,.milktea-footer .footer-nav { border-left:1px solid #e7d5c4; padding-left:36px; min-width:0; }
+        .milktea-footer .footer-location { display:flex; gap:14px; align-items:flex-start; padding-bottom:18px; margin-bottom:17px; border-bottom:1px solid #e7d5c4; }
+        .milktea-footer .footer-location-icon { width:43px; height:43px; display:grid; place-items:center; flex-shrink:0; border-radius:50%; background:#f9e7d7; color:#c97438; font-size:23px; }
+        .milktea-footer .footer-heading { margin:3px 0 7px; font-size:14px; line-height:1.5; font-weight:700; color:#67442b; }
+        .milktea-footer .footer-address { margin:0; font-size:12px; line-height:1.75; overflow-wrap:anywhere; }
+        .milktea-footer .footer-contact-row { display:flex; flex-wrap:wrap; gap:18px 26px; }
+        .milktea-footer .footer-detail { display:flex; gap:12px; align-items:flex-start; font-size:12px; line-height:1.7; }
+        .milktea-footer .footer-detail > i { color:#c97438; font-size:25px; line-height:1.4; }
+        .milktea-footer .footer-detail strong { display:block; font-weight:600; }
+        .milktea-footer a { color:inherit; text-decoration:none; }
+        .milktea-footer a:hover { color:#b9632e; text-decoration:underline; text-underline-offset:4px; }
+        .milktea-footer a:focus-visible { outline:2px solid #b9632e; outline-offset:4px; border-radius:3px; }
+        .milktea-footer .footer-nav .footer-heading { margin-bottom:8px; }
+        .milktea-footer .footer-links { list-style:none; margin:0; padding:0; max-width:180px; }
+        .milktea-footer .footer-links a { display:flex; align-items:center; justify-content:space-between; gap:18px; min-height:36px; font-size:13px; }
+        .milktea-footer .footer-links i { font-size:12px; color:#b56b3b; }
+        .milktea-footer .footer-bottom { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px 24px; border-top:1px solid #dfc7b2; padding:15px 0 17px; font-size:11px; line-height:1.7; color:#99613e; }
+        .milktea-footer .footer-bottom p { margin:0; }
+        .milktea-footer .footer-bottom i { margin-left:7px; color:#c97438; }
+        .milktea-footer .footer-decoration { position:absolute; right:-26px; bottom:40px; width:125px; height:160px; opacity:.23; pointer-events:none; z-index:-1; transform:rotate(12deg); }
+        @media(min-width:1200px) { .milktea-footer .footer-nav { padding-right:60px; } }
+        @media(max-width:991.98px) { .milktea-footer .footer-grid { grid-template-columns:1fr 1fr; gap:28px; } .milktea-footer .footer-nav { grid-column:1 / -1; border-left:0; border-top:1px solid #e7d5c4; padding:16px 0 0; } .milktea-footer .footer-links { display:flex; gap:28px; max-width:none; flex-wrap:wrap; } .milktea-footer .footer-links a { gap:14px; } }
+        @media(max-width:575.98px) { .milktea-footer .footer-inner { padding:26px 20px 0; } .milktea-footer .footer-grid { grid-template-columns:1fr; gap:23px; padding-bottom:22px; } .milktea-footer .footer-contact { border-left:0; border-top:1px solid #e7d5c4; padding:20px 0 0; } .milktea-footer .footer-nav { grid-column:auto; } .milktea-footer .footer-brand { font-size:19px; } .milktea-footer .footer-logo { width:54px; flex-basis:54px; height:84px; } .milktea-footer .footer-links { gap:12px 24px; } .milktea-footer .footer-links a { min-height:44px; } .milktea-footer .footer-bottom { align-items:flex-start; flex-direction:column; } .milktea-footer .footer-decoration { bottom:78px; } }
+    </style>
+    <!-- Decorative artwork is embedded; no external image request is needed. -->
+    <div class="footer-inner">
+        <svg class="footer-decoration" viewBox="0 0 100 130" fill="none" aria-hidden="true" focusable="false">
+            <path d="M12 108C20 82 15 64 10 50C32 54 39 68 32 84C22 81 17 71 10 50M20 96C25 72 44 59 57 57C55 80 40 90 20 96" fill="#b48a59"/>
+            <path d="M42 37H90L84 112Q66 125 49 112Z" fill="#f4d7b6" stroke="#ab6938" stroke-width="3"/>
+            <ellipse cx="66" cy="37" rx="27" ry="8" stroke="#ab6938" stroke-width="3"/>
+            <path d="M69 38L80 8Q82 3 88 6L91 8L79 43" fill="#fffaf3" stroke="#ab6938" stroke-width="3"/>
+            <path d="M47 65H87L82 110Q66 120 53 110Z" fill="#d39e68"/>
+            <g fill="#935c36"><circle cx="60" cy="96" r="4"/><circle cx="72" cy="105" r="4"/><circle cx="77" cy="89" r="4"/><circle cx="63" cy="81" r="3"/></g>
+        </svg>
+        <div class="footer-grid">
+            <div class="footer-brand-block">
+                <svg class="footer-logo" viewBox="0 0 70 110" fill="none" aria-hidden="true" focusable="false">
+                    <path d="M43 20C43 9 52 5 64 5C61 18 54 23 43 20Z" fill="#96b566"/>
+                    <path d="M14 37H56L51 98Q35 108 19 98Z" fill="#fff2da" stroke="#754b29" stroke-width="3.5"/>
+                    <path d="M18 60H53L49 96Q35 103 22 96Z" fill="#e6bb87"/>
+                    <ellipse cx="35" cy="36" rx="27" ry="9" fill="#fff4df" stroke="#754b29" stroke-width="3.5"/>
+                    <ellipse cx="35" cy="32" rx="22" ry="6" fill="#dfb680" stroke="#754b29" stroke-width="3"/>
+                    <path d="M34 35L39 12Q40 8 44 9Q48 10 47 14L42 38" fill="#f8d9a1" stroke="#754b29" stroke-width="3" stroke-linejoin="round"/>
+                    <g fill="#80502e"><circle cx="29" cy="87" r="4"/><circle cx="41" cy="93" r="4"/><circle cx="42" cy="77" r="4"/><circle cx="29" cy="69" r="3.5"/><circle cx="36" cy="58" r="3"/></g>
+                    <path d="M22 46L25 57" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <div>
+                    <span class="footer-brand" th:text="${settings != null ? settings.shopName : 'Hệ Thống Trà Sữa MilkTea Chain'}">Hệ Thống Trà Sữa MilkTea Chain</span>
+                    <p class="footer-description" th:text="${activePage == 'home' ? 'Một ly trà yêu thích, một khoảnh khắc dành riêng cho bạn. Khám phá thực đơn và ghé MilkTea hôm nay.' : 'Chuỗi trà sữa đậm vị nguyên bản, phục vụ trực tiếp tại bàn qua QR thông minh và POS quầy.'}">Một ly trà yêu thích, một khoảnh khắc dành riêng cho bạn. Khám phá thực đơn và ghé MilkTea hôm nay.</p>
                 </div>
-
-                <div class="col-12 col-md-4 text-center">
-                    <div class="d-inline-flex flex-column gap-1 text-muted small">
-                        <div class="footer-address justify-content-center" th:if="${activePage != 'home' or (settings != null and !#strings.isEmpty(settings.address))}">
-                            <i class="bi bi-geo-alt-fill"></i>
-                            <span>Trụ sở chính: </span>
-                            <strong th:text="${settings != null and settings.address != null ? settings.address : 'Số 1 Võ Văn Ngân, TP. Thủ Đức'}">
-                                Số 1 Võ Văn Ngân, TP. Thủ Đức
-                            </strong>
-                        </div>
-                        <div class="footer-address justify-content-center" th:if="${activePage != 'home'}">
-                            <i class="bi bi-telephone-fill"></i>
-                            <span>Hotline: </span>
-                            <strong>1900 1234</strong>
-                            <span class="mx-1">·</span>
-                            <i class="bi bi-envelope-fill"></i>
-                            <span>Email: </span>
-                            <strong>cskh@milktea.top</strong>
-                        </div>
+            </div>
+            <div class="footer-contact">
+                <div class="footer-location" th:if="${activePage != 'home' or (settings != null and !#strings.isEmpty(settings.address))}">
+                    <span class="footer-location-icon"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i></span>
+                    <div>
+                        <h2 class="footer-heading">Trụ sở chính</h2>
+                        <p class="footer-address" th:text="${settings != null and settings.address != null ? settings.address : 'Số 1 Võ Văn Ngân, TP. Thủ Đức'}">Số 1 Võ Văn Ngân, TP. Thủ Đức</p>
                     </div>
                 </div>
-
-                <div class="col-12 col-md-4 text-md-end text-center">
-                    <div class="d-inline-flex gap-3 text-muted small">
-                        <a th:href="@{/(qr=${tableQr})}" class="text-decoration-none text-muted">Trang chủ</a>
-                        <span>·</span>
-                        <a th:href="@{/menu(branchId=${branchId}, qr=${tableQr})}" class="text-decoration-none text-muted">Thực đơn</a>
-                        <span>·</span>
-                        <a th:href="@{/#branchesSection}" class="text-decoration-none text-muted">Chi nhánh</a>
+                <div class="footer-contact-row">
+                    <div class="footer-detail">
+                        <i class="bi bi-telephone-inbound-fill" aria-hidden="true"></i>
+                        <div><strong>Hotline</strong><a href="tel:0345121523">0345121523</a></div>
                     </div>
-                    <div class="text-muted small mt-1" style="font-size: 11px;">
-                        <span th:if="${activePage == 'home'}" th:text="${'© ' + #dates.year(#dates.createNow()) + ' ' + (settings != null ? settings.shopName : 'MilkTea')}">© MilkTea</span><span th:unless="${activePage == 'home'}">© 2026 MilkTea Management System. All rights reserved.</span>
+                    <div class="footer-detail">
+                        <i class="bi bi-clock" aria-hidden="true"></i>
+                        <div><strong>Giờ hoạt động</strong><span>08:00 – 22:00 (Hằng ngày)</span></div>
                     </div>
                 </div>
             </div>
+            <nav class="footer-nav" aria-label="Liên kết cuối trang">
+                <h2 class="footer-heading">Liên kết nhanh</h2>
+                <ul class="footer-links">
+                    <li><a th:href="@{/(qr=${tableQr})}"><span>Trang chủ</span><i class="bi bi-chevron-right" aria-hidden="true"></i></a></li>
+                    <li><a th:href="@{/menu(branchId=${branchId}, qr=${tableQr})}"><span>Thực đơn</span><i class="bi bi-chevron-right" aria-hidden="true"></i></a></li>
+                    <li><a th:href="@{/#branchesSection}"><span>Chi nhánh</span><i class="bi bi-chevron-right" aria-hidden="true"></i></a></li>
+                </ul>
+            </nav>
         </div>
-    </footer>
+        <div class="footer-bottom">
+            <p><span th:text="${'© ' + #dates.year(#dates.createNow()) + ' ' + (settings != null ? settings.shopName : 'MilkTea Chain')}">© 2026 MilkTea Chain</span>. All rights reserved.</p>
+            <p>Vì những khoảnh khắc ngọt ngào mỗi ngày <i class="bi bi-heart-fill" aria-hidden="true"></i></p>
+        </div>
+    </div>
+</footer>
 </body>
 </html>
