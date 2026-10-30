@@ -1264,7 +1264,7 @@
                 }
             }
         </style>
-        <link rel="stylesheet" th:href="@{/css/menu.css}" sec:authorize="!hasAnyRole('ADMIN', 'MANAGER', 'CASHIER', 'KITCHEN', 'CHEF')">
+        <link rel="stylesheet" th:href="@{/css/menu.css}">
 
         <div th:if="${settings != null and ((settings.discountType == 'FIXED_AMOUNT' and settings.discountValue != null and settings.discountValue > 0) or (settings.discountType != 'FIXED_AMOUNT' and settings.discountPercent != null and settings.discountPercent > 0))}"
             class="alert alert-warning border-0 shadow-sm rounded-4 d-flex align-items-center mb-4 py-3 px-4">

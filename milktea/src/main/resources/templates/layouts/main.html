@@ -21,6 +21,7 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <link th:if="${activePage == 'home'}" rel="stylesheet" th:href="@{/css/home.css}">
+    <link th:if="${activePage == 'menu'}" rel="stylesheet" th:href="@{/css/menu.css}">
 </head>
 <body th:classappend="${activePage == 'home' ? 'brand-home' : ''}">
 
