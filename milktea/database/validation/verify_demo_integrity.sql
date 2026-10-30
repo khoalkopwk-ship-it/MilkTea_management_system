@@ -110,7 +110,7 @@ PRINT N'5. Kiểm tra Công thức Sơ chế (Mẻ sơ chế Bếp):';
 DECLARE @OrphanPreps INT = (
     SELECT COUNT(*)
     FROM dbo.CongThucSoChe ctsc
-    LEFT JOIN dbo.NguyenLieu nl ON ctsc.MaNLThanhPham = nl.MaNL
+    LEFT JOIN dbo.NguyenLieu nl ON ctsc.MaNLDauRa = nl.MaNL
     WHERE nl.MaNL IS NULL OR nl.Loai <> 'SOCHE'
 );
 

@@ -11,7 +11,8 @@ Thư mục `database/` đã được tổ chức lại tinh gọn và đầy đ�
 | Tệp tin | Loại | Mục đích sử dụng |
 | :--- | :--- | :--- |
 | **`database/update_from_previous_deploy.sql`** | **Update Schema & Data Core** | **Dành cho CSDL đã deploy trên Internet (commit `a5f976a`)**. Nâng cấp trực tiếp, bảo toàn 100% dữ liệu cũ (tài khoản, đơn hàng, hóa đơn, tồn kho), tự động bổ sung bảng, cột, khóa ngoại và ràng buộc toàn vẹn mới nhất. |
-| **`database/update_sample_data_from_previous_deploy.sql`** | **Update Sample Data (Kết hợp dữ liệu mẫu)** | **Kết hợp dữ liệu mẫu mới vào CSDL cũ đã deploy**. Bổ sung thêm các tài khoản quản lý, chi nhánh 2, kho tổng, tồn kho ban đầu, voucher và đánh giá mẫu vào CSDL đã deploy mà không làm mất bất kỳ đơn hàng hay dữ liệu cũ nào. |
+| **`database/update_sample_data_from_previous_deploy.sql`** | **Update Sample Data (Kết hợp dữ liệu mẫu)** | **Kết hợp dữ liệu nền tảng mới vào CSDL cũ đã deploy**. Bổ sung thêm các tài khoản quản lý, chi nhánh 2, kho tổng, tồn kho ban đầu, voucher và đánh giá mẫu vào CSDL đã deploy mà không làm mất bất kỳ đơn hàng hay dữ liệu cũ nào. |
+| **`database/seed_branch_2_transactions.sql`** | **Seed Branch 2 Transactions (7-Day Multi-Status)** | **Bổ sung 54 đơn hàng mẫu 7 ngày (đủ trạng thái: Chờ xác nhận, KDS, Hoàn thành, Hủy), 21 phiếu nhập kho, 38 mẻ sơ chế và 14 kết ca kho cho riêng Chi nhánh 2 (CN02)**. Giúp website có dữ liệu sinh động, đủ các phiếu mẫu và báo cáo 2 chi nhánh mà không làm mất đơn cũ của Chi nhánh 1. |
 | **`database/1_schema.sql`** | **Full Schema DDL** | **Dành cho cài đặt mới từ đầu (Fresh Install)**. Chứa toàn bộ 38 bảng hoàn chỉnh đã hợp nhất tất cả các giai đoạn (Đa chi nhánh, Yêu thích, Đánh giá, Voucher, Kho tổng, Hero banner...). |
 | **`database/sample_data.sql`** | **Full Combined Seed Data** | Dữ liệu mẫu chuẩn kết hợp hoàn chỉnh từ commit cũ và mới nhất (11 tài khoản đầy đủ, 2 chi nhánh vận hành + 1 kho tổng, thực đơn 50 món, định mức, tồn kho hai tầng và các kịch bản mẫu). |
 
@@ -29,10 +30,14 @@ Thư mục `database/` đã được tổ chức lại tinh gọn và đầy đ�
    - Chọn database `milktea` đang kết nối.
    - Nhấn **Execute (F5)**.
 
-2. **Bước 2 (Tùy chọn): Kết hợp bổ sung dữ liệu mẫu mới vào CSDL cũ**:
-   - Nếu bạn muốn bổ sung thêm các dữ liệu mẫu mới (như Chi nhánh 2, Kho tổng, Voucher khuyến mãi, Đánh giá review mẫu, Tài khoản quản lý) vào database hiện có mà không làm mất dữ liệu cũ của bạn:
+2. **Bước 2 (Tùy chọn): Kết hợp bổ sung dữ liệu mẫu nền tảng vào CSDL cũ**:
    - Mở tệp: [`database/update_sample_data_from_previous_deploy.sql`](update_sample_data_from_previous_deploy.sql).
-   - Nhấn **Execute (F5)**.
+   - Nhấn **Execute (F5)** để nạp thêm Chi nhánh 2, Kho tổng, Tài khoản quản lý, Voucher và Tồn kho ban đầu.
+
+3. **Bước 3 (Khuyến nghị để demo/báo cáo): Bổ sung toàn bộ dữ liệu giao dịch 7 ngày cho Chi nhánh 2**:
+   - Mở tệp: [`database/seed_branch_2_transactions.sql`](seed_branch_2_transactions.sql).
+   - Nhấn **Execute (F5)** để nạp đầy đủ 54 đơn hàng đủ các trạng thái (KDS, Bàn, Hủy đơn, Hoàn thành), 21 phiếu nhập kho, 38 mẻ sơ chế và 14 phiếu kết ca kho cho Chi nhánh 2.
+   - Dữ liệu cũ của Chi nhánh 1 vẫn được giữ nguyên 100%.
 
 1. **Sao lưu dữ liệu trước khi chạy (Khuyến nghị)**:
    - Trên SQL Server Management Studio (SSMS) hoặc công cụ quản trị cloud: Click chuột phải vào database `milktea` -> **Tasks** -> **Back Up...** để lưu 1 bản snapshot dự phòng.

@@ -98,12 +98,12 @@ SELECT
     v.MaVoucher,
     v.TenVoucher,
     v.SoLuotDaDung AS UsedCountInVoucher,
-    COUNT(ls.MaLS) AS CountInHistory,
-    ABS(v.SoLuotDaDung - COUNT(ls.MaLS)) AS ChenhLech
+    COUNT(ls.MaLichSu) AS CountInHistory,
+    ABS(v.SoLuotDaDung - COUNT(ls.MaLichSu)) AS ChenhLech
 FROM dbo.Voucher v
 LEFT JOIN dbo.LichSuSuDungVoucher ls ON v.MaVoucher = ls.MaVoucher AND ls.TrangThai = 'DA_DUNG'
 GROUP BY v.MaVoucher, v.TenVoucher, v.SoLuotDaDung
-HAVING ABS(v.SoLuotDaDung - COUNT(ls.MaLS)) > 0;
+HAVING ABS(v.SoLuotDaDung - COUNT(ls.MaLichSu)) > 0;
 
 DECLARE @VoucherCountMismatch INT = (
     SELECT COUNT(*) FROM (
@@ -111,7 +111,7 @@ DECLARE @VoucherCountMismatch INT = (
         FROM dbo.Voucher v
         LEFT JOIN dbo.LichSuSuDungVoucher ls ON v.MaVoucher = ls.MaVoucher AND ls.TrangThai = 'DA_DUNG'
         GROUP BY v.MaVoucher, v.SoLuotDaDung
-        HAVING ABS(v.SoLuotDaDung - COUNT(ls.MaLS)) > 0
+        HAVING ABS(v.SoLuotDaDung - COUNT(ls.MaLichSu)) > 0
     ) t
 );
 
