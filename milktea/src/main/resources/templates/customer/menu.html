@@ -221,11 +221,29 @@
 
             .milk-menu-page .product-img-wrapper {
                 position: relative;
+                width: 100%;
+                padding-top: 100%;
                 background: #F3EBE4;
                 overflow: hidden;
             }
 
+            .milk-menu-page .product-img-wrapper > a {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                display: block;
+            }
+
             .milk-menu-page .product-img {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                padding: 0;
                 transition: transform .35s cubic-bezier(.22, 1, .36, 1);
             }
 
@@ -234,6 +252,8 @@
             }
 
             .milk-menu-page .product-img-wrapper .badge {
+                position: absolute;
+                z-index: 2;
                 background: rgba(96, 71, 53, .88) !important;
                 color: #fff;
                 border: 1px solid rgba(255, 255, 255, .22);

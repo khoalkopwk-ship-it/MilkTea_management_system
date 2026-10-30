@@ -183,7 +183,7 @@ public class RefundService {
     }
 
     @Transactional
-    public void decideRefund(Long refundId, boolean approved, String reason, String reference, Long adminId) {
+    public void decideRefund(Long refundId, boolean approved, String reason, String reference, CurrentActor actor) {
         RefundRequest refund = refundRepository.findByIdWithLock(refundId)
                 .orElseThrow(() -> BusinessException.notFound(ErrorCode.VALIDATION_FAILED, "Không tìm thấy yêu cầu hoàn tiền"));
 
@@ -191,32 +191,45 @@ public class RefundService {
             throw BusinessException.conflict(ErrorCode.ORDER_STATE_CONFLICT, "Yêu cầu hoàn tiền đã được xử lý trước đó");
         }
 
-        Account admin = adminId != null ? accountRepository.findById(adminId).orElse(null) : null;
-        refund.setApprovedBy(admin);
+        // Kiểm tra phạm vi chi nhánh nếu actor là MANAGER
+        if (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)) {
+            Long managerBranchId = actor.getBranchId();
+            if (managerBranchId != null && refund.getOrder() != null && refund.getOrder().getBranch() != null
+                    && !java.util.Objects.equals(refund.getOrder().getBranch().getId(), managerBranchId)) {
+                throw BusinessException.forbidden(ErrorCode.ACCESS_DENIED,
+                        "Quản lý chỉ có quyền xử lý yêu cầu hoàn tiền của chi nhánh mình phụ trách");
+            }
+        }
+
+        Long approverId = actor != null ? actor.getAccountId() : null;
+        Account approver = approverId != null ? accountRepository.findById(approverId).orElse(null) : null;
+        refund.setApprovedBy(approver);
         refund.setApprovedAt(Instant.now());
         refund.setApprovalReason(reason);
+
+        String actorTitle = (actor != null && actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER)) ? "Quản lý" : "Admin";
 
         if (approved) {
             // F16: Nếu có mã tham chiếu giao dịch thì hoàn tất ngay sang DA_HOAN, nếu chưa thì chuyển DA_DUYET để thủ quỹ/thu ngân thực chi
             if (reference != null && !reference.isBlank()) {
                 refund.setStatus(RefundStatus.DA_HOAN);
-                refund.setRefundedBy(admin);
+                refund.setRefundedBy(approver);
                 refund.setRefundedAt(refund.getApprovedAt());
                 refund.setRefundReference(reference);
                 auditRepository.save(BusinessAudit.builder()
                         .orderId(refund.getOrder().getId())
-                        .accountId(adminId)
+                        .accountId(approverId)
                         .action("BANK_REFUND_EXECUTED")
-                        .reason("Admin duyệt và xác nhận đã hoàn tất giao dịch ngân hàng: " + reference)
+                        .reason(actorTitle + " duyệt và xác nhận đã hoàn tất giao dịch ngân hàng: " + reference)
                         .createdAt(Instant.now())
                         .build());
             } else {
                 refund.setStatus(RefundStatus.DA_DUYET);
                 auditRepository.save(BusinessAudit.builder()
                         .orderId(refund.getOrder().getId())
-                        .accountId(adminId)
+                        .accountId(approverId)
                         .action("BANK_REFUND_APPROVED")
-                        .reason(reason != null && !reason.isBlank() ? reason : "Admin phê duyệt yêu cầu hoàn tiền")
+                        .reason(reason != null && !reason.isBlank() ? reason : (actorTitle + " phê duyệt yêu cầu hoàn tiền"))
                         .createdAt(Instant.now())
                         .build());
             }
@@ -224,15 +237,23 @@ public class RefundService {
             refund.setStatus(RefundStatus.TU_CHOI);
             auditRepository.save(BusinessAudit.builder()
                     .orderId(refund.getOrder().getId())
-                    .accountId(adminId)
+                    .accountId(approverId)
                     .action("BANK_REFUND_REJECTED")
-                    .reason(reason)
+                    .reason(reason != null && !reason.isBlank() ? reason : (actorTitle + " từ chối yêu cầu hoàn tiền"))
                     .createdAt(Instant.now())
                     .build());
         }
 
         refundRepository.save(refund);
         publish(refund);
+    }
+
+    @Transactional
+    public void decideRefund(Long refundId, boolean approved, String reason, String reference, Long adminId) {
+        CurrentActor actor = adminId != null
+                ? CurrentActor.builder().accountId(adminId).role(vn.edu.ute.milktea.entity.account.Role.ADMIN).build()
+                : null;
+        decideRefund(refundId, approved, reason, reference, actor);
     }
 
     @Transactional

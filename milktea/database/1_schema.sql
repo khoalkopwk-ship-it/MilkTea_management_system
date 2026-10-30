@@ -1,10 +1,12 @@
 -- ============================================================================
--- MilkTea Management System - CƠ SỞ DỮ LIỆU ĐÃ HỢP NHẤT TOÀN DIỆN (Schema DDL)
+-- MilkTea Management System - CƠ SỞ DỮ LIỆU CHUỖI ĐA CHI NHÁNH TOÀN DIỆN
+-- File: database/1_schema.sql (Full Complete Schema)
+-- Hợp nhất 100% cấu trúc từ bản gốc và các bản migration V1 đến V9
 -- ============================================================================
 USE master;
 GO
 
--- Tạo database milktea nếu chưa tồn tại (An toàn, không phá dữ liệu)
+-- Tạo database milktea nếu chưa tồn tại
 IF DB_ID('milktea') IS NULL
 BEGIN
     CREATE DATABASE milktea;
@@ -18,9 +20,21 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 
--- 1. Tài khoản & Khôi phục mật khẩu
-
+-- ----------------------------------------------------------------------------
+-- 1. TÀI KHOẢN, XÁC THỰC & KHÔI PHỤC
+-- ----------------------------------------------------------------------------
 IF OBJECT_ID('dbo.TokenKhoiPhuc', 'U') IS NOT NULL DROP TABLE dbo.TokenKhoiPhuc;
+IF OBJECT_ID('dbo.XacThucEmail', 'U') IS NOT NULL DROP TABLE dbo.XacThucEmail;
+IF OBJECT_ID('dbo.SanPhamYeuThich', 'U') IS NOT NULL DROP TABLE dbo.SanPhamYeuThich;
+IF OBJECT_ID('dbo.DanhGiaMedia', 'U') IS NOT NULL DROP TABLE dbo.DanhGiaMedia;
+IF OBJECT_ID('dbo.DanhGia', 'U') IS NOT NULL DROP TABLE dbo.DanhGia;
+IF OBJECT_ID('dbo.LichSuSuDungVoucher', 'U') IS NOT NULL DROP TABLE dbo.LichSuSuDungVoucher;
+IF OBJECT_ID('dbo.VoucherChiNhanh', 'U') IS NOT NULL DROP TABLE dbo.VoucherChiNhanh;
+IF OBJECT_ID('dbo.Voucher', 'U') IS NOT NULL DROP TABLE dbo.Voucher;
+IF OBJECT_ID('dbo.NhanVienChiNhanh', 'U') IS NOT NULL DROP TABLE dbo.NhanVienChiNhanh;
+IF OBJECT_ID('dbo.MonUongChiNhanh', 'U') IS NOT NULL DROP TABLE dbo.MonUongChiNhanh;
+
+-- Bảng TaiKhoan
 IF OBJECT_ID('dbo.TaiKhoan', 'U') IS NOT NULL DROP TABLE dbo.TaiKhoan;
 CREATE TABLE dbo.TaiKhoan (
     MaTK BIGINT IDENTITY(1, 1) PRIMARY KEY,
@@ -28,8 +42,7 @@ CREATE TABLE dbo.TaiKhoan (
     MatKhauBam VARCHAR(255) NOT NULL,
     HoTen NVARCHAR(120) NULL,
     DienThoai VARCHAR(20) NULL,
-    VaiTro VARCHAR(16) NOT NULL,
-    -- ADMIN, CASHIER, KITCHEN, CUSTOMER
+    VaiTro VARCHAR(16) NOT NULL, -- ADMIN, MANAGER, CASHIER, KITCHEN, CUSTOMER
     HoatDong BIT NOT NULL CONSTRAINT DF_TaiKhoan_HoatDong DEFAULT 1,
     EmailXacThuc BIT NOT NULL CONSTRAINT DF_TaiKhoan_EmailXacThuc DEFAULT 1,
     TokenVersion BIGINT NOT NULL CONSTRAINT DF_TaiKhoan_TokenVersion DEFAULT 1,
@@ -38,6 +51,7 @@ CREATE TABLE dbo.TaiKhoan (
     AvatarPublicId NVARCHAR(255) NULL,
     CONSTRAINT UQ_TaiKhoan_Email UNIQUE (Email)
 );
+
 CREATE TABLE dbo.TokenKhoiPhuc (
     MaToken BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaTK BIGINT NOT NULL,
@@ -47,7 +61,7 @@ CREATE TABLE dbo.TokenKhoiPhuc (
     CONSTRAINT FK_TokenKhoiPhuc_TaiKhoan FOREIGN KEY (MaTK) REFERENCES dbo.TaiKhoan(MaTK),
     CONSTRAINT UQ_TokenKhoiPhuc_Hash UNIQUE (TokenHash)
 );
-IF OBJECT_ID('dbo.XacThucEmail', 'U') IS NOT NULL DROP TABLE dbo.XacThucEmail;
+
 CREATE TABLE dbo.XacThucEmail (
     MaOTP BIGINT IDENTITY(1, 1) PRIMARY KEY,
     Email VARCHAR(254) NOT NULL,
@@ -63,7 +77,40 @@ CREATE TABLE dbo.XacThucEmail (
     TaoLuc DATETIME2 NOT NULL
 );
 CREATE INDEX IX_XacThucEmail_Email_MucDich ON dbo.XacThucEmail(Email, MucDich);
--- 2. Cấu hình chung
+
+-- ----------------------------------------------------------------------------
+-- 2. CHI NHÁNH & PHÂN CÔNG NHÂN SỰ
+-- ----------------------------------------------------------------------------
+IF OBJECT_ID('dbo.ChiNhanh', 'U') IS NOT NULL DROP TABLE dbo.ChiNhanh;
+CREATE TABLE dbo.ChiNhanh (
+    MaCN BIGINT IDENTITY(1,1) NOT NULL,
+    MaDinhDanh VARCHAR(20) NOT NULL,
+    TenChiNhanh NVARCHAR(150) NOT NULL,
+    DiaChi NVARCHAR(255) NOT NULL,
+    SoDienThoai VARCHAR(20) NULL,
+    TrangThai NVARCHAR(30) NOT NULL CONSTRAINT DF_ChiNhanh_TrangThai DEFAULT N'HOAT_DONG',
+    ThoiGianTao DATETIME2 NOT NULL CONSTRAINT DF_ChiNhanh_ThoiGianTao DEFAULT SYSUTCDATETIME(),
+    GioMoCua NVARCHAR(120) NULL,
+    CONSTRAINT PK_ChiNhanh PRIMARY KEY (MaCN),
+    CONSTRAINT UQ_ChiNhanh_MaDinhDanh UNIQUE (MaDinhDanh)
+);
+
+CREATE TABLE dbo.NhanVienChiNhanh (
+    MaNVCN BIGINT IDENTITY(1,1) NOT NULL,
+    MaTK BIGINT NOT NULL,
+    MaCN BIGINT NOT NULL,
+    VaiTroChiNhanh NVARCHAR(30) NOT NULL,
+    TrangThai NVARCHAR(30) NOT NULL CONSTRAINT DF_NVCN_TrangThai DEFAULT N'HOAT_DONG',
+    NgayPhanCong DATETIME2 NOT NULL CONSTRAINT DF_NVCN_NgayPhanCong DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_NhanVienChiNhanh PRIMARY KEY (MaNVCN),
+    CONSTRAINT FK_NVCN_TaiKhoan FOREIGN KEY (MaTK) REFERENCES dbo.TaiKhoan(MaTK),
+    CONSTRAINT FK_NVCN_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN),
+    CONSTRAINT UQ_NVCN_TK_CN UNIQUE (MaTK, MaCN)
+);
+
+-- ----------------------------------------------------------------------------
+-- 3. CẤU HÌNH HỆ THỐNG TOÀN CHUỖI
+-- ----------------------------------------------------------------------------
 IF OBJECT_ID('dbo.CauHinhChung', 'U') IS NOT NULL DROP TABLE dbo.CauHinhChung;
 CREATE TABLE dbo.CauHinhChung (
     MaCauHinh INT PRIMARY KEY,
@@ -83,18 +130,21 @@ CREATE TABLE dbo.CauHinhChung (
     GiaTriGiam DECIMAL(18, 2) NOT NULL CONSTRAINT DF_CauHinhChung_GiaTriGiam DEFAULT 0.00,
     NguoiSua BIGINT NULL,
     SuaLuc DATETIME2 NOT NULL,
-    CONSTRAINT CK_CauHinhChung_TyLeGiam CHECK (
-        TyLeGiam >= 0
-        AND TyLeGiam <= 100
-    ),
+    CONSTRAINT CK_CauHinhChung_TyLeGiam CHECK (TyLeGiam >= 0 AND TyLeGiam <= 100),
     CONSTRAINT CK_CauHinhChung_GiaTriGiam CHECK (GiaTriGiam >= 0),
     CONSTRAINT FK_CauHinhChung_NguoiSua FOREIGN KEY (NguoiSua) REFERENCES dbo.TaiKhoan(MaTK)
 );
--- 3. Danh mục & Món uống
+
+-- ----------------------------------------------------------------------------
+-- 4. DANH MỤC & MÓN UỐNG
+-- ----------------------------------------------------------------------------
+IF OBJECT_ID('dbo.ChiTietDonHangTopping', 'U') IS NOT NULL DROP TABLE dbo.ChiTietDonHangTopping;
+IF OBJECT_ID('dbo.ChiTietDonHang', 'U') IS NOT NULL DROP TABLE dbo.ChiTietDonHang;
 IF OBJECT_ID('dbo.CongThucMon', 'U') IS NOT NULL DROP TABLE dbo.CongThucMon;
 IF OBJECT_ID('dbo.ChiTietGioPhien', 'U') IS NOT NULL DROP TABLE dbo.ChiTietGioPhien;
 IF OBJECT_ID('dbo.MonUong', 'U') IS NOT NULL DROP TABLE dbo.MonUong;
 IF OBJECT_ID('dbo.DanhMuc', 'U') IS NOT NULL DROP TABLE dbo.DanhMuc;
+
 CREATE TABLE dbo.DanhMuc (
     MaDM BIGINT IDENTITY(1, 1) PRIMARY KEY,
     TenDM NVARCHAR(100) NOT NULL,
@@ -102,43 +152,62 @@ CREATE TABLE dbo.DanhMuc (
     HoatDong BIT NOT NULL CONSTRAINT DF_DanhMuc_HoatDong DEFAULT 1,
     CONSTRAINT UQ_DanhMuc_TenDM UNIQUE (TenDM)
 );
+
 CREATE TABLE dbo.MonUong (
     MaMon BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaDM BIGINT NOT NULL,
     TenMon NVARCHAR(120) NOT NULL,
-    Size VARCHAR(12) NOT NULL,
-    -- S, M, L
+    Size VARCHAR(12) NOT NULL, -- S, M, L
     MoTa NVARCHAR(1000) NULL,
     Gia DECIMAL(18, 2) NOT NULL,
     AnhUrl NVARCHAR(1000) NULL,
     AnhPublicId VARCHAR(255) NULL,
     HoatDong BIT NOT NULL CONSTRAINT DF_MonUong_HoatDong DEFAULT 1,
+    TaoLuc DATETIME2 NOT NULL CONSTRAINT DF_MonUong_TaoLuc DEFAULT SYSUTCDATETIME(),
     CONSTRAINT CK_MonUong_Gia CHECK (Gia >= 0),
     CONSTRAINT UQ_MonUong_Ten_Size UNIQUE (TenMon, Size),
     CONSTRAINT FK_MonUong_DanhMuc FOREIGN KEY (MaDM) REFERENCES dbo.DanhMuc(MaDM)
 );
--- 4. Bàn & Phiên bàn
+
+CREATE TABLE dbo.MonUongChiNhanh (
+    MaMonChiNhanh BIGINT IDENTITY(1,1) NOT NULL,
+    MaCN BIGINT NOT NULL,
+    MaMon BIGINT NOT NULL,
+    KinhDoanh BIT NOT NULL CONSTRAINT DF_MonUongChiNhanh_KinhDoanh DEFAULT 1,
+    ConPhucVu BIT NOT NULL CONSTRAINT DF_MonUongChiNhanh_ConPhucVu DEFAULT 1,
+    CapNhatLuc DATETIME2 NOT NULL CONSTRAINT DF_MonUongChiNhanh_CapNhatLuc DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_MonUongChiNhanh PRIMARY KEY (MaMonChiNhanh),
+    CONSTRAINT FK_MonUongChiNhanh_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN),
+    CONSTRAINT FK_MonUongChiNhanh_MonUong FOREIGN KEY (MaMon) REFERENCES dbo.MonUong(MaMon),
+    CONSTRAINT UQ_MonUongChiNhanh_CN_Mon UNIQUE (MaCN, MaMon)
+);
+
+-- ----------------------------------------------------------------------------
+-- 5. BÀN, PHIÊN BÀN & GIỎ HÀNG TẠI BÀN
+-- ----------------------------------------------------------------------------
 IF OBJECT_ID('dbo.TruyCapPhienBan', 'U') IS NOT NULL DROP TABLE dbo.TruyCapPhienBan;
 IF OBJECT_ID('dbo.GioPhien', 'U') IS NOT NULL DROP TABLE dbo.GioPhien;
 IF OBJECT_ID('dbo.PhienBan', 'U') IS NOT NULL DROP TABLE dbo.PhienBan;
 IF OBJECT_ID('dbo.Ban', 'U') IS NOT NULL DROP TABLE dbo.Ban;
+
 CREATE TABLE dbo.Ban (
     MaBan BIGINT IDENTITY(1, 1) PRIMARY KEY,
     TenBan NVARCHAR(40) NOT NULL,
     MaQR VARCHAR(64) NOT NULL,
-    TrangThai VARCHAR(16) NOT NULL CONSTRAINT DF_Ban_TrangThai DEFAULT 'TRONG',
-    -- TRONG, CO_KHACH
+    TrangThai VARCHAR(16) NOT NULL CONSTRAINT DF_Ban_TrangThai DEFAULT 'TRONG', -- TRONG, CO_KHACH
     MaPhienDangMo BIGINT NULL,
     HoatDong BIT NOT NULL CONSTRAINT DF_Ban_HoatDong DEFAULT 1,
+    MaCN BIGINT NOT NULL,
     Version BIGINT NOT NULL CONSTRAINT DF_Ban_Version DEFAULT 0,
-    CONSTRAINT UQ_Ban_TenBan UNIQUE (TenBan),
-    CONSTRAINT UQ_Ban_MaQR UNIQUE (MaQR)
+    CONSTRAINT UQ_Ban_ChiNhanh_Ten UNIQUE (MaCN, TenBan),
+    CONSTRAINT UQ_Ban_MaQR UNIQUE (MaQR),
+    CONSTRAINT FK_Ban_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN)
 );
+
 CREATE TABLE dbo.PhienBan (
     MaPhien BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaBan BIGINT NOT NULL,
-    TrangThai VARCHAR(8) NOT NULL CONSTRAINT DF_PhienBan_TrangThai DEFAULT 'OPEN',
-    -- OPEN, CLOSED
+    TrangThai VARCHAR(8) NOT NULL CONSTRAINT DF_PhienBan_TrangThai DEFAULT 'OPEN', -- OPEN, CLOSED
     MoLuc DATETIME2 NOT NULL,
     DongLuc DATETIME2 NULL,
     NguoiMo BIGINT NULL,
@@ -148,7 +217,11 @@ CREATE TABLE dbo.PhienBan (
     CONSTRAINT FK_PhienBan_NguoiMo FOREIGN KEY (NguoiMo) REFERENCES dbo.TaiKhoan(MaTK),
     CONSTRAINT FK_PhienBan_NguoiDong FOREIGN KEY (NguoiDong) REFERENCES dbo.TaiKhoan(MaTK)
 );
--- 5. Giỏ phiên bàn & Token truy cập phiên
+
+CREATE UNIQUE NONCLUSTERED INDEX UQ_PhienBan_MaBan_Open
+ON dbo.PhienBan (MaBan)
+WHERE TrangThai = 'OPEN';
+
 CREATE TABLE dbo.GioPhien (
     MaGio BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaPhien BIGINT NOT NULL,
@@ -157,6 +230,7 @@ CREATE TABLE dbo.GioPhien (
     CONSTRAINT UQ_GioPhien_MaPhien UNIQUE (MaPhien),
     CONSTRAINT FK_GioPhien_PhienBan FOREIGN KEY (MaPhien) REFERENCES dbo.PhienBan(MaPhien)
 );
+
 CREATE TABLE dbo.ChiTietGioPhien (
     MaDong BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaGio BIGINT NOT NULL,
@@ -168,6 +242,7 @@ CREATE TABLE dbo.ChiTietGioPhien (
     CONSTRAINT FK_ChiTietGioPhien_Gio FOREIGN KEY (MaGio) REFERENCES dbo.GioPhien(MaGio),
     CONSTRAINT FK_ChiTietGioPhien_Mon FOREIGN KEY (MaMon) REFERENCES dbo.MonUong(MaMon)
 );
+
 CREATE TABLE dbo.TruyCapPhienBan (
     MaTruyCap BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaPhien BIGINT NOT NULL,
@@ -177,11 +252,13 @@ CREATE TABLE dbo.TruyCapPhienBan (
     CONSTRAINT UQ_TruyCapPhienBan_TokenHash UNIQUE (TokenHash),
     CONSTRAINT FK_TruyCapPhienBan_PhienBan FOREIGN KEY (MaPhien) REFERENCES dbo.PhienBan(MaPhien)
 );
--- 6. Nguyên liệu & Tồn kho hai tầng
+
+-- ----------------------------------------------------------------------------
+-- 6. NGUYÊN LIỆU & TỒN KHO HAI TẦNG ĐA CHI NHÁNH
+-- ----------------------------------------------------------------------------
 IF OBJECT_ID('dbo.ChiTietKetCaKho', 'U') IS NOT NULL DROP TABLE dbo.ChiTietKetCaKho;
 IF OBJECT_ID('dbo.KetCaKho', 'U') IS NOT NULL DROP TABLE dbo.KetCaKho;
 IF OBJECT_ID('dbo.LichSuKho', 'U') IS NOT NULL DROP TABLE dbo.LichSuKho;
-
 IF OBJECT_ID('dbo.ChiTietMeSoChe', 'U') IS NOT NULL DROP TABLE dbo.ChiTietMeSoChe;
 IF OBJECT_ID('dbo.MeSoChe', 'U') IS NOT NULL DROP TABLE dbo.MeSoChe;
 IF OBJECT_ID('dbo.ChiTietCTSoChe', 'U') IS NOT NULL DROP TABLE dbo.ChiTietCTSoChe;
@@ -190,30 +267,32 @@ IF OBJECT_ID('dbo.ChiTietNhap', 'U') IS NOT NULL DROP TABLE dbo.ChiTietNhap;
 IF OBJECT_ID('dbo.PhieuNhap', 'U') IS NOT NULL DROP TABLE dbo.PhieuNhap;
 IF OBJECT_ID('dbo.TonNguyenLieu', 'U') IS NOT NULL DROP TABLE dbo.TonNguyenLieu;
 IF OBJECT_ID('dbo.NguyenLieu', 'U') IS NOT NULL DROP TABLE dbo.NguyenLieu;
+
 CREATE TABLE dbo.NguyenLieu (
     MaNL BIGINT IDENTITY(1, 1) PRIMARY KEY,
     TenNL NVARCHAR(120) NOT NULL,
-    Loai VARCHAR(8) NOT NULL,
-    -- THO, SOCHE
-    DonVi VARCHAR(16) NOT NULL,
-    -- kg, g, ml, ly, cai, suat
+    Loai VARCHAR(8) NOT NULL, -- THO, SOCHE
+    DonVi VARCHAR(16) NOT NULL, -- kg, g, ml, ly, cai, suat
     HoatDong BIT NOT NULL CONSTRAINT DF_NguyenLieu_HoatDong DEFAULT 1,
     CONSTRAINT UQ_NguyenLieu_TenNL UNIQUE (TenNL)
 );
+
 CREATE TABLE dbo.TonNguyenLieu (
+    MaCN BIGINT NOT NULL,
     MaNL BIGINT NOT NULL,
-    ViTri VARCHAR(8) NOT NULL,
-    -- KHO, BEP
+    ViTri VARCHAR(8) NOT NULL, -- KHO, BEP
     SoLuong DECIMAL(18, 3) NOT NULL CONSTRAINT DF_TonNguyenLieu_SoLuong DEFAULT 0,
     NguongCanhBao DECIMAL(18, 3) NULL,
     GiaVonDonVi DECIMAL(18, 6) NULL,
     Version BIGINT NOT NULL CONSTRAINT DF_TonNguyenLieu_Version DEFAULT 0,
-    CONSTRAINT PK_TonNguyenLieu PRIMARY KEY (MaNL, ViTri),
+    CONSTRAINT PK_TonNguyenLieu PRIMARY KEY (MaCN, MaNL, ViTri),
     CONSTRAINT CK_TonNguyenLieu_SoLuong CHECK (SoLuong >= 0),
     CONSTRAINT CK_TonNguyenLieu_Nguong CHECK (NguongCanhBao >= 0),
     CONSTRAINT CK_TonNguyenLieu_GiaVon CHECK (GiaVonDonVi IS NULL OR GiaVonDonVi >= 0),
+    CONSTRAINT FK_TonNguyenLieu_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN),
     CONSTRAINT FK_TonNguyenLieu_NguyenLieu FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL)
 );
+
 CREATE TABLE dbo.CongThucMon (
     MaMon BIGINT NOT NULL,
     MaNL BIGINT NOT NULL,
@@ -223,6 +302,7 @@ CREATE TABLE dbo.CongThucMon (
     CONSTRAINT FK_CongThucMon_Mon FOREIGN KEY (MaMon) REFERENCES dbo.MonUong(MaMon),
     CONSTRAINT FK_CongThucMon_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL)
 );
+
 CREATE TABLE dbo.CongThucSoChe (
     MaCTSC BIGINT IDENTITY(1, 1) PRIMARY KEY,
     TenCT NVARCHAR(120) NOT NULL,
@@ -235,6 +315,7 @@ CREATE TABLE dbo.CongThucSoChe (
     CONSTRAINT CK_CongThucSoChe_LuongDauRa CHECK (LuongDauRaChuan > 0),
     CONSTRAINT FK_CongThucSoChe_DauRa FOREIGN KEY (MaNLDauRa) REFERENCES dbo.NguyenLieu(MaNL)
 );
+
 CREATE TABLE dbo.ChiTietCTSoChe (
     MaCTSC BIGINT NOT NULL,
     MaNL BIGINT NOT NULL,
@@ -244,20 +325,22 @@ CREATE TABLE dbo.ChiTietCTSoChe (
     CONSTRAINT FK_ChiTietCTSoChe_CT FOREIGN KEY (MaCTSC) REFERENCES dbo.CongThucSoChe(MaCTSC),
     CONSTRAINT FK_ChiTietCTSoChe_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL)
 );
--- 7. Phiếu nhập & Phiếu xuất & Mẻ sơ chế
+
 CREATE TABLE dbo.PhieuNhap (
     MaPhieu BIGINT IDENTITY(1, 1) PRIMARY KEY,
     NguoiLap BIGINT NOT NULL,
+    MaCN BIGINT NOT NULL,
     LyDo NVARCHAR(500) NULL,
     NguonNhap NVARCHAR(500) NULL,
     TrangThai VARCHAR(12) NOT NULL CONSTRAINT DF_PhieuNhap_TrangThai DEFAULT 'NHAP',
-    -- NHAP, DA_GHI_SO
     LapLuc DATETIME2 NOT NULL,
     GhiSoLuc DATETIME2 NULL,
     MaYeuCau VARCHAR(64) NULL,
     CONSTRAINT UQ_PhieuNhap_MaYeuCau UNIQUE (MaYeuCau),
-    CONSTRAINT FK_PhieuNhap_NguoiLap FOREIGN KEY (NguoiLap) REFERENCES dbo.TaiKhoan(MaTK)
+    CONSTRAINT FK_PhieuNhap_NguoiLap FOREIGN KEY (NguoiLap) REFERENCES dbo.TaiKhoan(MaTK),
+    CONSTRAINT FK_PhieuNhap_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN)
 );
+
 CREATE TABLE dbo.ChiTietNhap (
     MaPhieu BIGINT NOT NULL,
     MaNL BIGINT NOT NULL,
@@ -269,14 +352,15 @@ CREATE TABLE dbo.ChiTietNhap (
     CONSTRAINT FK_ChiTietNhap_Phieu FOREIGN KEY (MaPhieu) REFERENCES dbo.PhieuNhap(MaPhieu),
     CONSTRAINT FK_ChiTietNhap_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL)
 );
+
 CREATE TABLE dbo.MeSoChe (
     MaMe BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaCTSC BIGINT NOT NULL,
     MaNLDauRa BIGINT NOT NULL,
+    MaCN BIGINT NOT NULL,
     LuongDuKien DECIMAL(18, 3) NOT NULL,
     LuongThucThu DECIMAL(18, 3) NOT NULL CONSTRAINT DF_MeSoChe_ThucThu DEFAULT 0,
     TrangThai VARCHAR(12) NOT NULL CONSTRAINT DF_MeSoChe_TrangThai DEFAULT 'NHAP',
-    -- NHAP, DA_GHI_SO
     LyDoChenhLech NVARCHAR(500) NULL,
     TongChiPhi DECIMAL(18, 2) NULL,
     GiaVonBinhQuan DECIMAL(18, 6) NULL,
@@ -290,8 +374,10 @@ CREATE TABLE dbo.MeSoChe (
     CONSTRAINT CK_MeSoChe_LuongThucThu CHECK (LuongThucThu >= 0),
     CONSTRAINT FK_MeSoChe_CT FOREIGN KEY (MaCTSC) REFERENCES dbo.CongThucSoChe(MaCTSC),
     CONSTRAINT FK_MeSoChe_DauRa FOREIGN KEY (MaNLDauRa) REFERENCES dbo.NguyenLieu(MaNL),
-    CONSTRAINT FK_MeSoChe_NguoiLap FOREIGN KEY (NguoiLap) REFERENCES dbo.TaiKhoan(MaTK)
+    CONSTRAINT FK_MeSoChe_NguoiLap FOREIGN KEY (NguoiLap) REFERENCES dbo.TaiKhoan(MaTK),
+    CONSTRAINT FK_MeSoChe_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN)
 );
+
 CREATE TABLE dbo.ChiTietMeSoChe (
     MaMe BIGINT NOT NULL,
     MaNL BIGINT NOT NULL,
@@ -305,14 +391,12 @@ CREATE TABLE dbo.ChiTietMeSoChe (
     CONSTRAINT FK_ChiTietMeSoChe_Me FOREIGN KEY (MaMe) REFERENCES dbo.MeSoChe(MaMe),
     CONSTRAINT FK_ChiTietMeSoChe_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL)
 );
--- 7.1 Kết ca kho & Chi tiết hao hụt
-IF OBJECT_ID('dbo.ChiTietKetCaKho', 'U') IS NOT NULL DROP TABLE dbo.ChiTietKetCaKho;
-IF OBJECT_ID('dbo.KetCaKho', 'U') IS NOT NULL DROP TABLE dbo.KetCaKho;
+
 CREATE TABLE dbo.KetCaKho (
     MaKetCa BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaCa VARCHAR(64) NULL,
-    ViTri VARCHAR(8) NOT NULL,
-    -- BEP, KHO
+    MaCN BIGINT NOT NULL,
+    ViTri VARCHAR(8) NOT NULL, -- BEP, KHO
     NguoiChot BIGINT NOT NULL,
     ChotLuc DATETIME2 NOT NULL,
     TuLuc DATETIME2 NOT NULL,
@@ -321,8 +405,10 @@ CREATE TABLE dbo.KetCaKho (
     GhiChu NVARCHAR(500) NULL,
     MaYeuCau VARCHAR(64) NULL,
     CONSTRAINT UQ_KetCaKho_MaYeuCau UNIQUE (MaYeuCau),
-    CONSTRAINT FK_KetCaKho_NguoiChot FOREIGN KEY (NguoiChot) REFERENCES dbo.TaiKhoan(MaTK)
+    CONSTRAINT FK_KetCaKho_NguoiChot FOREIGN KEY (NguoiChot) REFERENCES dbo.TaiKhoan(MaTK),
+    CONSTRAINT FK_KetCaKho_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN)
 );
+
 CREATE TABLE dbo.ChiTietKetCaKho (
     MaChiTiet BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaKetCa BIGINT NOT NULL,
@@ -337,21 +423,23 @@ CREATE TABLE dbo.ChiTietKetCaKho (
     ChiPhiHaoHut DECIMAL(18, 2) NOT NULL CONSTRAINT DF_ChiTietKetCa_ChiPhiHaoHut DEFAULT 0,
     LyDo NVARCHAR(500) NULL,
     CONSTRAINT FK_ChiTietKetCaKho_KetCa FOREIGN KEY (MaKetCa) REFERENCES dbo.KetCaKho(MaKetCa),
-    CONSTRAINT FK_ChiTietKetCaKho_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL)
+    CONSTRAINT FK_ChiTietKetCaKho_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL),
+    CONSTRAINT CK_ChiTietKetCa_ThucTe CHECK (TonThucTe = LuongLoaiBo + LuongGiuLai)
 );
+
+CREATE UNIQUE NONCLUSTERED INDEX UQ_ChiTietKetCaKho_MaKetCa_MaNL
+ON dbo.ChiTietKetCaKho (MaKetCa, MaNL);
 
 CREATE TABLE dbo.LichSuKho (
     MaBienDong BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaNL BIGINT NOT NULL,
-    ViTri VARCHAR(8) NOT NULL,
-    -- KHO, BEP
-    Loai VARCHAR(16) NOT NULL,
-    -- NHAP, SOCHE_VAO, SOCHE_RA, TIEU_HAO, HAO_HUT, DIEU_CHINH
+    MaCN BIGINT NOT NULL,
+    ViTri VARCHAR(8) NOT NULL, -- KHO, BEP
+    Loai VARCHAR(16) NOT NULL, -- NHAP, SOCHE_VAO, SOCHE_RA, TIEU_HAO, HAO_HUT, DIEU_CHINH
     LuongBienDong DECIMAL(18, 3) NOT NULL,
     TonTruoc DECIMAL(18, 3) NOT NULL,
     TonSau DECIMAL(18, 3) NOT NULL,
     NguonLoai VARCHAR(16) NOT NULL,
-    -- ORDER, IMPORT, BATCH, WASTE, REMAKE
     NguonMa BIGINT NOT NULL,
     NguonDong BIGINT NULL,
     NguoiLap BIGINT NOT NULL,
@@ -361,28 +449,70 @@ CREATE TABLE dbo.LichSuKho (
     ChiPhiHaoHut DECIMAL(18, 2) NULL,
     CONSTRAINT CK_LichSuKho_TonTruoc CHECK (TonTruoc >= 0),
     CONSTRAINT CK_LichSuKho_TonSau CHECK (TonSau >= 0),
+    CONSTRAINT CK_LichSuKho_TonSau_Math CHECK (TonSau = TonTruoc + LuongBienDong),
     CONSTRAINT FK_LichSuKho_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL),
-    CONSTRAINT FK_LichSuKho_NguoiLap FOREIGN KEY (NguoiLap) REFERENCES dbo.TaiKhoan(MaTK)
+    CONSTRAINT FK_LichSuKho_NguoiLap FOREIGN KEY (NguoiLap) REFERENCES dbo.TaiKhoan(MaTK),
+    CONSTRAINT FK_LichSuKho_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN)
 );
--- 8. Đơn hàng & Chi tiết & Hóa đơn & Snapshot định mức
+
+-- ----------------------------------------------------------------------------
+-- 7. VOUCHER & KHUYẾN MÃI
+-- ----------------------------------------------------------------------------
+CREATE TABLE dbo.Voucher (
+    MaVoucher BIGINT IDENTITY(1,1) NOT NULL,
+    MaCode NVARCHAR(50) NOT NULL,
+    TenVoucher NVARCHAR(150) NOT NULL,
+    MoTa NVARCHAR(500) NULL,
+    LoaiGiamGia VARCHAR(20) NOT NULL, -- PERCENT, FIXED_AMOUNT
+    GiaTriGiam DECIMAL(18,2) NOT NULL,
+    GiamToiDa DECIMAL(18,2) NULL,
+    GiaTriDonToiThieu DECIMAL(18,2) NOT NULL CONSTRAINT DF_Voucher_GiaTriDonToiThieu DEFAULT 0,
+    TongSoLuot INT NOT NULL,
+    SoLuotDaDung INT NOT NULL CONSTRAINT DF_Voucher_SoLuotDaDung DEFAULT 0,
+    SoLuotMoiKhach INT NOT NULL CONSTRAINT DF_Voucher_SoLuotMoiKhach DEFAULT 1,
+    ApDungToanChuoi BIT NOT NULL CONSTRAINT DF_Voucher_ApDungToanChuoi DEFAULT 1,
+    NgayBatDau DATETIME2 NOT NULL,
+    NgayKetThuc DATETIME2 NOT NULL,
+    KichHoat BIT NOT NULL CONSTRAINT DF_Voucher_KichHoat DEFAULT 1,
+    TaoLuc DATETIME2 NOT NULL CONSTRAINT DF_Voucher_TaoLuc DEFAULT SYSUTCDATETIME(),
+    CapNhatLuc DATETIME2 NOT NULL CONSTRAINT DF_Voucher_CapNhatLuc DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_Voucher PRIMARY KEY CLUSTERED (MaVoucher ASC),
+    CONSTRAINT UQ_Voucher_MaCode UNIQUE NONCLUSTERED (MaCode),
+    CONSTRAINT CK_Voucher_LoaiGiamGia CHECK (LoaiGiamGia IN ('PERCENT', 'FIXED_AMOUNT')),
+    CONSTRAINT CK_Voucher_SoLuot CHECK (SoLuotDaDung <= TongSoLuot),
+    CONSTRAINT CK_Voucher_ThoiHan CHECK (NgayBatDau <= NgayKetThuc)
+);
+CREATE NONCLUSTERED INDEX IX_Voucher_MaCode ON dbo.Voucher (MaCode);
+CREATE NONCLUSTERED INDEX IX_Voucher_ThoiHan ON dbo.Voucher (KichHoat, NgayBatDau, NgayKetThuc);
+
+CREATE TABLE dbo.VoucherChiNhanh (
+    MaVoucher BIGINT NOT NULL,
+    MaCN BIGINT NOT NULL,
+    TaoLuc DATETIME2 NOT NULL CONSTRAINT DF_VoucherChiNhanh_TaoLuc DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_VoucherChiNhanh PRIMARY KEY CLUSTERED (MaVoucher, MaCN),
+    CONSTRAINT FK_VoucherChiNhanh_Voucher FOREIGN KEY (MaVoucher) REFERENCES dbo.Voucher(MaVoucher) ON DELETE CASCADE,
+    CONSTRAINT FK_VoucherChiNhanh_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN) ON DELETE CASCADE
+);
+
+-- ----------------------------------------------------------------------------
+-- 8. ĐƠN HÀNG, HÓA ĐƠN & THANH TOÁN
+-- ----------------------------------------------------------------------------
 IF OBJECT_ID('dbo.ThongBaoThanhToan', 'U') IS NOT NULL DROP TABLE dbo.ThongBaoThanhToan;
 IF OBJECT_ID('dbo.YeuCauHoan', 'U') IS NOT NULL DROP TABLE dbo.YeuCauHoan;
 IF OBJECT_ID('dbo.ThanhToan', 'U') IS NOT NULL DROP TABLE dbo.ThanhToan;
 IF OBJECT_ID('dbo.HoaDon', 'U') IS NOT NULL DROP TABLE dbo.HoaDon;
 IF OBJECT_ID('dbo.YeuCauHuy', 'U') IS NOT NULL DROP TABLE dbo.YeuCauHuy;
 IF OBJECT_ID('dbo.DinhMucDonHang', 'U') IS NOT NULL DROP TABLE dbo.DinhMucDonHang;
-IF OBJECT_ID('dbo.ChiTietDonHangTopping', 'U') IS NOT NULL DROP TABLE dbo.ChiTietDonHangTopping;
-IF OBJECT_ID('dbo.ChiTietDonHang', 'U') IS NOT NULL DROP TABLE dbo.ChiTietDonHang;
 IF OBJECT_ID('dbo.TruyCapDonQuay', 'U') IS NOT NULL DROP TABLE dbo.TruyCapDonQuay;
 IF OBJECT_ID('dbo.DonHang', 'U') IS NOT NULL DROP TABLE dbo.DonHang;
+
 CREATE TABLE dbo.DonHang (
     MaDH BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaPhien BIGINT NULL,
     MaTK BIGINT NULL,
-    Nguon VARCHAR(10) NOT NULL,
-    -- TABLE, COUNTER
-    TrangThai VARCHAR(24) NOT NULL,
-    -- CHO_XAC_NHAN, CHO_CHE_BIEN, DANG_CHE_BIEN, HOAN_THANH, DA_HUY
+    MaCN BIGINT NOT NULL,
+    Nguon VARCHAR(10) NOT NULL, -- TABLE, COUNTER
+    TrangThai VARCHAR(24) NOT NULL, -- CHO_XAC_NHAN, CHO_CHE_BIEN, DANG_CHE_BIEN, HOAN_THANH, DA_HUY
     ThayTheMaDH BIGINT NULL,
     MaYeuCau VARCHAR(64) NULL,
     GhiChu NVARCHAR(500) NULL,
@@ -390,10 +520,22 @@ CREATE TABLE dbo.DonHang (
     BatDauLuc DATETIME2 NULL,
     HoanThanhLuc DATETIME2 NULL,
     Version BIGINT NOT NULL CONSTRAINT DF_DonHang_Version DEFAULT 0,
+    MaVoucher BIGINT NULL,
+    MaCodeVoucher NVARCHAR(50) NULL,
+    NguoiNhan NVARCHAR(100) NULL,
+    SoDienThoaiNhan VARCHAR(20) NULL,
+    DiaChiGiao NVARCHAR(500) NULL,
+    HinhThucNhan VARCHAR(20) NULL,
     CONSTRAINT FK_DonHang_Phien FOREIGN KEY (MaPhien) REFERENCES dbo.PhienBan(MaPhien),
     CONSTRAINT FK_DonHang_TaiKhoan FOREIGN KEY (MaTK) REFERENCES dbo.TaiKhoan(MaTK),
-    CONSTRAINT FK_DonHang_ThayThe FOREIGN KEY (ThayTheMaDH) REFERENCES dbo.DonHang(MaDH)
+    CONSTRAINT FK_DonHang_ThayThe FOREIGN KEY (ThayTheMaDH) REFERENCES dbo.DonHang(MaDH),
+    CONSTRAINT FK_DonHang_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN),
+    CONSTRAINT FK_DonHang_Voucher FOREIGN KEY (MaVoucher) REFERENCES dbo.Voucher(MaVoucher)
 );
+
+CREATE NONCLUSTERED INDEX IX_DonHang_Nguon_TrangThai_TaoLuc 
+ON dbo.DonHang (MaCN, Nguon, TrangThai, TaoLuc DESC);
+
 CREATE TABLE dbo.ChiTietDonHang (
     MaChiTiet BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaDH BIGINT NOT NULL,
@@ -408,6 +550,7 @@ CREATE TABLE dbo.ChiTietDonHang (
     CONSTRAINT FK_ChiTietDonHang_DonHang FOREIGN KEY (MaDH) REFERENCES dbo.DonHang(MaDH),
     CONSTRAINT FK_ChiTietDonHang_Mon FOREIGN KEY (MaMon) REFERENCES dbo.MonUong(MaMon)
 );
+
 CREATE TABLE dbo.ChiTietDonHangTopping (
     MaChiTietTopping BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaChiTiet BIGINT NOT NULL,
@@ -417,18 +560,19 @@ CREATE TABLE dbo.ChiTietDonHangTopping (
     CONSTRAINT FK_ChiTietDonHangTopping_ChiTiet FOREIGN KEY (MaChiTiet) REFERENCES dbo.ChiTietDonHang(MaChiTiet) ON DELETE CASCADE,
     CONSTRAINT FK_ChiTietDonHangTopping_Mon FOREIGN KEY (MaMonTopping) REFERENCES dbo.MonUong(MaMon)
 );
+
 CREATE TABLE dbo.DinhMucDonHang (
     MaDH BIGINT NOT NULL,
     MaNL BIGINT NOT NULL,
     TongLuong DECIMAL(18, 3) NOT NULL,
-    LoaiChot VARCHAR(8) NOT NULL,
-    -- THO, SOCHE
+    LoaiChot VARCHAR(8) NOT NULL, -- THO, SOCHE
     DonViChot VARCHAR(16) NOT NULL,
     CONSTRAINT PK_DinhMucDonHang PRIMARY KEY (MaDH, MaNL),
     CONSTRAINT CK_DinhMucDonHang_TongLuong CHECK (TongLuong > 0),
     CONSTRAINT FK_DinhMucDonHang_DonHang FOREIGN KEY (MaDH) REFERENCES dbo.DonHang(MaDH),
     CONSTRAINT FK_DinhMucDonHang_NL FOREIGN KEY (MaNL) REFERENCES dbo.NguyenLieu(MaNL)
 );
+
 CREATE TABLE dbo.HoaDon (
     MaHD BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaDH BIGINT NOT NULL,
@@ -439,21 +583,30 @@ CREATE TABLE dbo.HoaDon (
     LoaiGiamChot VARCHAR(16) NOT NULL CONSTRAINT DF_HoaDon_LoaiGiam DEFAULT 'PERCENT',
     GiaTriGiamChot DECIMAL(18, 2) NOT NULL CONSTRAINT DF_HoaDon_GiaTriGiam DEFAULT 0.00,
     TrangThai VARCHAR(12) NOT NULL CONSTRAINT DF_HoaDon_TrangThai DEFAULT 'HIEU_LUC',
-    -- HIEU_LUC, DA_HUY
     LapLuc DATETIME2 NOT NULL,
     HuyLuc DATETIME2 NULL,
+    MaVoucher BIGINT NULL,
+    MaCodeVoucher NVARCHAR(50) NULL,
+    TienGiamVoucher DECIMAL(18,2) NOT NULL CONSTRAINT DF_HoaDon_TienGiamVoucher DEFAULT 0,
     CONSTRAINT UQ_HoaDon_MaDH UNIQUE (MaDH),
     CONSTRAINT CK_HoaDon_TongTien CHECK (TongTien >= 0),
     CONSTRAINT CK_HoaDon_TienGiam CHECK (TienGiam >= 0),
     CONSTRAINT CK_HoaDon_PhaiTra CHECK (PhaiTra >= 0),
     CONSTRAINT CK_HoaDon_GiaTriGiam CHECK (GiaTriGiamChot >= 0),
-    CONSTRAINT FK_HoaDon_DonHang FOREIGN KEY (MaDH) REFERENCES dbo.DonHang(MaDH)
+    CONSTRAINT CK_HoaDon_PhaiTra_Calc CHECK (
+        PhaiTra = CASE 
+            WHEN (TongTien - TienGiam - TienGiamVoucher) < 0 THEN 0 
+            ELSE (TongTien - TienGiam - TienGiamVoucher) 
+        END
+    ),
+    CONSTRAINT FK_HoaDon_DonHang FOREIGN KEY (MaDH) REFERENCES dbo.DonHang(MaDH),
+    CONSTRAINT FK_HoaDon_Voucher FOREIGN KEY (MaVoucher) REFERENCES dbo.Voucher(MaVoucher)
 );
+
 CREATE TABLE dbo.ThanhToan (
     MaTT BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaHD BIGINT NOT NULL,
-    PhuongThuc VARCHAR(16) NOT NULL,
-    -- CASH, BANK_TRANSFER
+    PhuongThuc VARCHAR(16) NOT NULL, -- CASH, BANK_TRANSFER
     SoTien DECIMAL(18, 2) NOT NULL,
     ThamChieu NVARCHAR(120) NULL,
     NguoiThu BIGINT NOT NULL,
@@ -464,6 +617,7 @@ CREATE TABLE dbo.ThanhToan (
     CONSTRAINT FK_ThanhToan_HoaDon FOREIGN KEY (MaHD) REFERENCES dbo.HoaDon(MaHD),
     CONSTRAINT FK_ThanhToan_NguoiThu FOREIGN KEY (NguoiThu) REFERENCES dbo.TaiKhoan(MaTK)
 );
+
 CREATE TABLE dbo.ThongBaoThanhToan (
     MaTB BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaHD BIGINT NOT NULL,
@@ -473,19 +627,41 @@ CREATE TABLE dbo.ThongBaoThanhToan (
     MaYeuCau VARCHAR(64) NULL,
     CONSTRAINT FK_ThongBaoThanhToan_HoaDon FOREIGN KEY (MaHD) REFERENCES dbo.HoaDon(MaHD)
 );
+
+CREATE TABLE dbo.LichSuSuDungVoucher (
+    MaLichSu BIGINT IDENTITY(1,1) NOT NULL,
+    MaVoucher BIGINT NOT NULL,
+    MaDH BIGINT NOT NULL,
+    MaHD BIGINT NULL,
+    MaTK BIGINT NULL,
+    MaCN BIGINT NOT NULL,
+    SoTienGiam DECIMAL(18,2) NOT NULL,
+    TrangThai VARCHAR(20) NOT NULL CONSTRAINT DF_LSSDV_TrangThai DEFAULT 'DA_DUNG',
+    NgaySuDung DATETIME2 NOT NULL CONSTRAINT DF_LSSDV_NgaySuDung DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_LichSuSuDungVoucher PRIMARY KEY CLUSTERED (MaLichSu ASC),
+    CONSTRAINT FK_LSSDV_Voucher FOREIGN KEY (MaVoucher) REFERENCES dbo.Voucher(MaVoucher),
+    CONSTRAINT FK_LSSDV_DonHang FOREIGN KEY (MaDH) REFERENCES dbo.DonHang(MaDH),
+    CONSTRAINT FK_LSSDV_HoaDon FOREIGN KEY (MaHD) REFERENCES dbo.HoaDon(MaHD),
+    CONSTRAINT FK_LSSDV_TaiKhoan FOREIGN KEY (MaTK) REFERENCES dbo.TaiKhoan(MaTK),
+    CONSTRAINT FK_LSSDV_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN),
+    CONSTRAINT CK_LSSDV_TrangThai CHECK (TrangThai IN ('DA_DUNG', 'DA_HOAN_TRA'))
+);
+CREATE NONCLUSTERED INDEX IX_LSSDV_Voucher_Khach ON dbo.LichSuSuDungVoucher (MaVoucher, MaTK);
+CREATE NONCLUSTERED INDEX IX_LSSDV_DonHang ON dbo.LichSuSuDungVoucher (MaDH);
+
 CREATE TABLE dbo.YeuCauHuy (
     MaHuy BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaDH BIGINT NOT NULL,
     LyDo NVARCHAR(500) NOT NULL,
     LyDoXuLy NVARCHAR(500) NULL,
-    TrangThai VARCHAR(16) NOT NULL CONSTRAINT DF_YeuCauHuy_TrangThai DEFAULT 'CHO',
-    -- CHO, CHAP_THUAN, TU_CHOI
+    TrangThai VARCHAR(16) NOT NULL CONSTRAINT DF_YeuCauHuy_TrangThai DEFAULT 'CHO', -- CHO, CHAP_THUAN, TU_CHOI
     TaoLuc DATETIME2 NOT NULL,
     XuLyLuc DATETIME2 NULL,
     NguoiXuLy BIGINT NULL,
     CONSTRAINT FK_YeuCauHuy_DonHang FOREIGN KEY (MaDH) REFERENCES dbo.DonHang(MaDH),
     CONSTRAINT FK_YeuCauHuy_NguoiXuLy FOREIGN KEY (NguoiXuLy) REFERENCES dbo.TaiKhoan(MaTK)
 );
+
 CREATE TABLE dbo.YeuCauHoan (
     MaHoan BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaDH BIGINT NOT NULL,
@@ -493,8 +669,7 @@ CREATE TABLE dbo.YeuCauHoan (
     SoTien DECIMAL(18, 2) NOT NULL,
     LyDo NVARCHAR(500) NOT NULL,
     LyDoDuyet NVARCHAR(500) NULL,
-    TrangThai VARCHAR(16) NOT NULL CONSTRAINT DF_YeuCauHoan_TrangThai DEFAULT 'CHO_DUYET',
-    -- CHO_DUYET, DA_DUYET, TU_CHOI, DA_HOAN
+    TrangThai VARCHAR(16) NOT NULL CONSTRAINT DF_YeuCauHoan_TrangThai DEFAULT 'CHO_DUYET', -- CHO_DUYET, DA_DUYET, TU_CHOI, DA_HOAN
     NguoiDuyet BIGINT NULL,
     NguoiHoan BIGINT NULL,
     DuyetLuc DATETIME2 NULL,
@@ -510,6 +685,7 @@ CREATE TABLE dbo.YeuCauHoan (
     CONSTRAINT FK_YeuCauHoan_NguoiDuyet FOREIGN KEY (NguoiDuyet) REFERENCES dbo.TaiKhoan(MaTK),
     CONSTRAINT FK_YeuCauHoan_NguoiHoan FOREIGN KEY (NguoiHoan) REFERENCES dbo.TaiKhoan(MaTK)
 );
+
 CREATE TABLE dbo.TruyCapDonQuay (
     MaTruyCap BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaDH BIGINT NOT NULL,
@@ -519,9 +695,68 @@ CREATE TABLE dbo.TruyCapDonQuay (
     CONSTRAINT UQ_TruyCapDonQuay_TokenHash UNIQUE (TokenHash),
     CONSTRAINT FK_TruyCapDonQuay_DonHang FOREIGN KEY (MaDH) REFERENCES dbo.DonHang(MaDH)
 );
--- 9. Nhật ký nghiệp vụ & Chống lặp
+
+-- ----------------------------------------------------------------------------
+-- 9. TRẢI NGHIỆM KHÁCH HÀNG: YÊU THÍCH & ĐÁNH GIÁ BÌNH LUẬN
+-- ----------------------------------------------------------------------------
+CREATE TABLE dbo.SanPhamYeuThich (
+    MaYeuThich BIGINT IDENTITY(1,1) NOT NULL,
+    MaTK BIGINT NOT NULL,
+    MaMon BIGINT NOT NULL,
+    TaoLuc DATETIME2 NOT NULL CONSTRAINT DF_SanPhamYeuThich_TaoLuc DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_SanPhamYeuThich PRIMARY KEY CLUSTERED (MaYeuThich ASC),
+    CONSTRAINT FK_SanPhamYeuThich_TaiKhoan FOREIGN KEY (MaTK) REFERENCES dbo.TaiKhoan(MaTK),
+    CONSTRAINT FK_SanPhamYeuThich_MonUong FOREIGN KEY (MaMon) REFERENCES dbo.MonUong(MaMon),
+    CONSTRAINT UQ_SanPhamYeuThich_TaiKhoan_Mon UNIQUE NONCLUSTERED (MaTK, MaMon)
+);
+CREATE NONCLUSTERED INDEX IX_SanPhamYeuThich_MaTK ON dbo.SanPhamYeuThich (MaTK);
+CREATE NONCLUSTERED INDEX IX_SanPhamYeuThich_MaMon ON dbo.SanPhamYeuThich (MaMon);
+
+CREATE TABLE dbo.DanhGia (
+    MaDanhGia BIGINT IDENTITY(1,1) NOT NULL,
+    MaChiTiet BIGINT NOT NULL,
+    MaTK BIGINT NOT NULL,
+    MaMon BIGINT NOT NULL,
+    MaCN BIGINT NOT NULL,
+    SoSao INT NOT NULL,
+    NoiDung NVARCHAR(1000) NOT NULL,
+    An BIT NOT NULL CONSTRAINT DF_DanhGia_An DEFAULT 0,
+    LyDoAn NVARCHAR(500) NULL,
+    NguoiAn BIGINT NULL,
+    AnLuc DATETIME2 NULL,
+    TaoLuc DATETIME2 NOT NULL CONSTRAINT DF_DanhGia_TaoLuc DEFAULT SYSUTCDATETIME(),
+    CapNhatLuc DATETIME2 NOT NULL CONSTRAINT DF_DanhGia_CapNhatLuc DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_DanhGia PRIMARY KEY CLUSTERED (MaDanhGia ASC),
+    CONSTRAINT FK_DanhGia_ChiTietDonHang FOREIGN KEY (MaChiTiet) REFERENCES dbo.ChiTietDonHang(MaChiTiet),
+    CONSTRAINT FK_DanhGia_TaiKhoan FOREIGN KEY (MaTK) REFERENCES dbo.TaiKhoan(MaTK),
+    CONSTRAINT FK_DanhGia_MonUong FOREIGN KEY (MaMon) REFERENCES dbo.MonUong(MaMon),
+    CONSTRAINT FK_DanhGia_ChiNhanh FOREIGN KEY (MaCN) REFERENCES dbo.ChiNhanh(MaCN),
+    CONSTRAINT FK_DanhGia_NguoiAn FOREIGN KEY (NguoiAn) REFERENCES dbo.TaiKhoan(MaTK),
+    CONSTRAINT CK_DanhGia_SoSao CHECK (SoSao BETWEEN 1 AND 5),
+    CONSTRAINT CK_DanhGia_NoiDung_DoDai CHECK (LEN(LTRIM(RTRIM(NoiDung))) >= 50),
+    CONSTRAINT UQ_DanhGia_ChiTietDonHang UNIQUE NONCLUSTERED (MaChiTiet)
+);
+CREATE NONCLUSTERED INDEX IX_DanhGia_MaMon ON dbo.DanhGia (MaMon, An);
+CREATE NONCLUSTERED INDEX IX_DanhGia_MaCN ON dbo.DanhGia (MaCN, An);
+CREATE NONCLUSTERED INDEX IX_DanhGia_MaTK ON dbo.DanhGia (MaTK);
+
+CREATE TABLE dbo.DanhGiaMedia (
+    MaMedia BIGINT IDENTITY(1,1) NOT NULL,
+    MaDanhGia BIGINT NOT NULL,
+    Url NVARCHAR(1000) NOT NULL,
+    LoaiMedia VARCHAR(16) NOT NULL, -- IMAGE, VIDEO
+    TaoLuc DATETIME2 NOT NULL CONSTRAINT DF_DanhGiaMedia_TaoLuc DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_DanhGiaMedia PRIMARY KEY CLUSTERED (MaMedia ASC),
+    CONSTRAINT FK_DanhGiaMedia_DanhGia FOREIGN KEY (MaDanhGia) REFERENCES dbo.DanhGia(MaDanhGia) ON DELETE CASCADE
+);
+CREATE NONCLUSTERED INDEX IX_DanhGiaMedia_MaDanhGia ON dbo.DanhGiaMedia (MaDanhGia);
+
+-- ----------------------------------------------------------------------------
+-- 10. NHẬT KÝ NGHIỆP VỤ & CHỐNG LẶP IDEMPOTENCY
+-- ----------------------------------------------------------------------------
 IF OBJECT_ID('dbo.NhatKyNghiepVu', 'U') IS NOT NULL DROP TABLE dbo.NhatKyNghiepVu;
 IF OBJECT_ID('dbo.BanGhiChongLap', 'U') IS NOT NULL DROP TABLE dbo.BanGhiChongLap;
+
 CREATE TABLE dbo.NhatKyNghiepVu (
     MaNK BIGINT IDENTITY(1, 1) PRIMARY KEY,
     MaNKCha BIGINT NULL,
@@ -536,6 +771,7 @@ CREATE TABLE dbo.NhatKyNghiepVu (
     TaoLuc DATETIME2 NOT NULL,
     CONSTRAINT FK_NhatKyNghiepVu_Cha FOREIGN KEY (MaNKCha) REFERENCES dbo.NhatKyNghiepVu(MaNK)
 );
+
 CREATE TABLE dbo.BanGhiChongLap (
     MaBanGhi BIGINT IDENTITY(1, 1) PRIMARY KEY,
     PhamVi VARCHAR(128) NOT NULL,
@@ -547,7 +783,10 @@ CREATE TABLE dbo.BanGhiChongLap (
     HetHanLuc DATETIME2 NOT NULL,
     CONSTRAINT UQ_BanGhiChongLap UNIQUE (PhamVi, KhoaYeuCau)
 );
--- 10. Indexes tối ưu truy vấn theo database_rule.md
+
+-- ----------------------------------------------------------------------------
+-- 11. INDEXES BỔ SUNG TỐI ƯU TRUY VẤN
+-- ----------------------------------------------------------------------------
 CREATE INDEX IX_DonHang_Phien_TaoLuc ON dbo.DonHang(MaPhien, TaoLuc);
 CREATE INDEX IX_DonHang_TK_TaoLuc ON dbo.DonHang(MaTK, TaoLuc);
 CREATE INDEX IX_DonHang_TrangThai_TaoLuc ON dbo.DonHang(TrangThai, TaoLuc);

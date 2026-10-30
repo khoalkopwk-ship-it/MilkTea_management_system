@@ -85,34 +85,15 @@ if ($IntegratedSecurity) {
 $milkteaConn = New-Object System.Data.SqlClient.SqlConnection($milkteaConnStr)
 $milkteaConn.Open()
 
-try {
-    $migDir = Join-Path $dbDir "migrations"
-
-    # Bước 3: Chạy lần lượt 5 migration chuỗi
-    $v1 = Join-Path $migDir "V1__multi_branch_schema_and_backfill.sql"
-    Execute-SqlScriptFile -Connection $milkteaConn -FilePath $v1 -Description "Bước 3.1: Migration V1 (Đa chi nhánh, phân bổ món & nhân sự)"
-
-    $v2 = Join-Path $migDir "V2__customer_experience_favorites_and_reviews.sql"
-    Execute-SqlScriptFile -Connection $milkteaConn -FilePath $v2 -Description "Bước 3.2: Migration V2 (Đánh giá, bình luận & món yêu thích)"
-
-    $v3 = Join-Path $migDir "V3__voucher_and_discounts.sql"
-    Execute-SqlScriptFile -Connection $milkteaConn -FilePath $v3 -Description "Bước 3.3: Migration V3 (Hệ thống voucher & chiết khấu)"
-
-    $v4 = Join-Path $migDir "V4__central_warehouse.sql"
-    Execute-SqlScriptFile -Connection $milkteaConn -FilePath $v4 -Description "Bước 3.4: Migration V4 (Kho Hàng Tổng Trung Tâm KHOTONG)"
-
-    $v5 = Join-Path $migDir "V5__schema_alignment.sql"
-    Execute-SqlScriptFile -Connection $milkteaConn -FilePath $v5 -Description "Bước 3.5: Migration V5 (Đồng bộ snapshot đặt hàng, ngày tạo & kết ca kho)"
-
-    $v6 = Join-Path $migDir "V6__in_store_only_cleanup.sql"
-    Execute-SqlScriptFile -Connection $milkteaConn -FilePath $v6 -Description "Bước 3.6: Migration V6 (Chuẩn hóa hệ thống phục vụ tại quán TABLE/COUNTER)"
-
-    $v7 = Join-Path $migDir "V7__invariants_and_integrity_constraints.sql"
-    Execute-SqlScriptFile -Connection $milkteaConn -FilePath $v7 -Description "Bước 3.7: Migration V7 (Bổ sung bất biến và ràng buộc toàn vẹn CSDL)"
-
-    # Bước 4: Nạp bộ dữ liệu mẫu chuẩn
+    # Bước 3: Nạp bộ dữ liệu mẫu chuẩn chuỗi đa chi nhánh kết hợp
     $seedFile = Join-Path $dbDir "sample_data.sql"
-    Execute-SqlScriptFile -Connection $milkteaConn -FilePath $seedFile -Description "Bước 4/4: Nạp dữ liệu mẫu Multi-Branch Full Seed (70 món, 10 CT sơ chế, tồn kho, voucher...)"
+    Execute-SqlScriptFile -Connection $milkteaConn -FilePath $seedFile -Description "Bước 3/4: Nạp dữ liệu mẫu Multi-Branch Full Seed kết hợp (50 món, công thức, tồn kho, voucher...)"
+
+    # Bước 4: Kiểm tra và đối soát tính toàn vẹn
+    $verifyFile = Join-Path $dbDir "validation\verify_demo_integrity.sql"
+    if (Test-Path $verifyFile) {
+        Execute-SqlScriptFile -Connection $milkteaConn -FilePath $verifyFile -Description "Bước 4/4: Kiểm tra đối soát tính toàn vẹn CSDL (Verification)"
+    }
 
     Write-Host "============================================================================" -ForegroundColor Green
     Write-Host " HOÀN TẤT KHỞI TẠO CƠ SỞ DỮ LIỆU MILKTEA MỚI 100% THÀNH CÔNG!" -ForegroundColor Green

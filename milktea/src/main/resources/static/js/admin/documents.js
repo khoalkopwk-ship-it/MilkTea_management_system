@@ -285,8 +285,8 @@ const DocumentsApp = (() => {
                     <p>Trạng thái: ${esc(status)}</p>
 
                     ${r.approvedAt
-                        ? `<p>Admin xác nhận:
-                            ${esc(r.approvedBy || 'Admin')} ·
+                        ? `<p>Người phê duyệt:
+                            ${esc(r.approvedBy || 'Admin / Quản lý')} ·
                             ${date(r.approvedAt)}</p>`
                         : ''}
 
@@ -294,7 +294,7 @@ const DocumentsApp = (() => {
                         ? `<p>Thời gian hoàn:
                             ${date(r.refundedAt)} ·
                             Người thực hiện:
-                            ${esc(r.refundedBy || r.approvedBy || 'Admin')}</p>`
+                            ${esc(r.refundedBy || r.approvedBy || 'Admin / Quản lý')}</p>`
                         : ''}
 
                     <div class="d-flex gap-2 flex-wrap">
@@ -411,7 +411,7 @@ const DocumentsApp = (() => {
                 const approved = name === 'approveRefund';
                 await MilkTeaApi.post(`/api/v1/admin/refunds/${id}/decision`, {
                     approved: approved,
-                    reason: approved ? 'Admin xác nhận đã hoàn chuyển khoản qua ngân hàng' : 'Admin từ chối yêu cầu hoàn tiền'
+                    reason: approved ? 'Xác nhận đã hoàn chuyển khoản qua ngân hàng' : 'Từ chối yêu cầu hoàn tiền'
                 });
                 MilkTeaApi.showToast(approved ? 'Đã xác nhận hoàn chuyển khoản thành công!' : 'Đã từ chối yêu cầu hoàn tiền.');
             }

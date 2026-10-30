@@ -1,7 +1,5 @@
-
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: html(~{::content}, ~{::scripts})}">
 
 <head>
     <title>Cài đặt - Admin</title>
@@ -214,7 +212,7 @@
                 padding: 10px 14px;
             }
 
-            .admin-settings-page .input-group > .form-control:not(:last-child) {
+            .admin-settings-page .input-group>.form-control:not(:last-child) {
                 border-radius: 12px 0 0 12px !important;
             }
 
@@ -369,12 +367,10 @@
                 position: relative;
                 overflow: hidden;
                 min-height: 230px;
-                background: linear-gradient(
-                    135deg,
-                    #775D4A 0%,
-                    #604735 55%,
-                    #433326 100%
-                ) !important;
+                background: linear-gradient(135deg,
+                        #775D4A 0%,
+                        #604735 55%,
+                        #433326 100%) !important;
                 border: 1px solid #9A7961 !important;
                 border-radius: 18px !important;
                 box-shadow: 0 7px 22px rgba(96, 71, 53, .14) !important;
@@ -481,11 +477,12 @@
                 color: var(--settings-primary);
             }
 
-            .admin-settings-page .settings-note-card li + li {
+            .admin-settings-page .settings-note-card li+li {
                 margin-top: 9px;
             }
 
             @media (max-width: 991.98px) {
+
                 .admin-settings-page .admin-sidebar-column,
                 .admin-settings-page .admin-content-column {
                     width: 100%;
@@ -584,20 +581,23 @@
                     </a>
 
                     <a th:href="@{/admin/documents}"
-                       class="admin-nav-link d-flex align-items-center justify-content-between">
+                        class="admin-nav-link d-flex align-items-center justify-content-between">
                         <span><i class="bi bi-files me-1"></i> Chứng từ</span>
                         <span class="admin-refund-badge badge rounded-pill bg-danger d-none">0</span>
                     </a>
 
-                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/vouchers}" class="admin-nav-link">
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/vouchers}"
+                        class="admin-nav-link">
                         <i class="bi bi-ticket-perforated-fill"></i> Khuyến mãi &amp; Voucher
                     </a>
 
-                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/branches}" class="admin-nav-link">
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/branches}"
+                        class="admin-nav-link">
                         <i class="bi bi-shop"></i> Quản lý chi nhánh
                     </a>
 
-                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/settings}" class="admin-nav-link active">
+                    <a th:if="${actor == null or actor.role.name() == 'ADMIN'}" th:href="@{/admin/settings}"
+                        class="admin-nav-link active">
                         <i class="bi bi-gear-fill"></i> Cài đặt
                     </a>
                 </div>
@@ -624,7 +624,8 @@
 
                             <div class="card-body p-4 pt-2">
                                 <form id="settingsForm" onsubmit="event.preventDefault(); submitSettings();">
-                                    <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2 settings-section-title">
+                                    <h6
+                                        class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2 settings-section-title">
                                         Thông tin quán
                                     </h6>
 
@@ -632,24 +633,18 @@
                                         <label class="form-label fw-semibold">
                                             Tên quán trà sữa <span class="text-danger">*</span>
                                         </label>
-                                        <input type="text"
-                                               id="shopName"
-                                               class="form-control form-control-lg"
-                                               required
-                                               th:value="${settings?.shopName != null ? settings.shopName : 'MilkTea Quán 01'}"
-                                               placeholder="Ví dụ: MilkTea Quán 01" />
+                                        <input type="text" id="shopName" class="form-control form-control-lg" required
+                                            th:value="${settings?.shopName != null ? settings.shopName : 'MilkTea Quán 01'}"
+                                            placeholder="Ví dụ: MilkTea Quán 01" />
                                     </div>
 
                                     <div class="mb-4">
                                         <label class="form-label fw-semibold">
                                             Địa chỉ quán <span class="text-danger">*</span>
                                         </label>
-                                        <input type="text"
-                                               id="address"
-                                               class="form-control"
-                                               required
-                                               th:value="${settings?.address != null ? settings.address : 'Số 1 Võ Văn Ngân, TP. Thủ Đức'}"
-                                               placeholder="Địa chỉ quán hiển thị trên hóa đơn và trang chủ" />
+                                        <input type="text" id="address" class="form-control" required
+                                            th:value="${settings?.address != null ? settings.address : 'Số 1 Võ Văn Ngân, TP. Thủ Đức'}"
+                                            placeholder="Địa chỉ quán hiển thị trên hóa đơn và trang chủ" />
                                     </div>
 
                                     <div class="row g-3 mb-4">
@@ -657,100 +652,117 @@
                                             <label class="form-label fw-semibold">
                                                 Hotline liên hệ chuỗi
                                             </label>
-                                            <input type="text"
-                                                   id="hotline"
-                                                   class="form-control"
-                                                   th:value="${settings?.hotline != null ? settings.hotline : '0345121523'}"
-                                                   placeholder="VD: 0345121523" />
+                                            <input type="text" id="hotline" class="form-control"
+                                                th:value="${settings?.hotline != null ? settings.hotline : '0345121523'}"
+                                                placeholder="VD: 0345121523" />
                                         </div>
                                         <div class="col-12 col-md-6">
                                             <label class="form-label fw-semibold">
                                                 Giờ hoạt động chuỗi
                                             </label>
-                                            <input type="text"
-                                                   id="operatingHours"
-                                                   class="form-control"
-                                                   th:value="${settings?.operatingHours != null ? settings.operatingHours : '08:00 – 22:00 (Hằng ngày)'}"
-                                                   placeholder="VD: 08:00 – 22:00 (Hằng ngày)" />
+                                            <input type="text" id="operatingHours" class="form-control"
+                                                th:value="${settings?.operatingHours != null ? settings.operatingHours : '08:00 – 22:00 (Hằng ngày)'}"
+                                                placeholder="VD: 08:00 – 22:00 (Hằng ngày)" />
                                         </div>
                                     </div>
 
-                                    <div class="mb-4">
-                                        <label class="form-label fw-semibold">
-                                            Ảnh Banner Trang Chủ (Hero Image)
-                                        </label>
-                                        <div class="d-flex flex-column flex-md-row gap-3 align-items-start">
-                                            <div class="position-relative overflow-hidden rounded-4 border bg-light d-flex align-items-center justify-content-center shadow-sm"
-                                                 style="width: 200px; height: 130px; flex-shrink: 0;">
+                                    <!-- Cấu hình Ảnh Khung Vòm Trang Chủ (Tách biệt độc lập khỏi món cà phê sữa pha phin) -->
+                                    <div class="mb-4 p-3 rounded-4"
+                                        style="background: #fbf7f4; border: 1.5px solid #ebdcd0;">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <label class="form-label fw-bold mb-0"
+                                                style="color: #402310; font-size: 14px;">
+                                                <i class="bi bi-image text-primary me-1"></i>Ảnh Khung Vòm Trang Chủ
+                                                (Hero Banner)
+                                            </label>
+
+                                        </div>
+
+                                        <div
+                                            class="d-flex flex-column flex-md-row gap-3 align-items-center align-items-md-start">
+                                            <!-- Khung Preview mô phỏng đúng dáng vòm trang chủ -->
+                                            <div class="position-relative overflow-hidden shadow-sm d-flex align-items-center justify-content-center"
+                                                style="width: 170px; height: 145px; flex-shrink: 0; background: #efe3d6; border: 2px solid #e5d7c8; border-radius: 48px 48px 14px 14px; padding: 8px;">
                                                 <img id="previewHeroBanner"
-                                                     th:src="${settings?.heroBannerUrl != null and !settings.heroBannerUrl.isEmpty() ? settings.heroBannerUrl : '/images/MilkTea.png'}"
-                                                     style="width: 100%; height: 100%; object-fit: cover;"
-                                                     alt="Banner Preview"
-                                                     onerror="this.src='/images/MilkTea.png'">
+                                                    th:src="${settings?.heroBannerUrl != null and !settings.heroBannerUrl.isEmpty() ? settings.heroBannerUrl : '/images/MilkTea.png'}"
+                                                    style="width: 100%; height: 100%; object-fit: cover; border-radius: 40px 40px 10px 10px;"
+                                                    alt="Hero Banner Preview" onerror="this.src='/images/MilkTea.png'">
                                             </div>
                                             <div class="flex-grow-1 w-100">
                                                 <div class="input-group mb-2">
-                                                    <input type="text"
-                                                           id="heroBannerUrl"
-                                                           class="form-control"
-                                                           th:value="${settings?.heroBannerUrl}"
-                                                           placeholder="Dán link ảnh (https://...) hoặc tải tệp lên bên dưới"
-                                                           oninput="previewBannerFromInput()" />
-                                                    <button class="btn btn-outline-secondary" type="button" onclick="previewBannerFromInput()">
+                                                    <input type="text" id="heroBannerUrl" class="form-control"
+                                                        th:value="${settings?.heroBannerUrl}"
+                                                        placeholder="Dán link ảnh (https://...) hoặc tải ảnh từ máy tính"
+                                                        oninput="previewBannerFromInput()" />
+                                                    <button class="btn btn-outline-secondary" type="button"
+                                                        onclick="previewBannerFromInput()"
+                                                        title="Xem trước ảnh theo link">
                                                         <i class="bi bi-eye"></i> Xem thử
                                                     </button>
                                                 </div>
-                                                <input type="hidden" id="heroBannerPublicId" th:value="${settings?.heroBannerPublicId}" />
+                                                <input type="hidden" id="heroBannerPublicId"
+                                                    th:value="${settings?.heroBannerPublicId}" />
                                                 <div class="d-flex flex-wrap align-items-center gap-2">
-                                                    <input type="file" id="heroBannerFileInput" class="d-none" accept="image/png,image/jpeg,image/webp" onchange="uploadBannerFile(this)" />
-                                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="document.getElementById('heroBannerFileInput').click()">
+                                                    <input type="file" id="heroBannerFileInput" class="d-none"
+                                                        accept="image/png,image/jpeg,image/webp"
+                                                        onchange="uploadBannerFile(this)" />
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-primary-custom rounded-pill px-3"
+                                                        onclick="document.getElementById('heroBannerFileInput').click()">
                                                         <i class="bi bi-cloud-upload me-1"></i> Tải ảnh mới từ máy tính
                                                     </button>
-                                                    <small class="text-muted" style="font-size: 11px;">Hỗ trợ PNG, JPG, WebP. Ảnh sẽ hiển thị dạng vòm ở trang chủ thương hiệu.</small>
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                                        onclick="clearBannerImage()">
+                                                        <i class="bi bi-trash me-1"></i> Đặt về mặc định
+                                                    </button>
+                                                    <small class="text-muted d-block w-100 mt-1"
+                                                        style="font-size: 11px;">
+                                                        * Hỗ trợ định dạng PNG, JPG, WebP. Sau khi chọn hoặc tải ảnh,
+                                                        hãy nhấn <strong>"Lưu cấu hình"</strong> ở cuối trang để lưu
+                                                        thay đổi.
+                                                    </small>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <input type="hidden" id="discountTypeHidden" th:value="${settings != null and settings.discountType != null ? settings.discountType : 'PERCENT'}" />
-                                    <input type="hidden" id="discountValueHidden" th:value="${settings != null and settings.discountValue != null ? settings.discountValue : (settings != null and settings.discountPercent != null ? settings.discountPercent : 0)}" />
+                                    <input type="hidden" id="discountTypeHidden"
+                                        th:value="${settings != null and settings.discountType != null ? settings.discountType : 'PERCENT'}" />
+                                    <input type="hidden" id="discountValueHidden"
+                                        th:value="${settings != null and settings.discountValue != null ? settings.discountValue : (settings != null and settings.discountPercent != null ? settings.discountPercent : 0)}" />
 
-                                    <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2 settings-section-title">
+                                    <h6
+                                        class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2 settings-section-title">
                                         Tài khoản ngân hàng (VietQR)
                                     </h6>
 
                                     <div class="row g-3 mb-4">
                                         <div class="col-12 col-md-4">
                                             <label class="form-label fw-semibold">Tên ngân hàng</label>
-                                            <input type="text"
-                                                   id="bankName"
-                                                   class="form-control"
-                                                   th:value="${settings?.bankName != null ? settings.bankName : 'MBBank'}"
-                                                   placeholder="VD: MBBank, VCB, TPB..." />
+                                            <input type="text" id="bankName" class="form-control"
+                                                th:value="${settings?.bankName != null ? settings.bankName : 'MBBank'}"
+                                                placeholder="VD: MBBank, VCB, TPB..." />
                                         </div>
 
                                         <div class="col-12 col-md-4">
                                             <label class="form-label fw-semibold">Số tài khoản</label>
-                                            <input type="text"
-                                                   id="bankAccountNumber"
-                                                   class="form-control"
-                                                   th:value="${settings?.bankAccountNumber != null ? settings.bankAccountNumber : '0987654321'}"
-                                                   placeholder="Số tài khoản ngân hàng" />
+                                            <input type="text" id="bankAccountNumber" class="form-control"
+                                                th:value="${settings?.bankAccountNumber != null ? settings.bankAccountNumber : '0987654321'}"
+                                                placeholder="Số tài khoản ngân hàng" />
                                         </div>
 
                                         <div class="col-12 col-md-4">
                                             <label class="form-label fw-semibold">Tên chủ tài khoản</label>
-                                            <input type="text"
-                                                   id="bankAccountHolder"
-                                                   class="form-control"
-                                                   th:value="${settings?.bankAccountHolder != null ? settings.bankAccountHolder : 'CHU QUAN TRA SUA'}"
-                                                   placeholder="Tên in hoa không dấu" />
+                                            <input type="text" id="bankAccountHolder" class="form-control"
+                                                th:value="${settings?.bankAccountHolder != null ? settings.bankAccountHolder : 'CHU QUAN TRA SUA'}"
+                                                placeholder="Tên in hoa không dấu" />
                                         </div>
                                     </div>
 
                                     <div class="text-end">
                                         <button type="submit"
-                                                class="btn btn-primary px-4 py-2 fw-semibold rounded-pill settings-save-btn">
+                                            class="btn btn-primary px-4 py-2 fw-semibold rounded-pill settings-save-btn">
                                             <i class="bi bi-check2-circle me-1"></i>Lưu cấu hình
                                         </button>
                                     </div>
@@ -761,7 +773,7 @@
 
                     <div class="col-12 col-lg-4">
                         <div class="card border-0 shadow-sm rounded-4 text-white bg-dark mb-4 position-relative overflow-hidden settings-bank-card"
-                             style="background: linear-gradient(135deg, #2b3a4a 0%, #1e2630 100%);">
+                            style="background: linear-gradient(135deg, #2b3a4a 0%, #1e2630 100%);">
                             <div class="card-body p-4 position-relative z-1">
                                 <div class="d-flex justify-content-between align-items-center mb-4">
                                     <span class="badge bg-primary px-3 py-2 rounded-pill">
@@ -774,8 +786,7 @@
                                     Tài khoản nhận tiền
                                 </p>
 
-                                <h4 class="fw-bold tracking-wider mb-3 text-light"
-                                    id="previewBankNumber"
+                                <h4 class="fw-bold tracking-wider mb-3 text-light" id="previewBankNumber"
                                     th:text="${settings?.bankAccountNumber != null ? settings.bankAccountNumber : '0987654321'}">
                                     0987654321
                                 </h4>
@@ -785,9 +796,8 @@
                                         <small class="text-secondary d-block">
                                             Chủ tài khoản
                                         </small>
-                                        <span class="fw-semibold small"
-                                              id="previewHolder"
-                                              th:text="${settings?.bankAccountHolder != null ? settings.bankAccountHolder : 'CHU QUAN TRA SUA'}">
+                                        <span class="fw-semibold small" id="previewHolder"
+                                            th:text="${settings?.bankAccountHolder != null ? settings.bankAccountHolder : 'CHU QUAN TRA SUA'}">
                                             CHU QUAN
                                         </span>
                                     </div>
@@ -796,9 +806,8 @@
                                         <small class="text-secondary d-block">
                                             Ngân hàng
                                         </small>
-                                        <span class="fw-semibold small"
-                                              id="previewBank"
-                                              th:text="${settings?.bankName != null ? settings.bankName : 'MBBank'}">
+                                        <span class="fw-semibold small" id="previewBank"
+                                            th:text="${settings?.bankName != null ? settings.bankName : 'MBBank'}">
                                             MBBank
                                         </span>
                                     </div>
@@ -818,7 +827,8 @@
                                         tạo cho khách hàng và thu ngân.
                                     </li>
                                     <li>
-                                        Thông tin tên quán và địa chỉ được đồng bộ tức thì lên hóa đơn và giao diện khách hàng.
+                                        Thông tin tên quán và địa chỉ được đồng bộ tức thì lên hóa đơn và giao diện
+                                        khách hàng.
                                     </li>
                                     <li>
                                         Tỷ lệ hoặc số tiền giảm giá áp dụng cho các đơn hàng tạo sau khi lưu cấu hình.
@@ -842,15 +852,15 @@
                 AdminApp.init();
 
                 document.getElementById('bankAccountNumber').addEventListener('input', (e) => {
-                     document.getElementById('previewBankNumber').textContent = e.target.value || '0000000000';
+                    document.getElementById('previewBankNumber').textContent = e.target.value || '0000000000';
                 });
 
                 document.getElementById('bankAccountHolder').addEventListener('input', (e) => {
-                     document.getElementById('previewHolder').textContent = e.target.value.toUpperCase() || 'TEN CHU TK';
+                    document.getElementById('previewHolder').textContent = e.target.value.toUpperCase() || 'TEN CHU TK';
                 });
 
                 document.getElementById('bankName').addEventListener('input', (e) => {
-                     document.getElementById('previewBank').textContent = e.target.value || 'NGAN HANG';
+                    document.getElementById('previewBank').textContent = e.target.value || 'NGAN HANG';
                 });
             });
 
@@ -861,23 +871,35 @@
                 formData.append('file', file);
                 try {
                     MilkTeaApi.showToast('Đang tải ảnh banner trang chủ lên...', 'info');
-                    const res = await MilkTeaApi.postFormData('/api/v1/admin/settings/hero-banner', formData);
+                    const res = await MilkTeaApi.upload('/api/v1/admin/settings/hero-banner', formData);
                     if (res && res.heroBannerUrl) {
                         document.getElementById('heroBannerUrl').value = res.heroBannerUrl;
                         document.getElementById('heroBannerPublicId').value = res.heroBannerPublicId || '';
                         document.getElementById('previewHeroBanner').src = res.heroBannerUrl;
-                        MilkTeaApi.showToast('Tải ảnh banner trang chủ thành công!', 'success');
+                        MilkTeaApi.showToast('Tải ảnh banner trang chủ thành công! Nhớ nhấn Lưu cấu hình.', 'success');
                     }
                 } catch (e) {
                     MilkTeaApi.showToast(e.message || 'Lỗi khi tải ảnh banner', 'danger');
+                } finally {
+                    input.value = '';
                 }
             }
 
             function previewBannerFromInput() {
                 const url = document.getElementById('heroBannerUrl').value.trim();
+                const previewImg = document.getElementById('previewHeroBanner');
                 if (url) {
-                    document.getElementById('previewHeroBanner').src = url;
+                    previewImg.src = url;
+                } else {
+                    previewImg.src = '/images/MilkTea.png';
                 }
+            }
+
+            function clearBannerImage() {
+                document.getElementById('heroBannerUrl').value = '';
+                document.getElementById('heroBannerPublicId').value = '';
+                document.getElementById('previewHeroBanner').src = '/images/MilkTea.png';
+                MilkTeaApi.showToast('Đã xóa link ảnh. Hãy nhấn Lưu cấu hình ở cuối trang để hoàn tất.', 'info');
             }
 
             function submitSettings() {
@@ -898,4 +920,5 @@
         </script>
     </th:block>
 </body>
+
 </html>

@@ -133,3 +133,13 @@ SELECT
    - Thêm cột `MaCN` vào `TonNguyenLieu`.
    - Cập nhật khóa chính: `CONSTRAINT PK_TonNguyenLieu PRIMARY KEY (MaCN, MaNL, ViTri)`.
    - Backfill 76 bản ghi tồn kho hiện tại vào `MaCN = 1`.
+
+---
+
+## 5. Tệp Cập Nhật Tự Động Cho Môi Trường Đã Deploy (Commit a5f976a)
+
+Để nâng cấp cơ sở dữ liệu đã deploy trên Internet (từ commit `a5f976a`) lên phiên bản mới nhất mà không cần chạy thủ công từng lệnh:
+- **Tệp nâng cấp tự động**: [`database/update_from_previous_deploy.sql`](../database/update_from_previous_deploy.sql)
+- **Tài liệu hướng dẫn triển khai**: [`database/DEPLOYMENT_AND_MIGRATION_GUIDE.md`](../database/DEPLOYMENT_AND_MIGRATION_GUIDE.md)
+- **Kịch bản kiểm tra toàn vẹn**: [`database/validation/verify_demo_integrity.sql`](../database/validation/verify_demo_integrity.sql)
+

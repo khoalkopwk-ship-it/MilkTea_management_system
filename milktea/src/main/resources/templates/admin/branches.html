@@ -22,60 +22,39 @@
                 background: var(--branch-bg);
                 color: var(--branch-text);
                 min-height: calc(100vh - 76px);
-                font-family: 'Be Vietnam Pro', sans-serif;
-            }
-
-            .admin-branches-page .admin-sidebar {
-                background: #ffffff;
-                border: 1px solid var(--branch-border) !important;
-                border-radius: 18px !important;
-                box-shadow: 0 4px 18px rgba(96, 71, 53, .045) !important;
-            }
-
-            .admin-branches-page .admin-sidebar h6 {
-                color: var(--branch-muted) !important;
-                font-size: 11px;
-                letter-spacing: .07em;
-            }
-
-            .admin-branches-page .admin-nav-link {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 12px 16px;
-                border-radius: 10px;
-                color: var(--branch-secondary);
-                font-size: 13px;
-                font-weight: 500;
-                text-decoration: none;
-                transition: all 0.2s ease;
-            }
-
-            .admin-branches-page .admin-nav-link i {
-                color: var(--branch-primary);
-                font-size: 16px;
-            }
-
-            .admin-branches-page .admin-nav-link:hover,
-            .admin-branches-page .admin-nav-link.active {
-                background: var(--branch-primary-light);
-                color: var(--branch-primary);
-            }
-
-            .admin-branches-page .admin-nav-link.active {
-                font-weight: 700;
+                font-family: 'Be Vietnam Pro', sans-serif !important;
             }
 
             .admin-branches-page .brand-font {
+                font-family: 'Be Vietnam Pro', sans-serif !important;
                 color: var(--branch-secondary-hover);
                 font-weight: 700;
+            }
+
+            .admin-branches-page .btn-primary,
+            .admin-branches-page .btn-branch-primary {
+                background: var(--branch-primary) !important;
+                border-color: var(--branch-primary) !important;
+                color: #ffffff !important;
+                font-weight: 600;
+                border-radius: 50px;
+                box-shadow: 0 4px 14px rgba(184, 107, 53, 0.22);
+                transition: all 0.22s ease;
+            }
+
+            .admin-branches-page .btn-primary:hover,
+            .admin-branches-page .btn-branch-primary:hover {
+                background: var(--branch-primary-hover) !important;
+                border-color: var(--branch-primary-hover) !important;
+                transform: translateY(-1.5px);
+                box-shadow: 0 6px 20px rgba(184, 107, 53, 0.3);
             }
 
             .admin-branches-page .main-card {
                 background: #ffffff;
                 border: 1px solid var(--branch-border) !important;
                 border-radius: 18px !important;
-                box-shadow: 0 4px 18px rgba(96, 71, 53, .05) !important;
+                box-shadow: 0 4px 18px rgba(96, 71, 53, .045) !important;
                 overflow: hidden;
             }
 
@@ -85,16 +64,92 @@
                 font-size: 12px;
                 font-weight: 700;
                 text-transform: uppercase;
-                letter-spacing: 0.04em;
+                letter-spacing: 0.05em;
                 border-bottom: 1px solid var(--branch-border);
-                padding: 14px 16px;
+                padding: 15px 18px;
             }
 
             .admin-branches-page .table td {
-                padding: 14px 16px;
+                padding: 15px 18px;
                 vertical-align: middle;
                 border-bottom: 1px solid #F3EBE4;
-                font-size: 13px;
+                font-size: 13.5px;
+            }
+
+            .admin-branches-page .table-hover tbody tr:hover {
+                background-color: #FFF8F2 !important;
+            }
+
+            .admin-branches-page .branch-code-badge {
+                font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+                font-size: 0.85rem;
+                font-weight: 700;
+                background: var(--branch-primary-light);
+                color: var(--branch-primary-hover);
+                border: 1px solid #ebd8c8;
+                border-radius: 8px;
+                padding: 4px 9px;
+                display: inline-block;
+            }
+
+            .admin-branches-page .branch-action-btn {
+                border: 1px solid var(--branch-border) !important;
+                color: var(--branch-secondary) !important;
+                background: #ffffff !important;
+                transition: all 0.2s ease;
+            }
+
+            .admin-branches-page .branch-action-btn:hover {
+                background: var(--branch-primary-light) !important;
+                color: var(--branch-primary) !important;
+                border-color: #d8c2b0 !important;
+            }
+
+            .admin-branches-page .branch-action-btn.btn-active-toggle:hover {
+                background: #fee2e2 !important;
+                color: #dc2626 !important;
+                border-color: #fecaca !important;
+            }
+
+            /* Modal Styling theo chuẩn app.css */
+            .admin-branches-modal .modal-content {
+                border-radius: 20px !important;
+                border: 1px solid var(--branch-border) !important;
+                box-shadow: 0 16px 44px rgba(96, 71, 53, 0.16) !important;
+            }
+
+            .admin-branches-modal .modal-header {
+                padding: 20px 24px 12px;
+                border-bottom: 1px solid #F3EBE4;
+            }
+
+            .admin-branches-modal .modal-body {
+                padding: 20px 24px;
+            }
+
+            .admin-branches-modal .modal-footer {
+                padding: 16px 24px 20px;
+                border-top: 1px solid #F3EBE4;
+            }
+
+            .admin-branches-modal .form-label {
+                color: var(--branch-secondary-hover);
+                font-weight: 600;
+                margin-bottom: 6px;
+            }
+
+            .admin-branches-modal .form-control {
+                border-radius: 12px;
+                border: 1.5px solid var(--branch-border);
+                padding: 10px 14px;
+                font-size: 13.5px;
+                transition: all 0.2s ease;
+            }
+
+            .admin-branches-modal .form-control:focus {
+                border-color: var(--branch-primary);
+                box-shadow: 0 0 0 3.5px rgba(184, 107, 53, 0.15);
+                outline: none;
             }
         </style>
 
@@ -151,6 +206,9 @@
             <div class="col admin-content-column">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
                     <div>
+                        <div class="d-inline-flex align-items-center gap-2 mb-1 px-2 py-0.5 rounded-pill" style="background: var(--branch-primary-light); color: var(--branch-primary-hover); font-size: 11px; font-weight: 700;">
+                            <i class="bi bi-shop"></i> HỆ THỐNG CƠ SỞ CHUỖI
+                        </div>
                         <h3 class="brand-font mb-1">Quản lý hệ thống chi nhánh</h3>
                         <p class="text-muted small mb-0">
                             Danh sách các cơ sở chuỗi, địa chỉ phục vụ và số hotline công khai trên website
@@ -180,10 +238,10 @@
                             </thead>
                             <tbody id="branchesTableBody">
                                 <tr th:each="b : ${branches}">
-                                    <td class="fw-bold" th:text="${b.code}">CN01</td>
+                                    <td><span class="branch-code-badge" th:text="${b.code}">CN01</span></td>
                                     <td>
                                         <strong class="text-dark" th:text="${b.name}">Chi nhánh Quận 1</strong>
-                                        <span th:if="${b.code == 'KHOTONG'}" class="badge bg-secondary ms-1 small">Kho Tổng</span>
+                                        <span th:if="${b.code == 'KHOTONG'}" class="badge ms-1 small" style="background: var(--branch-primary-light); color: var(--branch-primary-hover); border: 1px solid #ebd8c8;">Kho Tổng</span>
                                     </td>
                                     <td th:text="${b.address}">123 Nguyễn Thị Minh Khai, Q.1</td>
                                     <td th:text="${b.phone != null ? b.phone : 'Chưa có'}">028 1234 5678</td>
@@ -192,23 +250,23 @@
                                         <span th:text="${b.openingHours != null ? b.openingHours : '08:00 - 22:00'}">08:00 - 22:00</span>
                                     </td>
                                     <td>
-                                        <span th:if="${b.status == 'HOAT_DONG'}" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
-                                            Hoạt động
+                                        <span th:if="${b.status == 'HOAT_DONG'}" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1">
+                                            <i class="bi bi-dot"></i>Hoạt động
                                         </span>
-                                        <span th:if="${b.status != 'HOAT_DONG'}" class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">
-                                            Đóng cửa
+                                        <span th:if="${b.status != 'HOAT_DONG'}" class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1">
+                                            <i class="bi bi-dot"></i>Đóng cửa
                                         </span>
                                     </td>
                                     <td class="text-end">
                                         <div class="btn-group btn-group-sm">
                                             <a th:href="@{/menu(branchId=${b.id})}"
                                                target="_blank"
-                                               class="btn btn-outline-secondary"
+                                               class="btn branch-action-btn"
                                                title="Xem thực đơn chi nhánh">
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                             <button type="button"
-                                                    class="btn btn-outline-primary"
+                                                    class="btn branch-action-btn"
                                                     th:data-id="${b.id}"
                                                     th:data-name="${b.name}"
                                                     th:data-address="${b.address}"
@@ -220,7 +278,7 @@
                                             </button>
                                             <button th:if="${b.code != 'KHOTONG'}"
                                                     type="button"
-                                                    class="btn btn-outline-danger"
+                                                    class="btn branch-action-btn branch-action-toggle"
                                                     th:data-id="${b.id}"
                                                     th:data-active="${b.status == 'HOAT_DONG'}"
                                                     onclick="toggleBranchActive(this)"
@@ -238,11 +296,19 @@
         </div>
 
         <!-- Modal Thêm Chi Nhánh Mới -->
-        <div class="modal fade" id="createBranchModal" tabindex="-1">
+        <div class="modal fade admin-branches-modal" id="createBranchModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4">
-                    <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title brand-font">Thêm chi nhánh mới</h5>
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; background: var(--branch-primary-light); color: var(--branch-primary);">
+                                <i class="bi bi-shop fs-5"></i>
+                            </div>
+                            <div>
+                                <h5 class="modal-title brand-font mb-0" style="color: var(--branch-secondary-hover);">Thêm chi nhánh mới</h5>
+                                <small class="text-muted">Khai báo cơ sở mới cho chuỗi MilkTea</small>
+                            </div>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form id="createBranchForm" onsubmit="event.preventDefault(); submitCreateBranch();">
@@ -268,8 +334,8 @@
                                 <input type="text" id="createBranchOpeningHours" class="form-control" placeholder="VD: 08:00 - 22:00" />
                             </div>
                         </div>
-                        <div class="modal-footer border-0 pt-0">
-                            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Hủy</button>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
                             <button type="submit" class="btn btn-primary rounded-pill px-4">Lưu chi nhánh</button>
                         </div>
                     </form>
@@ -278,11 +344,19 @@
         </div>
 
         <!-- Modal Sửa Chi Nhánh -->
-        <div class="modal fade" id="editBranchModal" tabindex="-1">
+        <div class="modal fade admin-branches-modal" id="editBranchModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4">
-                    <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title brand-font">Chỉnh sửa thông tin chi nhánh</h5>
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; background: var(--branch-primary-light); color: var(--branch-primary);">
+                                <i class="bi bi-pencil-square fs-5"></i>
+                            </div>
+                            <div>
+                                <h5 class="modal-title brand-font mb-0" style="color: var(--branch-secondary-hover);">Chỉnh sửa chi nhánh</h5>
+                                <small class="text-muted">Cập nhật thông tin địa chỉ & hotline</small>
+                            </div>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form id="editBranchForm" onsubmit="event.preventDefault(); submitEditBranch();">
@@ -305,8 +379,8 @@
                                 <input type="text" id="editBranchOpeningHours" class="form-control" placeholder="VD: 08:00 - 22:00" />
                             </div>
                         </div>
-                        <div class="modal-footer border-0 pt-0">
-                            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Hủy</button>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
                             <button type="submit" class="btn btn-primary rounded-pill px-4">Cập nhật</button>
                         </div>
                     </form>

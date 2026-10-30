@@ -90,14 +90,16 @@ DECLARE @Accounts TABLE (
 
 INSERT INTO @Accounts VALUES
     ('admin@milktea.vn',    N'Quản trị viên Hệ thống', '0901000001', 'ADMIN'),
-    ('manager1@milktea.vn', N'Quản lý Cơ sở 01',      '0901000002', 'MANAGER'),
-    ('manager2@milktea.vn', N'Quản lý Cơ sở 02',      '0901000003', 'MANAGER'),
-    ('cashier@milktea.vn',  N'Thu ngân Quỳnh (CN01)',  '0901000004', 'CASHIER'),
-    ('cashier2@milktea.vn', N'Thu ngân Hoàng (CN02)',  '0901000005', 'CASHIER'),
-    ('kitchen@milktea.vn',  N'Bếp trưởng Lâm (CN01)',  '0901000006', 'KITCHEN'),
-    ('kitchen2@milktea.vn', N'Nhân viên Pha chế (CN02)','0901000007', 'KITCHEN'),
-    ('customer@milktea.vn', N'Khách hàng Mai Phương',  '0901000008', 'CUSTOMER'),
-    ('customer2@milktea.vn',N'Khách hàng Đức Anh',    '0901000009', 'CUSTOMER');
+    ('admin2@milktea.vn',   N'Quản lý Vận hành Chuỗi', '0901000002', 'ADMIN'),
+    ('manager1@milktea.vn', N'Quản lý Cơ sở 01',      '0901000003', 'MANAGER'),
+    ('manager2@milktea.vn', N'Quản lý Cơ sở 02',      '0901000004', 'MANAGER'),
+    ('cashier@milktea.vn',  N'Thu ngân Quỳnh (CN01)',  '0901000005', 'CASHIER'),
+    ('cashier2@milktea.vn', N'Thu ngân Hoàng (CN02)',  '0901000006', 'CASHIER'),
+    ('kitchen@milktea.vn',  N'Bếp trưởng Lâm (CN01)',  '0901000007', 'KITCHEN'),
+    ('kitchen2@milktea.vn', N'Nhân viên Pha chế (CN02)','0901000008', 'KITCHEN'),
+    ('customer@milktea.vn', N'Khách hàng Mai Phương',  '0901000009', 'CUSTOMER'),
+    ('customer2@milktea.vn',N'Khách hàng Đức Anh',    '0901000010', 'CUSTOMER'),
+    ('customer3@milktea.vn',N'Khách hàng Linh Đan',    '0901000011', 'CUSTOMER');
 
 MERGE INTO dbo.TaiKhoan AS target
 USING @Accounts AS source ON (target.Email = source.Email)
@@ -124,7 +126,7 @@ BEGIN
     INSERT INTO dbo.NhanVienChiNhanh (MaTK, MaCN, VaiTroChiNhanh, TrangThai, NgayPhanCong)
     SELECT tk.MaTK, @cn01Id, tk.VaiTro, N'HOAT_DONG', SYSUTCDATETIME()
     FROM dbo.TaiKhoan tk 
-    WHERE tk.Email IN ('manager1@milktea.vn', 'cashier@milktea.vn', 'kitchen@milktea.vn');
+    WHERE tk.Email IN ('manager1@milktea.vn', 'cashier@milktea.vn', 'kitchen@milktea.vn', 'admin2@milktea.vn');
 
     INSERT INTO dbo.NhanVienChiNhanh (MaTK, MaCN, VaiTroChiNhanh, TrangThai, NgayPhanCong)
     SELECT tk.MaTK, @cn02Id, tk.VaiTro, N'HOAT_DONG', SYSUTCDATETIME()
@@ -132,7 +134,7 @@ BEGIN
     WHERE tk.Email IN ('manager2@milktea.vn', 'cashier2@milktea.vn', 'kitchen2@milktea.vn');
 END
 
-PRINT N'-- [3/18] Đã nạp 9 tài khoản và phân công nhân viên cơ sở.';
+PRINT N'-- [3/18] Đã nạp 11 tài khoản đầy đủ (kết hợp commit cũ và mới) và phân công nhân viên cơ sở.';
 GO
 
 -- ============================================================================
