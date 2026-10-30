@@ -24,7 +24,7 @@ Tài liệu này là **Single Source of Truth (SSOT)** về các quy tắc nghi�
 | Vai trò | Định danh Code | Phạm vi dữ liệu (Scope) | Thao tác chính được phép |
 |---|---|---|---|
 | Quản trị toàn chuỗi | `ADMIN` | Toàn hệ thống (Mọi chi nhánh) | Cấu hình chuỗi, quản lý chi nhánh, quản lý danh mục/món/công thức chuẩn, phân công nhân sự, báo cáo tổng hợp & so sánh chuỗi, kiểm duyệt nội dung toàn chuỗi |
-| Quản lý cơ sở | `MANAGER` | Các chi nhánh được phân công | Quản lý vận hành chi nhánh được giao: cấu hình món kinh doanh/tạm hết tại cơ sở, kiểm duyệt đánh giá tại cơ sở, theo dõi báo cáo cơ sở |
+| Quản lý cơ sở | `MANAGER` | Các chi nhánh được phân công | Quản lý vận hành chi nhánh được giao: cấu hình món kinh doanh/tạm hết tại cơ sở, kiểm duyệt đánh giá tại cơ sở, phê duyệt yêu cầu hoàn tiền cơ sở, theo dõi báo cáo cơ sở |
 | Thu ngân | `CASHIER` | Đúng chi nhánh đang làm việc | Mở/đóng phiên bàn cơ sở, tạo đơn tại quầy, xác nhận đơn bàn/tại quầy cơ sở, ghi thu tiền mặt/chuyển khoản, yêu cầu hoàn tiền, xem thông báo realtime cơ sở |
 | Nhân viên bếp | `KITCHEN` | Đúng chi nhánh đang làm việc | Xem danh sách đơn cần chế biến của cơ sở, bắt đầu/hoàn thành chế biến (ghi tiêu hao kho bếp cơ sở), lập mẻ sơ chế, kiểm kê kết ca kho bếp cơ sở |
 | Khách hàng | `CUSTOMER` | Tài khoản cá nhân (Toàn chuỗi) | Đặt hàng tại bàn qua mã QR vật lý, theo dõi đơn của mình, yêu thích món, đánh giá chi tiết món trong đơn đã hoàn thành & thanh toán |

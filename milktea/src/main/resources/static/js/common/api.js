@@ -140,6 +140,7 @@ const MilkTeaApi = (() => {
         patch: (url, body, headers) => request(url, { method: 'PATCH', body, headers }),
         delete: (url, headers) => request(url, { method: 'DELETE', headers }),
         upload: (url, formData) => request(url, { method: 'POST', body: formData }),
+        postFormData: (url, formData) => request(url, { method: 'POST', body: formData }),
         formatVND,
         showToast,
         initCsrf

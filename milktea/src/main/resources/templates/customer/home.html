@@ -41,7 +41,8 @@
                         <div class="hero-stats"><span><i class="bi bi-cup-hot" aria-hidden="true"></i>Khám phá vị trà</span><span><i class="bi bi-sliders" aria-hidden="true"></i>Chọn theo sở thích</span><span><i class="bi bi-qr-code-scan" aria-hidden="true"></i>Gọi món tại bàn</span></div>
                     </div>
                     <div class="col-lg-6 hero-image-wrapper">
-                        <img th:src="${settings != null and !#strings.isEmpty(settings.heroBannerUrl) ? settings.heroBannerUrl : (not #lists.isEmpty(featuredProducts) and !#strings.isEmpty(featuredProducts[0].imageUrl) ? featuredProducts[0].imageUrl : fallbackImage)}" width="540" height="450" fetchpriority="high" data-home-image th:attr="data-fallback=${fallbackImage}"
+                        <!-- Ảnh độc lập trang chủ do Admin cấu hình (không phụ thuộc vào danh sách món nổi bật) -->
+                        <img th:src="${settings != null and !#strings.isEmpty(settings.heroBannerUrl) ? settings.heroBannerUrl : fallbackImage}" width="540" height="450" fetchpriority="high" data-home-image th:attr="data-fallback=${fallbackImage}"
                              th:alt="${settings != null ? settings.shopName : 'MilkTea'}"
                              class="hero-main-img" />
                         <div class="hero-floating-card">

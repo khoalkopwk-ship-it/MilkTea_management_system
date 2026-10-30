@@ -105,8 +105,7 @@ public class SecurityConfig {
                                 "/api/v1/admin/categories",
                                 "/api/v1/admin/categories/**",
                                 "/api/v1/admin/branches",
-                                "/api/v1/admin/branches/**",
-                                "/api/v1/admin/refunds/*/decision"
+                                "/api/v1/admin/branches/**"
                         ).hasRole("ADMIN")
                         .requestMatchers("/api/v1/admin", "/api/v1/admin/**").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers("/api/v1/cashier", "/api/v1/cashier/**").hasAnyRole("CASHIER", "MANAGER", "ADMIN")

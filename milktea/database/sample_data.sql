@@ -90,14 +90,16 @@ DECLARE @Accounts TABLE (
 
 INSERT INTO @Accounts VALUES
     ('admin@milktea.vn',    N'Quản trị viên Hệ thống', '0901000001', 'ADMIN'),
-    ('manager1@milktea.vn', N'Quản lý Cơ sở 01',      '0901000002', 'MANAGER'),
-    ('manager2@milktea.vn', N'Quản lý Cơ sở 02',      '0901000003', 'MANAGER'),
-    ('cashier@milktea.vn',  N'Thu ngân Quỳnh (CN01)',  '0901000004', 'CASHIER'),
-    ('cashier2@milktea.vn', N'Thu ngân Hoàng (CN02)',  '0901000005', 'CASHIER'),
-    ('kitchen@milktea.vn',  N'Bếp trưởng Lâm (CN01)',  '0901000006', 'KITCHEN'),
-    ('kitchen2@milktea.vn', N'Nhân viên Pha chế (CN02)','0901000007', 'KITCHEN'),
-    ('customer@milktea.vn', N'Khách hàng Mai Phương',  '0901000008', 'CUSTOMER'),
-    ('customer2@milktea.vn',N'Khách hàng Đức Anh',    '0901000009', 'CUSTOMER');
+    ('admin2@milktea.vn',   N'Quản lý Vận hành Chuỗi', '0901000002', 'ADMIN'),
+    ('manager1@milktea.vn', N'Quản lý Cơ sở 01',      '0901000003', 'MANAGER'),
+    ('manager2@milktea.vn', N'Quản lý Cơ sở 02',      '0901000004', 'MANAGER'),
+    ('cashier@milktea.vn',  N'Thu ngân Quỳnh (CN01)',  '0901000005', 'CASHIER'),
+    ('cashier2@milktea.vn', N'Thu ngân Hoàng (CN02)',  '0901000006', 'CASHIER'),
+    ('kitchen@milktea.vn',  N'Bếp trưởng Lâm (CN01)',  '0901000007', 'KITCHEN'),
+    ('kitchen2@milktea.vn', N'Nhân viên Pha chế (CN02)','0901000008', 'KITCHEN'),
+    ('customer@milktea.vn', N'Khách hàng Mai Phương',  '0901000009', 'CUSTOMER'),
+    ('customer2@milktea.vn',N'Khách hàng Đức Anh',    '0901000010', 'CUSTOMER'),
+    ('customer3@milktea.vn',N'Khách hàng Linh Đan',    '0901000011', 'CUSTOMER');
 
 MERGE INTO dbo.TaiKhoan AS target
 USING @Accounts AS source ON (target.Email = source.Email)
@@ -124,15 +126,22 @@ BEGIN
     INSERT INTO dbo.NhanVienChiNhanh (MaTK, MaCN, VaiTroChiNhanh, TrangThai, NgayPhanCong)
     SELECT tk.MaTK, @cn01Id, tk.VaiTro, N'HOAT_DONG', SYSUTCDATETIME()
     FROM dbo.TaiKhoan tk 
-    WHERE tk.Email IN ('manager1@milktea.vn', 'cashier@milktea.vn', 'kitchen@milktea.vn');
+    WHERE tk.Email IN ('manager1@milktea.vn', 'cashier@milktea.vn', 'kitchen@milktea.vn', 'admin2@milktea.vn');
 
     INSERT INTO dbo.NhanVienChiNhanh (MaTK, MaCN, VaiTroChiNhanh, TrangThai, NgayPhanCong)
     SELECT tk.MaTK, @cn02Id, tk.VaiTro, N'HOAT_DONG', SYSUTCDATETIME()
     FROM dbo.TaiKhoan tk 
     WHERE tk.Email IN ('manager2@milktea.vn', 'cashier2@milktea.vn', 'kitchen2@milktea.vn');
+
+    -- Phân công các tài khoản nhân viên khác (nếu có từ test case trước) vào CN01
+    INSERT INTO dbo.NhanVienChiNhanh (MaTK, MaCN, VaiTroChiNhanh, TrangThai, NgayPhanCong)
+    SELECT tk.MaTK, @cn01Id, tk.VaiTro, N'HOAT_DONG', SYSUTCDATETIME()
+    FROM dbo.TaiKhoan tk 
+    WHERE tk.VaiTro IN ('MANAGER', 'CASHIER', 'KITCHEN')
+      AND tk.MaTK NOT IN (SELECT MaTK FROM dbo.NhanVienChiNhanh);
 END
 
-PRINT N'-- [3/18] Đã nạp 9 tài khoản và phân công nhân viên cơ sở.';
+PRINT N'-- [3/18] Đã nạp 11 tài khoản đầy đủ (kết hợp commit cũ và mới) và phân công nhân viên cơ sở.';
 GO
 
 -- ============================================================================
@@ -148,7 +157,19 @@ BEGIN
     DECLARE @tenBan1 NVARCHAR(40) = N'Bàn ' + RIGHT('0' + CAST(@i AS VARCHAR(2)), 2);
     DECLARE @qrCode1 VARCHAR(64)   = 'QR_CN01_BAN' + RIGHT('0' + CAST(@i AS VARCHAR(2)), 2);
     
-    IF NOT EXISTS (SELECT 1 FROM dbo.Ban WHERE MaCN = @cn01Id AND TenBan = @tenBan1)
+    IF EXISTS (SELECT 1 FROM dbo.Ban WHERE MaQR = @qrCode1)
+    BEGIN
+        UPDATE dbo.Ban 
+        SET TenBan = @tenBan1, TrangThai = 'TRONG', HoatDong = 1 
+        WHERE MaQR = @qrCode1;
+    END
+    ELSE IF EXISTS (SELECT 1 FROM dbo.Ban WHERE MaCN = @cn01Id AND TenBan = @tenBan1)
+    BEGIN
+        UPDATE dbo.Ban 
+        SET MaQR = @qrCode1, TrangThai = 'TRONG', HoatDong = 1 
+        WHERE MaCN = @cn01Id AND TenBan = @tenBan1;
+    END
+    ELSE
     BEGIN
         INSERT INTO dbo.Ban (MaCN, TenBan, MaQR, TrangThai, HoatDong, Version)
         VALUES (@cn01Id, @tenBan1, @qrCode1, 'TRONG', 1, 0);
@@ -163,7 +184,19 @@ BEGIN
     DECLARE @tenBan2 NVARCHAR(40) = N'Bàn ' + RIGHT('0' + CAST(@i AS VARCHAR(2)), 2);
     DECLARE @qrCode2 VARCHAR(64)   = 'QR_CN02_BAN' + RIGHT('0' + CAST(@i AS VARCHAR(2)), 2);
     
-    IF NOT EXISTS (SELECT 1 FROM dbo.Ban WHERE MaCN = @cn02Id AND TenBan = @tenBan2)
+    IF EXISTS (SELECT 1 FROM dbo.Ban WHERE MaQR = @qrCode2)
+    BEGIN
+        UPDATE dbo.Ban 
+        SET TenBan = @tenBan2, TrangThai = 'TRONG', HoatDong = 1 
+        WHERE MaQR = @qrCode2;
+    END
+    ELSE IF EXISTS (SELECT 1 FROM dbo.Ban WHERE MaCN = @cn02Id AND TenBan = @tenBan2)
+    BEGIN
+        UPDATE dbo.Ban 
+        SET MaQR = @qrCode2, TrangThai = 'TRONG', HoatDong = 1 
+        WHERE MaCN = @cn02Id AND TenBan = @tenBan2;
+    END
+    ELSE
     BEGIN
         INSERT INTO dbo.Ban (MaCN, TenBan, MaQR, TrangThai, HoatDong, Version)
         VALUES (@cn02Id, @tenBan2, @qrCode2, 'TRONG', 1, 0);
@@ -703,8 +736,10 @@ GO
 -- ============================================================================
 -- 11. DỌN DẸP DỮ LIỆU GIAO DỊCH AN TOÀN THEO THỨ TỰ KHÓA NGOẠI (FK-SAFE CLEANUP)
 -- ============================================================================
+DELETE FROM dbo.DanhGiaMedia;
 DELETE FROM dbo.DanhGia;
 DELETE FROM dbo.SanPhamYeuThich;
+DELETE FROM dbo.TruyCapDonQuay;
 DELETE FROM dbo.YeuCauHoan;
 DELETE FROM dbo.YeuCauHuy;
 DELETE FROM dbo.ThongBaoThanhToan;
@@ -723,7 +758,12 @@ DELETE FROM dbo.MeSoChe;
 DELETE FROM dbo.ChiTietNhap;
 DELETE FROM dbo.PhieuNhap;
 
+DELETE FROM dbo.ChiTietGioPhien;
+DELETE FROM dbo.GioPhien;
+DELETE FROM dbo.TruyCapPhienBan;
+
 UPDATE dbo.Ban SET MaPhienDangMo = NULL, TrangThai = 'TRONG';
+UPDATE dbo.DonHang SET ThayTheMaDH = NULL WHERE ThayTheMaDH IS NOT NULL;
 DELETE FROM dbo.DonHang;
 DELETE FROM dbo.PhienBan;
 
@@ -1248,6 +1288,15 @@ BEGIN
     END;
     SET @dayOffset = @dayOffset - 1;
 END;
+
+-- Đồng bộ SoLuotDaDung của Voucher khớp với LichSuSuDungVoucher
+UPDATE v
+SET v.SoLuotDaDung = (
+    SELECT COUNT(*) 
+    FROM dbo.LichSuSuDungVoucher ls 
+    WHERE ls.MaVoucher = v.MaVoucher AND ls.TrangThai = 'DA_DUNG'
+)
+FROM dbo.Voucher v;
 
 PRINT N'-- [16/18] Đã nạp thành công 108 đơn hàng mẫu đa trạng thái chia đều 7 ngày qua.';
 GO

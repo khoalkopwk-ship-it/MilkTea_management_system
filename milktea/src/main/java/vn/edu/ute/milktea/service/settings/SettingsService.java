@@ -72,10 +72,12 @@ public class SettingsService {
             settings.setOperatingHours(request.getOperatingHours().trim());
         }
         if (request.getHeroBannerUrl() != null) {
-            settings.setHeroBannerUrl(request.getHeroBannerUrl().trim());
+            String bUrl = request.getHeroBannerUrl().trim();
+            settings.setHeroBannerUrl(bUrl.isEmpty() ? null : bUrl);
         }
         if (request.getHeroBannerPublicId() != null) {
-            settings.setHeroBannerPublicId(request.getHeroBannerPublicId().trim());
+            String bPubId = request.getHeroBannerPublicId().trim();
+            settings.setHeroBannerPublicId(bPubId.isEmpty() ? null : bPubId);
         }
         settings.setBankName(request.getBankName());
         settings.setBankAccountNumber(request.getBankAccountNumber());

@@ -96,18 +96,17 @@ public class CancellationController {
             @RequestBody Map<String, Object> body,
             @AuthenticationPrincipal CurrentActor actor) {
 
-        if (actor == null || !actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN)) {
+        if (actor == null || (!actor.hasRole(vn.edu.ute.milktea.entity.account.Role.ADMIN) && !actor.hasRole(vn.edu.ute.milktea.entity.account.Role.MANAGER))) {
             throw vn.edu.ute.milktea.common.BusinessException.forbidden(
                     vn.edu.ute.milktea.common.ErrorCode.ACCESS_DENIED,
-                    "Chỉ Quản trị viên (ADMIN) mới có quyền duyệt hoàn tiền ngân hàng");
+                    "Chỉ Quản trị viên (ADMIN) hoặc Quản lý cơ sở (MANAGER) mới có quyền duyệt hoàn tiền ngân hàng");
         }
 
         boolean approved = Boolean.TRUE.equals(body.get("approved"));
         String reason = (String) body.get("reason");
         String reference = (String) body.get("reference");
-        Long adminId = actor.getAccountId();
 
-        refundService.decideRefund(refundId, approved, reason, reference, adminId);
+        refundService.decideRefund(refundId, approved, reason, reference, actor);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 

@@ -250,4 +250,51 @@ public class RefundAndVoucherAuditTest {
         assertEquals(ErrorCode.VOUCHER_USER_LIMIT_EXCEEDED, ex.getErrorCode());
         assertTrue(ex.getMessage().contains("yêu cầu đăng nhập tài khoản"));
     }
+
+    @Test
+    @DisplayName("Role MANAGER: Có quyền duyệt yêu cầu hoàn tiền của chi nhánh mình")
+    void testManagerCanApproveRefundForOwnBranch() {
+        Order order = Order.builder().id(804L).branch(branch).status(OrderStatus.DA_HUY).build();
+        RefundRequest refund = RefundRequest.builder()
+                .id(904L)
+                .order(order)
+                .amount(BigDecimal.valueOf(50000))
+                .status(RefundStatus.CHO_DUYET)
+                .build();
+        Account manager = Account.builder().id(25L).fullName("Quản lý CN1").role(Role.MANAGER).branch(branch).build();
+
+        when(refundRepository.findByIdWithLock(904L)).thenReturn(Optional.of(refund));
+        when(accountRepository.findById(25L)).thenReturn(Optional.of(manager));
+        when(refundRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CurrentActor managerActor = CurrentActor.authenticated(25L, Role.MANAGER, 1L, List.of(1L));
+        assertDoesNotThrow(() -> refundService.decideRefund(904L, true, "Đồng ý hoàn tiền", "REF-BANK-001", managerActor));
+
+        assertEquals(RefundStatus.DA_HOAN, refund.getStatus());
+        assertEquals("REF-BANK-001", refund.getRefundReference());
+        assertEquals(manager, refund.getApprovedBy());
+    }
+
+    @Test
+    @DisplayName("Role MANAGER: Bị từ chối khi duyệt yêu cầu hoàn tiền của chi nhánh khác")
+    void testManagerCannotApproveRefundForOtherBranch() {
+        Branch otherBranch = Branch.builder().id(2L).code("CN02").name("Chi nhánh 2").build();
+        Order order = Order.builder().id(805L).branch(otherBranch).status(OrderStatus.DA_HUY).build();
+        RefundRequest refund = RefundRequest.builder()
+                .id(905L)
+                .order(order)
+                .amount(BigDecimal.valueOf(50000))
+                .status(RefundStatus.CHO_DUYET)
+                .build();
+
+        when(refundRepository.findByIdWithLock(905L)).thenReturn(Optional.of(refund));
+
+        CurrentActor managerActor = CurrentActor.authenticated(25L, Role.MANAGER, 1L, List.of(1L));
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                refundService.decideRefund(905L, true, "Đồng ý hoàn tiền", "REF-BANK-002", managerActor)
+        );
+
+        assertEquals(ErrorCode.ACCESS_DENIED, ex.getErrorCode());
+        assertEquals(RefundStatus.CHO_DUYET, refund.getStatus());
+    }
 }
