@@ -75,11 +75,11 @@
                 <div class="footer-contact-row">
                     <div class="footer-detail">
                         <i class="bi bi-telephone-inbound-fill" aria-hidden="true"></i>
-                        <div><strong>Hotline</strong><a href="tel:0345121523">0345121523</a></div>
+                        <div><strong>Hotline</strong><a th:href="${'tel:' + (settings != null and settings.hotline != null ? settings.hotline : '0345121523')}" th:text="${settings != null and settings.hotline != null ? settings.hotline : '0345121523'}">0345121523</a></div>
                     </div>
                     <div class="footer-detail">
                         <i class="bi bi-clock" aria-hidden="true"></i>
-                        <div><strong>Giờ hoạt động</strong><span>08:00 – 22:00 (Hằng ngày)</span></div>
+                        <div><strong>Giờ hoạt động</strong><span th:text="${settings != null and settings.operatingHours != null ? settings.operatingHours : '08:00 – 22:00 (Hằng ngày)'}">08:00 – 22:00 (Hằng ngày)</span></div>
                     </div>
                 </div>
             </div>

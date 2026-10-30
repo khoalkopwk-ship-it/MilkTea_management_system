@@ -32,6 +32,12 @@ public class GlobalSettings {
     @Column(name = "LogoPublicId", length = 255)
     private String logoPublicId;
 
+    @Column(name = "HeroBannerUrl", length = 1000)
+    private String heroBannerUrl;
+
+    @Column(name = "HeroBannerPublicId", length = 255)
+    private String heroBannerPublicId;
+
     @Column(name = "NganHang", length = 120)
     private String bankName;
 
@@ -40,6 +46,12 @@ public class GlobalSettings {
 
     @Column(name = "ChuTK", length = 120)
     private String bankAccountHolder;
+
+    @Column(name = "Hotline", length = 30)
+    private String hotline;
+
+    @Column(name = "GioHoatDong", length = 120)
+    private String operatingHours;
 
     @Column(name = "TyLeGiam", nullable = false, precision = 5, scale = 2)
     @Builder.Default

@@ -41,8 +41,8 @@
                         <div class="hero-stats"><span><i class="bi bi-cup-hot" aria-hidden="true"></i>Khám phá vị trà</span><span><i class="bi bi-sliders" aria-hidden="true"></i>Chọn theo sở thích</span><span><i class="bi bi-qr-code-scan" aria-hidden="true"></i>Gọi món tại bàn</span></div>
                     </div>
                     <div class="col-lg-6 hero-image-wrapper">
-                        <img th:src="${not #lists.isEmpty(featuredProducts) and !#strings.isEmpty(featuredProducts[0].imageUrl) ? featuredProducts[0].imageUrl : fallbackImage}" width="540" height="450" fetchpriority="high" data-home-image th:attr="data-fallback=${fallbackImage}"
-                             th:alt="${not #lists.isEmpty(featuredProducts) ? featuredProducts[0].name : 'MilkTea'}"
+                        <img th:src="${settings != null and !#strings.isEmpty(settings.heroBannerUrl) ? settings.heroBannerUrl : (not #lists.isEmpty(featuredProducts) and !#strings.isEmpty(featuredProducts[0].imageUrl) ? featuredProducts[0].imageUrl : fallbackImage)}" width="540" height="450" fetchpriority="high" data-home-image th:attr="data-fallback=${fallbackImage}"
+                             th:alt="${settings != null ? settings.shopName : 'MilkTea'}"
                              class="hero-main-img" />
                         <div class="hero-floating-card">
                             <div class="rounded-circle d-flex align-items-center justify-content-center"
@@ -197,6 +197,10 @@
                             <div class="branch-info-row" th:if="${b.phone != null and !b.phone.isEmpty()}">
                                 <i class="bi bi-telephone-fill"></i>
                                 <span th:text="${b.phone}">028 1234 5678</span>
+                            </div>
+                            <div class="branch-info-row" th:if="${b.openingHours != null and !b.openingHours.isEmpty()}">
+                                <i class="bi bi-clock-fill"></i>
+                                <span th:text="${b.openingHours}">08:00 - 22:00</span>
                             </div>
                             <div class="mt-auto">
                                 <a th:href="@{/menu(branchId=${b.id}, qr=${tableQr})}"

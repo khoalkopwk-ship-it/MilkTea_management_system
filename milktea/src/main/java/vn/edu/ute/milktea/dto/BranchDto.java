@@ -18,6 +18,7 @@ public class BranchDto {
         private String name;
         private String address;
         private String phone;
+        private String openingHours;
         private String status;
     }
 
@@ -42,6 +43,7 @@ public class BranchDto {
         @jakarta.validation.constraints.NotBlank(message = "Địa chỉ không được để trống")
         private String address;
         private String phone;
+        private String openingHours;
     }
 
     @Data
@@ -54,5 +56,6 @@ public class BranchDto {
         @jakarta.validation.constraints.NotBlank(message = "Địa chỉ không được để trống")
         private String address;
         private String phone;
+        private String openingHours;
     }
 }

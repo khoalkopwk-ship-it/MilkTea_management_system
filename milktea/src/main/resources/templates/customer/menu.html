@@ -1324,65 +1324,86 @@
             </div>
         </div>
 
-        <div class="menu-heading-panel d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
-            <div>
-                <h2 class="brand-font mb-1">Thực đơn trà sữa</h2>
-                <p class="text-muted small mb-0">Hương vị trà sữa nguyên bản, pha chế thủ công thơm ngon mỗi ngày</p>
+        <!-- Tiêu đề Menu (Ảnh 1) -->
+        <div class="menu-heading-panel mb-2">
+            <h2 class="brand-font mb-1">Thực đơn trà sữa</h2>
+            <p class="text-muted small mb-0">Hương vị trà sữa nguyên bản, pha chế thủ công thơm ngon mỗi ngày</p>
+        </div>
+
+        <!-- Thanh Tìm Kiếm & Nút Lọc (Ảnh 1 & 2) -->
+        <div class="menu-search-filter-row d-flex align-items-center gap-2">
+            <div class="menu-search-wrapper position-relative flex-grow-1">
+                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" style="font-size: 1.05rem;"></i>
+                <input type="text"
+                       id="menuSearchInput"
+                       class="form-control menu-search-input"
+                       placeholder="Tìm món bạn thích..."
+                       autocomplete="off"
+                       oninput="handleMenuFilterAndSearch()">
             </div>
+            <button type="button"
+                    class="btn menu-filter-btn"
+                    id="btnOpenFilterModal"
+                    onclick="openFilterModal()"
+                    aria-label="Mở bộ lọc">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1">
+                    <line x1="4" y1="21" x2="4" y2="14"></line>
+                    <line x1="4" y1="10" x2="4" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12" y2="3"></line>
+                    <line x1="20" y1="21" x2="20" y2="16"></line>
+                    <line x1="20" y1="12" x2="20" y2="3"></line>
+                    <line x1="1" y1="14" x2="7" y2="14"></line>
+                    <line x1="9" y1="8" x2="15" y2="8"></line>
+                    <line x1="17" y1="16" x2="23" y2="16"></line>
+                </svg>
+                <span id="filterBtnLabel">Lọc</span>
+            </button>
+        </div>
 
-            <!-- Thanh Tìm Kiếm & Lọc Danh Mục & Sắp Xếp (CUS-01) -->
-            <div class="menu-filter-controls d-flex flex-wrap align-items-center gap-2">
-                <div class="position-relative" style="min-width: 220px; flex-grow: 1;">
-                    <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
-                    <input type="text"
-                           id="menuSearchInput"
-                           class="form-control rounded-pill ps-5 pe-3 shadow-sm border"
-                           placeholder="Tìm tên món uống..."
-                           oninput="handleMenuFilterAndSearch()">
-                </div>
-
-                <div class="menu-category-filter">
-                    <select class="form-select rounded-pill fw-semibold shadow-sm" id="categoryFilterSelect"
-                        onchange="handleMenuFilterAndSearch()">
-                        <option value="ALL">Tất cả danh mục</option>
-                        <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">
-                            Danh mục
-                        </option>
-                    </select>
-                </div>
-
-                <div>
-                    <select class="form-select rounded-pill fw-semibold shadow-sm" id="menuSortSelect"
-                        onchange="handleMenuFilterAndSearch()">
-                        <option value="default">Sắp xếp: Mặc định</option>
-                        <option value="price_asc">Giá: Thấp đến Cao</option>
-                        <option value="price_desc">Giá: Cao đến Thấp</option>
-                        <option value="name_asc">Tên món: A - Z</option>
-                    </select>
-                </div>
+        <!-- Dải Category Pills Cuộn Ngang (Ảnh 1) -->
+        <div class="menu-category-pills-wrapper">
+            <div class="menu-category-pills" id="categoryPillsTrack">
+                <button type="button"
+                        class="category-pill active"
+                        data-category-id="ALL"
+                        onclick="selectCategoryPill('ALL', this)">
+                    Tất cả
+                </button>
+                <button th:each="cat : ${categories}"
+                        type="button"
+                        class="category-pill"
+                        th:attr="data-category-id=${cat.id}"
+                        th:text="${cat.name}"
+                        onclick="selectCategoryPill(this.getAttribute('data-category-id'), this)">
+                    Trà sữa
+                </button>
             </div>
         </div>
 
-        <!-- 3 Danh Sách Nổi Bật: Bán chạy nhất, Đánh giá cao, Yêu thích nhất (CUS-02) -->
-        <div class="menu-featured-tabs d-flex flex-wrap gap-2 mb-4 align-items-center">
-            <span class="small fw-bold text-muted me-1 d-none d-md-inline">
-                <i class="bi bi-stars text-warning me-1"></i>Bộ sưu tập:
-            </span>
-            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill active px-3 featured-tab-btn" data-type="all" onclick="selectFeaturedTab('all', this)">
-                Tất cả món
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 featured-tab-btn" data-type="newest" onclick="selectFeaturedTab('newest', this)">
-                <i class="bi bi-sparkles text-info me-1"></i> Món mới
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 featured-tab-btn" data-type="best-seller" onclick="selectFeaturedTab('best-seller', this)">
-                <i class="bi bi-fire text-danger me-1"></i> Bán chạy nhất
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 featured-tab-btn" data-type="top-rated" onclick="selectFeaturedTab('top-rated', this)">
-                <i class="bi bi-star-fill text-warning me-1"></i> Đánh giá cao
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 featured-tab-btn" data-type="most-favorited" onclick="selectFeaturedTab('most-favorited', this)">
-                <i class="bi bi-heart-fill text-danger me-1"></i> Yêu thích nhất
-            </button>
+        <!-- Hàng Đếm Số Món & Sắp Xếp Nhanh (Ảnh 1) -->
+        <div class="menu-count-sort-row d-flex justify-content-between align-items-center">
+            <div class="menu-count-text" id="menuProductCountText">
+                <span id="productCountNumber" th:text="${totalItems != null ? totalItems : 0}">24</span> món
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-link text-decoration-none dropdown-toggle p-0 menu-quick-sort-btn"
+                        type="button"
+                        id="quickSortDropdownBtn"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                    <span id="currentSortLabel">Đề xuất</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 py-1" aria-labelledby="quickSortDropdownBtn" style="min-width: 175px;">
+                    <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" onclick="selectSortQuick('default', 'Đề xuất')">Đề xuất</a></li>
+                    <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" onclick="selectSortQuick('newest', 'Mới nhất')">Mới nhất</a></li>
+                    <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" onclick="selectSortQuick('best_seller', 'Bán chạy')">Bán chạy</a></li>
+                    <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" onclick="selectSortQuick('top_rated', 'Đánh giá cao')">Đánh giá cao</a></li>
+                    <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" onclick="selectSortQuick('most_favorited', 'Yêu thích nhiều')">Yêu thích nhiều</a></li>
+                    <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" onclick="selectSortQuick('price_asc', 'Giá tăng dần')">Giá tăng dần</a></li>
+                    <li><a class="dropdown-item py-2 fw-medium" href="javascript:void(0)" onclick="selectSortQuick('price_desc', 'Giá giảm dần')">Giá giảm dần</a></li>
+                </ul>
+            </div>
         </div>
 
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="productsGrid">
@@ -1649,6 +1670,111 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal Bộ Lọc Dạng Bottom Sheet (Ảnh 2) -->
+        <div class="modal fade" id="menuFilterModal" tabindex="-1" aria-labelledby="menuFilterModalTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-bottom-sheet modal-dialog-centered">
+                <div class="modal-content filter-bottom-sheet-content border-0 shadow-lg">
+                    <!-- Thanh Drag Handle -->
+                    <div class="sheet-drag-handle"></div>
+
+                    <div class="modal-header border-0 pb-1 pt-1 px-4 d-flex justify-content-between align-items-center">
+                        <h5 class="modal-title fw-bold filter-modal-title" id="menuFilterModalTitle">Bộ lọc</h5>
+                        <button type="button" class="btn-close filter-modal-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                    </div>
+
+                    <div class="modal-body px-4 pt-2 pb-3">
+                        <!-- Khoảng giá -->
+                        <div class="filter-section mb-4">
+                            <label class="filter-section-title d-block fw-bold mb-2">Khoảng giá</label>
+                            <div class="price-chips-grid">
+                                <button type="button"
+                                        class="price-chip-btn active"
+                                        data-min="" data-max=""
+                                        onclick="selectDraftPriceChip('', '', this)">
+                                    Tất cả
+                                </button>
+                                <button type="button"
+                                        class="price-chip-btn"
+                                        data-min="" data-max="30000"
+                                        onclick="selectDraftPriceChip('', '30000', this)">
+                                    Dưới 30.000đ
+                                </button>
+                                <button type="button"
+                                        class="price-chip-btn"
+                                        data-min="30000" data-max="50000"
+                                        onclick="selectDraftPriceChip('30000', '50000', this)">
+                                    30.000–50.000đ
+                                </button>
+                                <button type="button"
+                                        class="price-chip-btn"
+                                        data-min="50000" data-max=""
+                                        onclick="selectDraftPriceChip('50000', '', this)">
+                                    Trên 50.000đ
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sắp xếp -->
+                        <div class="filter-section">
+                            <label class="filter-section-title d-block fw-bold mb-2">Sắp xếp</label>
+                            <div class="sort-radio-group d-flex flex-column gap-1">
+                                <label class="sort-radio-item d-flex align-items-center gap-3 py-2 cursor-pointer">
+                                    <input type="radio" name="draftSortRadio" value="default" checked onchange="onDraftSortChange('default', 'Đề xuất')">
+                                    <span class="radio-custom-circle"></span>
+                                    <span class="sort-radio-label">Đề xuất</span>
+                                </label>
+                                <label class="sort-radio-item d-flex align-items-center gap-3 py-2 cursor-pointer">
+                                    <input type="radio" name="draftSortRadio" value="newest" onchange="onDraftSortChange('newest', 'Mới nhất')">
+                                    <span class="radio-custom-circle"></span>
+                                    <span class="sort-radio-label">Mới nhất</span>
+                                </label>
+                                <label class="sort-radio-item d-flex align-items-center gap-3 py-2 cursor-pointer">
+                                    <input type="radio" name="draftSortRadio" value="best_seller" onchange="onDraftSortChange('best_seller', 'Bán chạy')">
+                                    <span class="radio-custom-circle"></span>
+                                    <span class="sort-radio-label">Bán chạy</span>
+                                </label>
+                                <label class="sort-radio-item d-flex align-items-center gap-3 py-2 cursor-pointer">
+                                    <input type="radio" name="draftSortRadio" value="top_rated" onchange="onDraftSortChange('top_rated', 'Đánh giá cao')">
+                                    <span class="radio-custom-circle"></span>
+                                    <span class="sort-radio-label">Đánh giá cao</span>
+                                </label>
+                                <label class="sort-radio-item d-flex align-items-center gap-3 py-2 cursor-pointer">
+                                    <input type="radio" name="draftSortRadio" value="most_favorited" onchange="onDraftSortChange('most_favorited', 'Yêu thích nhiều')">
+                                    <span class="radio-custom-circle"></span>
+                                    <span class="sort-radio-label">Yêu thích nhiều</span>
+                                </label>
+                                <label class="sort-radio-item d-flex align-items-center gap-3 py-2 cursor-pointer">
+                                    <input type="radio" name="draftSortRadio" value="price_asc" onchange="onDraftSortChange('price_asc', 'Giá tăng dần')">
+                                    <span class="radio-custom-circle"></span>
+                                    <span class="sort-radio-label">Giá tăng dần</span>
+                                </label>
+                                <label class="sort-radio-item d-flex align-items-center gap-3 py-2 cursor-pointer">
+                                    <input type="radio" name="draftSortRadio" value="price_desc" onchange="onDraftSortChange('price_desc', 'Giá giảm dần')">
+                                    <span class="radio-custom-circle"></span>
+                                    <span class="sort-radio-label">Giá giảm dần</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-0 px-4 pt-1 pb-4 d-flex gap-3">
+                        <button type="button"
+                                class="btn btn-outline-filter-reset"
+                                id="btnFilterReset"
+                                onclick="resetFilterDraft()">
+                            Đặt lại
+                        </button>
+                        <button type="button"
+                                class="btn btn-primary-filter-apply flex-grow-1"
+                                id="btnFilterApply"
+                                onclick="applyFilterModal()">
+                            Xem <span id="modalPreviewItemCount" th:text="${totalItems != null ? totalItems : 0}">24</span> món
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <th:block th:fragment="scripts">
@@ -1660,9 +1786,29 @@
             let totalMenuPages = /*[[${totalPages}]]*/ 1;
             let totalMenuItems = /*[[${totalItems}]]*/ 0;
             const MENU_PAGE_SIZE = /*[[${pageSize}]]*/ 12;
-            let currentFeaturedType = 'all';
             let menuRequestSeq = 0;
             let menuSearchTimeout = null;
+
+            // Bộ lọc & Sắp xếp (Theo giao diện Ảnh 1 & 2)
+            let selectedCategoryId = 'ALL';
+            let appliedMinPrice = '';
+            let appliedMaxPrice = '';
+            let appliedSort = 'default';
+
+            let draftMinPrice = '';
+            let draftMaxPrice = '';
+            let draftSort = 'default';
+            let previewTimeout = null;
+
+            const sortLabelMap = {
+                'default': 'Đề xuất',
+                'newest': 'Mới nhất',
+                'best_seller': 'Bán chạy',
+                'top_rated': 'Đánh giá cao',
+                'most_favorited': 'Yêu thích nhiều',
+                'price_asc': 'Giá tăng dần',
+                'price_desc': 'Giá giảm dần'
+            };
 
             document.addEventListener('DOMContentLoaded', () => {
                 const qr = /*[[${tableQr}]]*/ null;
@@ -1674,8 +1820,31 @@
                 initRadialFabMenu();
                 loadUserFavorites();
 
-                // Cập nhật thanh phân trang từ dữ liệu SSR ban đầu
+                // Đọc tham số URL ban đầu nếu có
+                const urlParams = new URLSearchParams(window.location.search);
+                const initialCatId = urlParams.get('categoryId');
+                if (initialCatId) {
+                    selectedCategoryId = initialCatId;
+                    const pillBtn = document.querySelector(`#categoryPillsTrack .category-pill[data-category-id="${initialCatId}"]`);
+                    if (pillBtn) {
+                        document.querySelectorAll('#categoryPillsTrack .category-pill').forEach(b => b.classList.remove('active'));
+                        pillBtn.classList.add('active');
+                    }
+                }
+                const initialSort = urlParams.get('sort') || urlParams.get('sortBy');
+                if (initialSort && sortLabelMap[initialSort]) {
+                    appliedSort = initialSort;
+                    draftSort = initialSort;
+                }
+                updateFilterBadgeAndSortLabel();
+
+                // Cập nhật số lượng món ban đầu
                 const initialCount = document.querySelectorAll('#productsGrid .product-item').length;
+                const countNum = document.getElementById('productCountNumber');
+                if (countNum) countNum.textContent = totalMenuItems;
+                const modalCountNum = document.getElementById('modalPreviewItemCount');
+                if (modalCountNum) modalCountNum.textContent = totalMenuItems;
+
                 const info = document.getElementById('menuPageInfo');
                 if (info && totalMenuItems > 0) {
                     info.innerHTML = `Hiển thị <strong>1–${initialCount}</strong> trong <strong>${totalMenuItems}</strong> món`;
@@ -1708,8 +1877,6 @@
 
             async function loadMenuPage(page) {
                 const searchInput = document.getElementById('menuSearchInput');
-                const catSelect = document.getElementById('categoryFilterSelect');
-                const sortSelect = document.getElementById('menuSortSelect');
                 const grid = document.getElementById('productsGrid');
                 const pagination = document.getElementById('menuPagination');
                 const info = document.getElementById('menuPageInfo');
@@ -1717,17 +1884,19 @@
                 if (!grid) return;
 
                 const kw = (searchInput?.value || '').trim();
-                const catId = (catSelect?.value && catSelect.value !== 'ALL') ? catSelect.value : '';
-                const sort = sortSelect?.value || 'default';
+                const catId = (selectedCategoryId && selectedCategoryId !== 'ALL') ? selectedCategoryId : '';
+                const sort = appliedSort || 'default';
                 const branchId = window.MilkTeaContext?.branchId || '';
 
                 const thisSeq = ++menuRequestSeq;
                 grid.style.opacity = '0.55';
 
                 try {
-                    let url = `/api/v1/public/products/menu-page?page=${page}&size=${MENU_PAGE_SIZE}&sortBy=${encodeURIComponent(sort)}&featuredType=${encodeURIComponent(currentFeaturedType)}`;
+                    let url = `/api/v1/public/products/menu-page?page=${page}&size=${MENU_PAGE_SIZE}&sortBy=${encodeURIComponent(sort)}`;
                     if (kw) url += `&keyword=${encodeURIComponent(kw)}`;
                     if (catId) url += `&categoryId=${encodeURIComponent(catId)}`;
+                    if (appliedMinPrice) url += `&minPrice=${encodeURIComponent(appliedMinPrice)}`;
+                    if (appliedMaxPrice) url += `&maxPrice=${encodeURIComponent(appliedMaxPrice)}`;
                     if (branchId) url += `&branchId=${encodeURIComponent(branchId)}`;
 
                     const res = await MilkTeaApi.get(url);
@@ -1739,6 +1908,12 @@
                     currentMenuPage = (res && res.page) || page;
                     totalMenuPages = (res && res.totalPages) || 0;
                     totalMenuItems = (res && res.totalItems) || 0;
+
+                    // Đồng bộ số lượng món hiển thị
+                    const countNum = document.getElementById('productCountNumber');
+                    if (countNum) countNum.textContent = totalMenuItems;
+                    const modalCountNum = document.getElementById('modalPreviewItemCount');
+                    if (modalCountNum) modalCountNum.textContent = totalMenuItems;
 
                     if (items.length === 0) {
                         grid.innerHTML = '<div class="col-12 py-5 text-center text-muted"><i class="bi bi-search fs-1 d-block mb-2 text-secondary"></i>Không tìm thấy món uống nào phù hợp với bộ lọc.</div>';
@@ -1913,19 +2088,147 @@
                 }, 280);
             }
 
-            function filterCategory(catId) {
-                const catSelect = document.getElementById('categoryFilterSelect');
-                if (catSelect) catSelect.value = catId;
-                handleMenuFilterAndSearch();
+            function selectCategoryPill(catId, btn) {
+                selectedCategoryId = catId || 'ALL';
+                document.querySelectorAll('#categoryPillsTrack .category-pill').forEach(b => b.classList.remove('active'));
+                if (btn) btn.classList.add('active');
+                loadMenuPage(1);
             }
 
-            async function selectFeaturedTab(type, btn) {
-                currentFeaturedType = type;
-                document.querySelectorAll('.featured-tab-btn').forEach(b => b.classList.remove('active', 'btn-secondary', 'text-white'));
-                if (btn) {
-                    btn.classList.add('active');
+            function filterCategory(catId) {
+                const targetBtn = document.querySelector(`#categoryPillsTrack .category-pill[data-category-id="${catId}"]`);
+                selectCategoryPill(catId, targetBtn);
+            }
+
+            function openFilterModal() {
+                // Đồng bộ draft state từ applied state
+                draftMinPrice = appliedMinPrice;
+                draftMaxPrice = appliedMaxPrice;
+                draftSort = appliedSort;
+
+                updateDraftModalUI();
+                updatePreviewCount();
+
+                const modalEl = document.getElementById('menuFilterModal');
+                if (modalEl && window.bootstrap) {
+                    const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    bsModal.show();
                 }
+            }
+
+            function updateDraftModalUI() {
+                // Cập nhật trạng thái active của chip giá
+                document.querySelectorAll('.price-chip-btn').forEach(btn => {
+                    const min = btn.getAttribute('data-min') || '';
+                    const max = btn.getAttribute('data-max') || '';
+                    if (min === draftMinPrice && max === draftMaxPrice) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+
+                // Cập nhật radio sort
+                const radio = document.querySelector(`input[name="draftSortRadio"][value="${draftSort}"]`);
+                if (radio) {
+                    radio.checked = true;
+                }
+            }
+
+            function selectDraftPriceChip(min, max, btn) {
+                draftMinPrice = min;
+                draftMaxPrice = max;
+                document.querySelectorAll('.price-chip-btn').forEach(b => b.classList.remove('active'));
+                if (btn) btn.classList.add('active');
+                updatePreviewCount();
+            }
+
+            function onDraftSortChange(val, label) {
+                draftSort = val;
+                updatePreviewCount();
+            }
+
+            function updatePreviewCount() {
+                clearTimeout(previewTimeout);
+                previewTimeout = setTimeout(async () => {
+                    const kw = (document.getElementById('menuSearchInput')?.value || '').trim();
+                    const catId = (selectedCategoryId && selectedCategoryId !== 'ALL') ? selectedCategoryId : '';
+                    const branchId = window.MilkTeaContext?.branchId || '';
+
+                    let url = `/api/v1/public/products/menu-page?page=1&size=1&sortBy=${encodeURIComponent(draftSort)}`;
+                    if (kw) url += `&keyword=${encodeURIComponent(kw)}`;
+                    if (catId) url += `&categoryId=${encodeURIComponent(catId)}`;
+                    if (draftMinPrice) url += `&minPrice=${encodeURIComponent(draftMinPrice)}`;
+                    if (draftMaxPrice) url += `&maxPrice=${encodeURIComponent(draftMaxPrice)}`;
+                    if (branchId) url += `&branchId=${encodeURIComponent(branchId)}`;
+
+                    try {
+                        const res = await MilkTeaApi.get(url);
+                        const cnt = (res && res.totalItems !== undefined) ? res.totalItems : 0;
+                        const modalCountNum = document.getElementById('modalPreviewItemCount');
+                        if (modalCountNum) modalCountNum.textContent = cnt;
+                    } catch (e) {
+                        // ignore preview fetch errors
+                    }
+                }, 160);
+            }
+
+            function resetFilterDraft() {
+                draftMinPrice = '';
+                draftMaxPrice = '';
+                draftSort = 'default';
+                updateDraftModalUI();
+                updatePreviewCount();
+            }
+
+            function applyFilterModal() {
+                appliedMinPrice = draftMinPrice;
+                appliedMaxPrice = draftMaxPrice;
+                appliedSort = draftSort;
+
+                updateFilterBadgeAndSortLabel();
+
+                const modalEl = document.getElementById('menuFilterModal');
+                if (modalEl && window.bootstrap) {
+                    const bsModal = bootstrap.Modal.getInstance(modalEl);
+                    if (bsModal) bsModal.hide();
+                }
+
                 loadMenuPage(1);
+            }
+
+            function selectSortQuick(val, label) {
+                appliedSort = val;
+                draftSort = val;
+                updateFilterBadgeAndSortLabel();
+                loadMenuPage(1);
+            }
+
+            function updateFilterBadgeAndSortLabel() {
+                // Nhãn sắp xếp nhanh
+                const sortLabelEl = document.getElementById('currentSortLabel');
+                if (sortLabelEl) {
+                    sortLabelEl.textContent = sortLabelMap[appliedSort] || 'Đề xuất';
+                }
+
+                // Đếm số lượng bộ lọc đang active:
+                // - Giá: nếu minPrice hoặc maxPrice khác rỗng -> +1
+                // - Sort: nếu khác 'default' -> +1
+                let activeCount = 0;
+                if (appliedMinPrice || appliedMaxPrice) activeCount++;
+                if (appliedSort && appliedSort !== 'default') activeCount++;
+
+                const filterBtn = document.getElementById('btnOpenFilterModal');
+                const filterLabel = document.getElementById('filterBtnLabel');
+                if (filterBtn && filterLabel) {
+                    if (activeCount > 0) {
+                        filterBtn.classList.add('active');
+                        filterLabel.textContent = `Lọc · ${activeCount}`;
+                    } else {
+                        filterBtn.classList.remove('active');
+                        filterLabel.textContent = 'Lọc';
+                    }
+                }
             }
 
             async function toggleProductFavorite(event, btn) {

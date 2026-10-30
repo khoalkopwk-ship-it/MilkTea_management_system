@@ -25,6 +25,10 @@ public class SettingsDto {
         private String bankAccountHolder;
         private String logoUrl;
         private String logoPublicId;
+        private String heroBannerUrl;
+        private String heroBannerPublicId;
+        private String hotline;
+        private String operatingHours;
         private BigDecimal discountPercent;
         private String discountType; // PERCENT, FIXED_AMOUNT
         private BigDecimal discountValue;
@@ -40,6 +44,15 @@ public class SettingsDto {
     }
 
     @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class HeroBannerImageView {
+        private String heroBannerUrl;
+        private String heroBannerPublicId;
+    }
+
+    @Data
     @NoArgsConstructor
     @AllArgsConstructor
     public static class UpdateSettingsRequest {
@@ -49,8 +62,13 @@ public class SettingsDto {
         @NotBlank(message = "Địa chỉ quán không được để trống")
         private String address;
 
+        private String hotline;
+        private String operatingHours;
+
         private String logoUrl;
         private String logoPublicId;
+        private String heroBannerUrl;
+        private String heroBannerPublicId;
         private String bankName;
         private String bankAccountNumber;
         private String bankAccountHolder;

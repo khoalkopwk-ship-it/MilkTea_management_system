@@ -31,6 +31,9 @@ public class Branch {
     @Column(name = "SoDienThoai", length = 20)
     private String phone;
 
+    @Column(name = "GioMoCua", length = 120)
+    private String openingHours;
+
     @Column(name = "TrangThai", nullable = false, length = 30)
     @Builder.Default
     private String status = "HOAT_DONG";

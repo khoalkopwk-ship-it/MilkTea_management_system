@@ -39,6 +39,8 @@ public class SettingsService {
         return SettingsDto.ShopInfoResponse.builder()
                 .shopName(settings.getShopName())
                 .address(settings.getAddress())
+                .hotline(settings.getHotline() != null ? settings.getHotline() : "0345121523")
+                .operatingHours(settings.getOperatingHours() != null ? settings.getOperatingHours() : "08:00 – 22:00 (Hằng ngày)")
                 .bankName(settings.getBankName())
                 .bankAccountNumber(settings.getBankAccountNumber())
                 .bankAccountHolder(settings.getBankAccountHolder())
@@ -47,6 +49,8 @@ public class SettingsService {
                 .discountValue(discountValue)
                 .logoUrl(settings.getLogoUrl())
                 .logoPublicId(settings.getLogoPublicId())
+                .heroBannerUrl(settings.getHeroBannerUrl())
+                .heroBannerPublicId(settings.getHeroBannerPublicId())
                 .build();
     }
 
@@ -61,6 +65,18 @@ public class SettingsService {
 
         settings.setShopName(request.getShopName());
         settings.setAddress(request.getAddress());
+        if (request.getHotline() != null) {
+            settings.setHotline(request.getHotline().trim());
+        }
+        if (request.getOperatingHours() != null) {
+            settings.setOperatingHours(request.getOperatingHours().trim());
+        }
+        if (request.getHeroBannerUrl() != null) {
+            settings.setHeroBannerUrl(request.getHeroBannerUrl().trim());
+        }
+        if (request.getHeroBannerPublicId() != null) {
+            settings.setHeroBannerPublicId(request.getHeroBannerPublicId().trim());
+        }
         settings.setBankName(request.getBankName());
         settings.setBankAccountNumber(request.getBankAccountNumber());
         settings.setBankAccountHolder(request.getBankAccountHolder());

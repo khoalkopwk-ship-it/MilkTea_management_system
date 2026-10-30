@@ -47,36 +47,22 @@
     width: 100%;
 }
 .milk-menu-page .menu-heading-panel {
-    padding: 24px 0 20px;
-    gap: 24px;
-}
-.milk-menu-page .menu-heading-panel > div:first-child {
-    flex: 0 1 300px;
-    min-width: 0;
+    padding: 16px 0 12px;
 }
 .milk-menu-page .menu-heading-panel h2 {
     font-size: clamp(1.65rem, 2.4vw, 2.1rem);
     font-weight: 700;
     line-height: 1.35;
     letter-spacing: -.025em;
+    color: #402310;
 }
 .milk-menu-page .menu-heading-panel p {
-    line-height: 1.75;
-    max-width: 42ch;
+    line-height: 1.6;
+    color: #7a6658;
 }
-.milk-menu-page .menu-filter-controls {
-    display: grid !important; /* Replace Bootstrap d-flex with a responsive grid. */
-    grid-template-columns: minmax(180px, 1.25fr) minmax(160px, 1fr) minmax(175px, 1fr);
-    flex: 1 1 0;
-    min-width: 0;
-    width: 100%;
-}
-.milk-menu-page .menu-filter-controls > div,
-.milk-menu-page .menu-filter-controls .menu-category-filter {
-    min-width: 0 !important;
-    width: auto;
-}
-.milk-menu-page :is(.menu-filter-controls, #menuBranchSelectorCard) :is(input, select) {
+
+/* Branch selector styling */
+.milk-menu-page #menuBranchSelectorCard :is(input, select) {
     min-height: 46px;
     width: 100%;
     min-width: 0;
@@ -90,51 +76,289 @@
     box-shadow: none !important;
     transition: border-color .2s ease, background-color .2s ease;
 }
-.milk-menu-page .menu-category-filter .form-select {
-    padding: 10px 38px 10px 14px;
-}
-.milk-menu-page :is(.menu-filter-controls, #menuBranchSelectorCard) :is(input, select):hover {
+.milk-menu-page #menuBranchSelectorCard :is(input, select):hover {
     border-color: #b86b35;
     background-color: #fffdf9;
 }
-.milk-menu-page :is(.menu-filter-controls, #menuBranchSelectorCard) :is(input, select):focus {
+.milk-menu-page #menuBranchSelectorCard :is(input, select):focus {
     outline: 2px solid #b86b35;
     outline-offset: 2px;
     border-color: #b86b35;
 }
-.milk-menu-page .menu-featured-tabs {
-    padding-bottom: 24px;
-    border-bottom: 1px solid #e8ded5;
+
+/* Thanh Tìm Kiếm & Nút Lọc (Giao diện theo ảnh mẫu 1 & 2) */
+.milk-menu-page .menu-search-filter-row {
+    margin-bottom: 16px;
 }
-.milk-menu-page .featured-tab-btn {
-    --bs-btn-color: #775d4a;
-    --bs-btn-border-color: #e0d2c5;
-    --bs-btn-hover-color: #604735;
-    --bs-btn-hover-bg: #f8f4ef;
-    --bs-btn-hover-border-color: #b86b35;
-    --bs-btn-active-bg: #b86b35;
-    --bs-btn-active-border-color: #b86b35;
-    --bs-btn-active-color: #fff;
+.milk-menu-page .menu-search-wrapper {
+    position: relative;
+    flex-grow: 1;
+}
+.milk-menu-page .menu-search-input {
+    min-height: 50px;
+    border-radius: 16px !important;
+    padding-left: 48px !important;
+    padding-right: 18px !important;
+    border: 1.5px solid #eae2dc !important;
+    background-color: #fff !important;
+    color: #402310 !important;
+    font-size: 0.95rem;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(96, 71, 53, 0.04) !important;
+    transition: all .2s ease;
+}
+.milk-menu-page .menu-search-input::placeholder {
+    color: #9c8a7d;
+}
+.milk-menu-page .menu-search-input:focus {
+    border-color: #b8541a !important;
+    box-shadow: 0 0 0 3px rgba(184, 84, 26, 0.14) !important;
+    outline: none;
+}
+.milk-menu-page .menu-filter-btn {
+    min-height: 50px;
+    padding: 10px 22px;
+    border-radius: 16px !important;
+    border: 1.5px solid #eae2dc;
+    background-color: #fff;
+    color: #402310;
+    font-size: 0.95rem;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    min-height: 42px;
-    line-height: 1.5;
-    font-size: .8125rem;
-    font-weight: 500;
-    border-radius: 10px !important;
-    padding-block: 9px;
-    transition: background-color .2s ease, border-color .2s ease;
+    gap: 8px;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(96, 71, 53, 0.04);
+    transition: all .2s ease;
+    cursor: pointer;
 }
-.milk-menu-page .featured-tab-btn.active {
+.milk-menu-page .menu-filter-btn:hover {
+    background-color: #faf6f2;
+    border-color: #d8c8bd;
+    color: #b8541a;
+}
+.milk-menu-page .menu-filter-btn.active {
+    background-color: #b8541a !important;
+    border-color: #b8541a !important;
+    color: #fff !important;
+    box-shadow: 0 4px 12px rgba(184, 84, 26, 0.28);
+}
+.milk-menu-page .menu-filter-btn.active svg {
+    stroke: #fff;
+}
+
+/* Category Pills cuộn ngang */
+.milk-menu-page .menu-category-pills-wrapper {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+}
+.milk-menu-page .menu-category-pills-wrapper::-webkit-scrollbar {
+    display: none;
+}
+.milk-menu-page .menu-category-pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+.milk-menu-page .category-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 20px;
+    border-radius: 14px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    border: 1.5px solid #eae2dc;
+    background-color: #fff;
+    color: #402310;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(96, 71, 53, 0.03);
+    transition: all .2s ease;
+    flex-shrink: 0;
+}
+.milk-menu-page .category-pill:hover {
+    background-color: #faf6f2;
+    border-color: #d8c8bd;
+    color: #b8541a;
+}
+.milk-menu-page .category-pill.active {
+    background-color: #b8541a;
+    border-color: #b8541a;
     color: #fff;
-    background: #b86b35;
-    border-color: #b86b35;
+    box-shadow: 0 3px 10px rgba(184, 84, 26, 0.25);
 }
-.milk-menu-page .featured-tab-btn .bi {
-    color: inherit !important; /* Keep existing icon markup and utility classes. */
-    line-height: 1;
+
+/* Hàng số món & Quick sort */
+.milk-menu-page .menu-count-sort-row {
+    padding-top: 4px;
+    margin-bottom: 18px;
+}
+.milk-menu-page .menu-count-text {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #402310;
+}
+.milk-menu-page .menu-quick-sort-btn {
+    color: #402310 !important;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: color .2s ease;
+}
+.milk-menu-page .menu-quick-sort-btn:hover {
+    color: #b8541a !important;
+}
+
+/* Modal Bottom Sheet Bộ Lọc */
+.sheet-drag-handle {
+    width: 44px;
+    height: 4px;
+    background-color: #d8d0c8;
+    border-radius: 3px;
+    margin: 12px auto 8px auto;
+}
+.filter-bottom-sheet-content {
+    border-radius: 24px;
+    background-color: #fff;
+    overflow: hidden;
+}
+@media (max-width: 767.98px) {
+    .modal-dialog-bottom-sheet {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        transform: translateY(0);
+    }
+    .filter-bottom-sheet-content {
+        border-radius: 24px 24px 0 0 !important;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+}
+@media (min-width: 768px) {
+    .modal-dialog-bottom-sheet {
+        max-width: 480px;
+        margin: 1.75rem auto;
+    }
+}
+.filter-modal-title {
+    font-size: 1.35rem;
+    color: #402310;
+}
+.filter-section-title {
+    font-size: 0.95rem;
+    color: #402310;
+}
+.price-chips-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+.price-chip-btn {
+    padding: 11px 12px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 1.5px solid #eae2dc;
+    background-color: #fbf9f7;
+    color: #402310;
+    cursor: pointer;
+    transition: all .2s ease;
+    text-align: center;
+    width: 100%;
+}
+.price-chip-btn:hover {
+    background-color: #f5ede6;
+    border-color: #d8c8bd;
+}
+.price-chip-btn.active {
+    background-color: #b8541a !important;
+    border-color: #b8541a !important;
+    color: #fff !important;
+    box-shadow: 0 3px 10px rgba(184, 84, 26, 0.22);
+}
+
+/* Custom radio option sắp xếp */
+.sort-radio-item {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 2px;
+}
+.sort-radio-item input[type="radio"] {
+    display: none;
+}
+.radio-custom-circle {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #c9bcb0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all .2s ease;
+}
+.sort-radio-item input[type="radio"]:checked + .radio-custom-circle {
+    border-color: #b8541a;
+}
+.sort-radio-item input[type="radio"]:checked + .radio-custom-circle::after {
+    content: '';
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background-color: #b8541a;
+    display: block;
+}
+.sort-radio-label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #402310;
+    transition: color .2s ease;
+}
+.sort-radio-item input[type="radio"]:checked ~ .sort-radio-label {
+    font-weight: 600;
+    color: #b8541a;
+}
+.btn-outline-filter-reset {
+    border: 1.5px solid #b8541a;
+    color: #b8541a;
+    background-color: #fff;
+    border-radius: 14px;
+    font-weight: 600;
+    padding: 13px 24px;
+    min-width: 120px;
+    transition: all .2s ease;
+}
+.btn-outline-filter-reset:hover {
+    background-color: #fbf5ef;
+    color: #a04512;
+    border-color: #a04512;
+}
+.btn-primary-filter-apply {
+    background-color: #b8541a;
+    border: none;
+    color: #fff;
+    border-radius: 14px;
+    font-weight: 600;
+    padding: 13px 24px;
+    transition: all .2s ease;
+}
+.btn-primary-filter-apply:hover {
+    background-color: #a04512;
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(184, 84, 26, 0.28);
 }
 .milk-menu-page #productsGrid {
     --bs-gutter-x: 24px;

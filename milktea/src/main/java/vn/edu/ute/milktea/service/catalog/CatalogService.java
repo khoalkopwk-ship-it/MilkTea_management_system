@@ -418,8 +418,16 @@ public class CatalogService {
 
         // 3. Áp dụng bộ sưu tập nổi bật (Top 20) nếu được chọn
         String fType = (featuredType != null && !featuredType.isBlank()) ? featuredType.toLowerCase().trim().replace("-", "_") : "all";
+        boolean isExplicitFeaturedTab = !"all".equals(fType);
+        if ("all".equals(fType) && sortBy != null) {
+            String s = sortBy.trim().toLowerCase().replace("-", "_");
+            if (List.of("best_seller", "top20", "top_20", "newest", "top_rated", "most_favorited").contains(s)) {
+                fType = s;
+            }
+        }
+
         if (!"all".equals(fType)) {
-            Pageable top20Page = PageRequest.of(0, 20);
+            Pageable top20Page = PageRequest.of(0, 50);
             List<String> rankedNames = new ArrayList<>();
             switch (fType) {
                 case "top_rated" -> {
@@ -475,11 +483,18 @@ public class CatalogService {
                 }
             }
 
-            distinctDrinks = distinctDrinks.stream()
-                    .filter(p -> rankMap.containsKey(p.getName().trim().toLowerCase()))
-                    .sorted(Comparator.comparingInt(p -> rankMap.get(p.getName().trim().toLowerCase())))
-                    .limit(20)
-                    .toList();
+            if (isExplicitFeaturedTab) {
+                distinctDrinks = distinctDrinks.stream()
+                        .filter(p -> rankMap.containsKey(p.getName().trim().toLowerCase()))
+                        .sorted(Comparator.comparingInt(p -> rankMap.get(p.getName().trim().toLowerCase())))
+                        .limit(20)
+                        .toList();
+            } else {
+                distinctDrinks = distinctDrinks.stream()
+                        .sorted(Comparator.comparingInt((Product p) -> rankMap.getOrDefault(p.getName().trim().toLowerCase(), 999999))
+                                .thenComparing(Product::getId))
+                        .toList();
+            }
         }
 
         // 4. Lọc theo từ khóa, danh mục, khoảng giá

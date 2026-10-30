@@ -257,6 +257,77 @@ public class ProductImageService {
     }
 
     // ==========================================
+    // 2.1. UPLOAD BANNER TRANG CHỦ (HERO BANNER)
+    // ==========================================
+    @Transactional
+    public SettingsDto.HeroBannerImageView uploadHeroBannerImage(MultipartFile file, Long adminId) {
+        validateImageFile(file);
+        ensureCloudinaryReady();
+
+        GlobalSettings settings = settingsRepository.findById(1)
+                .orElseGet(() -> GlobalSettings.builder()
+                        .id(1)
+                        .shopName("MilkTea Quán 01")
+                        .address("Số 1 Võ Văn Ngân, TP. Thủ Đức")
+                        .modifiedAt(Instant.now())
+                        .build());
+
+        String oldPublicId = settings.getHeroBannerPublicId();
+        String secureUrl;
+        String publicId;
+
+        String customPublicId = "milktea/branding/hero_banner_" + System.currentTimeMillis() + "_"
+                + UUID.randomUUID().toString().substring(0, 8);
+        try {
+            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                    "public_id", customPublicId,
+                    "resource_type", "image",
+                    "overwrite", true));
+            secureUrl = (String) uploadResult.get("secure_url");
+            publicId = (String) uploadResult.get("public_id");
+        } catch (IOException e) {
+            log.error("Lỗi khi tải ảnh banner trang chủ lên Cloudinary: {}", e.getMessage());
+            throw BusinessException.badRequest(ErrorCode.IMAGE_UPLOAD_FAILED,
+                    "Không thể tải ảnh banner lên Cloudinary: " + e.getMessage());
+        }
+
+        try {
+            settings.setHeroBannerUrl(secureUrl);
+            settings.setHeroBannerPublicId(publicId);
+            settings.setModifiedAt(Instant.now());
+            if (adminId != null) {
+                accountRepository.findById(adminId).ifPresent(settings::setModifiedBy);
+            }
+            settingsRepository.save(settings);
+        } catch (Exception dbEx) {
+            log.error("Lưu DB thất bại sau khi upload banner. Dọn dẹp ảnh mồ côi publicId={}", publicId);
+            try {
+                cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            } catch (Exception destroyEx) {
+                log.warn("Không thể dọn dẹp banner mồ côi: {}", destroyEx.getMessage());
+            }
+            throw dbEx;
+        }
+
+        if (oldPublicId != null && !oldPublicId.isBlank() && !oldPublicId.equals(publicId)) {
+            try {
+                cloudinary.uploader().destroy(oldPublicId, ObjectUtils.emptyMap());
+                log.info("Đã xóa banner cũ trên Cloudinary publicId={}", oldPublicId);
+            } catch (Exception e) {
+                log.warn("Không thể xóa banner cũ publicId={}: {}", oldPublicId, e.getMessage());
+            }
+        }
+
+        realtimeEventPublisher.publishAfterCommit("/topic/admin", "SETTINGS_CHANGED", "1", null, "1",
+                Map.of("action", "BANNER_UPDATED", "heroBannerUrl", secureUrl));
+
+        return SettingsDto.HeroBannerImageView.builder()
+                .heroBannerUrl(secureUrl)
+                .heroBannerPublicId(publicId)
+                .build();
+    }
+
+    // ==========================================
     // 3. UPLOAD AVATAR TÀI KHOẢN
     // ==========================================
     @Transactional

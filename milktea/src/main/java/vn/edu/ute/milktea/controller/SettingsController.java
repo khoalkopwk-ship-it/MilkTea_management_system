@@ -36,6 +36,14 @@ public class SettingsController {
         return ResponseEntity.ok(ApiResponse.ok(productImageService.uploadLogoImage(file, adminId)));
     }
 
+    @PostMapping(value = "/admin/settings/hero-banner", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<SettingsDto.HeroBannerImageView>> uploadHeroBanner(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @AuthenticationPrincipal CurrentActor actor) {
+        Long adminId = actor != null ? actor.getAccountId() : null;
+        return ResponseEntity.ok(ApiResponse.ok(productImageService.uploadHeroBannerImage(file, adminId)));
+    }
+
     @PutMapping("/admin/settings")
     public ResponseEntity<ApiResponse<Void>> updateSettings(
             @Valid @RequestBody SettingsDto.UpdateSettingsRequest request,

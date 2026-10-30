@@ -505,11 +505,15 @@ const AdminApp = (() => {
     }
 
     // === 7. CẤU HÌNH QUÁN & KHUYẾN MÃI ===
-    async function updateSettings(shopName, address, bankName, bankAccountNumber, bankAccountHolder, discountPercent, discountType, discountValue) {
+    async function updateSettings(shopName, address, bankName, bankAccountNumber, bankAccountHolder, discountPercent, discountType, discountValue, hotline, operatingHours, heroBannerUrl, heroBannerPublicId) {
         try {
             await MilkTeaApi.put('/api/v1/admin/settings', {
                 shopName,
                 address,
+                hotline,
+                operatingHours,
+                heroBannerUrl,
+                heroBannerPublicId,
                 bankName,
                 bankAccountNumber,
                 bankAccountHolder,

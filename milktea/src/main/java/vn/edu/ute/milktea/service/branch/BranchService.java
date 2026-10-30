@@ -123,6 +123,7 @@ public class BranchService {
                 .name(request.getName().trim())
                 .address(request.getAddress().trim())
                 .phone(request.getPhone() != null ? request.getPhone().trim() : null)
+                .openingHours(request.getOpeningHours() != null && !request.getOpeningHours().isBlank() ? request.getOpeningHours().trim() : "08:00 - 22:00")
                 .status("HOAT_DONG")
                 .createdAt(Instant.now())
                 .build();
@@ -138,6 +139,9 @@ public class BranchService {
         branch.setAddress(request.getAddress().trim());
         if (request.getPhone() != null) {
             branch.setPhone(request.getPhone().trim());
+        }
+        if (request.getOpeningHours() != null) {
+            branch.setOpeningHours(request.getOpeningHours().trim());
         }
         branch = branchRepository.save(branch);
         return toResponse(branch);
@@ -182,6 +186,7 @@ public class BranchService {
                 .name(branch.getName())
                 .address(branch.getAddress())
                 .phone(branch.getPhone())
+                .openingHours(branch.getOpeningHours() != null ? branch.getOpeningHours() : "08:00 - 22:00")
                 .status(branch.isActive() ? "HOAT_DONG" : "DONG_CUA")
                 .build();
     }

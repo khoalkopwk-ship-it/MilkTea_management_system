@@ -652,6 +652,66 @@
                                                placeholder="Địa chỉ quán hiển thị trên hóa đơn và trang chủ" />
                                     </div>
 
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label fw-semibold">
+                                                Hotline liên hệ chuỗi
+                                            </label>
+                                            <input type="text"
+                                                   id="hotline"
+                                                   class="form-control"
+                                                   th:value="${settings?.hotline != null ? settings.hotline : '0345121523'}"
+                                                   placeholder="VD: 0345121523" />
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label fw-semibold">
+                                                Giờ hoạt động chuỗi
+                                            </label>
+                                            <input type="text"
+                                                   id="operatingHours"
+                                                   class="form-control"
+                                                   th:value="${settings?.operatingHours != null ? settings.operatingHours : '08:00 – 22:00 (Hằng ngày)'}"
+                                                   placeholder="VD: 08:00 – 22:00 (Hằng ngày)" />
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold">
+                                            Ảnh Banner Trang Chủ (Hero Image)
+                                        </label>
+                                        <div class="d-flex flex-column flex-md-row gap-3 align-items-start">
+                                            <div class="position-relative overflow-hidden rounded-4 border bg-light d-flex align-items-center justify-content-center shadow-sm"
+                                                 style="width: 200px; height: 130px; flex-shrink: 0;">
+                                                <img id="previewHeroBanner"
+                                                     th:src="${settings?.heroBannerUrl != null and !settings.heroBannerUrl.isEmpty() ? settings.heroBannerUrl : '/images/MilkTea.png'}"
+                                                     style="width: 100%; height: 100%; object-fit: cover;"
+                                                     alt="Banner Preview"
+                                                     onerror="this.src='/images/MilkTea.png'">
+                                            </div>
+                                            <div class="flex-grow-1 w-100">
+                                                <div class="input-group mb-2">
+                                                    <input type="text"
+                                                           id="heroBannerUrl"
+                                                           class="form-control"
+                                                           th:value="${settings?.heroBannerUrl}"
+                                                           placeholder="Dán link ảnh (https://...) hoặc tải tệp lên bên dưới"
+                                                           oninput="previewBannerFromInput()" />
+                                                    <button class="btn btn-outline-secondary" type="button" onclick="previewBannerFromInput()">
+                                                        <i class="bi bi-eye"></i> Xem thử
+                                                    </button>
+                                                </div>
+                                                <input type="hidden" id="heroBannerPublicId" th:value="${settings?.heroBannerPublicId}" />
+                                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                                    <input type="file" id="heroBannerFileInput" class="d-none" accept="image/png,image/jpeg,image/webp" onchange="uploadBannerFile(this)" />
+                                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="document.getElementById('heroBannerFileInput').click()">
+                                                        <i class="bi bi-cloud-upload me-1"></i> Tải ảnh mới từ máy tính
+                                                    </button>
+                                                    <small class="text-muted" style="font-size: 11px;">Hỗ trợ PNG, JPG, WebP. Ảnh sẽ hiển thị dạng vòm ở trang chủ thương hiệu.</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <input type="hidden" id="discountTypeHidden" th:value="${settings != null and settings.discountType != null ? settings.discountType : 'PERCENT'}" />
                                     <input type="hidden" id="discountValueHidden" th:value="${settings != null and settings.discountValue != null ? settings.discountValue : (settings != null and settings.discountPercent != null ? settings.discountPercent : 0)}" />
 
@@ -794,16 +854,46 @@
                 });
             });
 
+            async function uploadBannerFile(input) {
+                if (!input.files || input.files.length === 0) return;
+                const file = input.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                    MilkTeaApi.showToast('Đang tải ảnh banner trang chủ lên...', 'info');
+                    const res = await MilkTeaApi.postFormData('/api/v1/admin/settings/hero-banner', formData);
+                    if (res && res.heroBannerUrl) {
+                        document.getElementById('heroBannerUrl').value = res.heroBannerUrl;
+                        document.getElementById('heroBannerPublicId').value = res.heroBannerPublicId || '';
+                        document.getElementById('previewHeroBanner').src = res.heroBannerUrl;
+                        MilkTeaApi.showToast('Tải ảnh banner trang chủ thành công!', 'success');
+                    }
+                } catch (e) {
+                    MilkTeaApi.showToast(e.message || 'Lỗi khi tải ảnh banner', 'danger');
+                }
+            }
+
+            function previewBannerFromInput() {
+                const url = document.getElementById('heroBannerUrl').value.trim();
+                if (url) {
+                    document.getElementById('previewHeroBanner').src = url;
+                }
+            }
+
             function submitSettings() {
                 const shopName = document.getElementById('shopName').value;
                 const address = document.getElementById('address').value;
+                const hotline = document.getElementById('hotline').value;
+                const operatingHours = document.getElementById('operatingHours').value;
+                const heroBannerUrl = document.getElementById('heroBannerUrl').value.trim();
+                const heroBannerPublicId = document.getElementById('heroBannerPublicId').value.trim();
                 const bankName = document.getElementById('bankName').value;
                 const bankAccountNumber = document.getElementById('bankAccountNumber').value;
                 const bankAccountHolder = document.getElementById('bankAccountHolder').value;
                 const discountType = document.getElementById('discountTypeHidden').value || 'PERCENT';
                 const discountValue = parseFloat(document.getElementById('discountValueHidden').value || 0);
 
-                AdminApp.updateSettings(shopName, address, bankName, bankAccountNumber, bankAccountHolder, discountValue, discountType, discountValue);
+                AdminApp.updateSettings(shopName, address, bankName, bankAccountNumber, bankAccountHolder, discountValue, discountType, discountValue, hotline, operatingHours, heroBannerUrl, heroBannerPublicId);
             }
         </script>
     </th:block>

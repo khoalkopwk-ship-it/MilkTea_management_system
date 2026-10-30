@@ -173,6 +173,7 @@
                                     <th>Tên Chi Nhánh</th>
                                     <th>Địa Chỉ Cơ Sở</th>
                                     <th>Số Điện Thoại</th>
+                                    <th>Giờ Mở Cửa</th>
                                     <th>Trạng Thái</th>
                                     <th class="text-end">Thao Tác</th>
                                 </tr>
@@ -186,6 +187,10 @@
                                     </td>
                                     <td th:text="${b.address}">123 Nguyễn Thị Minh Khai, Q.1</td>
                                     <td th:text="${b.phone != null ? b.phone : 'Chưa có'}">028 1234 5678</td>
+                                    <td>
+                                        <i class="bi bi-clock me-1 text-muted"></i>
+                                        <span th:text="${b.openingHours != null ? b.openingHours : '08:00 - 22:00'}">08:00 - 22:00</span>
+                                    </td>
                                     <td>
                                         <span th:if="${b.status == 'HOAT_DONG'}" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
                                             Hoạt động
@@ -208,6 +213,7 @@
                                                     th:data-name="${b.name}"
                                                     th:data-address="${b.address}"
                                                     th:data-phone="${b.phone}"
+                                                    th:data-opening-hours="${b.openingHours}"
                                                     onclick="openEditBranchModal(this)"
                                                     title="Sửa thông tin chi nhánh">
                                                 <i class="bi bi-pencil"></i>
@@ -257,6 +263,10 @@
                                 <label class="form-label small fw-semibold">Số điện thoại hotline</label>
                                 <input type="text" id="createBranchPhone" class="form-control" placeholder="0901234567" />
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Giờ mở cửa cơ sở</label>
+                                <input type="text" id="createBranchOpeningHours" class="form-control" placeholder="VD: 08:00 - 22:00" />
+                            </div>
                         </div>
                         <div class="modal-footer border-0 pt-0">
                             <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Hủy</button>
@@ -290,6 +300,10 @@
                                 <label class="form-label small fw-semibold">Số điện thoại hotline</label>
                                 <input type="text" id="editBranchPhone" class="form-control" />
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Giờ mở cửa cơ sở</label>
+                                <input type="text" id="editBranchOpeningHours" class="form-control" placeholder="VD: 08:00 - 22:00" />
+                            </div>
                         </div>
                         <div class="modal-footer border-0 pt-0">
                             <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Hủy</button>
@@ -313,6 +327,7 @@
 
             function openCreateBranchModal() {
                 document.getElementById('createBranchForm').reset();
+                document.getElementById('createBranchOpeningHours').value = '08:00 - 22:00';
                 createModal.show();
             }
 
@@ -321,6 +336,7 @@
                 document.getElementById('editBranchName').value = btn.dataset.name || '';
                 document.getElementById('editBranchAddress').value = btn.dataset.address || '';
                 document.getElementById('editBranchPhone').value = btn.dataset.phone || '';
+                document.getElementById('editBranchOpeningHours').value = btn.dataset.openingHours || '08:00 - 22:00';
                 editModal.show();
             }
 
@@ -329,9 +345,10 @@
                 const name = document.getElementById('createBranchName').value.trim();
                 const address = document.getElementById('createBranchAddress').value.trim();
                 const phone = document.getElementById('createBranchPhone').value.trim();
+                const openingHours = document.getElementById('createBranchOpeningHours').value.trim();
 
                 try {
-                    await MilkTeaApi.post('/api/v1/admin/branches', { code, name, address, phone });
+                    await MilkTeaApi.post('/api/v1/admin/branches', { code, name, address, phone, openingHours });
                     MilkTeaApi.showToast('Tạo chi nhánh thành công', 'success');
                     createModal.hide();
                     setTimeout(() => window.location.reload(), 600);
@@ -345,9 +362,10 @@
                 const name = document.getElementById('editBranchName').value.trim();
                 const address = document.getElementById('editBranchAddress').value.trim();
                 const phone = document.getElementById('editBranchPhone').value.trim();
+                const openingHours = document.getElementById('editBranchOpeningHours').value.trim();
 
                 try {
-                    await MilkTeaApi.put('/api/v1/admin/branches/' + id, { name, address, phone });
+                    await MilkTeaApi.put('/api/v1/admin/branches/' + id, { name, address, phone, openingHours });
                     MilkTeaApi.showToast('Cập nhật chi nhánh thành công', 'success');
                     editModal.hide();
                     setTimeout(() => window.location.reload(), 600);
