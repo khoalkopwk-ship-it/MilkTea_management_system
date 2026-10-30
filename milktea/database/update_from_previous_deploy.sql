@@ -466,6 +466,8 @@ BEGIN
         SoTienGiam DECIMAL(18,2) NOT NULL,
         TrangThai VARCHAR(20) NOT NULL CONSTRAINT DF_LSSDV_TrangThai DEFAULT 'DA_DUNG',
         NgaySuDung DATETIME2 NOT NULL CONSTRAINT DF_LSSDV_NgaySuDung DEFAULT SYSUTCDATETIME(),
+        NgayHoanTra DATETIME2 NULL,
+        LyDoHoanTra NVARCHAR(500) NULL,
         CONSTRAINT PK_LichSuSuDungVoucher PRIMARY KEY CLUSTERED (MaLichSu ASC),
         CONSTRAINT FK_LSSDV_Voucher FOREIGN KEY (MaVoucher) REFERENCES dbo.Voucher(MaVoucher),
         CONSTRAINT FK_LSSDV_DonHang FOREIGN KEY (MaDH) REFERENCES dbo.DonHang(MaDH),
@@ -477,6 +479,21 @@ BEGIN
     CREATE NONCLUSTERED INDEX IX_LSSDV_Voucher_Khach ON dbo.LichSuSuDungVoucher (MaVoucher, MaTK);
     CREATE NONCLUSTERED INDEX IX_LSSDV_DonHang ON dbo.LichSuSuDungVoucher (MaDH);
     PRINT N'   + Đã tạo bảng LichSuSuDungVoucher.';
+END
+ELSE
+BEGIN
+    -- Đảm bảo bổ sung cột nếu bảng đã tồn tại từ trước mà thiếu
+    IF COL_LENGTH(N'dbo.LichSuSuDungVoucher', N'NgayHoanTra') IS NULL
+    BEGIN
+        ALTER TABLE dbo.LichSuSuDungVoucher ADD NgayHoanTra DATETIME2 NULL;
+        PRINT N'   + Đã bổ sung cột NgayHoanTra vào LichSuSuDungVoucher.';
+    END;
+
+    IF COL_LENGTH(N'dbo.LichSuSuDungVoucher', N'LyDoHoanTra') IS NULL
+    BEGIN
+        ALTER TABLE dbo.LichSuSuDungVoucher ADD LyDoHoanTra NVARCHAR(500) NULL;
+        PRINT N'   + Đã bổ sung cột LyDoHoanTra vào LichSuSuDungVoucher.';
+    END;
 END
 GO
 
