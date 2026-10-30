@@ -221,7 +221,7 @@ class AuthEmailVerificationFlowTest {
         assertNotNull(otpEntity.getUsedAt(), "OTP phải được đánh dấu đã dùng");
 
         // Sau khi đã xác thực -> đăng nhập thành công
-        when(jwtService.generateToken(account)).thenReturn("jwt_token_sample");
+        when(jwtService.generateToken(eq(account), anyBoolean())).thenReturn("jwt_token_sample");
         AuthDto.AuthResponse loginRes = authService.login(new AuthDto.LoginRequest(email, "Password@123"));
         assertNotNull(loginRes);
         assertEquals("jwt_token_sample", loginRes.getToken());

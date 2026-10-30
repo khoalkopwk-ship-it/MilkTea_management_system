@@ -24,6 +24,12 @@ public class AuthDto {
         private String password;
         
         private boolean rememberMe;
+
+        public LoginRequest(String email, String password) {
+            this.email = email;
+            this.password = password;
+            this.rememberMe = false;
+        }
     }
 
     @Data
